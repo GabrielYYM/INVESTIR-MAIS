@@ -1,46 +1,85 @@
 # INVESTIR MAIS
 
-[![Java Version](https://img.shields.io/badge/Java-25-orange?style=for-the-badge&logo=openjdk)](https://openjdk.org/)
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-brightgreen?style=for-the-badge&logo=springboot)](https://spring.io/projects/spring-boot)
-[![Security](https://img.shields.io/badge/Seguran%C3%A7a-Refor%C3%A7ada-red?style=for-the-badge&logo=springsecurity)](https://spring.io/projects/spring-security)
-[![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![Vercel](https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://vercel.com/)
-[![Railway](https://img.shields.io/badge/Railway-131415?style=for-the-badge&logo=railway&logoColor=white)](https://railway.app/)
+[![Java Version](https://img.shields.io/badge/Java-25_LTS-orange?style=flat-square&logo=openjdk)](https://openjdk.org/)
+[![Spring Boot](https://img.shields.io/badge/Spring_Boot-3-brightgreen?style=flat-square&logo=springboot)](https://spring.io/projects/spring-boot)
+[![Node.js](https://img.shields.io/badge/Node.js-22-green?style=flat-square&logo=node.js)](https://nodejs.org/)
+[![React](https://img.shields.io/badge/React-19-blue?style=flat-square&logo=react)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-8-purple?style=flat-square&logo=vite)](https://vitejs.dev/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?style=flat-square&logo=tailwindcss)](https://tailwindcss.com/)
+[![java-jwt](https://img.shields.io/badge/Java--JWT-red?style=flat-square)](https://github.com/auth0/java-jwt)
+[![MapStruct](https://img.shields.io/badge/MapStruct-yellow?style=flat-square)](https://mapstruct.org/)
+[![Bucket4j](https://img.shields.io/badge/Bucket4j-lightblue?style=flat-square)](https://bucket4j.com/)
+[![SpringDoc OpenAPI](https://img.shields.io/badge/SpringDoc_OpenAPI-darkgreen?style=flat-square)](https://springdoc.org/)
+[![Lombok](https://img.shields.io/badge/Lombok-pink?style=flat-square&logo=lombok)](https://projectlombok.org/)
 
+## Escopo
 
-
-O **INVESTE+** é um backend robusto e de alta performance para gestão de investimentos, construído com **Spring Boot 3.5** e **Java 25**. Desenvolvido com mentalidade *security-first*, o projeto implementa padrões avançados de autenticação, filtros de infraestrutura defensivos e segue rigorosamente os princípios **SOLID** e **Domain-Driven Design (DDD)** para garantir escalabilidade e manutenibilidade.
-
----
+O **INVESTIR MAIS** é um sistema educacional que conecta docentes, com conhecimentos na área financeira, com crianças e adolescentes, a fim de fomentar a educação financeira infantil, além de oferecer um sistema de gestão patrimonial.
 
 ## Tecnologias
 
-- **Core**: Java 25 LTS & Spring Boot 3.5.x
-- **Persistência**: PostgreSQL (Produção) / H2 (Desenvolvimento & Testes)
-- **Segurança**: 
-  - Spring Security com JWT (java-jwt)
-  - Integração OAuth2 Client
-  - Hashing de senhas com Argon2
-  - Criptografia AES-256 no Banco de Dados para campos sensíveis
-- **Infraestrutura**:
-  - **Rate Limiting**: Implementação usando Bucket4j & Caffeine
-  - **Validação**: Bean Validation (Hibernate Validator)
-  - **Mapeadores**: MapStruct para conversão limpa entre Entidades e DTOs
-- **Documentação**: OpenAPI 3 / Swagger (SpringDoc UI)
-- **Utilitários**: Lombok, dotenv-java, BouncyCastle
+| Tecnologia | Versão |
+|-----------|--------|
+| Java | 25 |
+| Spring Boot | 3.5.14 |
+| Node.js | 22.13.1 |
+| React | 19.2.5 |
+| Vite | 8.0.10 |
+| Tailwind CSS | 4.2.4 |
+| java-jwt | 4.5.1 |
+| MapStruct | 1.6.3 |
+| Bucket4j | 8.10.1 |
+| SpringDoc OpenAPI | 2.8.16 |
+| Lombok | 1.18.44 |
 
----
-## Arquitetura e Princípios
+## Estrutura do Projeto
 
-Este projeto foi construído para transcender os padrões básicos de um MVP, adotando as melhores práticas de engenharia de software moderna:
-
-- **Domain-Driven Design (DDD)**: Lógica organizada por limites de domínio (`auth`, `user`, `asset`, `admin`).
-- **Princípios SOLID**: Foco no desacoplamento, responsabilidade única e design orientado a interfaces.
-- **Programação Defensiva**: Validação extensiva de entradas e tratamento padronizado de erros.
-- **Endurecimento de Segurança (Hardening)**:
-  - Tokens JWT de curta duração com lista de bloqueio (*blacklist*) no servidor (hasheada).
-  - Implementação de 2FA (Autenticação de Dois Fatores) em múltiplas camadas.
-
----
+```text
+INVEST_MAIS/
+├── .github/
+├── .gitignore
+├── .env.example
+├── pom.xml
+├── README.md
+├── basedata.sql
+├── src/
+│   ├── main/
+│   │   ├── java/
+│   │   │   └── com/repositorio/mvp/
+│   │   │       ├── MvpApplication.java
+│   │   │       ├── common/
+│   │   │       │   ├── DTO/
+│   │   │       │   ├── constants/
+│   │   │       │   ├── model/
+│   │   │       │   ├── result/
+│   │   │       │   ├── security/
+│   │   │       │   └── validation/
+│   │   │       ├── domain/
+│   │   │       │   ├── admin/
+│   │   │       │   ├── asset/
+│   │   │       │   ├── auth/
+│   │   │       │   ├── portfolio/
+│   │   │       │   ├── question/
+│   │   │       │   └── user/
+│   │   │       └── infrastructure/
+│   │   │           ├── config/
+│   │   │           ├── exception/
+│   │   │           ├── security/
+│   │   │           ├── util/
+│   │   │           └── web/
+│   │   └── resources/
+│   │       └── application.properties
+│   └── test/
+└── frontend/
+    ├── package.json
+    ├── vite.config.js
+    ├── src/
+    │   ├── App.jsx
+    │   ├── components/
+    │   ├── pages/
+    │   ├── services/
+    │   └── styles/
+    ├── public/
+    ├── index.html
+    └── dist/
+```
