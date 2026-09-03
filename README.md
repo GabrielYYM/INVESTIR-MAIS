@@ -6,6 +6,7 @@
 [![React](https://img.shields.io/badge/React-19-blue?style=flat-square&logo=react)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-8-purple?style=flat-square&logo=vite)](https://vitejs.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?style=flat-square&logo=tailwindcss)](https://tailwindcss.com/)
+
 [![java-jwt](https://img.shields.io/badge/Java--JWT-red?style=flat-square)](https://github.com/auth0/java-jwt)
 [![MapStruct](https://img.shields.io/badge/MapStruct-yellow?style=flat-square)](https://mapstruct.org/)
 [![Bucket4j](https://img.shields.io/badge/Bucket4j-lightblue?style=flat-square)](https://bucket4j.com/)
