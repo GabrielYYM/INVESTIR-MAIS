@@ -23,22 +23,16 @@ import com.repositorio.investir_mais.domain.question.DTO.QuestionRequestDTO;
 import com.repositorio.investir_mais.domain.question.DTO.QuestionResponseDTO;
 import com.repositorio.investir_mais.domain.question.service.interfaces.QuestionCommandService;
 
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/questions")
 @RequiredArgsConstructor
-@Tag(name = "Comandos de Perguntas", description = "Operações de escrita para questões e critérios de avaliação")
 public class QuestionCommandController {
 
     private final QuestionCommandService commandService;
 
     @PostMapping("/categories/{categoryId}")
-    @Operation(summary = "Cria uma nova questão para uma categoria")
-    @ApiResponse(responseCode = "201", description = "Questão criada com sucesso")
     public ResponseEntity<QuestionResponseDTO> createQuestion(
             @PathVariable UUID categoryId,
             @Valid @RequestBody QuestionRequestDTO request) {
@@ -55,8 +49,6 @@ public class QuestionCommandController {
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Atualiza o texto de uma questão")
-    @ApiResponse(responseCode = "200", description = "Questão atualizada com sucesso")
     public ResponseEntity<QuestionResponseDTO> updateQuestion(
             @PathVariable UUID id,
             @Valid @RequestBody QuestionRequestDTO request) {
@@ -72,8 +64,6 @@ public class QuestionCommandController {
     }
 
     @DeleteMapping("/{id}")
-    @Operation(summary = "Remove uma questão")
-    @ApiResponse(responseCode = "204", description = "Questão removida com sucesso")
     public ResponseEntity<Void> deleteQuestion(@PathVariable UUID id) {
         ServiceResult<Void> result = commandService.deleteQuestion(id);
 
@@ -87,8 +77,6 @@ public class QuestionCommandController {
     }
 
     @PostMapping("/assets/{assetId}/evaluations")
-    @Operation(summary = "Salva as avaliações de um ativo baseadas nas questões")
-    @ApiResponse(responseCode = "204", description = "Avaliações salvas com sucesso")
     public ResponseEntity<Void> saveEvaluations(
             @PathVariable UUID assetId,
             @Valid @RequestBody List<EvaluationRequestDTO> evaluations) {

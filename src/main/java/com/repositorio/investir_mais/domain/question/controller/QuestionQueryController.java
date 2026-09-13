@@ -16,21 +16,15 @@ import com.repositorio.investir_mais.common.result.ServiceResult;
 import com.repositorio.investir_mais.domain.question.DTO.QuestionResponseDTO;
 import com.repositorio.investir_mais.domain.question.service.interfaces.QuestionQueryService;
 
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/questions")
 @RequiredArgsConstructor
-@Tag(name = "Consultas de Perguntas", description = "Operações de leitura para perguntas qualitativas")
 public class QuestionQueryController {
     private final QuestionQueryService queryService;
 
     @GetMapping("/categories/{categoryId}")
-    @Operation(summary = "Lista perguntas de uma categoria")
-    @ApiResponse(responseCode = "200", description = "Lista de perguntas retornada com sucesso")
     public ResponseEntity<List<QuestionResponseDTO>> listByCategoryId(@PathVariable UUID categoryId) {
         ServiceResult<List<QuestionResponseDTO>> result = queryService.listByCategoryId(categoryId);
 
