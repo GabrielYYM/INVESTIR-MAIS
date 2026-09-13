@@ -17,7 +17,7 @@ import lombok.RequiredArgsConstructor;
 public class UserContextService {
 
     private final PortfolioRepository portfolioRepository;
-
+    //TODO: remover o mock
     public static final UUID MOCK_USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
 
     /**

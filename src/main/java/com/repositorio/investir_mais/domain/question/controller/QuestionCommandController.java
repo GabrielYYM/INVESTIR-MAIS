@@ -68,7 +68,7 @@ public class QuestionCommandController {
         ServiceResult<Void> result = commandService.deleteQuestion(id);
 
         return switch (result) {
-            case ServiceResult.Success<Void> _ -> ResponseEntity.noContent().build();
+            case ServiceResult.Success<Void> s -> ResponseEntity.noContent().build();
             case ServiceResult.NotFound<Void> n -> throw new ErrorResponseException(HttpStatus.NOT_FOUND,
                     ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, n.message()), null);
             case ServiceResult.Error<Void> e -> throw new ErrorResponseException(HttpStatus.BAD_REQUEST,
@@ -83,7 +83,7 @@ public class QuestionCommandController {
         ServiceResult<Void> result = commandService.saveEvaluations(assetId, evaluations);
 
         return switch (result) {
-            case ServiceResult.Success<Void> _ -> ResponseEntity.noContent().build();
+            case ServiceResult.Success<Void> s -> ResponseEntity.noContent().build();
             case ServiceResult.NotFound<Void> n -> throw new ErrorResponseException(HttpStatus.NOT_FOUND,
                     ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, n.message()), null);
             case ServiceResult.Error<Void> e -> throw new ErrorResponseException(HttpStatus.BAD_REQUEST,
