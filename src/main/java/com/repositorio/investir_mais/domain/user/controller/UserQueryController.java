@@ -28,24 +28,31 @@ public class UserQueryController {
     private final UserQueryService userQueryService;
 
     @GetMapping
-    public ResponseEntity<Page<UserResponseDTO>> getAllUsers(@PageableDefault(size = 20) @NonNull Pageable pageable) {
+    public ResponseEntity<Page<UserResponseDTO>> getAllUsers(
+            @PageableDefault(size = 20) @NonNull Pageable pageable) {
         ServiceResult<Page<UserResponseDTO>> result = userQueryService.listAllUsers(pageable);
 
         return switch (result) {
             case ServiceResult.Success<Page<UserResponseDTO>> s -> ResponseEntity.ok(s.data());
-            case ServiceResult.NotFound<Page<UserResponseDTO>> n -> throw new ErrorResponseException(HttpStatus.NOT_FOUND, ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, n.message()), null);
-            case ServiceResult.Error<Page<UserResponseDTO>> e -> throw new ErrorResponseException(HttpStatus.BAD_REQUEST, ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.message()), null);
+            case ServiceResult.NotFound<Page<UserResponseDTO>> n -> throw new ErrorResponseException(
+                    HttpStatus.NOT_FOUND, ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, n.message()), null);
+            case ServiceResult.Error<Page<UserResponseDTO>> e ->
+                throw new ErrorResponseException(HttpStatus.BAD_REQUEST,
+                        ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.message()), null);
         };
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<UserResponseDTO> findUserByID(@PathVariable @NonNull UUID id) {
+    public ResponseEntity<UserResponseDTO> findUserByID(
+            @PathVariable @NonNull UUID id) {
         ServiceResult<UserResponseDTO> result = userQueryService.findUserById(id);
 
         return switch (result) {
             case ServiceResult.Success<UserResponseDTO> s -> ResponseEntity.ok(s.data());
-            case ServiceResult.NotFound<UserResponseDTO> n -> throw new ErrorResponseException(HttpStatus.NOT_FOUND, ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, n.message()), null);
-            case ServiceResult.Error<UserResponseDTO> e -> throw new ErrorResponseException(HttpStatus.BAD_REQUEST, ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.message()), null);
+            case ServiceResult.NotFound<UserResponseDTO> n -> throw new ErrorResponseException(HttpStatus.NOT_FOUND,
+                    ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, n.message()), null);
+            case ServiceResult.Error<UserResponseDTO> e -> throw new ErrorResponseException(HttpStatus.BAD_REQUEST,
+                    ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.message()), null);
         };
     }
 }

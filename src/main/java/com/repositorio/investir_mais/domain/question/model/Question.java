@@ -23,11 +23,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 
-/**
- * Entidade que representa uma pergunta qualitativa para avaliação de ativos.
- * Cada pergunta está vinculada a uma categoria de ativos e é utilizada para
- * calcular o Score (nota) dos ativos pertencentes àquela categoria.
- */
 @Entity
 @Table(name = "TB_QUESTION")
 @Getter

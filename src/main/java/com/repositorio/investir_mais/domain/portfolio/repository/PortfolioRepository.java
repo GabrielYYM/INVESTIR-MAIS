@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import com.repositorio.investir_mais.domain.portfolio.model.Portfolio;
+
 @Repository
 public interface PortfolioRepository extends JpaRepository<Portfolio, UUID> {
     Optional<Portfolio> findByUserId(UUID userId);

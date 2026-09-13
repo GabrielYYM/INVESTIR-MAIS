@@ -24,12 +24,6 @@ import com.repositorio.investir_mais.infrastructure.security.UserContextService;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 
-/**
- * Implementação do serviço de consultas para Carteiras (Portfolios).
- * Provê funcionalidades de análise da carteira, incluindo o cálculo de
- * rebalanceamento
- * e a geração de resumos para o Dashboard do usuário.
- */
 @Service
 @RequiredArgsConstructor
 public class PortfolioQueryServiceImpl implements PortfolioQueryService {
@@ -37,15 +31,6 @@ public class PortfolioQueryServiceImpl implements PortfolioQueryService {
     private final AssetScoreCalculator assetScoreCalculator;
     private final RebalanceEngine rebalanceEngine;
 
-    /**
-     * Calcula a sugestão de aporte (rebalanceamento) baseada no valor disponível.
-     * Utiliza o motor de rebalanceamento para distribuir o aporte entre os ativos
-     * que mais precisam de capital para atingir os alvos definidos.
-     * 
-     * @param aporteAmount Valor em dinheiro disponível para novos investimentos.
-     * @return DTO contendo a lista de ativos sugeridos para compra e as
-     *         quantidades.
-     */
     @Override
     @Transactional(readOnly = true)
     public ServiceResult<RebalanceResponseDTO> calculateRebalance(@NonNull BigDecimal aporteAmount) {
@@ -61,35 +46,24 @@ public class PortfolioQueryServiceImpl implements PortfolioQueryService {
         }
     }
 
-    /**
-     * Gera um resumo consolidado da carteira para visualização no Dashboard.
-     * Consolida valores totais, distribuição por categoria e alvos redistribuídos.
-     * 
-     * @return DashboardResponseDTO com os dados agregados da carteira.
-     */
     @Override
     @Transactional(readOnly = true)
     public ServiceResult<DashboardResponseDTO> getPortfolioSummary() {
         try {
             Portfolio portfolio = userContextService.getCurrentUserPortfolioWithCategoriesAndAssets();
-
             BigDecimal totalValue = calculateTotalValue(portfolio);
-
             List<AssetCategory> activeCategories = portfolio.getCategories().stream()
                     .filter(c -> c.getAssets()
                             .stream()
                             .anyMatch(a -> assetScoreCalculator.calculateScore(a) > 0))
                     .toList();
-
             BigDecimal sumActiveOriginalTargets = activeCategories.stream()
                     .map(AssetCategory::getTargetPercentage)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
-
             int totalAssets = (int) portfolio.getCategories()
                     .stream()
                     .flatMap(c -> c.getAssets().stream())
                     .count();
-
             List<DashboardResponseDTO.CategorySummaryDTO> summaries = new ArrayList<>();
 
             for (AssetCategory category : portfolio.getCategories()) {
@@ -97,21 +71,19 @@ public class PortfolioQueryServiceImpl implements PortfolioQueryService {
                         .stream()
                         .map(Asset::getCurrentPositionValue)
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
-
                 BigDecimal currentPercentage = totalValue.compareTo(BigDecimal.ZERO) > 0
                         ? currentCategoryValue.multiply(new BigDecimal("100"))
                                 .divide(totalValue,
                                         2,
                                         RoundingMode.HALF_UP)
                         : BigDecimal.ZERO;
-
                 BigDecimal redistributedTarget = BigDecimal.ZERO;
+
                 if (activeCategories.contains(category) && sumActiveOriginalTargets.compareTo(BigDecimal.ZERO) > 0) {
                     redistributedTarget = category.getTargetPercentage()
                             .multiply(new BigDecimal("100"))
                             .divide(sumActiveOriginalTargets, 2, RoundingMode.HALF_UP);
                 }
-
                 summaries.add(new DashboardResponseDTO.CategorySummaryDTO(
                         category.getId(),
                         category.getName(),

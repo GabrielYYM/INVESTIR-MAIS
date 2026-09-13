@@ -25,11 +25,9 @@ public class CategoryRedistributionCalculator {
         List<AssetCategory> activeCategories = portfolio.getCategories().stream()
                 .filter(c -> c.getAssets().stream().anyMatch(a -> assetScoreCalculator.calculateScore(a) > 0))
                 .toList();
-
         BigDecimal sumActiveOriginalTargets = activeCategories.stream()
                 .map(AssetCategory::getTargetPercentage)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-
         Map<UUID, BigDecimal> redistributedTargets = new HashMap<>();
 
         for (AssetCategory category : portfolio.getCategories()) {

@@ -26,11 +26,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 
-/**
- * Entidade que representa a Carteira de Investimentos de um usuário.
- * Atua como o agregador raiz de categorias e ativos, centralizando a lógica
- * de validação de alocação total (limite de 100%).
- */
 @Entity
 @Table(name = "TB_PORTFOLIO")
 @Getter

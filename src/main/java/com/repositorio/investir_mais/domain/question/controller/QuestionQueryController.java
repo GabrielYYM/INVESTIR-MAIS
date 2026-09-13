@@ -25,7 +25,8 @@ public class QuestionQueryController {
     private final QuestionQueryService queryService;
 
     @GetMapping("/categories/{categoryId}")
-    public ResponseEntity<List<QuestionResponseDTO>> listByCategoryId(@PathVariable UUID categoryId) {
+    public ResponseEntity<List<QuestionResponseDTO>> listByCategoryId(
+            @PathVariable UUID categoryId) {
         ServiceResult<List<QuestionResponseDTO>> result = queryService.listByCategoryId(categoryId);
 
         return switch (result) {

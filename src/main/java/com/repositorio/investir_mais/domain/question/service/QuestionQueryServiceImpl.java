@@ -21,11 +21,6 @@ import com.repositorio.investir_mais.infrastructure.security.UserContextService;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 
-/**
- * Implementação do serviço de consultas para Perguntas.
- * Permite a recuperação do questionário configurado para uma categoria de
- * ativos.
- */
 @Service
 @RequiredArgsConstructor
 public class QuestionQueryServiceImpl implements QuestionQueryService {
@@ -35,17 +30,10 @@ public class QuestionQueryServiceImpl implements QuestionQueryService {
     private final AssetCategoryRepository categoryRepository;
     private final QuestionMapper questionMapper;
 
-    /**
-     * Lista todas as perguntas associadas a uma categoria de ativos específica do
-     * usuário.
-     * 
-     * @param categoryId UUID da categoria desejada.
-     * @return ServiceResult com a lista de DTOs representando as perguntas da
-     *         categoria.
-     */
     @Override
     @Transactional(readOnly = true)
-    public ServiceResult<List<QuestionResponseDTO>> listByCategoryId(@NonNull UUID categoryId) {
+    public ServiceResult<List<QuestionResponseDTO>> listByCategoryId(
+            @NonNull UUID categoryId) {
         try {
             Portfolio portfolio = userContextService.getCurrentUserPortfolio();
 
