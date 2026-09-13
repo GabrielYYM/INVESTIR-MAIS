@@ -12,17 +12,19 @@ import org.springframework.stereotype.Component;
 import com.repositorio.investir_mais.domain.asset.model.Asset;
 
 @Component
-public class AporteAllocator {
+public class InvestmentAllocator {
 
-    public Map<UUID, BigDecimal> allocate(List<Asset> allAssets, Map<UUID, BigDecimal> assetTargetPercentages,
-            BigDecimal newTotalValue, BigDecimal aporteAmount) {
+    public Map<UUID, BigDecimal> allocate(
+            List<Asset> allAssets,
+            Map<UUID, BigDecimal> assetTargetPercentages,
+            BigDecimal newTotalValue,
+            BigDecimal aporteAmount) {
         Map<UUID, BigDecimal> rawGaps = new HashMap<>();
 
         for (Asset asset : allAssets) {
             BigDecimal targetPercentage = assetTargetPercentages.getOrDefault(asset.getId(), BigDecimal.ZERO);
             BigDecimal targetValue = newTotalValue.multiply(targetPercentage)
                     .divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
-
             BigDecimal gap = targetValue.subtract(asset.getCurrentPositionValue());
             if (gap.compareTo(BigDecimal.ZERO) < 0) {
                 gap = BigDecimal.ZERO;
@@ -32,7 +34,6 @@ public class AporteAllocator {
 
         Map<UUID, BigDecimal> suggestedAportes = new HashMap<>();
         BigDecimal remainingAporte = aporteAmount;
-
         List<Asset> assetsToBuy = allAssets.stream()
                 .filter(a -> rawGaps.get(a.getId()).compareTo(BigDecimal.ZERO) > 0)
                 .sorted((a1, a2) -> rawGaps.get(a2.getId()).compareTo(rawGaps.get(a1.getId())))
