@@ -10,12 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.repositorio.investir_mais.common.constants.MessageConstants;
 import com.repositorio.investir_mais.common.result.ServiceResult;
-import com.repositorio.investir_mais.domain.asset.model.Asset;
-import com.repositorio.investir_mais.domain.asset.model.AssetCategory;
-import com.repositorio.investir_mais.domain.asset.model.AssetEvaluation;
-import com.repositorio.investir_mais.domain.asset.repository.AssetCategoryRepository;
-import com.repositorio.investir_mais.domain.asset.repository.AssetEvaluationRepository;
-import com.repositorio.investir_mais.domain.asset.repository.AssetRepository;
 import com.repositorio.investir_mais.domain.portfolio.model.Portfolio;
 import com.repositorio.investir_mais.domain.question.DTO.EvaluationRequestDTO;
 import com.repositorio.investir_mais.domain.question.DTO.QuestionRequestDTO;
@@ -24,7 +18,6 @@ import com.repositorio.investir_mais.domain.question.mapper.QuestionMapper;
 import com.repositorio.investir_mais.domain.question.model.Question;
 import com.repositorio.investir_mais.domain.question.repository.QuestionRepository;
 import com.repositorio.investir_mais.domain.question.service.interfaces.QuestionCommandService;
-import com.repositorio.investir_mais.infrastructure.security.UserContextService;
 
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
