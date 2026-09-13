@@ -1,12 +1,12 @@
 package com.repositorio.investir_mais.domain.user.DTO;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-
 public record UserRequestDTO(
-        String name,
-        String email
-) {
+                @NotBlank String name,
+
+                @NotBlank @Email String email) {
 }

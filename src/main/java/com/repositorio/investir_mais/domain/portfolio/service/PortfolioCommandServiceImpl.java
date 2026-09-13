@@ -19,11 +19,6 @@ import com.repositorio.investir_mais.domain.user.repository.UserRepository;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 
-/**
- * Implementação do serviço de comandos para Carteiras (Portfolios).
- * Responsável pelo ciclo de vida da carteira, incluindo a criação automática
- * de categorias padrão durante o registro do usuário.
- */
 @Service
 @RequiredArgsConstructor
 public class PortfolioCommandServiceImpl implements PortfolioCommandService {
@@ -32,17 +27,6 @@ public class PortfolioCommandServiceImpl implements PortfolioCommandService {
     private final UserRepository userRepository;
     private final AssetCategoryRepository categoryRepository;
 
-    /**
-     * Cria uma carteira de investimentos para um novo usuário.
-     * Caso o usuário já possua uma carteira, a operação é ignorada para garantir a
-     * idempotência.
-     * Após a criação da carteira, as categorias de ativos padrão (Ações, FIIs,
-     * etc.) são inicializadas.
-     * 
-     * @param userId UUID do usuário que deve receber a carteira.
-     * @return ServiceResult indicando sucesso ou erro se o usuário não for
-     *         encontrado.
-     */
     @Override
     @Transactional
     public ServiceResult<Void> createPortfolioForUser(@NonNull UUID userId) {
@@ -61,12 +45,6 @@ public class PortfolioCommandServiceImpl implements PortfolioCommandService {
         return ServiceResult.success(null);
     }
 
-    /**
-     * Inicializa a carteira com Categorias de Ativos pré-configuradas.
-     * Define nomes e porcentagens alvo iniciais para orientar o usuário.
-     * 
-     * @param portfolio Entidade da carteira recém-criada.
-     */
     private void createDefaultCategories(Portfolio portfolio) {
         List<AssetCategory> defaults = List.of(
                 AssetCategory.builder()

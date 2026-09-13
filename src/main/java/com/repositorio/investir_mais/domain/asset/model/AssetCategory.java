@@ -17,9 +17,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.PositiveOrZero;
-import jakarta.persistence.Convert;
 
-import com.repositorio.investir_mais.infrastructure.util.BigDecimalEncryptor;
 import com.repositorio.investir_mais.domain.portfolio.model.Portfolio;
 import com.repositorio.investir_mais.domain.question.model.Question;
 import com.repositorio.investir_mais.common.model.Auditable;
@@ -32,11 +30,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 
-/**
- * Entidade que representa uma categoria de ativos (ex: Ações, FIIs, Tesouro Direto).
- * Permite ao usuário definir uma porcentagem alvo para cada categoria, servindo de base
- * para o algoritmo de rebalanceamento da carteira.
- */
 @Entity
 @Table(name = "TB_ASSET_CATEGORY")
 @Getter
@@ -58,7 +51,6 @@ public class AssetCategory extends Auditable {
 
     @Column(nullable = false)
     @PositiveOrZero
-    @Convert(converter = BigDecimalEncryptor.class)
     private BigDecimal targetPercentage;
 
     @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, fetch = FetchType.LAZY)

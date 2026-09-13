@@ -26,7 +26,8 @@ public class PortfolioQueryController {
     private final PortfolioQueryService portfolioQueryService;
 
     @GetMapping("/rebalance")
-    public ResponseEntity<RebalanceResponseDTO> rebalance(@RequestParam(defaultValue = "0") BigDecimal aporteAmount) {
+    public ResponseEntity<RebalanceResponseDTO> rebalance(
+            @RequestParam(defaultValue = "0") BigDecimal aporteAmount) {
         ServiceResult<RebalanceResponseDTO> result = portfolioQueryService.calculateRebalance(aporteAmount);
 
         return switch (result) {

@@ -16,9 +16,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.persistence.Convert;
 
-import com.repositorio.investir_mais.infrastructure.util.BigDecimalEncryptor;
 import com.repositorio.investir_mais.common.model.Auditable;
 
 import lombok.AccessLevel;
@@ -50,15 +48,12 @@ public class Asset extends Auditable {
 
     @Column(nullable = false)
     @Builder.Default
-    @Convert(converter = BigDecimalEncryptor.class)
     private BigDecimal currentPositionValue = BigDecimal.ZERO;
 
     @Column(precision = 19, scale = 4)
-    @Convert(converter = BigDecimalEncryptor.class)
     private BigDecimal quantity;
 
     @Column(precision = 19, scale = 2)
-    @Convert(converter = BigDecimalEncryptor.class)
     private BigDecimal averagePrice;
 
     @ManyToOne(fetch = FetchType.LAZY)

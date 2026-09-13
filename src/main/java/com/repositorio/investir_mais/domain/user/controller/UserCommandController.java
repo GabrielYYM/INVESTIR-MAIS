@@ -36,36 +36,43 @@ public class UserCommandController {
     public ResponseEntity<UserResponseDTO> createUser(
             @Valid @RequestBody @NonNull UserRequestDTO userRequestDTO,
             HttpServletRequest request) {
-
         ServiceResult<UserResponseDTO> result = userCommandService.createUser(userRequestDTO);
 
         return switch (result) {
             case ServiceResult.Success<UserResponseDTO> s -> ResponseEntity.status(HttpStatus.CREATED).body(s.data());
-            case ServiceResult.NotFound<UserResponseDTO> n -> throw new ErrorResponseException(HttpStatus.NOT_FOUND, ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, n.message()), null);
-            case ServiceResult.Error<UserResponseDTO> e -> throw new ErrorResponseException(HttpStatus.BAD_REQUEST, ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.message()), null);
+            case ServiceResult.NotFound<UserResponseDTO> n -> throw new ErrorResponseException(HttpStatus.NOT_FOUND,
+                    ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, n.message()), null);
+            case ServiceResult.Error<UserResponseDTO> e -> throw new ErrorResponseException(HttpStatus.BAD_REQUEST,
+                    ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.message()), null);
         };
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable @NonNull UUID id) {
+    public ResponseEntity<Void> deleteUser(
+            @PathVariable @NonNull UUID id) {
         ServiceResult<Void> result = userCommandService.deleteUserById(id);
 
         return switch (result) {
-            case ServiceResult.Success<Void> success -> ResponseEntity.noContent().build();
-            case ServiceResult.NotFound<Void> n -> throw new ErrorResponseException(HttpStatus.NOT_FOUND, ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, n.message()), null);
-            case ServiceResult.Error<Void> e -> throw new ErrorResponseException(HttpStatus.BAD_REQUEST, ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.message()), null);
+            case ServiceResult.Success<Void> _ -> ResponseEntity.noContent().build();
+            case ServiceResult.NotFound<Void> n -> throw new ErrorResponseException(HttpStatus.NOT_FOUND,
+                    ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, n.message()), null);
+            case ServiceResult.Error<Void> e -> throw new ErrorResponseException(HttpStatus.BAD_REQUEST,
+                    ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.message()), null);
         };
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<UserResponseDTO> updateUser(@PathVariable @NonNull UUID id,
-                                                      @Valid @RequestBody @NonNull UserUpdateRequestDTO userUpdateRequestDTO) {
+    public ResponseEntity<UserResponseDTO> updateUser(
+            @PathVariable @NonNull UUID id,
+            @Valid @RequestBody @NonNull UserUpdateRequestDTO userUpdateRequestDTO) {
         ServiceResult<UserResponseDTO> result = userCommandService.updateUserById(id, userUpdateRequestDTO);
 
         return switch (result) {
             case ServiceResult.Success<UserResponseDTO> s -> ResponseEntity.ok(s.data());
-            case ServiceResult.NotFound<UserResponseDTO> n -> throw new ErrorResponseException(HttpStatus.NOT_FOUND, ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, n.message()), null);
-            case ServiceResult.Error<UserResponseDTO> e -> throw new ErrorResponseException(HttpStatus.BAD_REQUEST, ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.message()), null);
+            case ServiceResult.NotFound<UserResponseDTO> n -> throw new ErrorResponseException(HttpStatus.NOT_FOUND,
+                    ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, n.message()), null);
+            case ServiceResult.Error<UserResponseDTO> e -> throw new ErrorResponseException(HttpStatus.BAD_REQUEST,
+                    ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.message()), null);
         };
     }
 }

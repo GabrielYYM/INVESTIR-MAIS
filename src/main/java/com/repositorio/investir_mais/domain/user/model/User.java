@@ -1,7 +1,12 @@
 package com.repositorio.investir_mais.domain.user.model;
 
 import java.util.UUID;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
@@ -30,10 +35,8 @@ public class User {
     @Column(nullable = false, unique = true, length = 500)
     private String email;
 
-
     public void updateProfile(String name, String email) {
         this.name = name;
         this.email = email;
     }
 }
-
