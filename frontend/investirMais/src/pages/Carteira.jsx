@@ -26,16 +26,22 @@ export default function Carteira({ onNavigate, questions = [] }) {
   const [evaluatingAtivo, setEvaluatingAtivo] = useState(null);
 
   const ativosFiltrados = useMemo(() => {
-    return ativos.filter((ativo) => {
-      const tipoOk =
-        filtroTipo === "Todos" ||
-        ativo.tipo.toLowerCase() === filtroTipo.toLowerCase();
-      const buscaOk = ativo.ticker
-        .toLowerCase()
-        .includes(busca.toLowerCase());
-      return tipoOk && buscaOk;
-    });
-  }, [ativos, filtroTipo, busca]);
+    return ativos
+      .filter((ativo) => {
+        const tipoOk =
+          filtroTipo === "Todos" ||
+          ativo.tipo.toLowerCase() === filtroTipo.toLowerCase();
+        const buscaOk = ativo.ticker
+          .toLowerCase()
+          .includes(busca.toLowerCase());
+        return tipoOk && buscaOk;
+      })
+      .sort((a, b) => {
+        const scoreA = scores?.[String(a.id ?? a.ticker)]?.score ?? a.rawScore ?? 0;
+        const scoreB = scores?.[String(b.id ?? b.ticker)]?.score ?? b.rawScore ?? 0;
+        return scoreB - scoreA;
+      });
+  }, [ativos, filtroTipo, busca, scores]);
 
   // Adicionar ativo via API
   const handleAddAtivo = async (novoAtivo) => {
