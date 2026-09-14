@@ -108,4 +108,34 @@ export async function adicionarAtivo(novoAtivo) {
   };
 }
 
+/**
+ * Atualiza um ativo existente no backend.
+ */
+export async function atualizarAtivo(id, ativoAtualizado) {
+  if (!id) {
+    throw new Error("ID do ativo é obrigatório para atualização.");
+  }
+
+  const payload = {
+    id: id,
+    ticker: ativoAtualizado.ticker,
+    currentPositionValue: ativoAtualizado.currentPositionValue ?? ativoAtualizado.valorAtual ?? 0,
+    quantity: ativoAtualizado.quantity ?? ativoAtualizado.quantidade ?? 0,
+    averagePrice: ativoAtualizado.averagePrice ?? ativoAtualizado.precoMedio ?? 0,
+  };
+
+  const { data } = await apiClient.put(`/api/assets/${id}`, payload);
+  return data;
+}
+
+/**
+ * Exclui um ativo no backend pelo ID.
+ */
+export async function excluirAtivo(id) {
+  if (!id) {
+    throw new Error("ID do ativo é obrigatório para exclusão.");
+  }
+  await apiClient.delete(`/api/assets/${id}`);
+}
+
 export default apiClient;

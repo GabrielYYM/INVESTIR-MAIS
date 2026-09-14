@@ -5,11 +5,12 @@ import WalletCard from "../components/WalletCard";
 import FilterTabs from "../components/FilterTabs";
 import AssetsTable from "../components/AssetsTable";
 import AddAssetModal from "../components/AddAssetModal";
+import EditAssetModal from "../components/EditAssetModal";
 import EvaluateAssetModal from "../components/EvaluateAssetModal";
 import { Search } from "lucide-react";
 import { useCarteira } from "../hooks/useCarteira";
 import { useScore } from "../hooks/useScore";
-import { adicionarAtivo, apiClient } from "../services/carteiraService";
+import { adicionarAtivo, atualizarAtivo, excluirAtivo, apiClient } from "../services/carteiraService";
 
 export default function Carteira({ onNavigate, questions = [] }) {
   const { ativos, valorTotal, loading, error, recarregar } = useCarteira();
@@ -21,6 +22,10 @@ export default function Carteira({ onNavigate, questions = [] }) {
   // Modal — adicionar ativo
   const [addOpen, setAddOpen] = useState(false);
   const [addLoading, setAddLoading] = useState(false);
+
+  // Modal — editar ativo
+  const [editingAtivo, setEditingAtivo] = useState(null);
+  const [editLoading, setEditLoading] = useState(false);
 
   // Modal — avaliar ativo
   const [evaluatingAtivo, setEvaluatingAtivo] = useState(null);
@@ -51,6 +56,33 @@ export default function Carteira({ onNavigate, questions = [] }) {
       await recarregar();
     } finally {
       setAddLoading(false);
+    }
+  };
+
+  // Editar ativo via API
+  const handleEditAtivo = async (ativoAtualizado) => {
+    if (!ativoAtualizado.id) return;
+    setEditLoading(true);
+    try {
+      await atualizarAtivo(ativoAtualizado.id, ativoAtualizado);
+      await recarregar();
+      setEditingAtivo(null);
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  // Excluir ativo via API
+  const handleDeleteAtivo = async (ativo) => {
+    if (!ativo.id) return;
+    if (!window.confirm(`Tem certeza que deseja excluir o ativo ${ativo.ticker}?`)) {
+      return;
+    }
+    try {
+      await excluirAtivo(ativo.id);
+      await recarregar();
+    } catch (err) {
+      alert(`Erro ao excluir ativo: ${err?.response?.data?.message || err?.message}`);
     }
   };
 
@@ -132,6 +164,8 @@ export default function Carteira({ onNavigate, questions = [] }) {
             error={error}
             scores={scores}
             onEvaluate={setEvaluatingAtivo}
+            onEdit={setEditingAtivo}
+            onDelete={handleDeleteAtivo}
           />
         </main>
       </div>
@@ -142,6 +176,15 @@ export default function Carteira({ onNavigate, questions = [] }) {
         onClose={() => setAddOpen(false)}
         onSave={handleAddAtivo}
         loading={addLoading}
+      />
+
+      {/* Modal: editar ativo */}
+      <EditAssetModal
+        isOpen={!!editingAtivo}
+        onClose={() => setEditingAtivo(null)}
+        ativo={editingAtivo}
+        onSave={handleEditAtivo}
+        loading={editLoading}
       />
 
       {/* Modal: avaliar ativo */}
