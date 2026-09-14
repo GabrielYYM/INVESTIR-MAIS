@@ -84,5 +84,26 @@ INVEST_MAIS/
     ├── index.html
     └── dist/
 ```
+```
+## Como Executar
+### Pré-requisitos
+Garante que possui as seguintes ferramentas instaladas em sua máquina:
+- **Java 21 ou superior** (JDK)
+- **Node.js 20 ou superior** e **npm**
+- **Git**
+---
+### 1. Clonar o Repositório
+```bash
+git clone <URL_DO_REPOSITORIO>
+cd INVESTIR-MAIS/investir_mais
+```
+---
+### 2. Executar o Backend (Spring Boot)
+O backend executa por padrão na porta `8080` utilizando um banco de dados H2 em memória.
+**No Windows (PowerShell ou Command Prompt):**
+```powershell
+.\mvnw.cmd spring-boot:run
+```
+
 ## Materiais Complementares
 [Acessar Documentos](./documentos/)
