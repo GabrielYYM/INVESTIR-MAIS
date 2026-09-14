@@ -1,4 +1,4 @@
-import { Filter, ListFilter, ClipboardList } from "lucide-react";
+import { Filter, ListFilter, ClipboardList, Pencil, Trash2 } from "lucide-react";
 
 function formatarMoeda(valor) {
   return valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -42,9 +42,9 @@ function ScoreBadge({ score }) {
   );
 }
 
-const COLUNAS = ["Tipo", "Ticker", "Valor atual", "Percentual", "Score", "Quantidade"];
+const COLUNAS = ["Tipo", "Ticker", "Valor atual", "Percentual", "Score", "Quantidade", "Ações"];
 
-export default function AssetsTable({ ativos, loading, error, scores, onEvaluate }) {
+export default function AssetsTable({ ativos, loading, error, scores, onEvaluate, onEdit, onDelete }) {
   return (
     <div className="bg-[#0e0c14] rounded-2xl overflow-hidden">
       <div className="flex items-center justify-between px-6 py-5">
@@ -63,13 +63,12 @@ export default function AssetsTable({ ativos, loading, error, scores, onEvaluate
                 {coluna}
               </th>
             ))}
-            <th className="px-6 pb-3" />
           </tr>
         </thead>
         <tbody>
           {loading && (
             <tr>
-              <td colSpan={COLUNAS.length + 1} className="px-6 py-6 text-zinc-500">
+              <td colSpan={COLUNAS.length} className="px-6 py-6 text-zinc-500">
                 Carregando cotações...
               </td>
             </tr>
@@ -77,7 +76,7 @@ export default function AssetsTable({ ativos, loading, error, scores, onEvaluate
 
           {error && !loading && (
             <tr>
-              <td colSpan={COLUNAS.length + 1} className="px-6 py-6 text-red-400">
+              <td colSpan={COLUNAS.length} className="px-6 py-6 text-red-400">
                 Não foi possível carregar os ativos. Tente novamente em instantes.
               </td>
             </tr>
@@ -103,16 +102,40 @@ export default function AssetsTable({ ativos, loading, error, scores, onEvaluate
                   </td>
                   <td className="px-6 py-4">{ativo.quantidade}</td>
                   <td className="px-6 py-4 text-zinc-500">
-                    <button
-                      id={`btn-avaliar-${ativo.ticker}`}
-                      type="button"
-                      aria-label={`Avaliar ${ativo.ticker}`}
-                      onClick={() => onEvaluate?.(ativo)}
-                      title="Avaliar ativo"
-                      className="p-1.5 rounded-lg hover:bg-white/10 hover:text-amber-400 transition-colors cursor-pointer"
-                    >
-                      <ClipboardList size={16} />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        id={`btn-avaliar-${ativo.ticker}`}
+                        type="button"
+                        aria-label={`Avaliar ${ativo.ticker}`}
+                        onClick={() => onEvaluate?.(ativo)}
+                        title="Avaliar ativo"
+                        className="p-1.5 rounded-lg hover:bg-white/10 hover:text-amber-400 transition-colors cursor-pointer"
+                      >
+                        <ClipboardList size={16} />
+                      </button>
+
+                      <button
+                        id={`btn-editar-${ativo.ticker}`}
+                        type="button"
+                        aria-label={`Editar ${ativo.ticker}`}
+                        onClick={() => onEdit?.(ativo)}
+                        title="Editar ativo"
+                        className="p-1.5 rounded-lg hover:bg-white/10 hover:text-blue-400 transition-colors cursor-pointer"
+                      >
+                        <Pencil size={16} />
+                      </button>
+
+                      <button
+                        id={`btn-excluir-${ativo.ticker}`}
+                        type="button"
+                        aria-label={`Excluir ${ativo.ticker}`}
+                        onClick={() => onDelete?.(ativo)}
+                        title="Excluir ativo"
+                        className="p-1.5 rounded-lg hover:bg-white/10 hover:text-red-400 transition-colors cursor-pointer"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
