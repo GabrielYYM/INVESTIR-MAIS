@@ -35,7 +35,7 @@ O **INVESTIR MAIS** é um sistema educacional que conecta docentes, com conhecim
 
 ## Estrutura do Projeto
 
-```text
+```
 INVEST_MAIS/
 ├── .github/
 ├── .gitignore
@@ -84,5 +84,75 @@ INVEST_MAIS/
     ├── index.html
     └── dist/
 ```
+
+## Como Executar
+
+### Pré-requisitos
+
+Garante que possui as seguintes ferramentas instaladas em sua máquina:
+- **Java 21 ou superior** (JDK)
+- **Node.js 20 ou superior** e **npm**
+- **Git**
+
+---
+
+### 1. Clonar o Repositório
+
+```bash
+git clone <URL_DO_REPOSITORIO>
+cd INVESTIR-MAIS/investir_mais
+```
+
+---
+
+### 2. Executar o Backend (Spring Boot)
+
+O backend executa por padrão na porta `8080` utilizando um banco de dados H2 em memória.
+
+**No Windows (PowerShell ou Command Prompt):**
+```powershell
+.\mvnw.cmd spring-boot:run
+```
+
+**No Linux / macOS:**
+```bash
+chmod +x mvnw
+./mvnw spring-boot:run
+```
+
+- **Servidor da API:** `http://localhost:8080`
+- **Console H2:** `http://localhost:8080/h2-console`
+  - **JDBC URL:** `jdbc:h2:mem:investir_mais`
+  - **Usuário:** `sa`
+  - **Senha:** *(deixe em branco)*
+
+*(Opcional)* Caso deseje utilizar o PostgreSQL, copie o `.env.example` para `.env` na raiz do projeto e configure as credenciais de banco.
+
+---
+
+### 3. Executar o Frontend (React + Vite)
+
+Em um novo terminal, navegue até o diretório do frontend e instale as dependências:
+
+```bash
+cd frontend/investirMais
+npm install
+```
+
+Configure as variáveis de ambiente criando/editando o arquivo `.env` localizado dentro de `frontend/investirMais/`:
+```env
+VITE_API_BASE_URL=http://localhost:8080
+VITE_BRAPI_TOKEN=seu_token_da_brapi_aqui
+```
+
+Inicie a aplicação no modo de desenvolvimento:
+```bash
+npm run dev
+```
+
+- **Aplicação Web Frontend:** `http://localhost:5173`
+
+---
+
 ## Materiais Complementares
 [Acessar Documentos](./documentos/)
