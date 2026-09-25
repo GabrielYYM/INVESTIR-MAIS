@@ -1,4 +1,4 @@
-package com.repositorio.investir_mais.domain.auth.security;
+package com.repositorio.investir_mais.domain.auth.security.service;
 
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;

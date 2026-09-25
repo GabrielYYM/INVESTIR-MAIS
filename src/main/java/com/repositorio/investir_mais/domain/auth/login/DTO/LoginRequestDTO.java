@@ -1,4 +1,4 @@
-package com.repositorio.investir_mais.domain.login.DTO;
+package com.repositorio.investir_mais.domain.auth.login.DTO;
 
 import com.repositorio.investir_mais.common.validation.user.ValidEmail;
 import com.repositorio.investir_mais.common.validation.user.ValidPassword;

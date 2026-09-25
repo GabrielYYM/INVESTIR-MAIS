@@ -1,4 +1,9 @@
 package com.repositorio.investir_mais.domain.auth.login.service;
 
-public class TwoFactorNotificationService {
+import com.repositorio.investir_mais.domain.user.model.User;
+
+
+public interface TwoFactorNotificationService {
+
+    void sendTwoFactorCode(User user, String code);
 }
