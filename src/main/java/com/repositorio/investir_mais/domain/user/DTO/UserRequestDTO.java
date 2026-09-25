@@ -1,12 +1,22 @@
 package com.repositorio.investir_mais.domain.user.DTO;
 
+import com.repositorio.investir_mais.common.validation.user.ValidEmail;
+import com.repositorio.investir_mais.common.validation.user.ValidName;
+import com.repositorio.investir_mais.common.validation.user.ValidPassword;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record UserRequestDTO(
-                @NotBlank String name,
+        @ValidName
+        String name,
 
-                @NotBlank @Email String email) {
+        @ValidEmail
+        String email,
+
+        @ValidPassword
+        @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+        String password
+) {
 }
