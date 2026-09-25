@@ -1,4 +1,4 @@
-package com.repositorio.investir_mais.domain.brapi.dto;
+package com.repositorio.investir_mais.domain.brapi.DTO;
 
 public record BrapiQuoteResponse(Quote[] results) {
     public record Quote(

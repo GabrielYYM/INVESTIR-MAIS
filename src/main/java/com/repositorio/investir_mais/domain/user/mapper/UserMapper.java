@@ -12,5 +12,6 @@ public interface UserMapper {
     UserResponseDTO toUserResponseDTO(User user);
 
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "security", ignore = true)
     User toUser(UserRequestDTO userRequestDTO);
 }

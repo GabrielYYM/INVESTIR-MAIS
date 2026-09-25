@@ -1,6 +1,6 @@
 package com.repositorio.investir_mais.domain.brapi.service;
 
-import com.repositorio.investir_mais.domain.brapi.dto.BrapiQuoteResponse;
+import com.repositorio.investir_mais.domain.brapi.DTO.BrapiQuoteResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;

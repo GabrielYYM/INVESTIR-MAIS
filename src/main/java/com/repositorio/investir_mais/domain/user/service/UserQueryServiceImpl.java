@@ -2,8 +2,11 @@ package com.repositorio.investir_mais.domain.user.service;
 
 import java.util.UUID;
 
+import com.repositorio.investir_mais.domain.user.model.User;
+import com.repositorio.investir_mais.infrastructure.security.UserDetailsImpl;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,5 +42,15 @@ public class UserQueryServiceImpl implements UserQueryService {
         Page<UserResponseDTO> users = userRepository.findAll(pageable)
                 .map(userMapper::toUserResponseDTO);
         return ServiceResult.success(users);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserDetails loadUserDetailsById(@NonNull String subjectId) {
+        User user = userRepository.findById(UUID.fromString(subjectId))
+                .orElseThrow(() -> new IllegalArgumentException(
+                        MessageConstants.User.NOT_FOUND_FOR_TOKEN
+                ));
+        return new UserDetailsImpl(user);
     }
 }

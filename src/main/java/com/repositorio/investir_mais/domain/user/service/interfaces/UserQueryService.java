@@ -7,10 +7,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import com.repositorio.investir_mais.domain.user.DTO.UserResponseDTO;
+import org.springframework.security.core.userdetails.UserDetails;
 
 public interface UserQueryService {
     ServiceResult<UserResponseDTO> findUserById(UUID id);
 
     ServiceResult<Page<UserResponseDTO>> listAllUsers(Pageable pageable);
 
+    UserDetails loadUserDetailsById(String subjectId);
 }
