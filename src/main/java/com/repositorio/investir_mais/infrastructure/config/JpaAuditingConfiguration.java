@@ -18,11 +18,11 @@ public class JpaAuditingConfiguration {
         return () -> {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-            if (authentication == null || !authentication.isAuthenticated() || authentication.getPrincipal().equals("anonymousUser")) {
+            if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
                 return Optional.of("system");
             }
 
-            return Optional.of(authentication.getName());
+            return Optional.ofNullable(authentication.getName()).or(() -> Optional.of("system"));
         };
     }
 }
