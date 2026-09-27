@@ -9,6 +9,7 @@ import com.repositorio.investir_mais.domain.user.model.User;
 
 @Mapper(componentModel = "spring")
 public interface UserMapper {
+    @Mapping(target = "role", expression = "java(user.getSecurity() != null && user.getSecurity().getRole() != null ? user.getSecurity().getRole().name() : null)")
     UserResponseDTO toUserResponseDTO(User user);
 
     @Mapping(target = "id", ignore = true)

@@ -47,7 +47,7 @@ public class UserCommandServiceImpl implements UserCommandService {
             UserSecurity security = UserSecurity.builder()
                     .password(passwordEncoder.encode(userRequestDTO.password()))
                     .emailHash(cryptoService.generateSha256Hash(userRequestDTO.email()))
-                    .role(UserRole.USER)
+                    .role(UserRole.ALUNO)
                     .emailVerified(false)
                     .build();
             user.setSecurity(security);
