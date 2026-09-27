@@ -8,9 +8,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.repositorio.investir_mais.common.constants.LogMessageConstants;
 import com.repositorio.investir_mais.common.constants.MessageConstants;
 import com.repositorio.investir_mais.common.result.ServiceResult;
 import com.repositorio.investir_mais.common.security.CryptoService;
+import com.repositorio.investir_mais.domain.audit.model.enums.AuditAction;
+import com.repositorio.investir_mais.domain.audit.model.enums.AuditStatus;
+import com.repositorio.investir_mais.domain.audit.service.interfaces.AuditLogService;
 import com.repositorio.investir_mais.domain.user.DTO.UserRequestDTO;
 import com.repositorio.investir_mais.domain.user.DTO.UserResponseDTO;
 import com.repositorio.investir_mais.domain.user.DTO.UserUpdateRequestDTO;
@@ -27,6 +31,7 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserCommandServiceImpl implements UserCommandService {
@@ -37,18 +42,13 @@ public class UserCommandServiceImpl implements UserCommandService {
     private final CryptoService cryptoService;
     private final List<UserRegisterValidator> registerValidators;
     private final List<UserUpdateValidator> updateValidators;
-    private final com.repositorio.investir_mais.domain.portfolio.service.interfaces.PortfolioCommandService portfolioCommandService;
-    private final RegistrationEmailService registrationEmailService;
+    private final AuditLogService auditLogService;
 
     @Override
     @Transactional
     public ServiceResult<UserResponseDTO> createUser(
             @NonNull UserRequestDTO userRequestDTO) {
         try {
-            if (userRequestDTO.termsAccepted() == null || !userRequestDTO.termsAccepted()) {
-                return ServiceResult.error("Você deve aceitar os termos de uso e política de privacidade.");
-            }
-
             registerValidators.forEach(v -> v.validate(userRequestDTO));
 
             User user = userMapper.toUser(userRequestDTO);
@@ -66,19 +66,27 @@ public class UserCommandServiceImpl implements UserCommandService {
                     .build();
 
             user.setSecurity(security);
-            user = userRepository.save(user);
+            User savedUser = userRepository.save(user);
 
-            // Cria o portfólio (carteira) com categorias default para o novo usuário
-            portfolioCommandService.createPortfolioForUser(user.getId());
+            log.info(LogMessageConstants.AUDIT.USER_CREATED, savedUser.getId(), userRequestDTO.email());
+            auditLogService.log(AuditAction.USER_CREATED, savedUser.getId().toString(), userRequestDTO.email(),
+                    "USER", savedUser.getId().toString(), null, AuditStatus.SUCCESS, "Novo usuário registrado com sucesso");
 
-            registrationEmailService.sendVerificationEmails(user, userCode, guardianCode);
-
-            return ServiceResult.success(userMapper.toUserResponseDTO(user));
+            return ServiceResult.success(userMapper.toUserResponseDTO(savedUser));
         } catch (DataIntegrityViolationException e) {
+            log.warn("Falha no cadastro (conflito de dados): {}", e.getMessage());
+            auditLogService.log(AuditAction.USER_CREATED, null, userRequestDTO.email(),
+                    "USER", null, null, AuditStatus.FAILURE, MessageConstants.User.EMAIL_ALREADY_IN_USE);
             return ServiceResult.error(MessageConstants.User.EMAIL_ALREADY_IN_USE);
         } catch (IllegalArgumentException e) {
+            log.warn("Falha na validação do usuário: {}", e.getMessage());
+            auditLogService.log(AuditAction.USER_CREATED, null, userRequestDTO.email(),
+                    "USER", null, null, AuditStatus.FAILURE, e.getMessage());
             return ServiceResult.error(e.getMessage());
         } catch (Exception e) {
+            log.error("Erro inesperado ao cadastrar usuário: {}", e.getMessage(), e);
+            auditLogService.log(AuditAction.USER_CREATED, null, userRequestDTO.email(),
+                    "USER", null, null, AuditStatus.FAILURE, e.getMessage());
             return ServiceResult.error("Ocorreu um erro ao processar seu cadastro. Tente novamente mais tarde.");
         }
     }
@@ -158,6 +166,8 @@ public class UserCommandServiceImpl implements UserCommandService {
             return ServiceResult.notFound(MessageConstants.User.NOT_FOUND_WITH_ID + id);
         }
         userRepository.deleteById(id);
+        log.info(LogMessageConstants.AUDIT.USER_DELETED, id);
+        auditLogService.log(AuditAction.USER_DELETED, "USER", id.toString(), AuditStatus.SUCCESS, "Usuário removido do sistema");
         return ServiceResult.success(null);
     }
 
@@ -175,6 +185,11 @@ public class UserCommandServiceImpl implements UserCommandService {
                         String emailHash = cryptoService.generateSha256Hash(userUpdateRequestDTO.email());
                         user.updateProfile(userUpdateRequestDTO.name(), userUpdateRequestDTO.email(), emailHash);
                         User updatedUser = userRepository.save(user);
+
+                        log.info(LogMessageConstants.AUDIT.USER_UPDATED, updatedUser.getId());
+                        auditLogService.log(AuditAction.USER_UPDATED, "USER", updatedUser.getId().toString(),
+                                AuditStatus.SUCCESS, "Perfil de usuário atualizado");
+
                         return ServiceResult.success(userMapper.toUserResponseDTO(updatedUser));
                     } catch (Exception e) {
                         return ServiceResult.<UserResponseDTO>error(e.getMessage());
