@@ -55,7 +55,7 @@ public final class MessageConstants {
         public static final String NOT_FOUND_FOR_TOKEN = "Usuário não encontrado para o token fornecido.";
         public static final String NOT_FOUND_FOR_UPDATE = "Usuário não encontrado.";
         public static final String INVALID_PASSWORD = "A senha atual informada está incorreta.";
-        public static final String EMAIL_ALREADY_IN_USE = "Se os dados informados forem válidos, entraremos em contato.";
+        public static final String EMAIL_ALREADY_IN_USE = "Este e-mail já está em uso por outro usuário.";
         public static final String EMAIL_ALREADY_IN_USE_BY_OTHER = "Email já está em uso por outro usuário.";
         public static final String INVALID_BIRTH_DATE = "Data de nascimento inválida.";
     }

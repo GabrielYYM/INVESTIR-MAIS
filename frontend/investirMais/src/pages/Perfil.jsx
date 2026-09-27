@@ -4,11 +4,12 @@ import Topbar from "../components/Topbar.jsx";
 import { User, Mail, Lock, Eye, EyeOff, Save, CheckCircle2, AlertCircle } from "lucide-react";
 import { getUserIdFromToken, getUserProfile, updateUserProfile } from "../services/authService";
 
-export default function Perfil({ onNavigate }) {
+export default function Perfil({ onNavigate, usuario }) {
   const [profile, setProfile] = useState({
     id: "",
     name: "",
     email: "",
+    role: usuario?.role || "",
   });
 
   const [form, setForm] = useState({
@@ -97,12 +98,14 @@ export default function Perfil({ onNavigate }) {
     }
   };
 
+  const currentRole = usuario?.role || profile?.role;
+
   return (
     <div className="flex min-h-screen bg-[#171522] text-zinc-100 font-sans">
-      <Sidebar activePage="Perfil" onNavigate={onNavigate} />
+      <Sidebar activePage="Perfil" onNavigate={onNavigate} role={currentRole} />
 
       <div className="flex-1 flex flex-col min-w-0">
-        <Topbar usuario={{ nome: profile.name }} />
+        <Topbar usuario={usuario || profile} />
 
         <main className="flex-1 px-8 py-6 max-w-4xl w-full mx-auto">
           {/* Header */}

@@ -83,7 +83,16 @@ export default function App() {
       <Login
         onLoginSuccess={() => setAuthState(true)}
         onNavigateToRegister={() => setAuthState("Register")}
-        onNavigate={(page) => setAuthState(page)}
+        onNavigate={(page) => {
+          if (page === "Register" || page === "SignUp") {
+            setAuthState("Register");
+          } else if (page === "Login") {
+            setAuthState("Login");
+          } else {
+            setActivePage(page || "Home");
+            setAuthState(true);
+          }
+        }}
       />
     );
   }

@@ -4,7 +4,6 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 5000,
 });
 
 apiClient.interceptors.request.use((config) => {
@@ -65,13 +64,14 @@ export function isAutenticado() {
 /**
  * Cadastro de novo usuário.
  */
-export async function registrar(name, email, password, birthDate, guardianEmail) {
+export async function registrar(name, email, password, birthDate, guardianEmail, termsAccepted) {
   const payload = typeof name === "object" ? name : {
     name,
     email,
     password,
     birthDate: birthDate || null,
     guardianEmail: guardianEmail || null,
+    termsAccepted: termsAccepted,
   };
   const { data } = await apiClient.post("/api/users", payload);
   return data;

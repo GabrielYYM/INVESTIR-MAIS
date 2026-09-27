@@ -89,6 +89,7 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers(HttpMethod.POST,
                                 "/auth/login",
+                                "/auth/logout",
                                 "/auth/verify-2fa",
                                 "/api/users",
                                 "/api/users/verify-registration",

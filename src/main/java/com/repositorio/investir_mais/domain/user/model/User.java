@@ -61,6 +61,10 @@ public class User {
     @Convert(converter = AttributeEncryptor.class)
     private String guardianEmail;
 
+    @Column(name = "terms_accepted", nullable = false)
+    @Builder.Default
+    private Boolean termsAccepted = false;
+
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Portfolio portfolio;
 

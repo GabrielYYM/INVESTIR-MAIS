@@ -26,7 +26,7 @@ export default function Sidebar({ activePage = "Carteira", onNavigate, onLogout,
       <div>
         <p className="text-xs tracking-wide text-zinc-500 mb-3 px-2">MENU</p>
         <nav className="space-y-1">
-          {MENU_ITEMS.filter(({ page }) => page !== "Video" || role !== "ALUNO").map(({ label, icon: Icon, page }) => {
+          {MENU_ITEMS.filter(({ page }) => page !== "Video" || (role && role !== "ALUNO")).map(({ label, icon: Icon, page }) => {
             const isActive = activePage === page;
             return (
               <button

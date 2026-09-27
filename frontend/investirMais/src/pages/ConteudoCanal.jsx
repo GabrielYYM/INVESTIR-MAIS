@@ -33,8 +33,12 @@ export default function ConteudoCanal({ onNavigate, onLogout, usuario }) {
   }
 
   useEffect(() => {
+    if (usuario?.role === "ALUNO") {
+      if (onNavigate) onNavigate("Home");
+      return;
+    }
     carregar();
-  }, []);
+  }, [usuario, onNavigate]);
 
   function abrirNovoUpload() {
     setEditando(null);

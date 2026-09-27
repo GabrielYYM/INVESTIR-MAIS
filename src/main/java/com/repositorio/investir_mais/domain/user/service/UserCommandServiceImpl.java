@@ -45,6 +45,10 @@ public class UserCommandServiceImpl implements UserCommandService {
     public ServiceResult<UserResponseDTO> createUser(
             @NonNull UserRequestDTO userRequestDTO) {
         try {
+            if (userRequestDTO.termsAccepted() == null || !userRequestDTO.termsAccepted()) {
+                return ServiceResult.error("Você deve aceitar os termos de uso e política de privacidade.");
+            }
+
             registerValidators.forEach(v -> v.validate(userRequestDTO));
 
             User user = userMapper.toUser(userRequestDTO);
