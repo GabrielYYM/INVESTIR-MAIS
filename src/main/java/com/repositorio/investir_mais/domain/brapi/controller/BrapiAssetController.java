@@ -1,7 +1,7 @@
 package com.repositorio.investir_mais.domain.brapi.controller;
 import java.util.List;
 
-import com.repositorio.investir_mais.domain.brapi.dto.BrapiQuoteResponse;
+import com.repositorio.investir_mais.domain.brapi.DTO.BrapiQuoteResponse;
 import com.repositorio.investir_mais.domain.brapi.service.BrapiService;
 import org.springframework.web.bind.annotation.*;
 
