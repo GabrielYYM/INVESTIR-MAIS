@@ -37,6 +37,7 @@ public class UserCommandServiceImpl implements UserCommandService {
     private final CryptoService cryptoService;
     private final List<UserRegisterValidator> registerValidators;
     private final List<UserUpdateValidator> updateValidators;
+    private final com.repositorio.investir_mais.domain.portfolio.service.interfaces.PortfolioCommandService portfolioCommandService;
 
     @Override
     @Transactional
@@ -51,8 +52,10 @@ public class UserCommandServiceImpl implements UserCommandService {
                     .emailVerified(false)
                     .build();
             user.setSecurity(security);
-            userRepository.save(user);
-            userRepository.save(user);
+            user = userRepository.save(user);
+
+            // Cria o portfólio (carteira) com categorias default para o novo usuário
+            portfolioCommandService.createPortfolioForUser(user.getId());
 
             return ServiceResult.success(userMapper.toUserResponseDTO(user));
         } catch (DataIntegrityViolationException e) {
