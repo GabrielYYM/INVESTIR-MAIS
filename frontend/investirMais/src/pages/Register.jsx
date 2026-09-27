@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Mail, Lock, User, Calendar, ShieldCheck, ShieldAlert, Eye, EyeOff, CheckCircle2, RefreshCw, KeyRound, ArrowLeft } from "lucide-react";
 import { registrar, verificarCadastro, reenviarCodigoCadastro } from "../services/authService";
+import LegalModal from "../components/LegalModal";
 
 export default function Register({ onRegisterSuccess, onNavigateToLogin, onNavigate }) {
   const [step, setStep] = useState("form"); 
@@ -25,6 +26,9 @@ export default function Register({ onRegisterSuccess, onNavigateToLogin, onNavig
   const [resending, setResending] = useState(false);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  
+  const [legalModalOpen, setLegalModalOpen] = useState(false);
+  const [legalModalType, setLegalModalType] = useState("termos");
 
   const handleNavigateToLogin = () => {
     if (onNavigateToLogin) {
@@ -339,13 +343,21 @@ export default function Register({ onRegisterSuccess, onNavigateToLogin, onNavig
               </div>
               <label htmlFor="terms" className="text-sm text-zinc-400 cursor-pointer">
                 Eu concordo com os{" "}
-                <a href="#" className="text-amber-500 hover:text-amber-400 underline transition-colors">
+                <button
+                  type="button"
+                  onClick={(e) => { e.preventDefault(); setLegalModalType("termos"); setLegalModalOpen(true); }}
+                  className="text-amber-500 hover:text-amber-400 underline transition-colors cursor-pointer"
+                >
                   Termos de Uso
-                </a>{" "}
-                e a{" "}
-                <a href="#" className="text-amber-500 hover:text-amber-400 underline transition-colors">
+                </button>
+                {" "}e a{" "}
+                <button
+                  type="button"
+                  onClick={(e) => { e.preventDefault(); setLegalModalType("politica"); setLegalModalOpen(true); }}
+                  className="text-amber-500 hover:text-amber-400 underline transition-colors cursor-pointer"
+                >
                   Política de Privacidade
-                </a>.
+                </button>.
               </label>
             </div>
 
@@ -454,6 +466,12 @@ export default function Register({ onRegisterSuccess, onNavigateToLogin, onNavig
           </form>
         )}
       </div>
+
+      <LegalModal 
+        isOpen={legalModalOpen} 
+        onClose={() => setLegalModalOpen(false)} 
+        type={legalModalType} 
+      />
     </div>
   );
 }
