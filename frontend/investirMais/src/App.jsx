@@ -1,11 +1,15 @@
 import { useState, useEffect, useCallback } from "react";
 import Carteira from "./pages/Carteira.jsx";
 import QuestionsManager from "./pages/QuestionsManager.jsx";
+import SignUp from "./pages/SignUp.jsx";
+import Login from "./pages/Login.jsx";
 import { getCategorias } from "./services/carteiraService";
 import { getQuestoesPorCategoria } from "./services/questoesService";
 
 export default function App() {
-  const [activePage, setActivePage] = useState("Carteira");
+  const [activePage, setActivePage] = useState(() => {
+    return localStorage.getItem("authToken") ? "Carteira" : "Login";
+  });
 
   // Categorias vindas do backend (carregadas uma vez)
   const [categorias, setCategorias] = useState([]);
@@ -35,8 +39,16 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    carregarDados();
-  }, [carregarDados]);
+    const isAuth = !!localStorage.getItem("authToken");
+    if (!isAuth && activePage !== "Login" && activePage !== "SignUp") {
+      setActivePage("Login");
+      return;
+    }
+    
+    if (isAuth && (activePage === "Carteira" || activePage === "Questões")) {
+      carregarDados();
+    }
+  }, [carregarDados, activePage]);
 
   const pages = {
     Carteira: (
@@ -55,6 +67,8 @@ export default function App() {
         onDadosChange={carregarDados}
       />
     ),
+    SignUp: <SignUp onNavigate={setActivePage} />,
+    Login: <Login onNavigate={setActivePage} />,
   };
 
   return pages[activePage] || <Carteira onNavigate={setActivePage} questions={questions} />;

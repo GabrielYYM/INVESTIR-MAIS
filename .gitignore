@@ -32,5 +32,7 @@ build/
 ### VS Code ###
 .vscode/
 
-### Enviroment ###
+### Environment Files ###
 .env
+
+*.sql

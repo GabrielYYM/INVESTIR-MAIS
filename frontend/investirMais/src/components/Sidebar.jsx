@@ -1,4 +1,5 @@
 import { Home, Wallet, PiggyBank, Wrench, HelpCircle, LogOut } from "lucide-react";
+import { logout } from "../services/authService";
 
 const MENU_ITEMS = [
   { label: "Home", icon: Home, page: null },
@@ -21,13 +22,12 @@ export default function Sidebar({ activePage = "Carteira", onNavigate }) {
                 key={label}
                 id={`sidebar-${label.toLowerCase().replace(/\s+/g, "-")}`}
                 onClick={() => page && onNavigate?.(page)}
-                className={`w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-left transition-colors ${
-                  isActive
+                className={`w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-left transition-colors ${isActive
                     ? "bg-amber-500 text-zinc-900 font-medium"
                     : page
-                    ? "text-zinc-400 hover:bg-white/5 hover:text-zinc-200 cursor-pointer"
-                    : "text-zinc-600 cursor-not-allowed opacity-50"
-                }`}
+                      ? "text-zinc-400 hover:bg-white/5 hover:text-zinc-200 cursor-pointer"
+                      : "text-zinc-600 cursor-not-allowed opacity-50"
+                  }`}
                 disabled={!page}
               >
                 <Icon size={18} />
@@ -38,7 +38,13 @@ export default function Sidebar({ activePage = "Carteira", onNavigate }) {
         </nav>
       </div>
 
-      <button className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-zinc-400 hover:bg-white/5 hover:text-zinc-200 cursor-pointer">
+      <button
+        onClick={async () => {
+          await logout();
+          if (onNavigate) onNavigate("Login");
+        }}
+        className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-zinc-400 hover:bg-white/5 hover:text-zinc-200 cursor-pointer"
+      >
         <LogOut size={18} />
         Sair
       </button>
