@@ -1,10 +1,11 @@
-import { Home, Wallet, PiggyBank, Wrench, HelpCircle, LogOut } from "lucide-react";
+import { Home, Wallet, PiggyBank, Wrench, HelpCircle, LogOut, User } from "lucide-react";
 import { logout } from "../services/authService";
 
 const MENU_ITEMS = [
   { label: "Home", icon: Home, page: null },
   { label: "Carteira", icon: Wallet, page: "Carteira" },
   { label: "Questões", icon: HelpCircle, page: "Questões" },
+  { label: "Perfil", icon: User, page: "Perfil" },
   { label: "Orçamento Doméstico", icon: PiggyBank, page: null },
   { label: "Ferramentas", icon: Wrench, page: null },
 ];

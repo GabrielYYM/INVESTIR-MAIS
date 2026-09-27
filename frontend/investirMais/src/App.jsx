@@ -3,6 +3,7 @@ import Carteira from "./pages/Carteira.jsx";
 import QuestionsManager from "./pages/QuestionsManager.jsx";
 import SignUp from "./pages/SignUp.jsx";
 import Login from "./pages/Login.jsx";
+import Perfil from "./pages/Perfil.jsx";
 import { getCategorias } from "./services/carteiraService";
 import { getQuestoesPorCategoria } from "./services/questoesService";
 
@@ -67,6 +68,7 @@ export default function App() {
         onDadosChange={carregarDados}
       />
     ),
+    Perfil: <Perfil onNavigate={setActivePage} />,
     SignUp: <SignUp onNavigate={setActivePage} />,
     Login: <Login onNavigate={setActivePage} />,
   };
