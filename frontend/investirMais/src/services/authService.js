@@ -49,13 +49,37 @@ export function isAutenticado() {
 }
 
 // ────────────────────────────────────────────────
-// CADASTRO
+// CADASTRO E VERIFICAÇÃO DE EMAIL
 // ────────────────────────────────────────────────
 
-/** Cria um novo usuário (nasce com role ALUNO por padrão no back). */
-export async function registrar(name, email, password) {
-  const { data } = await apiClient.post("/api/users", { name, email, password });
+/** Cria um novo usuário com suporte a data de nascimento e responsável para menores de 12 anos. */
+export async function registrar(name, email, password, birthDate, guardianEmail) {
+  const payload = {
+    name,
+    email,
+    password,
+    birthDate: birthDate || null,
+    guardianEmail: guardianEmail || null,
+  };
+  const { data } = await apiClient.post("/api/users", payload);
   return data; // UserResponseDTO
+}
+
+/** Confirma o código do usuário e, se menor de 12 anos, o código do responsável. */
+export async function verificarCadastro(email, code, guardianCode) {
+  const payload = {
+    email,
+    code,
+    guardianCode: guardianCode || null,
+  };
+  const { data } = await apiClient.post("/api/users/verify-registration", payload);
+  return data; // MessageResponseDTO
+}
+
+/** Reenvia os códigos de verificação de cadastro para o usuário e o responsável. */
+export async function reenviarCodigoCadastro(email) {
+  const { data } = await apiClient.post("/api/users/resend-verification", { email });
+  return data; // MessageResponseDTO
 }
 
 /** Retorna os dados do usuário autenticado, incluindo a role. */

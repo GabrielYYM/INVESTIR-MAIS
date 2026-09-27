@@ -67,6 +67,11 @@ public class LoginService {
             return ServiceResult.error(MessageConstants.Auth.ERR_INVALID_CREDENTIALS);
         }
 
+        if (user.getSecurity() != null && !user.getSecurity().isEmailVerified()) {
+            log.warn("Tentativa de login para conta com e-mail não ativado: {}", maskEmail(user.getEmail()));
+            return ServiceResult.error(MessageConstants.Auth.EMAIL_NOT_VERIFIED);
+        }
+
         loginAttemptService.loginSucceeded(ip);
         loginAttemptService.loginSucceeded(user.getEmail());
 

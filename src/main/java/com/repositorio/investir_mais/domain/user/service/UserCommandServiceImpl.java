@@ -37,22 +37,33 @@ public class UserCommandServiceImpl implements UserCommandService {
     private final CryptoService cryptoService;
     private final List<UserRegisterValidator> registerValidators;
     private final List<UserUpdateValidator> updateValidators;
+    private final RegistrationEmailService registrationEmailService;
 
     @Override
     @Transactional
     public ServiceResult<UserResponseDTO> createUser(
             @NonNull UserRequestDTO userRequestDTO) {
         try {
+            registerValidators.forEach(v -> v.validate(userRequestDTO));
+
             User user = userMapper.toUser(userRequestDTO);
+            String userCode = cryptoService.generateNumericCode(6);
+            String guardianCode = user.isUnder12() ? cryptoService.generateNumericCode(6) : null;
+
             UserSecurity security = UserSecurity.builder()
                     .password(passwordEncoder.encode(userRequestDTO.password()))
                     .emailHash(cryptoService.generateSha256Hash(userRequestDTO.email()))
                     .role(UserRole.ALUNO)
                     .emailVerified(false)
+                    .verificationCode(userCode)
+                    .guardianVerificationCode(guardianCode)
+                    .verificationExpiry(java.time.LocalDateTime.now().plusMinutes(15))
                     .build();
+
             user.setSecurity(security);
             userRepository.save(user);
-            userRepository.save(user);
+
+            registrationEmailService.sendVerificationEmails(user, userCode, guardianCode);
 
             return ServiceResult.success(userMapper.toUserResponseDTO(user));
         } catch (DataIntegrityViolationException e) {
@@ -62,6 +73,73 @@ public class UserCommandServiceImpl implements UserCommandService {
         } catch (Exception e) {
             return ServiceResult.error("Ocorreu um erro ao processar seu cadastro. Tente novamente mais tarde.");
         }
+    }
+
+    @Override
+    @Transactional
+    public ServiceResult<Void> verifyRegistration(@NonNull com.repositorio.investir_mais.domain.user.DTO.VerifyRegistrationRequestDTO verifyRequest) {
+        String emailHash = cryptoService.generateSha256Hash(verifyRequest.email());
+        User user = userRepository.findBySecurityEmailHash(emailHash).orElse(null);
+
+        if (user == null) {
+            return ServiceResult.notFound(MessageConstants.User.NOT_FOUND);
+        }
+
+        if (user.getSecurity().isEmailVerified()) {
+            return ServiceResult.error(MessageConstants.Auth.ERR_ALREADY_VERIFIED);
+        }
+
+        if (user.getSecurity().getVerificationExpiry() == null ||
+                user.getSecurity().getVerificationExpiry().isBefore(java.time.LocalDateTime.now())) {
+            return ServiceResult.error(MessageConstants.Auth.ERR_EXPIRED_VERIFICATION);
+        }
+
+        if (user.getSecurity().getVerificationCode() == null ||
+                !user.getSecurity().getVerificationCode().equals(verifyRequest.code())) {
+            return ServiceResult.error(MessageConstants.Auth.ERR_INVALID_VERIFICATION_CODE);
+        }
+
+        if (user.isUnder12()) {
+            if (verifyRequest.guardianCode() == null || verifyRequest.guardianCode().trim().isBlank()) {
+                return ServiceResult.error(MessageConstants.Auth.ERR_GUARDIAN_CODE_REQUIRED);
+            }
+
+            if (user.getSecurity().getGuardianVerificationCode() == null ||
+                    !user.getSecurity().getGuardianVerificationCode().equals(verifyRequest.guardianCode().trim())) {
+                return ServiceResult.error(MessageConstants.Auth.ERR_INVALID_GUARDIAN_CODE);
+            }
+        }
+
+        user.getSecurity().setEmailVerified(true);
+        user.getSecurity().clearVerificationCodes();
+        userRepository.save(user);
+
+        return ServiceResult.success(null);
+    }
+
+    @Override
+    @Transactional
+    public ServiceResult<Void> resendRegistrationVerification(@NonNull com.repositorio.investir_mais.domain.user.DTO.ResendVerificationRequestDTO resendRequest) {
+        String emailHash = cryptoService.generateSha256Hash(resendRequest.email());
+        User user = userRepository.findBySecurityEmailHash(emailHash).orElse(null);
+
+        if (user == null) {
+            return ServiceResult.notFound(MessageConstants.User.NOT_FOUND);
+        }
+
+        if (user.getSecurity().isEmailVerified()) {
+            return ServiceResult.error(MessageConstants.Auth.ERR_ALREADY_VERIFIED);
+        }
+
+        String userCode = cryptoService.generateNumericCode(6);
+        String guardianCode = user.isUnder12() ? cryptoService.generateNumericCode(6) : null;
+
+        user.getSecurity().generateVerificationCodes(userCode, guardianCode, java.time.LocalDateTime.now().plusMinutes(15));
+        userRepository.save(user);
+
+        registrationEmailService.sendVerificationEmails(user, userCode, guardianCode);
+
+        return ServiceResult.success(null);
     }
 
     @Override
