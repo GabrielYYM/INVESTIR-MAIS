@@ -54,11 +54,25 @@ public class User {
     @Convert(converter = AttributeEncryptor.class)
     private String email;
 
+    @Column(name = "birth_date")
+    private java.time.LocalDate birthDate;
+
+    @Column(name = "guardian_email", length = 500)
+    @Convert(converter = AttributeEncryptor.class)
+    private String guardianEmail;
+
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Portfolio portfolio;
 
     @Embedded
     private UserSecurity security;
+
+    public boolean isUnder12() {
+        if (this.birthDate == null) {
+            return false;
+        }
+        return java.time.Period.between(this.birthDate, java.time.LocalDate.now()).getYears() < 12;
+    }
 
     public void updateProfile(String name, String email, String emailHash) {
         this.name = name;

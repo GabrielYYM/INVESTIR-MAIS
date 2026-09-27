@@ -29,8 +29,24 @@ public final class MessageConstants {
         public static final String BEARER_PREFIX = "Bearer ";
         public static final String TOKEN_ISSUER = "auth-api";
         public static final String PREFIX_2FA = "2FA:";
+        public static final String PREFIX_REG_VERIFY = "REG_VERIFY:";
         public static final String ERR_INVALID_JWT = "Token inválido";
         public static final String ERR_RATELIMIT_EXCEEDED = "Muitas requisições. Por favor, aguarde alguns instantes.";
+        public static final String EMAIL_NOT_VERIFIED = "Conta não ativada. Por favor, realize a confirmação dos códigos enviados por e-mail para ativar sua conta.";
+        public static final String REGISTRATION_VERIFICATION_SENT = "Código(s) de verificação enviado(s) por e-mail com sucesso.";
+        public static final String REGISTRATION_ACTIVATED = "Conta ativada com sucesso! Você já pode realizar o login.";
+        public static final String ERR_INVALID_VERIFICATION_CODE = "Código de verificação do usuário inválido.";
+        public static final String ERR_INVALID_GUARDIAN_CODE = "Código de autorização do responsável inválido.";
+        public static final String ERR_EXPIRED_VERIFICATION = "Código de verificação expirado. Solicite um novo código.";
+        public static final String ERR_ALREADY_VERIFIED = "Esta conta já foi ativada anteriormente.";
+        public static final String ERR_GUARDIAN_EMAIL_REQUIRED = "Usuários com menos de 12 anos devem informar o e-mail do responsável legal.";
+        public static final String ERR_GUARDIAN_EMAIL_SAME = "O e-mail do responsável legal não pode ser igual ao e-mail da criança.";
+        public static final String ERR_GUARDIAN_CODE_REQUIRED = "O código do responsável legal é obrigatório para ativação da conta.";
+        public static final String EMAIL_VERIFICATION_CHILD_SUBJECT = "Código de verificação - Investir Mais";
+        public static final String EMAIL_VERIFICATION_CHILD_BODY = "Olá %s,\n\nSeu código para ativar sua conta é: %s\nVálido por 15 minutos.";
+        public static final String EMAIL_VERIFICATION_CHILD_MINOR_BODY = "Olá %s,\n\nSeu código de ativação é: %s\n\nComo você tem menos de 12 anos, enviamos também um código de autorização para o e-mail do seu responsável. É necessário informar ambos os códigos para ativar sua conta.\n\nVálido por 15 minutos.";
+        public static final String EMAIL_VERIFICATION_GUARDIAN_SUBJECT = "Autorização de cadastro para dependente menor de 12 anos - Investir Mais";
+        public static final String EMAIL_VERIFICATION_GUARDIAN_BODY = "Olá,\n\nO(A) jovem %s realizou um cadastro na plataforma Investir Mais e indicou você como responsável legal.\n\nPara autorizar a ativação da conta, utilize o seguinte código de segurança:\n\nCódigo do Responsável: %s\n\nVálido por 15 minutos.\n\nSe você não reconhece esta solicitação, ignore este e-mail.";
     }
 
     public static final class User {
@@ -41,6 +57,7 @@ public final class MessageConstants {
         public static final String INVALID_PASSWORD = "A senha atual informada está incorreta.";
         public static final String EMAIL_ALREADY_IN_USE = "Se os dados informados forem válidos, entraremos em contato.";
         public static final String EMAIL_ALREADY_IN_USE_BY_OTHER = "Email já está em uso por outro usuário.";
+        public static final String INVALID_BIRTH_DATE = "Data de nascimento inválida.";
     }
 
     public static final class Admin {

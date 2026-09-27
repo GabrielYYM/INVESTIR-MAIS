@@ -12,7 +12,7 @@ import { useCarteira } from "../hooks/useCarteira";
 import { useScore } from "../hooks/useScore";
 import { adicionarAtivo, atualizarAtivo, excluirAtivo, apiClient } from "../services/carteiraService";
 
-export default function Carteira({ onNavigate, questions = [] }) {
+export default function Carteira({ usuario, onNavigate, questions = [] }) {
   const { ativos, valorTotal, loading, error, recarregar } = useCarteira();
   const { scores, getScore, saveScore } = useScore();
 
@@ -108,7 +108,7 @@ export default function Carteira({ onNavigate, questions = [] }) {
 
   return (
     <div className="min-h-screen bg-[#171522] flex">
-      <Sidebar activePage="Carteira" onNavigate={onNavigate} />
+      <Sidebar activePage="Carteira" onNavigate={onNavigate} role={usuario?.role} />
 
       <div className="flex-1">
         <Topbar />

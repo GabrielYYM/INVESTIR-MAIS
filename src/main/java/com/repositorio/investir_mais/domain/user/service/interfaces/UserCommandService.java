@@ -13,4 +13,8 @@ public interface UserCommandService {
     ServiceResult<Void> deleteUserById(UUID id);
 
     ServiceResult<UserResponseDTO> updateUserById(UUID id, UserUpdateRequestDTO userUpdateRequestDTO);
+
+    ServiceResult<Void> verifyRegistration(com.repositorio.investir_mais.domain.user.DTO.VerifyRegistrationRequestDTO verifyRequest);
+
+    ServiceResult<Void> resendRegistrationVerification(com.repositorio.investir_mais.domain.user.DTO.ResendVerificationRequestDTO resendRequest);
 }

@@ -1,71 +1,117 @@
-import { apiClient } from "./carteiraService";
+import axios from "axios";
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+
+export const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 5000,
+});
+
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem("authToken") || localStorage.getItem("investirmais.token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
 /**
- * login.
- * Etapa 1: valida e-mail e senha → backend envia código 2FA por e-mail.
- * @param {string} email
- * @param {string} password
- * @returns {Promise<Object>} Mensagem de confirmação de envio do 2FA
+ * Login - Etapa 1: valida e-mail e senha. Backend dispara código 2FA por e-mail.
  */
 export async function login(email, password) {
   const { data } = await apiClient.post("/auth/login", { email, password });
   return data;
 }
+export const iniciarLogin = login;
 
 /**
- * Verificação do código 2FA.
- * Etapa 2: valida o código recebido por e-mail → retorna o token JWT.
- * @param {string} email
- * @param {string} code  Código 2FA de 6 dígitos
- * @returns {Promise<Object>} { token: "..." }
+ * Login - Etapa 2: valida código 2FA e salva token JWT.
  */
 export async function verify2FA(email, code) {
   const { data } = await apiClient.post("/auth/verify-2fa", { email, code });
   if (data.token) {
     localStorage.setItem("authToken", data.token);
+    localStorage.setItem("investirmais.token", data.token);
   }
   return data;
 }
 
-/**
- * Criar conta.
- * @param {Object} userData
- * @param {string} userData.name
- * @param {string} userData.email
- * @param {string} userData.password
- * @returns {Promise<Object>}
- */
-export async function register(userData) {
-  const { data } = await apiClient.post("/api/users", userData);
-  return data;
+export async function confirmarCodigo2FA(email, code) {
+  const data = await verify2FA(email, code);
+  return data.token;
 }
 
 /**
- * Logout — invalida o token JWT no backend (blacklist) e limpa o localStorage.
+ * Logout - invalida token no backend e limpa localStorage.
  */
 export async function logout() {
-  const token = localStorage.getItem("authToken");
-
+  const token = localStorage.getItem("authToken") || localStorage.getItem("investirmais.token");
   try {
     if (token) {
-      await apiClient.post("/auth/logout", {}, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+      await apiClient.post("/auth/logout");
     }
   } catch (error) {
-    console.warn("Erro ao notificar o backend sobre o logout:", error);
+    console.warn("Erro ao notificar backend sobre logout:", error);
   } finally {
     localStorage.removeItem("authToken");
+    localStorage.removeItem("investirmais.token");
   }
+}
+
+export function isAutenticado() {
+  return Boolean(localStorage.getItem("authToken") || localStorage.getItem("investirmais.token"));
+}
+
+/**
+ * Cadastro de novo usuário.
+ */
+export async function registrar(name, email, password, birthDate, guardianEmail) {
+  const payload = typeof name === "object" ? name : {
+    name,
+    email,
+    password,
+    birthDate: birthDate || null,
+    guardianEmail: guardianEmail || null,
+  };
+  const { data } = await apiClient.post("/api/users", payload);
+  return data;
+}
+export const register = registrar;
+
+/**
+ * Confirmação de código de cadastro (aluno e responsável se menor).
+ */
+export async function verificarCadastro(email, code, guardianCode) {
+  const payload = {
+    email,
+    code,
+    guardianCode: guardianCode || null,
+  };
+  const { data } = await apiClient.post("/api/users/verify-registration", payload);
+  return data;
+}
+
+/**
+ * Reenvia códigos de verificação de cadastro.
+ */
+export async function reenviarCodigoCadastro(email) {
+  const { data } = await apiClient.post("/api/users/resend-verification", { email });
+  return data;
+}
+
+/**
+ * Retorna os dados do usuário autenticado atual (incluindo role).
+ */
+export async function getUsuarioAtual() {
+  const { data } = await apiClient.get("/api/users/me");
+  return data;
 }
 
 /**
  * Obtém o ID do usuário a partir do token JWT no localStorage.
  */
 export function getUserIdFromToken() {
-  const token = localStorage.getItem("authToken");
+  const token = localStorage.getItem("authToken") || localStorage.getItem("investirmais.token");
   if (!token) return null;
   try {
     const payloadBase64 = token.split(".")[1];
@@ -81,12 +127,7 @@ export function getUserIdFromToken() {
  * Busca perfil do usuário pelo ID.
  */
 export async function getUserProfile(id) {
-  const token = localStorage.getItem("authToken");
-  const { data } = await apiClient.get(`/api/users/${id}`, {
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  });
+  const { data } = await apiClient.get(`/api/users/${id}`);
   return data;
 }
 
@@ -94,12 +135,7 @@ export async function getUserProfile(id) {
  * Atualiza o perfil do usuário pelo ID.
  */
 export async function updateUserProfile(id, updateData) {
-  const token = localStorage.getItem("authToken");
-  const { data } = await apiClient.put(`/api/users/${id}`, updateData, {
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  });
+  const { data } = await apiClient.put(`/api/users/${id}`, updateData);
   return data;
 }
 

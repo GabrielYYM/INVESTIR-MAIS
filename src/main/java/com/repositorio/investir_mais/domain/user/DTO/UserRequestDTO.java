@@ -17,6 +17,11 @@ public record UserRequestDTO(
 
         @ValidPassword
         @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
-        String password
+        String password,
+
+        @com.fasterxml.jackson.annotation.JsonFormat(pattern = "yyyy-MM-dd")
+        java.time.LocalDate birthDate,
+
+        String guardianEmail
 ) {
 }

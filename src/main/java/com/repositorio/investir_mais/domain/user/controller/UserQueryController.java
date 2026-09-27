@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.ErrorResponseException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.repositorio.investir_mais.common.result.ServiceResult;
 import com.repositorio.investir_mais.domain.user.DTO.UserResponseDTO;
 import com.repositorio.investir_mais.domain.user.service.interfaces.UserQueryService;
+import com.repositorio.investir_mais.infrastructure.security.UserDetailsImpl;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -30,6 +32,13 @@ import lombok.RequiredArgsConstructor;
 @Tag(name = "Consultas de Usuário", description = "Operações de leitura para busca e listagem de usuarios")
 public class UserQueryController {
     private final UserQueryService userQueryService;
+    private final com.repositorio.investir_mais.domain.user.mapper.UserMapper userMapper;
+
+    @GetMapping("/me")
+    @Operation(summary = "Retorna o usuário autenticado", description = "Retorna os dados básicos e a role do usuário associado ao token JWT.")
+    public ResponseEntity<UserResponseDTO> getCurrentUser(@AuthenticationPrincipal UserDetailsImpl principal) {
+        return ResponseEntity.ok(userMapper.toUserResponseDTO(principal.getUser()));
+    }
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
