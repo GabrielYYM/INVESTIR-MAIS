@@ -43,6 +43,7 @@ public class UserCommandServiceImpl implements UserCommandService {
     private final List<UserRegisterValidator> registerValidators;
     private final List<UserUpdateValidator> updateValidators;
     private final AuditLogService auditLogService;
+    private final com.repositorio.investir_mais.domain.portfolio.service.interfaces.PortfolioCommandService portfolioCommandService;
 
     @Override
     @Transactional
@@ -64,6 +65,10 @@ public class UserCommandServiceImpl implements UserCommandService {
             log.info(LogMessageConstants.AUDIT.USER_CREATED, savedUser.getId(), userRequestDTO.email());
             auditLogService.log(AuditAction.USER_CREATED, savedUser.getId().toString(), userRequestDTO.email(),
                     "USER", savedUser.getId().toString(), null, AuditStatus.SUCCESS, "Novo usuário registrado com sucesso");
+            user = userRepository.save(user);
+
+            // Cria o portfólio (carteira) com categorias default para o novo usuário
+            portfolioCommandService.createPortfolioForUser(user.getId());
 
             return ServiceResult.success(userMapper.toUserResponseDTO(savedUser));
         } catch (DataIntegrityViolationException e) {

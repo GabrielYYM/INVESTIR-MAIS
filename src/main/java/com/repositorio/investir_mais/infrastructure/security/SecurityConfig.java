@@ -4,6 +4,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
@@ -41,6 +42,7 @@ public class SecurityConfig {
     public SecurityFilterChain devToolsSecurityFilterChain(HttpSecurity http) throws Exception {
         http
                 .securityMatcher("/h2-console/**", "/h2-console", "/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html")
+                .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .headers(headers -> headers
                         .frameOptions(frame -> frame.sameOrigin()) // H2 precisa de frames
@@ -61,8 +63,10 @@ public class SecurityConfig {
     @Order(2)
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+                .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(
                                 "/",
                                 "/static/**",
@@ -98,6 +102,7 @@ public class SecurityConfig {
                         .denyAll()
                         .requestMatchers("/actuator/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
+
                 // CABEÇALHOS DE SEGURANÇA (SECURITY HEADERS)
                 .headers(headers -> headers
                         .frameOptions(frame -> frame.sameOrigin())
