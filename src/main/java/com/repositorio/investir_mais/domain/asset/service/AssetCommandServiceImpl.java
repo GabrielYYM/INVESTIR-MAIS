@@ -17,12 +17,17 @@ import com.repositorio.investir_mais.domain.asset.model.AssetCategory;
 import com.repositorio.investir_mais.domain.asset.repository.AssetCategoryRepository;
 import com.repositorio.investir_mais.domain.asset.repository.AssetRepository;
 import com.repositorio.investir_mais.domain.asset.service.interfaces.AssetCommandService;
+import com.repositorio.investir_mais.domain.audit.model.enums.AuditAction;
+import com.repositorio.investir_mais.domain.audit.model.enums.AuditStatus;
+import com.repositorio.investir_mais.domain.audit.service.interfaces.AuditLogService;
 import com.repositorio.investir_mais.domain.portfolio.model.Portfolio;
 import com.repositorio.investir_mais.infrastructure.security.UserContextService;
 
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AssetCommandServiceImpl implements AssetCommandService {
@@ -31,6 +36,7 @@ public class AssetCommandServiceImpl implements AssetCommandService {
     private final AssetCategoryRepository categoryRepository;
     private final UserContextService userContextService;
     private final AssetMapper assetMapper;
+    private final AuditLogService auditLogService;
 
     @Override
     @Transactional
@@ -41,6 +47,11 @@ public class AssetCommandServiceImpl implements AssetCommandService {
                     asset.setCategory(category);
 
                     Asset savedAsset = assetRepository.save(asset);
+
+                    log.info(LogMessageConstants.AUDIT.ASSET_CREATED, savedAsset.getId(), savedAsset.getTicker(), category.getName());
+                    auditLogService.log(AuditAction.ASSET_CREATED, "ASSET", savedAsset.getId().toString(),
+                            AuditStatus.SUCCESS, "Ativo criado: " + savedAsset.getTicker() + " na categoria " + category.getName());
+
                     return ServiceResult.success(assetMapper.toResponse(savedAsset));
                 })
                 .orElseGet(() -> ServiceResult.notFound(MessageConstants.Asset.CATEGORY_NOT_FOUND));
@@ -58,6 +69,11 @@ public class AssetCommandServiceImpl implements AssetCommandService {
                     assetMapper.updateEntity(request, asset);
 
                     Asset updatedAsset = assetRepository.save(asset);
+
+                    log.info(LogMessageConstants.AUDIT.ASSET_UPDATED, updatedAsset.getId(), updatedAsset.getTicker());
+                    auditLogService.log(AuditAction.ASSET_UPDATED, "ASSET", updatedAsset.getId().toString(),
+                            AuditStatus.SUCCESS, "Ativo atualizado: " + updatedAsset.getTicker());
+
                     return ServiceResult.success(assetMapper.toResponse(updatedAsset));
                 })
                 .orElseGet(() -> ServiceResult.notFound(MessageConstants.Asset.NOT_FOUND));
@@ -73,6 +89,11 @@ public class AssetCommandServiceImpl implements AssetCommandService {
                     }
 
                     assetRepository.delete(asset);
+
+                    log.info(LogMessageConstants.AUDIT.ASSET_DELETED, id);
+                    auditLogService.log(AuditAction.ASSET_DELETED, "ASSET", id.toString(),
+                            AuditStatus.SUCCESS, "Ativo removido: " + asset.getTicker());
+
                     return ServiceResult.<Void>success(null);
                 })
                 .orElseGet(() -> ServiceResult.notFound(MessageConstants.Asset.NOT_FOUND));

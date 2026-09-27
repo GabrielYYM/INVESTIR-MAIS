@@ -12,16 +12,18 @@ import com.repositorio.investir_mais.common.constants.LogMessageConstants;
 import com.repositorio.investir_mais.common.constants.MessageConstants;
 import com.repositorio.investir_mais.common.result.ServiceResult;
 import com.repositorio.investir_mais.common.security.CryptoService;
+import com.repositorio.investir_mais.domain.audit.model.enums.AuditAction;
+import com.repositorio.investir_mais.domain.audit.model.enums.AuditStatus;
+import com.repositorio.investir_mais.domain.audit.service.interfaces.AuditLogService;
+import com.repositorio.investir_mais.domain.auth.login.service.LoginAttemptService;
 import com.repositorio.investir_mais.domain.auth.password.model.PasswordResetToken;
 import com.repositorio.investir_mais.domain.auth.password.repository.PasswordResetTokenRepository;
-import com.repositorio.investir_mais.domain.auth.login.service.LoginAttemptService;
 import com.repositorio.investir_mais.domain.user.model.User;
 import com.repositorio.investir_mais.domain.user.repository.UserRepository;
 
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
 
 @Slf4j
 @Service
@@ -35,12 +37,17 @@ public class PasswordRecoveryService {
     private final LoginAttemptService loginAttemptService;
     private final CryptoService cryptoService;
     private final RecoveryEmailService authEmailService;
+    private final AuditLogService auditLogService;
 
     public ServiceResult<Void> initiatePasswordRecovery(@NonNull String email, @NonNull String ip) {
         if (!loginAttemptService.isBlocked(ip)) {
             createPasswordResetTokenForUser(email);
+            auditLogService.log(AuditAction.PASSWORD_RESET_REQUESTED, null, email,
+                    "AUTH", null, ip, AuditStatus.SUCCESS, "Solicitação de recuperação de senha iniciada");
         } else {
             log.warn(LogMessageConstants.SECURITY.PASSWORD_RECOVERY_BLOCKED_RATE_LIMIT, ip);
+            auditLogService.log(AuditAction.SECURITY_BLOCK, null, email,
+                    "AUTH", null, ip, AuditStatus.WARNING, "Solicitação de recuperação bloqueada por Rate Limit");
         }
 
         log.info(LogMessageConstants.AUTH.PASSWORD_RECOVERY_INITIATED, email, ip);
@@ -80,21 +87,26 @@ public class PasswordRecoveryService {
                 .orElse(null);
 
         if (resetToken == null) {
+            auditLogService.log(AuditAction.PASSWORD_RESET_SUCCESS, null, null,
+                    "AUTH", null, null, AuditStatus.FAILURE, "Tentativa de redefinição com token inexistente ou inválido");
             return ServiceResult.error(MessageConstants.Auth.ERR_INVALID_TOKEN);
         }
 
-        if (resetToken.getExpiryDate()
-                .isBefore(LocalDateTime.now())) {
+        if (resetToken.getExpiryDate().isBefore(LocalDateTime.now())) {
             passwordResetTokenRepository.delete(resetToken);
+            auditLogService.log(AuditAction.PASSWORD_RESET_SUCCESS, resetToken.getUser() != null ? resetToken.getUser().getId().toString() : null,
+                    resetToken.getUser() != null ? resetToken.getUser().getEmail() : null,
+                    "AUTH", null, null, AuditStatus.FAILURE, "Tentativa de redefinição com token expirado");
             return ServiceResult.error(MessageConstants.Auth.ERR_EXPIRED_TOKEN);
         }
 
         User user = resetToken.getUser();
-
-        user.getSecurity().setPassword(passwordEncoder
-                .encode(newPassword));
+        user.getSecurity().setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
         passwordResetTokenRepository.delete(resetToken);
+
+        auditLogService.log(AuditAction.PASSWORD_RESET_SUCCESS, user.getId().toString(), user.getEmail(),
+                "AUTH", user.getId().toString(), null, AuditStatus.SUCCESS, "Senha redefinida com sucesso via token de recuperação");
 
         return ServiceResult.success(null);
     }
