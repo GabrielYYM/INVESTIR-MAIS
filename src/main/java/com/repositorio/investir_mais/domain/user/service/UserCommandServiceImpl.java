@@ -152,13 +152,14 @@ public class UserCommandServiceImpl implements UserCommandService {
 
     @Override
     @Transactional
-    public ServiceResult<Void> deleteUserById(
-            @NonNull UUID id) {
-        if (!userRepository.existsById(id)) {
-            return ServiceResult.notFound(MessageConstants.User.NOT_FOUND_WITH_ID + id);
-        }
-        userRepository.deleteById(id);
-        return ServiceResult.success(null);
+    public ServiceResult<Void> deleteUserById(@NonNull UUID id) {
+        return userRepository.findActiveById(id)
+                .map(user -> {
+                    user.softDelete();
+                    userRepository.save(user);
+                    return ServiceResult.<Void>success(null);
+                })
+                .orElseGet(() -> ServiceResult.notFound(MessageConstants.User.NOT_FOUND_WITH_ID + id));
     }
 
     @Override
