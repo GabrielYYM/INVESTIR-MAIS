@@ -12,6 +12,9 @@ import org.springframework.web.bind.annotation.RestController;
 import com.repositorio.investir_mais.common.DTO.MessageResponseDTO;
 import com.repositorio.investir_mais.common.constants.MessageConstants;
 import com.repositorio.investir_mais.common.result.ServiceResult;
+import com.repositorio.investir_mais.domain.audit.model.enums.AuditAction;
+import com.repositorio.investir_mais.domain.audit.model.enums.AuditStatus;
+import com.repositorio.investir_mais.domain.audit.service.interfaces.AuditLogService;
 import com.repositorio.investir_mais.domain.auth.token.service.TokenBlackListService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -23,7 +26,9 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 @Tag(name = "Comandos do Admin", description = "Endpoints de operações administrativas e infraestrutura")
 public class SystemAdminCommandController {
+
     private final TokenBlackListService tokenBlackListService;
+    private final AuditLogService auditLogService;
 
     @DeleteMapping("/tokens/expired")
     @PreAuthorize("hasRole('ADMIN')")
@@ -31,6 +36,11 @@ public class SystemAdminCommandController {
             description = "Apaga imediatamente do banco de dados todos os tokens JWT que já passaram da validade.")
     public ResponseEntity<MessageResponseDTO> forceRemoveExpiredTokens() {
         ServiceResult<Void> result = tokenBlackListService.removeExpiredTokens();
+
+        if (result instanceof ServiceResult.Success<Void>) {
+            auditLogService.log(AuditAction.ADMIN_TOKEN_CLEANUP, "TOKEN_BLACKLIST", "ALL_EXPIRED",
+                    AuditStatus.SUCCESS, "Limpeza manual de tokens expirados executada por administrador");
+        }
 
         return switch (result) {
             case ServiceResult.Success<Void> _ -> ResponseEntity.ok(new MessageResponseDTO(MessageConstants.Admin.TOKEN_CLEANUP_SUCCESS));
