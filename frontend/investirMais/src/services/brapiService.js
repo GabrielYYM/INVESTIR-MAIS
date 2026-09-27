@@ -7,7 +7,6 @@ const BRAPI_TOKEN = import.meta.env.VITE_BRAPI_TOKEN;
 
 const brapiClient = axios.create({
   baseURL: BRAPI_BASE_URL,
-  timeout: 10000,
 });
 
 /**
