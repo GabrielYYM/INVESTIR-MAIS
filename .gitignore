@@ -35,4 +35,5 @@ build/
 ### Environment Files ###
 .env
 
+### Data ###
 *.sql
