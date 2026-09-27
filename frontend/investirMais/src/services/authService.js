@@ -60,3 +60,46 @@ export async function logout() {
     localStorage.removeItem("authToken");
   }
 }
+
+/**
+ * Obtém o ID do usuário a partir do token JWT no localStorage.
+ */
+export function getUserIdFromToken() {
+  const token = localStorage.getItem("authToken");
+  if (!token) return null;
+  try {
+    const payloadBase64 = token.split(".")[1];
+    const payloadJson = atob(payloadBase64.replace(/-/g, "+").replace(/_/g, "/"));
+    const payload = JSON.parse(payloadJson);
+    return payload.sub || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Busca perfil do usuário pelo ID.
+ */
+export async function getUserProfile(id) {
+  const token = localStorage.getItem("authToken");
+  const { data } = await apiClient.get(`/api/users/${id}`, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+  return data;
+}
+
+/**
+ * Atualiza o perfil do usuário pelo ID.
+ */
+export async function updateUserProfile(id, updateData) {
+  const token = localStorage.getItem("authToken");
+  const { data } = await apiClient.put(`/api/users/${id}`, updateData, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+  return data;
+}
+
