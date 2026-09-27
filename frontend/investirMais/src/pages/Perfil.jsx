@@ -62,10 +62,10 @@ export default function Perfil({ onNavigate }) {
     e.preventDefault();
     setMessage({ type: "", text: "" });
 
-    if (!form.name || !form.email || !form.currentPassword) {
+    if (!form.name || !form.currentPassword) {
       return setMessage({
         type: "error",
-        text: "Preencha todos os campos, incluindo sua senha atual para confirmar.",
+        text: "Preencha o nome e sua senha atual para confirmar.",
       });
     }
 
@@ -74,7 +74,7 @@ export default function Perfil({ onNavigate }) {
       const userId = profile.id || getUserIdFromToken();
       const updated = await updateUserProfile(userId, {
         name: form.name,
-        email: form.email,
+        email: profile.email,
         currentPassword: form.currentPassword,
       });
 
@@ -165,18 +165,20 @@ export default function Perfil({ onNavigate }) {
                   </div>
                 </div>
 
-                {/* Email */}
+                {/* Email (Apenas Leitura) */}
                 <div>
-                  <label className="block text-zinc-400 text-sm mb-2">Email</label>
+                  <label className="block text-zinc-400 text-sm mb-2">
+                    Email <span className="text-zinc-500 text-xs">(Não pode ser alterado)</span>
+                  </label>
                   <div className="relative">
                     <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" />
                     <input
                       type="email"
                       name="email"
-                      value={form.email}
-                      onChange={handleChange}
-                      placeholder="seu@email.com"
-                      className="w-full rounded-xl bg-white/5 border border-white/10 pl-11 pr-4 py-3 text-sm text-zinc-200 placeholder:text-zinc-600 outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/30 transition-colors"
+                      value={profile.email}
+                      disabled
+                      readOnly
+                      className="w-full rounded-xl bg-white/5 border border-white/5 pl-11 pr-4 py-3 text-sm text-zinc-500 outline-none cursor-not-allowed select-none"
                     />
                   </div>
                 </div>
