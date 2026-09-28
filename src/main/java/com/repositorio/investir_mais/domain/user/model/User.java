@@ -1,5 +1,6 @@
 package com.repositorio.investir_mais.domain.user.model;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 import jakarta.persistence.CascadeType;
@@ -19,7 +20,6 @@ import jakarta.validation.constraints.NotBlank;
 import com.repositorio.investir_mais.common.model.Auditable;
 import com.repositorio.investir_mais.domain.portfolio.model.Portfolio;
 import com.repositorio.investir_mais.infrastructure.util.AttributeEncryptor;
-
 
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -71,6 +71,17 @@ public class User extends Auditable {
 
     @Embedded
     private UserSecurity security;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
+    public void softDelete() {
+        this.deletedAt = LocalDateTime.now();
+    }
+
+    public boolean isDeleted() {
+        return this.deletedAt != null;
+    }
 
     public boolean isUnder12() {
         if (this.birthDate == null) {

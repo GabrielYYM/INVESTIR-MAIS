@@ -139,3 +139,8 @@ export async function updateUserProfile(id, updateData) {
   return data;
 }
 
+export async function deleteAccount(id) {
+  await apiClient.delete(`/api/users/${id}`);
+  localStorage.removeItem("authToken");
+  localStorage.removeItem("investirmais.token");
+}

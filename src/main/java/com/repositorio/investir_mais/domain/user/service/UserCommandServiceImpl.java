@@ -100,36 +100,9 @@ public class UserCommandServiceImpl implements UserCommandService {
         if (user == null) {
             return ServiceResult.notFound(MessageConstants.User.NOT_FOUND);
         }
-
-        if (user.getSecurity().isEmailVerified()) {
-            return ServiceResult.error(MessageConstants.Auth.ERR_ALREADY_VERIFIED);
-        }
-
-        if (user.getSecurity().getVerificationExpiry() == null ||
-                user.getSecurity().getVerificationExpiry().isBefore(java.time.LocalDateTime.now())) {
-            return ServiceResult.error(MessageConstants.Auth.ERR_EXPIRED_VERIFICATION);
-        }
-
-        if (user.getSecurity().getVerificationCode() == null ||
-                !user.getSecurity().getVerificationCode().equals(verifyRequest.code())) {
-            return ServiceResult.error(MessageConstants.Auth.ERR_INVALID_VERIFICATION_CODE);
-        }
-
-        if (user.isUnder12()) {
-            if (verifyRequest.guardianCode() == null || verifyRequest.guardianCode().trim().isBlank()) {
-                return ServiceResult.error(MessageConstants.Auth.ERR_GUARDIAN_CODE_REQUIRED);
-            }
-
-            if (user.getSecurity().getGuardianVerificationCode() == null ||
-                    !user.getSecurity().getGuardianVerificationCode().equals(verifyRequest.guardianCode().trim())) {
-                return ServiceResult.error(MessageConstants.Auth.ERR_INVALID_GUARDIAN_CODE);
-            }
-        }
-
-        user.getSecurity().setEmailVerified(true);
-        user.getSecurity().clearVerificationCodes();
-        userRepository.save(user);
-
+        userRepository.deleteById(id);
+        log.info(LogMessageConstants.AUDIT.USER_DELETED, id);
+        auditLogService.log(AuditAction.USER_DELETED, "USER", id.toString(), AuditStatus.SUCCESS, "Usuário removido do sistema");
         return ServiceResult.success(null);
     }
 
@@ -160,15 +133,14 @@ public class UserCommandServiceImpl implements UserCommandService {
 
     @Override
     @Transactional
-    public ServiceResult<Void> deleteUserById(
-            @NonNull UUID id) {
-        if (!userRepository.existsById(id)) {
-            return ServiceResult.notFound(MessageConstants.User.NOT_FOUND_WITH_ID + id);
-        }
-        userRepository.deleteById(id);
-        log.info(LogMessageConstants.AUDIT.USER_DELETED, id);
-        auditLogService.log(AuditAction.USER_DELETED, "USER", id.toString(), AuditStatus.SUCCESS, "Usuário removido do sistema");
-        return ServiceResult.success(null);
+    public ServiceResult<Void> deleteUserById(@NonNull UUID id) {
+        return userRepository.findActiveById(id)
+                .map(user -> {
+                    user.softDelete();
+                    userRepository.save(user);
+                    return ServiceResult.<Void>success(null);
+                })
+                .orElseGet(() -> ServiceResult.notFound(MessageConstants.User.NOT_FOUND_WITH_ID + id));
     }
 
     @Override

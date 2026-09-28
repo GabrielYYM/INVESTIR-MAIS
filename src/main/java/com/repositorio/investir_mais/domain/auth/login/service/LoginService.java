@@ -70,6 +70,11 @@ public class LoginService {
             return ServiceResult.error(MessageConstants.Auth.EMAIL_NOT_VERIFIED);
         }
 
+        if (user.isDeleted()) {
+            log.warn("Tentativa de login para conta encerrada: {}", maskEmail(user.getEmail()));
+            return ServiceResult.error(MessageConstants.Auth.ERR_INVALID_CREDENTIALS);
+        }
+
         loginAttemptService.loginSucceeded(ip);
         loginAttemptService.loginSucceeded(user.getEmail());
 
