@@ -10,13 +10,16 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.repositorio.investir_mais.common.constants.MessageConstants;
 import com.repositorio.investir_mais.common.result.ServiceResult;
-import com.repositorio.investir_mais.domain.portfolio.model.Portfolio;
 import com.repositorio.investir_mais.domain.asset.model.Asset;
 import com.repositorio.investir_mais.domain.asset.model.AssetCategory;
 import com.repositorio.investir_mais.domain.asset.model.AssetEvaluation;
 import com.repositorio.investir_mais.domain.asset.repository.AssetCategoryRepository;
 import com.repositorio.investir_mais.domain.asset.repository.AssetEvaluationRepository;
 import com.repositorio.investir_mais.domain.asset.repository.AssetRepository;
+import com.repositorio.investir_mais.domain.audit.model.enums.AuditAction;
+import com.repositorio.investir_mais.domain.audit.model.enums.AuditStatus;
+import com.repositorio.investir_mais.domain.audit.service.interfaces.AuditLogService;
+import com.repositorio.investir_mais.domain.portfolio.model.Portfolio;
 import com.repositorio.investir_mais.domain.question.DTO.EvaluationRequestDTO;
 import com.repositorio.investir_mais.domain.question.DTO.QuestionRequestDTO;
 import com.repositorio.investir_mais.domain.question.DTO.QuestionResponseDTO;
@@ -40,6 +43,7 @@ public class QuestionCommandServiceImpl implements QuestionCommandService {
     private final AssetEvaluationRepository evaluationRepository;
     private final UserContextService userContextService;
     private final QuestionMapper questionMapper;
+    private final AuditLogService auditLogService;
 
     @Override
     @Transactional
@@ -51,6 +55,9 @@ public class QuestionCommandServiceImpl implements QuestionCommandService {
             Question question = questionMapper.toEntity(request);
             question.setAssetCategory(category);
             Question savedQuestion = questionRepository.save(question);
+
+            auditLogService.log(AuditAction.QUESTION_CREATED, "QUESTION", savedQuestion.getId().toString(),
+                    AuditStatus.SUCCESS, "Pergunta criada para a categoria: " + category.getName());
 
             return ServiceResult.success(questionMapper.toResponse(savedQuestion));
         } catch (EntityNotFoundException e) {
@@ -70,6 +77,9 @@ public class QuestionCommandServiceImpl implements QuestionCommandService {
             question.setText(request.text());
             Question savedQuestion = questionRepository.save(question);
 
+            auditLogService.log(AuditAction.QUESTION_UPDATED, "QUESTION", savedQuestion.getId().toString(),
+                    AuditStatus.SUCCESS, "Texto da pergunta atualizado");
+
             return ServiceResult.success(questionMapper.toResponse(savedQuestion));
         } catch (EntityNotFoundException e) {
             return ServiceResult.notFound(e.getMessage());
@@ -85,6 +95,10 @@ public class QuestionCommandServiceImpl implements QuestionCommandService {
                     .orElseThrow(() -> new EntityNotFoundException(MessageConstants.Question.NOT_FOUND));
             getCategoryForCurrentUser(question.getAssetCategory().getId());
             questionRepository.delete(question);
+
+            auditLogService.log(AuditAction.QUESTION_DELETED, "QUESTION", id.toString(),
+                    AuditStatus.SUCCESS, "Pergunta removida");
+
             return ServiceResult.success(null);
         } catch (EntityNotFoundException e) {
             return ServiceResult.notFound(e.getMessage());
@@ -115,6 +129,9 @@ public class QuestionCommandServiceImpl implements QuestionCommandService {
                     .toList();
 
             evaluationRepository.saveAll(newEvaluations);
+
+            log.info("Avaliações de ativo {} salvas ({} critérios)", asset.getTicker(), newEvaluations.size());
+
             return ServiceResult.success(null);
         } catch (EntityNotFoundException e) {
             return ServiceResult.notFound(e.getMessage());

@@ -21,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 public class SecurityConfig {
     private final SecurityFilter securityFilter;
     private final RateLimitFilter rateLimitFilter;
+    private final MdcLoggingFilter mdcLoggingFilter;
 
 
     @Bean
@@ -120,6 +121,7 @@ public class SecurityConfig {
                                 .policy(ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
                         .permissionsPolicyHeader(permissions -> permissions
                                 .policy("geolocation=(), microphone=(), camera=()")))
+                .addFilterBefore(mdcLoggingFilter, RateLimitFilter.class)
                 .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class);
 
