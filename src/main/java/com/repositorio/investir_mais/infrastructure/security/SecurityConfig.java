@@ -4,6 +4,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
@@ -17,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
+@EnableMethodSecurity
 public class SecurityConfig {
     private final SecurityFilter securityFilter;
     private final RateLimitFilter rateLimitFilter;
@@ -40,17 +43,20 @@ public class SecurityConfig {
     @Order(1)
     public SecurityFilterChain devToolsSecurityFilterChain(HttpSecurity http) throws Exception {
         http
-                .securityMatcher("/h2-console/**", "/h2-console", "/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html")
+                .securityMatcher(
+                        "/h2-console/**", "/h2-console",
+                        "/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html")
+                .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .headers(headers -> headers
-                        .frameOptions(frame -> frame.sameOrigin()) // H2 precisa de frames
+                        .frameOptions(frame -> frame.sameOrigin())
                         .contentSecurityPolicy(csp -> csp
                                 .policyDirectives("default-src 'self'; " +
-                                        "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " + // Relaxado para H2/Swagger
+                                        "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
                                         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
                                         "font-src 'self' https://fonts.gstatic.com; " +
                                         "img-src 'self' data: https://validator.swagger.io; " +
-                                        "frame-src 'self'; " + // H2 usa iframes
+                                        "frame-src 'self'; " +
                                         "connect-src 'self';")))
                 .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
 
@@ -61,8 +67,10 @@ public class SecurityConfig {
     @Order(2)
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+                .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(
                                 "/",
                                 "/static/**",
@@ -82,8 +90,11 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers(HttpMethod.POST,
                                 "/auth/login",
+                                "/auth/logout",
                                 "/auth/verify-2fa",
                                 "/api/users",
+                                "/api/users/verify-registration",
+                                "/api/users/resend-verification",
                                 "/auth/forgot-password",
                                 "/auth/reset-password")
                         .permitAll()
@@ -98,6 +109,7 @@ public class SecurityConfig {
                         .denyAll()
                         .requestMatchers("/actuator/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
+
                 // CABEÇALHOS DE SEGURANÇA (SECURITY HEADERS)
                 .headers(headers -> headers
                         .frameOptions(frame -> frame.sameOrigin())

@@ -17,6 +17,16 @@ public record UserRequestDTO(
 
         @ValidPassword
         @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
-        String password
+        String password,
+
+        @com.fasterxml.jackson.annotation.JsonFormat(pattern = "yyyy-MM-dd")
+        java.time.LocalDate birthDate,
+
+        String guardianEmail,
+
+        @jakarta.validation.constraints.NotNull(message = "Você deve aceitar os termos de uso e política de privacidade.")
+        @jakarta.validation.constraints.AssertTrue(message = "Você deve aceitar os termos de uso e política de privacidade.")
+        @JsonProperty(required = true)
+        Boolean termsAccepted
 ) {
 }

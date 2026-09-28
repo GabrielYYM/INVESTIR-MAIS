@@ -5,7 +5,7 @@ import QuestionList from "../components/QuestionList";
 import QuestionFormModal from "../components/QuestionFormModal";
 import { criarQuestao, atualizarQuestao, excluirQuestao } from "../services/questoesService";
 
-export default function QuestionsManager({
+export default function QuestionsManager({ usuario,
   onNavigate,
   questions,
   categorias = [],
@@ -67,7 +67,7 @@ export default function QuestionsManager({
 
   return (
     <div className="min-h-screen bg-[#171522] flex">
-      <Sidebar activePage="Questões" onNavigate={onNavigate} />
+      <Sidebar activePage="Questões" onNavigate={onNavigate} role={usuario?.role} />
 
       <div className="flex-1">
         <Topbar />

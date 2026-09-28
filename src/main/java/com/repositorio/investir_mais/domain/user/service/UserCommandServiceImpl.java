@@ -52,12 +52,19 @@ public class UserCommandServiceImpl implements UserCommandService {
             registerValidators.forEach(v -> v.validate(userRequestDTO));
 
             User user = userMapper.toUser(userRequestDTO);
+            String userCode = cryptoService.generateNumericCode(6);
+            String guardianCode = user.isUnder12() ? cryptoService.generateNumericCode(6) : null;
+
             UserSecurity security = UserSecurity.builder()
                     .password(passwordEncoder.encode(userRequestDTO.password()))
                     .emailHash(cryptoService.generateSha256Hash(userRequestDTO.email()))
-                    .role(UserRole.USER)
+                    .role(UserRole.ALUNO)
                     .emailVerified(false)
+                    .verificationCode(userCode)
+                    .guardianVerificationCode(guardianCode)
+                    .verificationExpiry(java.time.LocalDateTime.now().plusMinutes(15))
                     .build();
+
             user.setSecurity(security);
             User savedUser = userRepository.save(user);
 
@@ -86,15 +93,54 @@ public class UserCommandServiceImpl implements UserCommandService {
 
     @Override
     @Transactional
-    public ServiceResult<Void> deleteUserById(
-            @NonNull UUID id) {
-        if (!userRepository.existsById(id)) {
-            return ServiceResult.notFound(MessageConstants.User.NOT_FOUND_WITH_ID + id);
+    public ServiceResult<Void> verifyRegistration(@NonNull com.repositorio.investir_mais.domain.user.DTO.VerifyRegistrationRequestDTO verifyRequest) {
+        String emailHash = cryptoService.generateSha256Hash(verifyRequest.email());
+        User user = userRepository.findBySecurityEmailHash(emailHash).orElse(null);
+
+        if (user == null) {
+            return ServiceResult.notFound(MessageConstants.User.NOT_FOUND);
         }
         userRepository.deleteById(id);
         log.info(LogMessageConstants.AUDIT.USER_DELETED, id);
         auditLogService.log(AuditAction.USER_DELETED, "USER", id.toString(), AuditStatus.SUCCESS, "Usuário removido do sistema");
         return ServiceResult.success(null);
+    }
+
+    @Override
+    @Transactional
+    public ServiceResult<Void> resendRegistrationVerification(@NonNull com.repositorio.investir_mais.domain.user.DTO.ResendVerificationRequestDTO resendRequest) {
+        String emailHash = cryptoService.generateSha256Hash(resendRequest.email());
+        User user = userRepository.findBySecurityEmailHash(emailHash).orElse(null);
+
+        if (user == null) {
+            return ServiceResult.notFound(MessageConstants.User.NOT_FOUND);
+        }
+
+        if (user.getSecurity().isEmailVerified()) {
+            return ServiceResult.error(MessageConstants.Auth.ERR_ALREADY_VERIFIED);
+        }
+
+        String userCode = cryptoService.generateNumericCode(6);
+        String guardianCode = user.isUnder12() ? cryptoService.generateNumericCode(6) : null;
+
+        user.getSecurity().generateVerificationCodes(userCode, guardianCode, java.time.LocalDateTime.now().plusMinutes(15));
+        userRepository.save(user);
+
+        registrationEmailService.sendVerificationEmails(user, userCode, guardianCode);
+
+        return ServiceResult.success(null);
+    }
+
+    @Override
+    @Transactional
+    public ServiceResult<Void> deleteUserById(@NonNull UUID id) {
+        return userRepository.findActiveById(id)
+                .map(user -> {
+                    user.softDelete();
+                    userRepository.save(user);
+                    return ServiceResult.<Void>success(null);
+                })
+                .orElseGet(() -> ServiceResult.notFound(MessageConstants.User.NOT_FOUND_WITH_ID + id));
     }
 
     @Override

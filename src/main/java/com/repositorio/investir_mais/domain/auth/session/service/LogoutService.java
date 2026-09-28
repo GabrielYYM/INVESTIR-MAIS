@@ -23,11 +23,15 @@ public class LogoutService {
 
     @Transactional
     public ServiceResult<Void> logout(@NonNull String token) {
-        String tokenJWT = token.replace(BEARER_PREFIX, "");
-        tokenBlackListService.invalidateToken(
-                tokenJWT,
-                tokenProvider.getExpiration(tokenJWT)
-        );
+        try {
+            String tokenJWT = token.replace(BEARER_PREFIX, "");
+            tokenBlackListService.invalidateToken(
+                    tokenJWT,
+                    tokenProvider.getExpiration(tokenJWT)
+            );
+        } catch (Exception e) {
+            // Se o token for inválido, malformatado ou já tiver expirado, o logout no cliente é bem-sucedido
+        }
         return ServiceResult.success(null);
     }
 }

@@ -6,6 +6,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.ErrorResponseException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -113,6 +114,17 @@ public class GlobalExceptionHandler {
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 MessageConstants.Exception.TITLE_INTERNAL_ERROR,
                 MessageConstants.Exception.DETAIL_INTERNAL_ERROR
+        );
+    }
+
+    //403
+    @ExceptionHandler(AccessDeniedException.class)
+    public ProblemDetail handleAccessDeniedException(AccessDeniedException ex) {
+        log.warn(LogMessageConstants.ERROR.BUSINESS_RULE_VIOLATION, ex.getMessage());
+        return ProblemDetailBuilder.build(
+                HttpStatus.FORBIDDEN,
+                "Acesso Negado",
+                ex.getMessage()
         );
     }
 }

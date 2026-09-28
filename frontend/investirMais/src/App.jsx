@@ -1,11 +1,21 @@
 import { useState, useEffect, useCallback } from "react";
+import Footer from "./components/Footer.jsx";
 import Carteira from "./pages/Carteira.jsx";
 import QuestionsManager from "./pages/QuestionsManager.jsx";
+import Home from "./pages/Home.jsx";
+import ConteudoCanal from "./pages/ConteudoCanal.jsx";
+import Login from "./pages/Login.jsx";
+import Register from "./pages/Register.jsx";
+import SignUp from "./pages/SignUp.jsx";
+import Perfil from "./pages/Perfil.jsx";
 import { getCategorias } from "./services/carteiraService";
 import { getQuestoesPorCategoria } from "./services/questoesService";
+import { isAutenticado, logout, getUsuarioAtual } from "./services/authService";
 
 export default function App() {
-  const [activePage, setActivePage] = useState("Carteira");
+  const [authState, setAuthState] = useState(() => (isAutenticado() ? true : "Login"));
+  const [activePage, setActivePage] = useState("Home");
+  const [usuario, setUsuario] = useState(null);
 
   // Categorias vindas do backend (carregadas uma vez)
   const [categorias, setCategorias] = useState([]);
@@ -35,27 +45,93 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (authState !== true) return;
+
+    getUsuarioAtual()
+      .then(setUsuario)
+      .catch(() => {
+        logout();
+        setUsuario(null);
+        setAuthState("Login");
+      });
+
     carregarDados();
-  }, [carregarDados]);
+  }, [authState, carregarDados]);
 
-  const pages = {
-    Carteira: (
-      <Carteira
-        onNavigate={setActivePage}
-        questions={questions}
-        categorias={categorias}
-        onDadosChange={carregarDados}
-      />
-    ),
-    Questões: (
-      <QuestionsManager
-        onNavigate={setActivePage}
-        questions={questions}
-        categorias={categorias}
-        onDadosChange={carregarDados}
-      />
-    ),
-  };
+  useEffect(() => {
+    if (usuario?.role === "ALUNO" && activePage === "Video") {
+      setActivePage("Home");
+    }
+  }, [usuario, activePage]);
 
-  return pages[activePage] || <Carteira onNavigate={setActivePage} questions={questions} />;
+  async function handleLogout() {
+    await logout();
+    setUsuario(null);
+    setAuthState("Login");
+  }
+
+  let content;
+
+  // Ainda não logado: Login / Register
+  if (authState !== true) {
+    if (authState === "Register" || authState === "SignUp") {
+      content = (
+        <Register
+          onRegisterSuccess={() => setAuthState("Login")}
+          onNavigateToLogin={() => setAuthState("Login")}
+        />
+      );
+    } else {
+      content = (
+        <Login
+          onLoginSuccess={() => setAuthState(true)}
+          onNavigateToRegister={() => setAuthState("Register")}
+          onNavigate={(page) => {
+            if (page === "Register" || page === "SignUp") {
+              setAuthState("Register");
+            } else if (page === "Login") {
+              setAuthState("Login");
+            } else {
+              setActivePage(page || "Home");
+              setAuthState(true);
+            }
+          }}
+        />
+      );
+    }
+  } else {
+    const pages = {
+      Home: <Home onNavigate={setActivePage} onLogout={handleLogout} usuario={usuario} />,
+      Video: <ConteudoCanal onNavigate={setActivePage} onLogout={handleLogout} usuario={usuario} />,
+      Carteira: (
+        <Carteira
+          onNavigate={setActivePage}
+          questions={questions}
+          categorias={categorias}
+          onDadosChange={carregarDados}
+          usuario={usuario}
+        />
+      ),
+      Questões: (
+        <QuestionsManager
+          onNavigate={setActivePage}
+          questions={questions}
+          categorias={categorias}
+          onDadosChange={carregarDados}
+          usuario={usuario}
+        />
+      ),
+      Perfil: <Perfil onNavigate={setActivePage} usuario={usuario} />,
+    };
+
+    content = pages[activePage] || <Home onNavigate={setActivePage} onLogout={handleLogout} usuario={usuario} />;
+  }
+
+  return (
+    <>
+      {content}
+      <Footer />
+    </>
+  );
 }
+
