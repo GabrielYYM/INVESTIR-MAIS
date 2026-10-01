@@ -1,17 +1,11 @@
 package com.repositorio.investir_mais.domain.user.repository;
 
-import java.util.Optional;
 import java.util.UUID;
-
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
+import org.springframework.data.repository.history.RevisionRepository;
 
 import com.repositorio.investir_mais.domain.user.model.User;
 
-@Repository
-public interface UserRepository extends JpaRepository<User, UUID> {
-
-    boolean existsBySecurityEmailHash(String emailHash);
-
-    Optional<User> findBySecurityEmailHash(String emailHash);
+public interface UserRepository extends JpaRepository<User, UUID>, RevisionRepository<User, UUID, Integer> {
+    User findByUserSecurityEmail(String email);
 }

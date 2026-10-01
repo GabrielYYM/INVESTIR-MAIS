@@ -3,127 +3,90 @@ package com.repositorio.investir_mais.infrastructure.security;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
-import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.ott.InMemoryOneTimeTokenService;
+import org.springframework.security.authentication.ott.OneTimeTokenService;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy;
 
-import lombok.RequiredArgsConstructor;
+import com.repositorio.investir_mais.domain.user.repository.UserRepository;
 
+import jakarta.servlet.http.HttpServletResponse;
 
 @Configuration
 @EnableWebSecurity
-@RequiredArgsConstructor
 public class SecurityConfig {
-    private final SecurityFilter securityFilter;
-    private final RateLimitFilter rateLimitFilter;
-    private final MdcLoggingFilter mdcLoggingFilter;
-
 
     @Bean
-    public WebSecurityCustomizer webSecurityCustomizer() {
-        return (web) -> web.ignoring().requestMatchers(
-                "/h2-console/**",
-                "/h2-console",
-                "/swagger-ui/**",
-                "/v3/api-docs/**",
-                "/swagger-ui.html",
-                "/swagger-resources/**",
-                "/webjars/**"
-        );
+    public UserDetailsService userDetailsService(UserRepository userRepository) {
+        return email -> {
+            var user = userRepository.findByUserSecurityEmail(email);
+
+            if (user == null) {
+                throw new UsernameNotFoundException("Usuário não encontrado.");
+            }
+
+            return User
+                    .withUsername(user.getUserSecurity().getEmail())
+                    .password(user.getUserSecurity().getPassword())
+                    .roles(user.getUserSecurity().getRole().name())
+                    .build();
+        };
     }
 
     @Bean
-    @Order(1)
-    public SecurityFilterChain devToolsSecurityFilterChain(HttpSecurity http) throws Exception {
-        http
-                .securityMatcher("/h2-console/**", "/h2-console", "/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html")
-                .cors(Customizer.withDefaults())
-                .csrf(csrf -> csrf.disable())
-                .headers(headers -> headers
-                        .frameOptions(frame -> frame.sameOrigin()) // H2 precisa de frames
-                        .contentSecurityPolicy(csp -> csp
-                                .policyDirectives("default-src 'self'; " +
-                                        "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " + // Relaxado para H2/Swagger
-                                        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-                                        "font-src 'self' https://fonts.gstatic.com; " +
-                                        "img-src 'self' data: https://validator.swagger.io; " +
-                                        "frame-src 'self'; " + // H2 usa iframes
-                                        "connect-src 'self';")))
-                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+    public PasswordEncoder passwordEncoder() {
+        return Argon2PasswordEncoder.defaultsForSpringSecurity_v5_8();
+    }
 
-        return http.build();
+    @Bean
+    public OneTimeTokenService oneTimeTokenService() {
+        return new InMemoryOneTimeTokenService();
     }
 
     @Bean
     @Order(2)
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
-                .cors(Customizer.withDefaults())
-                .csrf(csrf -> csrf.disable())
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers(
-                                "/",
-                                "/static/**",
-                                "/assets/**",
-                                "/css/**",
-                                "/js/**",
-                                "/templates/**",
-                                "/index.html",
-                                "/*.svg",
-                                "/*.png",
-                                "/*.ico",
-                                "/dashboard",
-                                "/reset-password",
-                                "/reset-password.html",
-                                "/aportes",
-                                "/profile")
-                        .permitAll()
-                        .requestMatchers(HttpMethod.POST,
-                                "/auth/login",
-                                "/auth/verify-2fa",
-                                "/api/users",
-                                "/auth/forgot-password",
-                                "/auth/reset-password")
-                        .permitAll()
-                        .requestMatchers(
-                                "/.git/**",
-                                "/.env",
-                                "/.gitignore",
-                                "/.mvn/**",
-                                "/*.sql",
-                                "/*.sh",
-                                "/target/**")
-                        .denyAll()
-                        .requestMatchers("/actuator/**").hasRole("ADMIN")
-                        .anyRequest().authenticated())
+    public SecurityFilterChain defaultSecurityFilterChain(
+            HttpSecurity http, 
+            EmailOttHandler emailOttHandler,
+            UserRepository userRepository) throws Exception {
 
-                // CABEÇALHOS DE SEGURANÇA (SECURITY HEADERS)
-                .headers(headers -> headers
-                        .frameOptions(frame -> frame.sameOrigin())
-                        .httpStrictTransportSecurity(hsts -> hsts
-                                .includeSubDomains(true)
-                                .maxAgeInSeconds(31536000))
-                        .contentSecurityPolicy(csp -> csp
-                                .policyDirectives("default-src 'self'; " +
-                                        "script-src 'self'; " +
-                                        "style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; " +
-                                        "font-src 'self' https://fonts.gstatic.com; " +
-                                        "connect-src 'self'; " +
-                                        "frame-ancestors 'self'; " +
-                                        "form-action 'self';"))
-                        .referrerPolicy(referrer -> referrer
-                                .policy(ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
-                        .permissionsPolicyHeader(permissions -> permissions
-                                .policy("geolocation=(), microphone=(), camera=()")))
-                .addFilterBefore(mdcLoggingFilter, RateLimitFilter.class)
-                .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class);
+        http
+            .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**", "/h2-console/**", "/ott/generate"))
+            .headers(headers -> headers.frameOptions(frame -> frame.disable()))
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers(
+                    "/api/users/register",
+                    "/swagger-ui/**",
+                    "/v3/api-docs/**",
+                    "/h2-console/**"
+                ).permitAll()
+                .anyRequest().authenticated()
+            )
+            .formLogin(Customizer.withDefaults())
+            .oneTimeTokenLogin(ott -> ott
+                .tokenGenerationSuccessHandler(emailOttHandler)
+                .successHandler((request, response, authentication) -> {
+                    String email = authentication.getName();
+                    var user = userRepository.findByUserSecurityEmail(email);
+                    if (user != null && !user.getUserSecurity().isEmailVerified()) {
+                        user.getUserSecurity().setEmailVerified(true);
+                        userRepository.save(user);
+                    }
+
+                    response.setStatus(HttpServletResponse.SC_OK);
+                    response.setContentType("application/json");
+                    response.setCharacterEncoding("UTF-8");
+                    response.getWriter().write("{\"message\": \"Login efetuado com sucesso e e-mail validado!\"}");
+                })
+            )
+            .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));
 
         return http.build();
     }

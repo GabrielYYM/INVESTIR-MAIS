@@ -1,22 +1,25 @@
 package com.repositorio.investir_mais.domain.user.DTO;
 
-import com.repositorio.investir_mais.common.validation.user.ValidEmail;
-import com.repositorio.investir_mais.common.validation.user.ValidName;
-import com.repositorio.investir_mais.common.validation.user.ValidPassword;
+import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 public record UserRequestDTO(
-        @ValidName
-        String name,
+    @NotBlank(message = "O nome é obrigatório")
+    String name,
 
-        @ValidEmail
-        String email,
+    @NotNull(message = "A idade é obrigatória")
+    Integer age,
 
-        @ValidPassword
-        @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
-        String password
-) {
+    @NotBlank(message = "O e-mail é obrigatório")
+    @Email(message = "E-mail inválido")
+    String email,
+
+    @NotBlank(message = "A senha é obrigatória")
+    String password,
+
+    UserRole role) {
+    
 }
