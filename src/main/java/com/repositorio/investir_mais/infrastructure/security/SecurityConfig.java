@@ -5,7 +5,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
@@ -43,9 +42,7 @@ public class SecurityConfig {
     @Order(1)
     public SecurityFilterChain devToolsSecurityFilterChain(HttpSecurity http) throws Exception {
         http
-                .securityMatcher(
-                        "/h2-console/**", "/h2-console",
-                        "/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html")
+                .securityMatcher("/h2-console/**", "/h2-console", "/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html")
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .headers(headers -> headers

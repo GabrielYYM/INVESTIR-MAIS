@@ -43,6 +43,7 @@ public class UserCommandServiceImpl implements UserCommandService {
     private final List<UserRegisterValidator> registerValidators;
     private final List<UserUpdateValidator> updateValidators;
     private final AuditLogService auditLogService;
+    private final com.repositorio.investir_mais.domain.portfolio.service.interfaces.PortfolioCommandService portfolioCommandService;
 
     @Override
     @Transactional
@@ -71,6 +72,10 @@ public class UserCommandServiceImpl implements UserCommandService {
             log.info(LogMessageConstants.AUDIT.USER_CREATED, savedUser.getId(), userRequestDTO.email());
             auditLogService.log(AuditAction.USER_CREATED, savedUser.getId().toString(), userRequestDTO.email(),
                     "USER", savedUser.getId().toString(), null, AuditStatus.SUCCESS, "Novo usuário registrado com sucesso");
+            user = userRepository.save(user);
+
+            // Cria o portfólio (carteira) com categorias default para o novo usuário
+            portfolioCommandService.createPortfolioForUser(user.getId());
 
             return ServiceResult.success(userMapper.toUserResponseDTO(savedUser));
         } catch (DataIntegrityViolationException e) {
@@ -103,31 +108,6 @@ public class UserCommandServiceImpl implements UserCommandService {
         userRepository.deleteById(id);
         log.info(LogMessageConstants.AUDIT.USER_DELETED, id);
         auditLogService.log(AuditAction.USER_DELETED, "USER", id.toString(), AuditStatus.SUCCESS, "Usuário removido do sistema");
-        return ServiceResult.success(null);
-    }
-
-    @Override
-    @Transactional
-    public ServiceResult<Void> resendRegistrationVerification(@NonNull com.repositorio.investir_mais.domain.user.DTO.ResendVerificationRequestDTO resendRequest) {
-        String emailHash = cryptoService.generateSha256Hash(resendRequest.email());
-        User user = userRepository.findBySecurityEmailHash(emailHash).orElse(null);
-
-        if (user == null) {
-            return ServiceResult.notFound(MessageConstants.User.NOT_FOUND);
-        }
-
-        if (user.getSecurity().isEmailVerified()) {
-            return ServiceResult.error(MessageConstants.Auth.ERR_ALREADY_VERIFIED);
-        }
-
-        String userCode = cryptoService.generateNumericCode(6);
-        String guardianCode = user.isUnder12() ? cryptoService.generateNumericCode(6) : null;
-
-        user.getSecurity().generateVerificationCodes(userCode, guardianCode, java.time.LocalDateTime.now().plusMinutes(15));
-        userRepository.save(user);
-
-        registrationEmailService.sendVerificationEmails(user, userCode, guardianCode);
-
         return ServiceResult.success(null);
     }
 

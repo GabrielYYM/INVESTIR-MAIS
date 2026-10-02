@@ -2,20 +2,17 @@ import { useState, useEffect, useCallback } from "react";
 import Footer from "./components/Footer.jsx";
 import Carteira from "./pages/Carteira.jsx";
 import QuestionsManager from "./pages/QuestionsManager.jsx";
-import Home from "./pages/Home.jsx";
-import ConteudoCanal from "./pages/ConteudoCanal.jsx";
-import Login from "./pages/Login.jsx";
-import Register from "./pages/Register.jsx";
 import SignUp from "./pages/SignUp.jsx";
+import Login from "./pages/Login.jsx";
 import Perfil from "./pages/Perfil.jsx";
 import { getCategorias } from "./services/carteiraService";
 import { getQuestoesPorCategoria } from "./services/questoesService";
 import { isAutenticado, logout, getUsuarioAtual } from "./services/authService";
 
 export default function App() {
-  const [authState, setAuthState] = useState(() => (isAutenticado() ? true : "Login"));
-  const [activePage, setActivePage] = useState("Home");
-  const [usuario, setUsuario] = useState(null);
+  const [activePage, setActivePage] = useState(() => {
+    return localStorage.getItem("authToken") ? "Carteira" : "Login";
+  });
 
   // Categorias vindas do backend (carregadas uma vez)
   const [categorias, setCategorias] = useState([]);
@@ -45,93 +42,39 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (authState !== true) return;
-
-    getUsuarioAtual()
-      .then(setUsuario)
-      .catch(() => {
-        logout();
-        setUsuario(null);
-        setAuthState("Login");
-      });
-
-    carregarDados();
-  }, [authState, carregarDados]);
-
-  useEffect(() => {
-    if (usuario?.role === "ALUNO" && activePage === "Video") {
-      setActivePage("Home");
+    const isAuth = !!localStorage.getItem("authToken");
+    if (!isAuth && activePage !== "Login" && activePage !== "SignUp") {
+      setActivePage("Login");
+      return;
     }
-  }, [usuario, activePage]);
-
-  async function handleLogout() {
-    await logout();
-    setUsuario(null);
-    setAuthState("Login");
-  }
-
-  let content;
-
-  // Ainda não logado: Login / Register
-  if (authState !== true) {
-    if (authState === "Register" || authState === "SignUp") {
-      content = (
-        <Register
-          onRegisterSuccess={() => setAuthState("Login")}
-          onNavigateToLogin={() => setAuthState("Login")}
-        />
-      );
-    } else {
-      content = (
-        <Login
-          onLoginSuccess={() => setAuthState(true)}
-          onNavigateToRegister={() => setAuthState("Register")}
-          onNavigate={(page) => {
-            if (page === "Register" || page === "SignUp") {
-              setAuthState("Register");
-            } else if (page === "Login") {
-              setAuthState("Login");
-            } else {
-              setActivePage(page || "Home");
-              setAuthState(true);
-            }
-          }}
-        />
-      );
+    
+    if (isAuth && (activePage === "Carteira" || activePage === "Questões")) {
+      carregarDados();
     }
-  } else {
-    const pages = {
-      Home: <Home onNavigate={setActivePage} onLogout={handleLogout} usuario={usuario} />,
-      Video: <ConteudoCanal onNavigate={setActivePage} onLogout={handleLogout} usuario={usuario} />,
-      Carteira: (
-        <Carteira
-          onNavigate={setActivePage}
-          questions={questions}
-          categorias={categorias}
-          onDadosChange={carregarDados}
-          usuario={usuario}
-        />
-      ),
-      Questões: (
-        <QuestionsManager
-          onNavigate={setActivePage}
-          questions={questions}
-          categorias={categorias}
-          onDadosChange={carregarDados}
-          usuario={usuario}
-        />
-      ),
-      Perfil: <Perfil onNavigate={setActivePage} usuario={usuario} />,
-    };
+  }, [carregarDados, activePage]);
 
-    content = pages[activePage] || <Home onNavigate={setActivePage} onLogout={handleLogout} usuario={usuario} />;
-  }
+  const pages = {
+    Carteira: (
+      <Carteira
+        onNavigate={setActivePage}
+        questions={questions}
+        categorias={categorias}
+        onDadosChange={carregarDados}
+      />
+    ),
+    Questões: (
+      <QuestionsManager
+        onNavigate={setActivePage}
+        questions={questions}
+        categorias={categorias}
+        onDadosChange={carregarDados}
+      />
+    ),
+    Perfil: <Perfil onNavigate={setActivePage} />,
+    SignUp: <SignUp onNavigate={setActivePage} />,
+    Login: <Login onNavigate={setActivePage} />,
+  };
 
-  return (
-    <>
-      {content}
-      <Footer />
-    </>
-  );
+  return pages[activePage] || <Carteira onNavigate={setActivePage} questions={questions} />;
 }
 

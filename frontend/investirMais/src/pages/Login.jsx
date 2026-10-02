@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Mail, Lock, ShieldCheck, KeyRound, Eye, EyeOff } from "lucide-react";
 import { login, verify2FA } from "../services/authService";
 
-export default function Login({ onNavigate, onLoginSuccess, onNavigateToRegister }) {
+export default function Login({ onNavigate }) {
   // Etapa 1 = credenciais, Etapa 2 = código 2FA
   const [step, setStep] = useState(1);
 
@@ -16,14 +16,6 @@ export default function Login({ onNavigate, onLoginSuccess, onNavigateToRegister
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleRegisterClick = () => {
-    if (onNavigateToRegister) {
-      onNavigateToRegister();
-    } else if (onNavigate) {
-      onNavigate("Register");
-    }
   };
 
   const handleLogin = async (e) => {
@@ -56,11 +48,7 @@ export default function Login({ onNavigate, onLoginSuccess, onNavigateToRegister
     setLoading(true);
     try {
       await verify2FA(form.email, code);
-      if (onLoginSuccess) {
-        onLoginSuccess();
-      } else if (onNavigate) {
-        onNavigate("Carteira");
-      }
+      if (onNavigate) onNavigate("Carteira");
     } catch (err) {
       setError(err?.response?.data?.detail || err?.response?.data?.message || err.message || "Código inválido ou expirado.");
     } finally {
@@ -154,7 +142,7 @@ export default function Login({ onNavigate, onLoginSuccess, onNavigateToRegister
                 Ainda não tem uma conta?{" "}
                 <button
                   type="button"
-                  onClick={handleRegisterClick}
+                  onClick={() => onNavigate && onNavigate("SignUp")}
                   className="text-amber-500 hover:text-amber-400 font-medium transition-colors cursor-pointer"
                 >
                   Cadastre-se
