@@ -64,7 +64,7 @@ public class LessionService {
 
     private Lession findLessionOwnedBy(UUID lessionId, String userEmail) {
         User professor = userService.findByEmail(userEmail);
-        return lessionRepository.findByIdAndCourseProfessorIdId(lessionId, professor.getId())
+        return lessionRepository.findByIdAndCourseProfessorId(lessionId, professor.getId())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Aula não encontrada ou sem permissão."));
     }
 }

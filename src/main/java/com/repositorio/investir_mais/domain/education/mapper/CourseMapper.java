@@ -15,17 +15,17 @@ import com.repositorio.investir_mais.domain.education.model.Course;
 public interface CourseMapper {
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "professorId", ignore = true)
+    @Mapping(target = "professor", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     Course toEntity(CourseRequestDTO request);
 
-    @Mapping(target = "professorId", ignore = true)
+    @Mapping(target = "professorId", source = "professor.id")
     CourseResponseDTO toResponseDTO(Course course);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "professorId", ignore = true)
+    @Mapping(target = "professor", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     void updateEntity(CourseRequestDTO request, @MappingTarget Course course);

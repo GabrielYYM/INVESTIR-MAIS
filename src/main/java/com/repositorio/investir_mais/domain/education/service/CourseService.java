@@ -31,7 +31,7 @@ public class CourseService {
     public CourseResponseDTO createCourse(CourseRequestDTO request, String userEmail) {
         User professor = userService.findByEmail(userEmail);
         Course course = courseMapper.toEntity(request);
-        course.setProfessorId(professor);
+        course.setProfessor(professor);
         return courseMapper.toResponseDTO(courseRepository.save(course));
     }
 
