@@ -48,6 +48,17 @@ public class UserSecurity {
     @Builder.Default
     private boolean emailVerified = false;
 
+    @Column(name = "verification_code", length = 6)
+    @ToString.Exclude
+    private String verificationCode;
+
+    @Column(name = "guardian_verification_code", length = 6)
+    @ToString.Exclude
+    private String guardianVerificationCode;
+
+    @Column(name = "verification_expiry")
+    private LocalDateTime verificationExpiry;
+
     public void generateTwoFactorCode(String code, LocalDateTime expiry) {
         this.twoFactorCode = code;
         this.twoFactorExpiry = expiry;
@@ -56,5 +67,17 @@ public class UserSecurity {
     public void clearTwoFactorCode() {
         this.twoFactorCode = null;
         this.twoFactorExpiry = null;
+    }
+
+    public void generateVerificationCodes(String userCode, String guardianCode, LocalDateTime expiry) {
+        this.verificationCode = userCode;
+        this.guardianVerificationCode = guardianCode;
+        this.verificationExpiry = expiry;
+    }
+
+    public void clearVerificationCodes() {
+        this.verificationCode = null;
+        this.guardianVerificationCode = null;
+        this.verificationExpiry = null;
     }
 }

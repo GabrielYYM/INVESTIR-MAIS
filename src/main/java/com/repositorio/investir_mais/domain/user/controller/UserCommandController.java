@@ -18,12 +18,15 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.repositorio.investir_mais.common.DTO.MessageResponseDTO;
 import com.repositorio.investir_mais.common.constants.MessageConstants;
 import com.repositorio.investir_mais.common.result.ServiceResult;
 import com.repositorio.investir_mais.domain.auth.security.service.RateLimitingService;
+import com.repositorio.investir_mais.domain.user.DTO.ResendVerificationRequestDTO;
 import com.repositorio.investir_mais.domain.user.DTO.UserRequestDTO;
 import com.repositorio.investir_mais.domain.user.DTO.UserResponseDTO;
 import com.repositorio.investir_mais.domain.user.DTO.UserUpdateRequestDTO;
+import com.repositorio.investir_mais.domain.user.DTO.VerifyRegistrationRequestDTO;
 import com.repositorio.investir_mais.domain.user.service.interfaces.UserCommandService;
 import com.repositorio.investir_mais.infrastructure.exception.RateLimitExceededException;
 import com.repositorio.investir_mais.infrastructure.security.util.ClientIp;
@@ -63,6 +66,42 @@ public class UserCommandController {
             case ServiceResult.Success<UserResponseDTO> s -> ResponseEntity.status(HttpStatus.CREATED).body(s.data());
             case ServiceResult.NotFound<UserResponseDTO> n -> throw new ErrorResponseException(HttpStatus.NOT_FOUND, ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, n.message()), null);
             case ServiceResult.Error<UserResponseDTO> e -> throw new ErrorResponseException(HttpStatus.BAD_REQUEST, ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.message()), null);
+        };
+    }
+
+    @PostMapping("/verify-registration")
+    @Operation(summary = "Verifica código de ativação do cadastro", description = "Valida os códigos enviados por e-mail (usuário e responsável se <12 anos) para ativar a conta")
+    @ApiResponse(responseCode = "200", description = "Conta ativada com sucesso")
+    public ResponseEntity<MessageResponseDTO> verifyRegistration(
+            @Valid @RequestBody @NonNull VerifyRegistrationRequestDTO verifyRequest) {
+        ServiceResult<Void> result = userCommandService.verifyRegistration(verifyRequest);
+
+        return switch (result) {
+            case ServiceResult.Success<Void> _ -> ResponseEntity.ok(new MessageResponseDTO(MessageConstants.Auth.REGISTRATION_ACTIVATED));
+            case ServiceResult.NotFound<Void> n -> throw new ErrorResponseException(HttpStatus.NOT_FOUND, ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, n.message()), null);
+            case ServiceResult.Error<Void> e -> throw new ErrorResponseException(HttpStatus.BAD_REQUEST, ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.message()), null);
+        };
+    }
+
+    @PostMapping("/resend-verification")
+    @Operation(summary = "Reenvia códigos de ativação do cadastro", description = "Gera e reenvia novos códigos de verificação para o e-mail do usuário e do responsável")
+    @ApiResponse(responseCode = "200", description = "Códigos reenviados com sucesso")
+    public ResponseEntity<MessageResponseDTO> resendVerification(
+            @Valid @RequestBody @NonNull ResendVerificationRequestDTO resendRequest,
+            HttpServletRequest request) {
+        String ip = ClientIp.getClientIp(request);
+        Bucket bucket = rateLimitingService.resolveRegistrationBucket(ip);
+
+        if (!bucket.tryConsume(1)) {
+            throw new RateLimitExceededException(MessageConstants.Auth.ERR_RATELIMIT_EXCEEDED);
+        }
+
+        ServiceResult<Void> result = userCommandService.resendRegistrationVerification(resendRequest);
+
+        return switch (result) {
+            case ServiceResult.Success<Void> _ -> ResponseEntity.ok(new MessageResponseDTO(MessageConstants.Auth.REGISTRATION_VERIFICATION_SENT));
+            case ServiceResult.NotFound<Void> n -> throw new ErrorResponseException(HttpStatus.NOT_FOUND, ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, n.message()), null);
+            case ServiceResult.Error<Void> e -> throw new ErrorResponseException(HttpStatus.BAD_REQUEST, ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.message()), null);
         };
     }
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import Footer from "./components/Footer.jsx";
 import Carteira from "./pages/Carteira.jsx";
 import QuestionsManager from "./pages/QuestionsManager.jsx";
 import SignUp from "./pages/SignUp.jsx";
@@ -6,6 +7,7 @@ import Login from "./pages/Login.jsx";
 import Perfil from "./pages/Perfil.jsx";
 import { getCategorias } from "./services/carteiraService";
 import { getQuestoesPorCategoria } from "./services/questoesService";
+import { isAutenticado, logout, getUsuarioAtual } from "./services/authService";
 
 export default function App() {
   const [activePage, setActivePage] = useState(() => {
@@ -75,3 +77,4 @@ export default function App() {
 
   return pages[activePage] || <Carteira onNavigate={setActivePage} questions={questions} />;
 }
+
