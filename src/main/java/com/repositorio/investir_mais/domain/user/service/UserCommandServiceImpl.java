@@ -1,0 +1,208 @@
+package com.repositorio.investir_mais.domain.user.service;
+
+import java.util.List;
+import java.util.UUID;
+
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.repositorio.investir_mais.common.constants.LogMessageConstants;
+import com.repositorio.investir_mais.common.constants.MessageConstants;
+import com.repositorio.investir_mais.common.result.ServiceResult;
+import com.repositorio.investir_mais.common.security.CryptoService;
+import com.repositorio.investir_mais.domain.audit.model.enums.AuditAction;
+import com.repositorio.investir_mais.domain.audit.model.enums.AuditStatus;
+import com.repositorio.investir_mais.domain.audit.service.interfaces.AuditLogService;
+import com.repositorio.investir_mais.domain.user.DTO.UserRequestDTO;
+import com.repositorio.investir_mais.domain.user.DTO.UserResponseDTO;
+import com.repositorio.investir_mais.domain.user.DTO.UserUpdateRequestDTO;
+import com.repositorio.investir_mais.domain.user.mapper.UserMapper;
+import com.repositorio.investir_mais.domain.user.model.User;
+import com.repositorio.investir_mais.domain.user.model.UserSecurity;
+import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
+import com.repositorio.investir_mais.domain.user.repository.UserRepository;
+import com.repositorio.investir_mais.domain.user.service.interfaces.UserCommandService;
+import com.repositorio.investir_mais.domain.user.validation.interfaces.UserRegisterValidator;
+import com.repositorio.investir_mais.domain.user.validation.interfaces.UserUpdateValidator;
+
+import java.time.LocalDateTime;
+
+import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class UserCommandServiceImpl implements UserCommandService {
+
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final UserMapper userMapper;
+    private final CryptoService cryptoService;
+    private final List<UserRegisterValidator> registerValidators;
+    private final List<UserUpdateValidator> updateValidators;
+    private final AuditLogService auditLogService;
+    private final RegistrationEmailService registrationEmailService;
+
+    @Override
+    @Transactional
+    public ServiceResult<UserResponseDTO> createUser(
+            @NonNull UserRequestDTO userRequestDTO) {
+        try {
+            registerValidators.forEach(v -> v.validate(userRequestDTO));
+
+            User user = userMapper.toUser(userRequestDTO);
+            String userCode = cryptoService.generateNumericCode(6);
+            String guardianCode = user.isUnder12() ? cryptoService.generateNumericCode(6) : null;
+
+            UserSecurity security = UserSecurity.builder()
+                    .password(passwordEncoder.encode(userRequestDTO.password()))
+                    .emailHash(cryptoService.generateSha256Hash(userRequestDTO.email()))
+                    .role(UserRole.ALUNO)
+                    .emailVerified(false)
+                    .verificationCode(userCode)
+                    .guardianVerificationCode(guardianCode)
+                    .verificationExpiry(java.time.LocalDateTime.now().plusMinutes(15))
+                    .build();
+
+            user.setSecurity(security);
+            User savedUser = userRepository.save(user);
+
+            registrationEmailService.sendVerificationEmails(savedUser, userCode, guardianCode);
+
+            log.info(LogMessageConstants.AUDIT.USER_CREATED, savedUser.getId(), userRequestDTO.email());
+            auditLogService.log(AuditAction.USER_CREATED, savedUser.getId().toString(), userRequestDTO.email(),
+                    "USER", savedUser.getId().toString(), null, AuditStatus.SUCCESS, "Novo usuário registrado com sucesso");
+
+            return ServiceResult.success(userMapper.toUserResponseDTO(savedUser));
+        } catch (DataIntegrityViolationException e) {
+            log.warn("Falha no cadastro (conflito de dados): {}", e.getMessage());
+            auditLogService.log(AuditAction.USER_CREATED, null, userRequestDTO.email(),
+                    "USER", null, null, AuditStatus.FAILURE, MessageConstants.User.EMAIL_ALREADY_IN_USE);
+            return ServiceResult.error(MessageConstants.User.EMAIL_ALREADY_IN_USE);
+        } catch (IllegalArgumentException e) {
+            log.warn("Falha na validação do usuário: {}", e.getMessage());
+            auditLogService.log(AuditAction.USER_CREATED, null, userRequestDTO.email(),
+                    "USER", null, null, AuditStatus.FAILURE, e.getMessage());
+            return ServiceResult.error(e.getMessage());
+        } catch (Exception e) {
+            log.error("Erro inesperado ao cadastrar usuário: {}", e.getMessage(), e);
+            auditLogService.log(AuditAction.USER_CREATED, null, userRequestDTO.email(),
+                    "USER", null, null, AuditStatus.FAILURE, e.getMessage());
+            return ServiceResult.error("Ocorreu um erro ao processar seu cadastro. Tente novamente mais tarde.");
+        }
+    }
+
+    @Override
+    @Transactional
+    public ServiceResult<Void> verifyRegistration(@NonNull com.repositorio.investir_mais.domain.user.DTO.VerifyRegistrationRequestDTO verifyRequest) {
+        String emailHash = cryptoService.generateSha256Hash(verifyRequest.email());
+        User user = userRepository.findBySecurityEmailHash(emailHash).orElse(null);
+
+        if (user == null) {
+            return ServiceResult.notFound(MessageConstants.User.NOT_FOUND);
+        }
+
+        UserSecurity security = user.getSecurity();
+
+        if (security.isEmailVerified()) {
+            return ServiceResult.error(MessageConstants.Auth.ERR_ALREADY_VERIFIED);
+        }
+
+        if (security.getVerificationExpiry() == null
+                || security.getVerificationExpiry().isBefore(LocalDateTime.now())) {
+            return ServiceResult.error(MessageConstants.Auth.ERR_EXPIRED_VERIFICATION);
+        }
+
+        if (!verifyRequest.code().equals(security.getVerificationCode())) {
+            return ServiceResult.error(MessageConstants.Auth.ERR_INVALID_VERIFICATION_CODE);
+        }
+
+        if (user.isUnder12()) {
+            if (verifyRequest.guardianCode() == null || verifyRequest.guardianCode().isBlank()) {
+                return ServiceResult.error(MessageConstants.Auth.ERR_GUARDIAN_CODE_REQUIRED);
+            }
+            if (!verifyRequest.guardianCode().equals(security.getGuardianVerificationCode())) {
+                return ServiceResult.error(MessageConstants.Auth.ERR_INVALID_GUARDIAN_CODE);
+            }
+        }
+
+        security.setEmailVerified(true);
+        security.clearVerificationCodes();
+        userRepository.save(user);
+
+        log.info(LogMessageConstants.AUDIT.USER_UPDATED, user.getId());
+        auditLogService.log(AuditAction.USER_UPDATED, user.getId().toString(), user.getEmail(),
+                "USER", user.getId().toString(), null, AuditStatus.SUCCESS,
+                "Conta ativada via verificação de e-mail" + (user.isUnder12() ? " (com autorização do responsável)" : ""));
+
+        return ServiceResult.success(null);
+    }
+
+    @Override
+    @Transactional
+    public ServiceResult<Void> resendRegistrationVerification(@NonNull com.repositorio.investir_mais.domain.user.DTO.ResendVerificationRequestDTO resendRequest) {
+        String emailHash = cryptoService.generateSha256Hash(resendRequest.email());
+        User user = userRepository.findBySecurityEmailHash(emailHash).orElse(null);
+
+        if (user == null) {
+            return ServiceResult.notFound(MessageConstants.User.NOT_FOUND);
+        }
+
+        if (user.getSecurity().isEmailVerified()) {
+            return ServiceResult.error(MessageConstants.Auth.ERR_ALREADY_VERIFIED);
+        }
+
+        String userCode = cryptoService.generateNumericCode(6);
+        String guardianCode = user.isUnder12() ? cryptoService.generateNumericCode(6) : null;
+
+        user.getSecurity().generateVerificationCodes(userCode, guardianCode, java.time.LocalDateTime.now().plusMinutes(15));
+        userRepository.save(user);
+
+        registrationEmailService.sendVerificationEmails(user, userCode, guardianCode);
+
+        return ServiceResult.success(null);
+    }
+
+    @Override
+    @Transactional
+    public ServiceResult<Void> deleteUserById(@NonNull UUID id) {
+        return userRepository.findActiveById(id)
+                .map(user -> {
+                    user.softDelete();
+                    userRepository.save(user);
+                    return ServiceResult.<Void>success(null);
+                })
+                .orElseGet(() -> ServiceResult.notFound(MessageConstants.User.NOT_FOUND_WITH_ID + id));
+    }
+
+    @Override
+    @Transactional
+    public ServiceResult<UserResponseDTO> updateUserById(@NonNull UUID id, @NonNull UserUpdateRequestDTO userUpdateRequestDTO) {
+        return userRepository.findById(id)
+                .map(user -> {
+                    if (!passwordEncoder.matches(userUpdateRequestDTO.currentPassword(), user.getSecurity().getPassword())) {
+                        return ServiceResult.<UserResponseDTO>error(MessageConstants.User.INVALID_PASSWORD);
+                    }
+
+                    try {
+                        updateValidators.forEach(v -> v.validate(userUpdateRequestDTO, user));
+                        String emailHash = cryptoService.generateSha256Hash(userUpdateRequestDTO.email());
+                        user.updateProfile(userUpdateRequestDTO.name(), userUpdateRequestDTO.email(), emailHash);
+                        User updatedUser = userRepository.save(user);
+
+                        log.info(LogMessageConstants.AUDIT.USER_UPDATED, updatedUser.getId());
+                        auditLogService.log(AuditAction.USER_UPDATED, "USER", updatedUser.getId().toString(),
+                                AuditStatus.SUCCESS, "Perfil de usuário atualizado");
+
+                        return ServiceResult.success(userMapper.toUserResponseDTO(updatedUser));
+                    } catch (Exception e) {
+                        return ServiceResult.<UserResponseDTO>error(e.getMessage());
+                    }
+                })
+                .orElseGet(() -> ServiceResult.notFound(MessageConstants.User.NOT_FOUND_FOR_UPDATE));
+    }
+}
