@@ -2,7 +2,7 @@ package com.repositorio.investir_mais.domain.education.DTO;
 
 import java.util.UUID;
 
-public record LessionResponseDTO(
+public record LessonResponseDTO(
     UUID id,
     String title,
     String description,

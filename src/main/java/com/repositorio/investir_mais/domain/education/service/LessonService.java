@@ -9,12 +9,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.repositorio.investir_mais.domain.education.DTO.LessionRequestDTO;
-import com.repositorio.investir_mais.domain.education.DTO.LessionResponseDTO;
-import com.repositorio.investir_mais.domain.education.mapper.LessionMapper;
+import com.repositorio.investir_mais.domain.education.DTO.LessonRequestDTO;
+import com.repositorio.investir_mais.domain.education.DTO.LessonResponseDTO;
+import com.repositorio.investir_mais.domain.education.mapper.LessonMapper;
 import com.repositorio.investir_mais.domain.education.model.Course;
-import com.repositorio.investir_mais.domain.education.model.Lession;
-import com.repositorio.investir_mais.domain.education.repository.LessionRepository;
+import com.repositorio.investir_mais.domain.education.model.Lesson;
+import com.repositorio.investir_mais.domain.education.repository.LessonRepository;
 import com.repositorio.investir_mais.domain.user.model.User;
 import com.repositorio.investir_mais.domain.user.service.UserService;
 
@@ -23,37 +23,37 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 @Transactional
-public class LessionService {
+public class LessonService {
 
-    private final LessionRepository lessionRepository;
+    private final LessonRepository lessionRepository;
     private final CourseService courseService;
-    private final LessionMapper lessionMapper;
+    private final LessonMapper lessionMapper;
     private final UserService userService;
 
-    public LessionResponseDTO createLession(UUID courseId, LessionRequestDTO request, String userEmail) {
+    public LessonResponseDTO createLession(UUID courseId, LessonRequestDTO request, String userEmail) {
         Course course = courseService.findCourseOwnedBy(courseId, userEmail);
 
-        Lession lession = lessionMapper.toEntity(request);
+        Lesson lession = lessionMapper.toEntity(request);
         lession.setCourse(course);
 
         return lessionMapper.toResponseDTO(lessionRepository.save(lession));
     }
 
     @Transactional(readOnly = true)
-    public LessionResponseDTO getLessionById(UUID lessionId) {
+    public LessonResponseDTO getLessionById(UUID lessionId) {
         return lessionRepository.findById(lessionId)
             .map(lessionMapper::toResponseDTO)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Aula não encontrada."));
     }
 
     @Transactional(readOnly = true)
-    public Page<LessionResponseDTO> getLessionsByCourseId(UUID courseId, Pageable pageable) {
+    public Page<LessonResponseDTO> getLessionsByCourseId(UUID courseId, Pageable pageable) {
         return lessionRepository.findAllByCourseId(courseId, pageable)
             .map(lessionMapper::toResponseDTO);
     }
 
-    public LessionResponseDTO updateLession(UUID lessionId, LessionRequestDTO request, String userEmail) {
-        Lession lession = findLessionOwnedBy(lessionId, userEmail);
+    public LessonResponseDTO updateLession(UUID lessionId, LessonRequestDTO request, String userEmail) {
+        Lesson lession = findLessionOwnedBy(lessionId, userEmail);
         lessionMapper.updateEntity(request, lession);
         return lessionMapper.toResponseDTO(lessionRepository.save(lession));
     }
@@ -62,7 +62,7 @@ public class LessionService {
         lessionRepository.delete(findLessionOwnedBy(lessionId, userEmail));
     }
 
-    private Lession findLessionOwnedBy(UUID lessionId, String userEmail) {
+    private Lesson findLessionOwnedBy(UUID lessionId, String userEmail) {
         User professor = userService.findByEmail(userEmail);
         return lessionRepository.findByIdAndCourseProfessorId(lessionId, professor.getId())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Aula não encontrada ou sem permissão."));

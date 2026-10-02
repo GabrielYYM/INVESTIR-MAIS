@@ -93,5 +93,5 @@ public class UserService {
         throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuário não encontrado.");
     }
     return user;
-}
+    }
 }

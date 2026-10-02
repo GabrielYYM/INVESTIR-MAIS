@@ -18,9 +18,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.repositorio.investir_mais.domain.education.DTO.LessionRequestDTO;
-import com.repositorio.investir_mais.domain.education.DTO.LessionResponseDTO;
-import com.repositorio.investir_mais.domain.education.service.LessionService;
+import com.repositorio.investir_mais.domain.education.DTO.LessonRequestDTO;
+import com.repositorio.investir_mais.domain.education.DTO.LessonResponseDTO;
+import com.repositorio.investir_mais.domain.education.service.LessonService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,36 +28,36 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/lessions")
 @RequiredArgsConstructor
-public class LessionController {
-    private final LessionService lessionService;
+public class LessonController {
+    private final LessonService lessionService;
 
     @PostMapping("/course/{courseId}")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
-    public LessionResponseDTO createLession(
+    public LessonResponseDTO createLession(
             @PathVariable UUID courseId,
-            @Valid @RequestBody LessionRequestDTO dto,
+            @Valid @RequestBody LessonRequestDTO dto,
             Principal principal) {
         return lessionService.createLession(courseId, dto, principal.getName());
     }
 
     @GetMapping("/course/{courseId}")
-    public Page<LessionResponseDTO> getLessionsByCourse(
+    public Page<LessonResponseDTO> getLessionsByCourse(
             @PathVariable UUID courseId,
             @PageableDefault(size = 20) Pageable pageable) {
         return lessionService.getLessionsByCourseId(courseId, pageable);
     }
 
     @GetMapping("/{lessionId}")
-    public LessionResponseDTO getLessionById(@PathVariable UUID lessionId) {
+    public LessonResponseDTO getLessionById(@PathVariable UUID lessionId) {
         return lessionService.getLessionById(lessionId);
     }
 
     @PutMapping("/{lessionId}")
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
-    public LessionResponseDTO updateLession(
+    public LessonResponseDTO updateLession(
             @PathVariable UUID lessionId,
-            @Valid @RequestBody LessionRequestDTO dto,
+            @Valid @RequestBody LessonRequestDTO dto,
             Principal principal) {
         return lessionService.updateLession(lessionId, dto, principal.getName());
     }

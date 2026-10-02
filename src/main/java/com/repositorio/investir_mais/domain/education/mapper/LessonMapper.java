@@ -7,22 +7,22 @@ import org.mapstruct.MappingConstants;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.NullValuePropertyMappingStrategy;
 
-import com.repositorio.investir_mais.domain.education.DTO.LessionRequestDTO;
-import com.repositorio.investir_mais.domain.education.DTO.LessionResponseDTO;
-import com.repositorio.investir_mais.domain.education.model.Lession;
+import com.repositorio.investir_mais.domain.education.DTO.LessonRequestDTO;
+import com.repositorio.investir_mais.domain.education.DTO.LessonResponseDTO;
+import com.repositorio.investir_mais.domain.education.model.Lesson;
 
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
-public interface LessionMapper {
+public interface LessonMapper {
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "course", ignore = true)
-    Lession toEntity(LessionRequestDTO request);
+    Lesson toEntity(LessonRequestDTO request);
 
     @Mapping(target = "courseId", source = "course.id")
-    LessionResponseDTO toResponseDTO(Lession lession);
+    LessonResponseDTO toResponseDTO(Lesson lesson);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "course", ignore = true)
-    void updateEntity(LessionRequestDTO request, @MappingTarget Lession lession);
+    void updateEntity(LessonRequestDTO request, @MappingTarget Lesson lesson);
 }
