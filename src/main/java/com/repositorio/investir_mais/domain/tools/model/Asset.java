@@ -1,8 +1,8 @@
-package com.repositorio.investir_mais.domain.education.model;
+package com.repositorio.investir_mais.domain.tools.model;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -16,28 +16,28 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "TB_LESSON")
+@Table(name = "TB_ASSETS")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Lesson {
+public class Asset {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(nullable = false)
-    private String title;
+    private String ticker;
 
-    @Column(nullable = false)
-    private String description;
+    private BigDecimal currentPositionValue;
 
-    @Column(nullable = false)
-    private String mediaUrl;
+    private BigDecimal quantity;
 
-    @Column(nullable = false)
-    private String thumbnailUrl;
+    private BigDecimal averagePrice;
+
+    private int rawScore;
+
+    private boolean isPositive;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "course_id", nullable = false)
-    private Course course;
+    @JoinColumn(name = "category_id")
+    private Category category;
 }

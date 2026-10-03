@@ -32,39 +32,45 @@ public class CourseService {
         User professor = userService.findByEmail(userEmail);
         Course course = courseMapper.toEntity(request);
         course.setProfessor(professor);
-        return courseMapper.toResponseDTO(courseRepository.save(course));
+        return courseMapper.toDTO(courseRepository.save(course));
     }
 
     @Transactional(readOnly = true)
     public CourseResponseDTO getCourseById(UUID courseId) {
         return courseRepository.findById(courseId)
-            .map(courseMapper::toResponseDTO)
+            .map(courseMapper::toDTO)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Curso não encontrado."));
     }
 
     @Transactional(readOnly = true)
     public Page<CourseResponseDTO> getAllCourses(Pageable pageable) {
-        return courseRepository.findAll(pageable).map(courseMapper::toResponseDTO);
+        return courseRepository.findAll(pageable).map(courseMapper::toDTO);
     }
 
     @Transactional(readOnly = true)
     public Page<CourseResponseDTO> getCoursesByProfessor(UUID professorId, Pageable pageable) {
-        return courseRepository.findAllByProfessorId(professorId, pageable).map(courseMapper::toResponseDTO);
+        return courseRepository.findAllByProfessorId(professorId, pageable).map(courseMapper::toDTO);
     }
 
     public CourseResponseDTO updateCourse(UUID courseId, CourseRequestDTO request, String userEmail) {
         Course course = findCourseOwnedBy(courseId, userEmail);
         courseMapper.updateEntity(request, course);
-        return courseMapper.toResponseDTO(courseRepository.save(course));
+        return courseMapper.toDTO(courseRepository.save(course));
     }
 
     public void deleteCourse(UUID courseId, String userEmail) {
-        courseRepository.delete(findCourseOwnedBy(courseId, userEmail));
+        Course course = findCourseOwnedBy(courseId, userEmail);
+        courseRepository.delete(course);
     }
 
-    public Course findCourseOwnedBy(UUID courseId, String userEmail) {
+    private Course findCourseOwnedBy(UUID courseId, String userEmail) {
         User professor = userService.findByEmail(userEmail);
-        return courseRepository.findByIdAndProfessorId(courseId, professor.getId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Curso não encontrado ou sem permissão."));
+        Course course = courseRepository.findById(courseId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Curso não encontrado."));
+
+        if (!course.getProfessor().getId().equals(professor.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não tem permissão para alterar este curso.");
+        }
+        return course;
     }
 }

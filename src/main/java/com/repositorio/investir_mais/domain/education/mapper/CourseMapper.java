@@ -21,7 +21,7 @@ public interface CourseMapper {
     Course toEntity(CourseRequestDTO request);
 
     @Mapping(target = "professorId", source = "professor.id")
-    CourseResponseDTO toResponseDTO(Course course);
+    CourseResponseDTO toDTO(Course course);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "id", ignore = true)

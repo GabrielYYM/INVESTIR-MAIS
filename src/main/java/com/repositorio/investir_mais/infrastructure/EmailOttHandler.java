@@ -1,4 +1,4 @@
-package com.repositorio.investir_mais.infrastructure.security;
+package com.repositorio.investir_mais.infrastructure;
 
 import java.io.IOException;
 
@@ -18,7 +18,6 @@ import lombok.RequiredArgsConstructor;
 @Component
 @RequiredArgsConstructor
 public class EmailOttHandler implements OneTimeTokenGenerationSuccessHandler {
-
     private final JavaMailSender mailSender;
 
     @Value("${app.public-base-url}")

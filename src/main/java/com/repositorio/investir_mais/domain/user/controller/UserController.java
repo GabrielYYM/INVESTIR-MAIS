@@ -1,27 +1,23 @@
 package com.repositorio.investir_mais.domain.user.controller;
 
+import java.security.Principal;
 import java.util.Map;
 
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.repositorio.investir_mais.domain.user.DTO.LoginRequestDTO;
-import com.repositorio.investir_mais.domain.user.DTO.LoginResponseDTO;
+import com.repositorio.investir_mais.domain.user.DTO.ForgotPasswordRequestDTO;
+import com.repositorio.investir_mais.domain.user.DTO.ResetPasswordRequestDTO;
+import com.repositorio.investir_mais.domain.user.DTO.UpdatePasswordDTO;
 import com.repositorio.investir_mais.domain.user.DTO.UserRequestDTO;
 import com.repositorio.investir_mais.domain.user.DTO.UserResponseDTO;
 import com.repositorio.investir_mais.domain.user.service.UserService;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -29,6 +25,7 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
 public class UserController {
+
     private final UserService userService;
 
     @PostMapping("/register")
@@ -37,25 +34,23 @@ public class UserController {
         return userService.registerUser(dto);
     }
 
-    @PostMapping("/login")
-    @ResponseStatus(HttpStatus.OK)
-    public LoginResponseDTO login(@Valid @RequestBody LoginRequestDTO dto) {
-        return userService.login(dto);
-    }
-
-    @PostMapping("/logout")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void logout(HttpServletRequest request) {
-        HttpSession session = request.getSession(false);
-        if (session != null) {
-            session.invalidate();
-        }
-    }
-
     @PutMapping("/update-password")
-    @ResponseStatus(HttpStatus.OK)
-    public Map<String, String> updatePassword(@AuthenticationPrincipal UserDetails userDetails, @RequestParam String newPassword) {
-        userService.updatePassword(userDetails.getUsername(), newPassword);
+    public Map<String, String> updatePassword(Principal principal, @Valid @RequestBody UpdatePasswordDTO dto) {
+        userService.updatePassword(principal.getName(), dto);
         return Map.of("message", "Senha atualizada com sucesso!");
-}
+    }
+
+    @PostMapping("/forgot-password")
+    @ResponseStatus(HttpStatus.OK)
+    public Map<String, String> forgotPassword(@Valid @RequestBody ForgotPasswordRequestDTO dto) {
+        userService.forgotPassword(dto);
+        return Map.of("message", "Se o e-mail existir na nossa base, um link de recuperação será enviado.");
+    }
+
+    @PostMapping("/reset-password")
+    @ResponseStatus(HttpStatus.OK)
+    public Map<String, String> resetPassword(@Valid @RequestBody ResetPasswordRequestDTO dto) {
+        userService.resetPassword(dto);
+        return Map.of("message", "Senha redefinida com sucesso!");
+    }
 }

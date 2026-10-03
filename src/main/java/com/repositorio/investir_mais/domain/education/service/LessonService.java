@@ -14,6 +14,7 @@ import com.repositorio.investir_mais.domain.education.DTO.LessonResponseDTO;
 import com.repositorio.investir_mais.domain.education.mapper.LessonMapper;
 import com.repositorio.investir_mais.domain.education.model.Course;
 import com.repositorio.investir_mais.domain.education.model.Lesson;
+import com.repositorio.investir_mais.domain.education.repository.CourseRepository;
 import com.repositorio.investir_mais.domain.education.repository.LessonRepository;
 import com.repositorio.investir_mais.domain.user.model.User;
 import com.repositorio.investir_mais.domain.user.service.UserService;
@@ -25,46 +26,54 @@ import lombok.RequiredArgsConstructor;
 @Transactional
 public class LessonService {
 
-    private final LessonRepository lessionRepository;
-    private final CourseService courseService;
-    private final LessonMapper lessionMapper;
+    private final LessonRepository lessonRepository;
+    private final CourseRepository courseRepository;
+    private final LessonMapper lessonMapper;
     private final UserService userService;
 
-    public LessonResponseDTO createLession(UUID courseId, LessonRequestDTO request, String userEmail) {
-        Course course = courseService.findCourseOwnedBy(courseId, userEmail);
+    public LessonResponseDTO createLesson(UUID courseId, LessonRequestDTO request, String userEmail) {
+        User user = userService.findByEmail(userEmail);
+        
+        // Busca a entidade de curso diretamente e valida a autoria/permissão
+        Course course = courseRepository.findById(courseId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Curso não encontrado."));
 
-        Lesson lession = lessionMapper.toEntity(request);
-        lession.setCourse(course);
+        if (!course.getProfessor().getId().equals(user.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não tem permissão para adicionar aulas neste curso.");
+        }
 
-        return lessionMapper.toResponseDTO(lessionRepository.save(lession));
+        Lesson lesson = lessonMapper.toEntity(request);
+        lesson.setCourse(course); // Vincula o curso à aula
+
+        return lessonMapper.toDTO(lessonRepository.save(lesson));
     }
 
     @Transactional(readOnly = true)
-    public LessonResponseDTO getLessionById(UUID lessionId) {
-        return lessionRepository.findById(lessionId)
-            .map(lessionMapper::toResponseDTO)
+    public LessonResponseDTO getLessonById(UUID lessonId) {
+        return lessonRepository.findById(lessonId)
+            .map(lessonMapper::toDTO)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Aula não encontrada."));
     }
 
     @Transactional(readOnly = true)
-    public Page<LessonResponseDTO> getLessionsByCourseId(UUID courseId, Pageable pageable) {
-        return lessionRepository.findAllByCourseId(courseId, pageable)
-            .map(lessionMapper::toResponseDTO);
+    public Page<LessonResponseDTO> getLessonsByCourseId(UUID courseId, Pageable pageable) {
+        return lessonRepository.findAllByCourseId(courseId, pageable)
+            .map(lessonMapper::toDTO);
     }
 
-    public LessonResponseDTO updateLession(UUID lessionId, LessonRequestDTO request, String userEmail) {
-        Lesson lession = findLessionOwnedBy(lessionId, userEmail);
-        lessionMapper.updateEntity(request, lession);
-        return lessionMapper.toResponseDTO(lessionRepository.save(lession));
+    public LessonResponseDTO updateLesson(UUID lessonId, LessonRequestDTO request, String userEmail) {
+        Lesson lesson = findLessonOwnedBy(lessonId, userEmail);
+        lessonMapper.updateEntity(request, lesson);
+        return lessonMapper.toDTO(lessonRepository.save(lesson));
     }
 
-    public void deleteLession(UUID lessionId, String userEmail) {
-        lessionRepository.delete(findLessionOwnedBy(lessionId, userEmail));
+    public void deleteLesson(UUID lessonId, String userEmail) {
+        lessonRepository.delete(findLessonOwnedBy(lessonId, userEmail));
     }
 
-    private Lesson findLessionOwnedBy(UUID lessionId, String userEmail) {
+    public Lesson findLessonOwnedBy(UUID lessonId, String userEmail) {
         User professor = userService.findByEmail(userEmail);
-        return lessionRepository.findByIdAndCourseProfessorId(lessionId, professor.getId())
+        return lessonRepository.findByIdAndCourse_Professor_Id(lessonId, professor.getId())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Aula não encontrada ou sem permissão."));
     }
 }

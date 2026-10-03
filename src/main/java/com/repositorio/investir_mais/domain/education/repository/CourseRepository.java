@@ -12,5 +12,5 @@ import com.repositorio.investir_mais.domain.education.model.Course;
 public interface CourseRepository extends JpaRepository<Course, UUID> {
     Page<Course> findAllByProfessorId(UUID professorId, Pageable pageable);
 
-    Optional<Course> findByIdAndProfessorId(UUID id, UUID professorId);
+    Optional<Course> findByIdAndProfessorId(UUID courseId, UUID professorId);
 }

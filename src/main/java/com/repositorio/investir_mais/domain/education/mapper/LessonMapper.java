@@ -19,7 +19,7 @@ public interface LessonMapper {
     Lesson toEntity(LessonRequestDTO request);
 
     @Mapping(target = "courseId", source = "course.id")
-    LessonResponseDTO toResponseDTO(Lesson lesson);
+    LessonResponseDTO toDTO(Lesson lesson);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "id", ignore = true)

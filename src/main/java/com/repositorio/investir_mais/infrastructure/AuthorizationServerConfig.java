@@ -1,4 +1,4 @@
-package com.repositorio.investir_mais.infrastructure.security;
+package com.repositorio.investir_mais.infrastructure;
 
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;

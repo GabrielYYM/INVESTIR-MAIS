@@ -26,48 +26,48 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/lessions")
+@RequestMapping("/api/lessons")
 @RequiredArgsConstructor
 public class LessonController {
-    private final LessonService lessionService;
+    private final LessonService lessonService;
 
     @PostMapping("/course/{courseId}")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
-    public LessonResponseDTO createLession(
+    public LessonResponseDTO createLesson(
             @PathVariable UUID courseId,
             @Valid @RequestBody LessonRequestDTO dto,
             Principal principal) {
-        return lessionService.createLession(courseId, dto, principal.getName());
+        return lessonService.createLesson(courseId, dto, principal.getName());
     }
 
     @GetMapping("/course/{courseId}")
-    public Page<LessonResponseDTO> getLessionsByCourse(
+    public Page<LessonResponseDTO> getLessonsByCourse(
             @PathVariable UUID courseId,
             @PageableDefault(size = 20) Pageable pageable) {
-        return lessionService.getLessionsByCourseId(courseId, pageable);
+        return lessonService.getLessonsByCourseId(courseId, pageable);
     }
 
-    @GetMapping("/{lessionId}")
-    public LessonResponseDTO getLessionById(@PathVariable UUID lessionId) {
-        return lessionService.getLessionById(lessionId);
+    @GetMapping("/{lessonId}")
+    public LessonResponseDTO getLessonById(@PathVariable UUID lessonId) {
+        return lessonService.getLessonById(lessonId);
     }
 
-    @PutMapping("/{lessionId}")
+    @PutMapping("/{lessonId}")
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
-    public LessonResponseDTO updateLession(
-            @PathVariable UUID lessionId,
+    public LessonResponseDTO updateLesson(
+            @PathVariable UUID lessonId,
             @Valid @RequestBody LessonRequestDTO dto,
             Principal principal) {
-        return lessionService.updateLession(lessionId, dto, principal.getName());
+        return lessonService.updateLesson(lessonId, dto, principal.getName());
     }
 
-    @DeleteMapping("/{lessionId}")
+    @DeleteMapping("/{lessonId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
-    public void deleteLession(
-            @PathVariable UUID lessionId,
+    public void deleteLesson(
+            @PathVariable UUID lessonId,
             Principal principal) {
-        lessionService.deleteLession(lessionId, principal.getName());
+        lessonService.deleteLesson(lessonId, principal.getName());
     }
 }

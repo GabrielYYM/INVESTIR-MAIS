@@ -6,6 +6,5 @@ public record CourseResponseDTO(
     UUID id,
     String name,
     String description,
-    String professorId
-) {   
+    UUID professorId) {
 }

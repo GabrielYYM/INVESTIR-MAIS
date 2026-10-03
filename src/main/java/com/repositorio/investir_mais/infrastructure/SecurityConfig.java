@@ -1,4 +1,4 @@
-package com.repositorio.investir_mais.infrastructure.security;
+package com.repositorio.investir_mais.infrastructure;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -6,6 +6,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.security.authentication.ott.InMemoryOneTimeTokenService;
 import org.springframework.security.authentication.ott.OneTimeTokenService;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.core.userdetails.User;
@@ -16,11 +17,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 import com.repositorio.investir_mais.domain.user.repository.UserRepository;
-
 import jakarta.servlet.http.HttpServletResponse;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
 
     @Bean
@@ -32,11 +33,10 @@ public class SecurityConfig {
                 throw new UsernameNotFoundException("Usuário não encontrado.");
             }
 
-            return User
-                    .withUsername(user.getUserSecurity().getEmail())
-                    .password(user.getUserSecurity().getPassword())
-                    .roles(user.getUserSecurity().getRole().name())
-                    .build();
+            return User.withUsername(user.getUserSecurity().getEmail())
+                .password(user.getUserSecurity().getPassword())
+                .roles(user.getUserSecurity().getRole().name())
+                .build();
         };
     }
 
@@ -58,11 +58,15 @@ public class SecurityConfig {
             UserRepository userRepository) throws Exception {
 
         http
-            .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**", "/h2-console/**", "/ott/generate"))
+            .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**", "/h2-console/**", "/ott/generate", "/login/ott"))
             .headers(headers -> headers.frameOptions(frame -> frame.disable()))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
                     "/api/users/register",
+                    "/api/users/forgot-password",
+                    "/api/users/reset-password",
+                    "/ott/**",
+                    "/login/ott",
                     "/swagger-ui/**",
                     "/v3/api-docs/**",
                     "/h2-console/**"
