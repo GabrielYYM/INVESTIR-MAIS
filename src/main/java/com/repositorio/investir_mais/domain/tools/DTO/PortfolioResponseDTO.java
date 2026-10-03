@@ -6,5 +6,5 @@ import java.util.UUID;
 public record PortfolioResponseDTO(
     UUID id,
     UUID userId,
-    List<UUID> categoryId
+    List<UUID> assetIds
 ) {}

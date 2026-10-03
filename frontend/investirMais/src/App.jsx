@@ -23,15 +23,15 @@ export default function App() {
       const cats = await getCategorias();
       setCategorias(cats);
 
-      // Carrega perguntas de todas as categorias em paralelo
+      // Carrega perguntas de todos os tipos de ativo em paralelo
       const resultados = await Promise.all(
         cats.map((cat) =>
-          getQuestoesPorCategoria(cat.id).catch(() => [])
+          getQuestoesPorCategoria(cat.role).catch(() => [])
         )
       );
-      // Achata e injeta categoryId em cada pergunta
+      // Junta as perguntas por papel do ativo
       const todasPerguntas = cats.flatMap((cat, i) =>
-        resultados[i].map((q) => ({ ...q, categoryId: cat.id }))
+        resultados[i].map((q) => ({ ...q, role: cat.role }))
       );
       setQuestions(todasPerguntas);
     } catch (err) {

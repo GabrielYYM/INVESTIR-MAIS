@@ -31,7 +31,7 @@ public class PortfolioService {
     }
 
     public PortfolioResponseDTO findByUserId(UUID userId) {
-        return portfolioRepository.findByUserId(userId)
+        return portfolioRepository.findByUserId_Id(userId)
             .map(portfolioMapper::toDto)
             .orElseThrow(() -> new EntityNotFoundException("Portfolio não encontrado para o usuário: " + userId));
     }

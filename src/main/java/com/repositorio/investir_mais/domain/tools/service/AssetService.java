@@ -5,12 +5,15 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.repositorio.investir_mais.domain.tools.DTO.AssetRequestDTO;
 import com.repositorio.investir_mais.domain.tools.DTO.AssetResponseDTO;
 import com.repositorio.investir_mais.domain.tools.mapper.AssetMapper;
 import com.repositorio.investir_mais.domain.tools.model.Asset;
+import com.repositorio.investir_mais.domain.tools.model.enums.AssetRole;
 import com.repositorio.investir_mais.domain.tools.repository.AssetRepository;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -38,6 +41,9 @@ public class AssetService {
     }
 
     public AssetResponseDTO createAsset(AssetRequestDTO request) {
+        if (request.role() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O tipo do ativo é obrigatório.");
+        }
         Asset asset = assetMapper.toEntity(request);
         return assetMapper.toDTO(assetRepository.save(asset));
     }
@@ -80,8 +86,8 @@ public class AssetService {
             .body(String.class);
     }
 
-    public List<AssetResponseDTO> listAssetsByCategory(UUID categoryId) {
-        return assetRepository.findByCategoryId(categoryId)
+    public List<AssetResponseDTO> listAssetsByRole(AssetRole role) {
+        return assetRepository.findByRole(role)
             .stream()
             .map(assetMapper::toDTO)
             .toList();

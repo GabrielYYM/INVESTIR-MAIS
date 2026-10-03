@@ -17,7 +17,7 @@ export default function QuestionsManager({
 
   // Usa a primeira categoria disponível para criar perguntas
   // (pode ser expandido para o usuário escolher a categoria)
-  const defaultCategoryId = categorias[0]?.id ?? null;
+  const defaultRole = categorias[0]?.role ?? null;
 
   const handleOpenCreate = () => {
     setEditingQuestion(null);
@@ -48,12 +48,12 @@ export default function QuestionsManager({
       if (editingQuestion) {
         await atualizarQuestao(editingQuestion.id, formData.text);
       } else {
-        const catId = formData.categoryId ?? defaultCategoryId;
-        if (!catId) {
-          alert("Nenhuma categoria encontrada. Adicione um ativo primeiro para criar categorias.");
+        const role = formData.role ?? defaultRole;
+        if (!role) {
+          alert("Nenhum tipo de ativo disponível.");
           return;
         }
-        await criarQuestao(catId, formData.text);
+        await criarQuestao(role, formData.text);
       }
       await onDadosChange?.();
       setIsFormOpen(false);

@@ -16,20 +16,17 @@ apiClient.interceptors.request.use((config) => {
 });
 
 // ────────────────────────────────────────────────
-// Mapeamento de tipo do frontend → nome da categoria no backend
-// ────────────────────────────────────────────────
-const TIPO_PARA_CATEGORIA = {
-  "Ações nacionais": "AÇÃO NACIONAL",
-  "Fundos Imobiliarios": "FUNDOS IMOBILIÁRIOS NACIONAL",
-  "Ações internacionais": "AÇÃO INTERNACIONAL",
-  "Renda Fixa Nacional": "RENDA FIXA NACIONAL",
-  "Criptomoeda": "CRIPTOMOEDA",
-  "Renda Fixa Internacional": "RENDA FIXA INTERNACIONAL",
+const ROLES = ["AÇÕES", "RENDA_FIXA", "CRIPTOMOEDAS", "FUNDOS_IMOBILIARIOS", "INTERNACIONAL"];
+const TIPO_PARA_ROLE = {
+  "Ações nacionais": "AÇÕES", "Ações internacionais": "INTERNACIONAL",
+  "Fundos Imobiliarios": "FUNDOS_IMOBILIARIOS", "Renda Fixa Nacional": "RENDA_FIXA",
+  "Renda Fixa Internacional": "RENDA_FIXA", "Criptomoeda": "CRIPTOMOEDAS",
 };
-
-const CATEGORIA_PARA_TIPO = Object.fromEntries(
-  Object.entries(TIPO_PARA_CATEGORIA).map(([k, v]) => [v, k])
-);
+const ROLE_PARA_TIPO = {
+  "AÇÕES": "Ações nacionais", RENDA_FIXA: "Renda Fixa Nacional",
+  CRIPTOMOEDAS: "Criptomoeda", FUNDOS_IMOBILIARIOS: "Fundos Imobiliarios",
+  INTERNACIONAL: "Ações internacionais",
+};
 
 // ────────────────────────────────────────────────
 // CATEGORIAS
@@ -37,8 +34,10 @@ const CATEGORIA_PARA_TIPO = Object.fromEntries(
 
 /** Retorna todas as categorias da carteira do usuário */
 export async function getCategorias() {
-  const { data } = await apiClient.get("/api/assets/categories");
-  return data; // [{ id, name, targetPercentage, assets }]
+  return Promise.all(ROLES.map(async (role) => {
+    const { data } = await apiClient.get(`/api/assets/roles/${encodeURIComponent(role)}`);
+    return { id: role, role, name: ROLE_PARA_TIPO[role], assets: data };
+  }));
 }
 
 /** Busca a categoria pelo nome. Retorna o objeto ou null. */
@@ -67,8 +66,8 @@ export async function getAtivosDoUsuario() {
       precoMedio: Number(a.averagePrice ?? 0),
       valorAtual: Number(a.currentPositionValue ?? 0),
       percentual: 0, // calculado abaixo
-      tipo: CATEGORIA_PARA_TIPO[cat.name] ?? cat.name,
-      categoryId: cat.id,
+      tipo: ROLE_PARA_TIPO[cat.role],
+      role: cat.role,
     }))
   );
 
@@ -81,16 +80,11 @@ export async function getAtivosDoUsuario() {
 
 /**
  * Adiciona um ativo enviando para o backend real.
- * Descobre automaticamente o categoryId pelo tipo do ativo.
+ * Usa o papel do ativo selecionado como classificação.
  */
 export async function adicionarAtivo(novoAtivo) {
-  // Encontra a categoria correspondente ao tipo
-  const nomeCat = TIPO_PARA_CATEGORIA[novoAtivo.tipo] ?? novoAtivo.tipo;
-  const categoria = await getCategoriaByNome(nomeCat);
-
-  if (!categoria) {
-    throw new Error(`Categoria "${nomeCat}" não encontrada no backend.`);
-  }
+  const role = TIPO_PARA_ROLE[novoAtivo.tipo] ?? novoAtivo.role;
+  if (!role) throw new Error("Tipo de ativo inválido.");
 
   const payload = {
     ticker: novoAtivo.ticker,
@@ -98,12 +92,10 @@ export async function adicionarAtivo(novoAtivo) {
     quantity: novoAtivo.quantity ?? novoAtivo.quantidade ?? 0,
     averagePrice: novoAtivo.averagePrice ?? novoAtivo.precoMedio ?? 0,
     rawScore: novoAtivo.rawScore ?? null,
+    role,
   };
 
-  const { data } = await apiClient.post(
-    `/api/assets/categories/${categoria.id}/assets`,
-    payload
-  );
+  const { data } = await apiClient.post("/api/assets", payload);
 
   return {
     id: data.id,
@@ -112,7 +104,7 @@ export async function adicionarAtivo(novoAtivo) {
     precoMedio: Number(data.averagePrice ?? 0),
     valorAtual: Number(data.currentPositionValue ?? 0),
     tipo: novoAtivo.tipo,
-    categoryId: categoria.id,
+    role,
   };
 }
 

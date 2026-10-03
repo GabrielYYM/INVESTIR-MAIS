@@ -2,7 +2,6 @@ package com.repositorio.investir_mais.infrastructure;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -11,54 +10,39 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 import com.repositorio.investir_mais.domain.tools.model.Asset;
-import com.repositorio.investir_mais.domain.tools.model.Category;
 import com.repositorio.investir_mais.domain.tools.model.Portfolio;
+import com.repositorio.investir_mais.domain.tools.model.enums.AssetRole;
 
 @Component
 public class PortfolioRebalanceEngine {
 
-    public Map<String, Object> rebalance(Portfolio portfolio, BigDecimal totalCurrentValue, BigDecimal aporteAmount, Map<UUID, BigDecimal> categoryTargets) {
+    public Map<String, Object> rebalance(Portfolio portfolio, BigDecimal totalCurrentValue, BigDecimal aporteAmount, Map<AssetRole, BigDecimal> roleTargets) {
         BigDecimal newTotalValue = totalCurrentValue.add(aporteAmount);
         Map<UUID, BigDecimal> targetPercentageMap = new HashMap<>();
         Map<UUID, BigDecimal> gaps = new HashMap<>();
+        List<Asset> assets = portfolio.getAssets() != null ? portfolio.getAssets() : List.of();
+        Map<AssetRole, List<Asset>> assetsByRole = assets.stream()
+            .filter(asset -> asset.getRole() != null)
+            .collect(java.util.stream.Collectors.groupingBy(Asset::getRole));
 
-        List<Category> categories = portfolio.getListCategory() != null ? portfolio.getListCategory() : Collections.emptyList();
-
-        for (Category category : categories) {
-            BigDecimal categoryTarget = categoryTargets.getOrDefault(category.getId(), BigDecimal.ZERO);
-            List<Asset> assets = category.getListAssets() != null ? category.getListAssets() : Collections.emptyList();
-
-            int totalScore = assets.stream()
-                .mapToInt(Asset::getRawScore)
-                .filter(s -> s > 0)
-                .sum();
-
-            for (Asset asset : assets) {
+        for (Map.Entry<AssetRole, List<Asset>> entry : assetsByRole.entrySet()) {
+            BigDecimal roleTarget = roleTargets.getOrDefault(entry.getKey(), BigDecimal.ZERO);
+            int totalScore = entry.getValue().stream().mapToInt(Asset::getRawScore).filter(score -> score > 0).sum();
+            for (Asset asset : entry.getValue()) {
                 BigDecimal targetPercent = BigDecimal.ZERO;
-
-                if (categoryTarget.compareTo(BigDecimal.ZERO) > 0 && asset.getRawScore() > 0 && totalScore > 0) {
-                    targetPercent = categoryTarget.multiply(new BigDecimal(asset.getRawScore()))
-                        .divide(new BigDecimal(totalScore), 4, RoundingMode.HALF_UP);
+                if (roleTarget.signum() > 0 && asset.getRawScore() > 0 && totalScore > 0) {
+                    targetPercent = roleTarget.multiply(BigDecimal.valueOf(asset.getRawScore()))
+                        .divide(BigDecimal.valueOf(totalScore), 4, RoundingMode.HALF_UP);
                 }
-
                 targetPercentageMap.put(asset.getId(), targetPercent);
-
-                BigDecimal targetVal = newTotalValue.multiply(targetPercent)
-                    .divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
-                
-                BigDecimal currentPosition = asset.getCurrentPositionValue() != null ? asset.getCurrentPositionValue() : BigDecimal.ZERO;
-                BigDecimal gap = targetVal.subtract(currentPosition);
-
-                if (gap.compareTo(BigDecimal.ZERO) > 0) {
-                    gaps.put(asset.getId(), gap);
-                } else {
-                    gaps.put(asset.getId(), BigDecimal.ZERO);
-                }
+                BigDecimal targetValue = newTotalValue.multiply(targetPercent)
+                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+                BigDecimal currentValue = asset.getCurrentPositionValue() != null ? asset.getCurrentPositionValue() : BigDecimal.ZERO;
+                gaps.put(asset.getId(), targetValue.subtract(currentValue).max(BigDecimal.ZERO));
             }
         }
 
-        List<Asset> sortedAssets = categories.stream()
-            .flatMap(c -> (c.getListAssets() != null ? c.getListAssets() : Collections.<Asset>emptyList()).stream())
+        List<Asset> sortedAssets = assets.stream()
             .sorted((a1, a2) -> {
                 BigDecimal g1 = gaps.getOrDefault(a1.getId(), BigDecimal.ZERO);
                 BigDecimal g2 = gaps.getOrDefault(a2.getId(), BigDecimal.ZERO);
@@ -83,12 +67,11 @@ public class PortfolioRebalanceEngine {
 
         return Map.of(
             "totalValue", newTotalValue.setScale(2, RoundingMode.HALF_UP),
-            "categories", categories.stream().map(cat -> {
-                List<Asset> assets = cat.getListAssets() != null ? cat.getListAssets() : Collections.emptyList();
+            "roles", assetsByRole.entrySet().stream().map(entry -> {
+                List<Asset> roleAssets = entry.getValue();
                 return Map.of(
-                    "id", cat.getId(),
-                    "name", cat.getName() != null ? cat.getName() : "",
-                    "assets", assets.stream().map(asset -> {
+                    "role", entry.getKey().name(),
+                    "assets", roleAssets.stream().map(asset -> {
                         BigDecimal aporte = aportes.getOrDefault(asset.getId(), BigDecimal.ZERO);
                         String action = aporte.compareTo(BigDecimal.ZERO) > 0 ? "COMPRAR" : "AGUARDAR";
 

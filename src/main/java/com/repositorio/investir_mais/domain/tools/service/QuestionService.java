@@ -12,8 +12,8 @@ import org.springframework.web.server.ResponseStatusException;
 import com.repositorio.investir_mais.domain.tools.DTO.QuestionRequestDTO;
 import com.repositorio.investir_mais.domain.tools.DTO.QuestionResponseDTO;
 import com.repositorio.investir_mais.domain.tools.mapper.QuestionMapper;
-import com.repositorio.investir_mais.domain.tools.model.Category;
 import com.repositorio.investir_mais.domain.tools.model.Question;
+import com.repositorio.investir_mais.domain.tools.model.enums.AssetRole;
 import com.repositorio.investir_mais.domain.tools.repository.QuestionRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -26,8 +26,8 @@ public class QuestionService {
     private final QuestionMapper questionMapper;
 
     @Transactional(readOnly = true)
-    public Page<QuestionResponseDTO> getQuestionsByCategoryId(UUID categoryId, Pageable pageable) {
-        return questionRepository.findByCategoryId(categoryId, pageable)
+    public Page<QuestionResponseDTO> getQuestionsByRole(AssetRole role, Pageable pageable) {
+        return questionRepository.findByRole(role, pageable)
             .map(questionMapper::toResponseDTO);
     }
 
@@ -38,7 +38,10 @@ public class QuestionService {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Questão não encontrada com o ID: " + questionId));
     }
 
-    public QuestionResponseDTO createQuestion(UUID categoryId, QuestionRequestDTO request) {
+    public QuestionResponseDTO createQuestion(QuestionRequestDTO request) {
+        if (request.role() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O tipo de ativo é obrigatório.");
+        }
         Question question = questionMapper.toEntity(request);
 
         return questionMapper.toResponseDTO(questionRepository.save(question));

@@ -3,11 +3,15 @@ package com.repositorio.investir_mais.domain.tools.model;
 import java.math.BigDecimal;
 import java.util.UUID;
 
+import com.repositorio.investir_mais.domain.tools.model.enums.AssetRole;
+
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -37,7 +41,10 @@ public class Asset {
 
     private boolean isPositive;
 
+    @Enumerated(EnumType.STRING)
+    private AssetRole role;
+
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "category_id")
-    private Category category;
+    @JoinColumn(name = "portfolio_id")
+    private Portfolio portfolio;
 }

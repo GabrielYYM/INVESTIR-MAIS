@@ -2,6 +2,7 @@ package com.repositorio.investir_mais.domain.tools.controller;
 
 import java.util.List;
 import java.util.UUID;
+import com.repositorio.investir_mais.domain.tools.model.enums.AssetRole;
 
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,7 +21,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/asset")
+@RequestMapping("/api/assets")
 @RequiredArgsConstructor
 public class AssetController {
     private final AssetService assetService;
@@ -28,6 +29,11 @@ public class AssetController {
     @GetMapping
     public List<AssetResponseDTO> listAllAssets() {
         return assetService.listAllAssets();
+    }
+
+    @GetMapping("/roles/{role}")
+    public List<AssetResponseDTO> listByRole(@PathVariable AssetRole role) {
+        return assetService.listAssetsByRole(role);
     }
 
     @PostMapping

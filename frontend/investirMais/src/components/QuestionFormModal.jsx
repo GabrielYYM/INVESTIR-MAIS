@@ -6,14 +6,15 @@ export default function QuestionFormModal({
   onClose,
   onSave,
   initialData,
+  categorias = [],
 }) {
-  const [formData, setFormData] = useState({ text: "" });
+  const [formData, setFormData] = useState({ text: "", role: "" });
 
   useEffect(() => {
     if (initialData) {
       setFormData(initialData);
     } else {
-      setFormData({ text: "" });
+      setFormData({ text: "", role: categorias[0]?.role ?? "" });
     }
   }, [initialData, isOpen]);
 
@@ -50,6 +51,25 @@ export default function QuestionFormModal({
             className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-sm text-zinc-200 placeholder:text-zinc-600 outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/30 transition-colors resize-none"
           />
         </div>
+
+        {!initialData && (
+          <div>
+            <label htmlFor="question-role" className="block text-zinc-400 mb-2 text-sm">
+              Tipo de ativo
+            </label>
+            <select
+              id="question-role"
+              required
+              value={formData.role ?? ""}
+              onChange={(e) => setFormData((prev) => ({ ...prev, role: e.target.value }))}
+              className="w-full rounded-xl bg-[#211f2d] border border-white/10 px-4 py-3 text-sm text-zinc-200"
+            >
+              {categorias.map((item) => (
+                <option key={item.role} value={item.role}>{item.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div className="flex justify-end gap-3 pt-2">
           <button

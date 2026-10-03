@@ -1,23 +1,23 @@
 import apiClient from "./carteiraService";
 
 /**
- * Busca as perguntas de uma categoria específica do backend.
- * @param {string} categoryId - UUID da categoria
+ * Busca as perguntas associadas a um tipo de ativo.
+ * @param {string} role - Tipo de ativo
  */
-export async function getQuestoesPorCategoria(categoryId) {
-  const { data } = await apiClient.get(`/api/questions/categories/${categoryId}`);
+export async function getQuestoesPorCategoria(role) {
+  const { data } = await apiClient.get(`/api/questions/roles/${encodeURIComponent(role)}`);
   // Normaliza para o formato usado pelo frontend: { id, text }
-  return data.map((q) => ({ id: q.id, text: q.text }));
+  return (data.content ?? data).map((q) => ({ id: q.id, text: q.text, role: q.role }));
 }
 
 /**
- * Cria uma nova pergunta vinculada a uma categoria.
- * @param {string} categoryId - UUID da categoria
+ * Cria uma pergunta associada a um tipo de ativo.
+ * @param {string} role - Tipo de ativo
  * @param {string} text - Texto da pergunta
  */
-export async function criarQuestao(categoryId, text) {
-  const { data } = await apiClient.post(`/api/questions/categories/${categoryId}`, { text });
-  return { id: data.id, text: data.text };
+export async function criarQuestao(role, text) {
+  const { data } = await apiClient.post("/api/questions", { text, role });
+  return { id: data.id, text: data.text, role: data.role };
 }
 
 /**
@@ -27,7 +27,7 @@ export async function criarQuestao(categoryId, text) {
  */
 export async function atualizarQuestao(questionId, text) {
   const { data } = await apiClient.put(`/api/questions/${questionId}`, { text });
-  return { id: data.id, text: data.text };
+  return { id: data.id, text: data.text, role: data.role };
 }
 
 /**
