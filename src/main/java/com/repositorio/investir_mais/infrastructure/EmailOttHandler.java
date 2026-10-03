@@ -39,6 +39,14 @@ public class EmailOttHandler implements OneTimeTokenGenerationSuccessHandler {
         mailSender.send(mail);
     }
 
+    public void sendTwoFactorCode(String email, String tokenValue) {
+        SimpleMailMessage mail = new SimpleMailMessage();
+        mail.setTo(email);
+        mail.setSubject("Código de verificação - Investir Mais");
+        mail.setText("Seu código de acesso é: " + tokenValue + "\nEle expira em 5 minutos.");
+        mailSender.send(mail);
+    }
+
     @Override
     public void handle(
             HttpServletRequest request,

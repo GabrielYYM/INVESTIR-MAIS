@@ -2,6 +2,9 @@ package com.repositorio.investir_mais.domain.user.controller;
 
 import java.security.Principal;
 import java.util.Map;
+import java.util.UUID;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -15,6 +18,7 @@ import com.repositorio.investir_mais.domain.user.DTO.ForgotPasswordRequestDTO;
 import com.repositorio.investir_mais.domain.user.DTO.ResetPasswordRequestDTO;
 import com.repositorio.investir_mais.domain.user.DTO.UpdatePasswordDTO;
 import com.repositorio.investir_mais.domain.user.DTO.UserRequestDTO;
+import com.repositorio.investir_mais.domain.user.DTO.UserProfileUpdateDTO;
 import com.repositorio.investir_mais.domain.user.DTO.UserResponseDTO;
 import com.repositorio.investir_mais.domain.user.service.UserService;
 
@@ -28,10 +32,21 @@ public class UserController {
 
     private final UserService userService;
 
-    @PostMapping("/register")
+    @PostMapping({"", "/register"})
     @ResponseStatus(HttpStatus.CREATED)
     public UserResponseDTO registerUser(@Valid @RequestBody UserRequestDTO dto) {
         return userService.registerUser(dto);
+    }
+
+    @GetMapping("/{id}")
+    public UserResponseDTO getProfile(Principal principal, @PathVariable UUID id) {
+        return userService.getProfile(principal.getName(), id);
+    }
+
+    @PutMapping("/{id}")
+    public UserResponseDTO updateProfile(Principal principal, @PathVariable UUID id,
+            @Valid @RequestBody UserProfileUpdateDTO dto) {
+        return userService.updateProfile(principal.getName(), id, dto);
     }
 
     @PutMapping("/update-password")

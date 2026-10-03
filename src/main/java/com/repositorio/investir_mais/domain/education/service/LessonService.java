@@ -34,7 +34,6 @@ public class LessonService {
     public LessonResponseDTO createLesson(UUID courseId, LessonRequestDTO request, String userEmail) {
         User user = userService.findByEmail(userEmail);
         
-        // Busca a entidade de curso diretamente e valida a autoria/permissão
         Course course = courseRepository.findById(courseId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Curso não encontrado."));
 
@@ -43,7 +42,7 @@ public class LessonService {
         }
 
         Lesson lesson = lessonMapper.toEntity(request);
-        lesson.setCourse(course); // Vincula o curso à aula
+        lesson.setCourse(course);
 
         return lessonMapper.toDTO(lessonRepository.save(lesson));
     }

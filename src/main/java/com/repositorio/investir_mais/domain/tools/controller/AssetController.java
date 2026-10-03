@@ -1,7 +1,8 @@
 package com.repositorio.investir_mais.domain.tools.controller;
 
-import java.util.List;
 import java.util.UUID;
+import java.util.List;
+import java.security.Principal;
 import com.repositorio.investir_mais.domain.tools.model.enums.AssetRole;
 
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -27,33 +28,39 @@ public class AssetController {
     private final AssetService assetService;
 
     @GetMapping
-    public List<AssetResponseDTO> listAllAssets() {
-        return assetService.listAllAssets();
+    public List<AssetResponseDTO> listAllAssets(Principal principal) {
+        return principal == null ? assetService.listAllAssets() : assetService.listAllAssets(principal.getName());
     }
 
     @GetMapping("/roles/{role}")
-    public List<AssetResponseDTO> listByRole(@PathVariable AssetRole role) {
-        return assetService.listAssetsByRole(role);
+    public List<AssetResponseDTO> listByRole(@PathVariable AssetRole role, Principal principal) {
+        return principal == null ? assetService.listAssetsByRole(role)
+            : assetService.listAssetsByRole(principal.getName(), role);
     }
 
     @PostMapping
-    public AssetResponseDTO createAsset(@Valid @RequestBody AssetRequestDTO request) {
-        return assetService.createAsset(request);
+    public AssetResponseDTO createAsset(@Valid @RequestBody AssetRequestDTO request, Principal principal) {
+        return principal == null ? assetService.createAsset(request)
+            : assetService.createAsset(principal.getName(), request);
     }
 
     @PutMapping("/{id}")
-    public AssetResponseDTO updateAsset(@PathVariable UUID id, @Valid @RequestBody AssetRequestDTO request) {
-        return assetService.updateAsset(id, request);
+    public AssetResponseDTO updateAsset(@PathVariable UUID id, @Valid @RequestBody AssetRequestDTO request,
+            Principal principal) {
+        return principal == null ? assetService.updateAsset(id, request)
+            : assetService.updateAsset(principal.getName(), id, request);
     }
 
     @DeleteMapping("/{id}")
-    public void deleteAsset(@PathVariable UUID id) {
-    assetService.deleteAsset(id);
+    public void deleteAsset(@PathVariable UUID id, Principal principal) {
+        if (principal == null) assetService.deleteAsset(id);
+        else assetService.deleteAsset(principal.getName(), id);
     }
 
     @GetMapping("/quotes")
-    public String getQuotesForAllAssets() {
-        return assetService.getQuotesForAllAssets();
+    public String getQuotesForAllAssets(Principal principal) {
+        return principal == null ? assetService.getQuotesForAllAssets()
+            : assetService.getQuotesForAllAssets(principal.getName());
     }
 
     @GetMapping("/quote/{ticker}")

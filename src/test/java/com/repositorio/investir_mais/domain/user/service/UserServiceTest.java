@@ -68,7 +68,7 @@ class UserServiceTest {
     }
 
     @Test
-    void findByEmail_QuandoExiste_DeveRetornarUsuario() {
+    void findByEmail_WhenUserExists_ShouldReturnUser() {
         when(userRepository.findByUserSecurityEmail("felipe@investir.com")).thenReturn(user);
 
         User result = userService.findByEmail("felipe@investir.com");
@@ -78,7 +78,7 @@ class UserServiceTest {
     }
 
     @Test
-    void findByEmail_QuandoNaoExiste_DeveLancarNotFound() {
+    void findByEmail_WhenUserDoesNotExist_ShouldThrowNotFound() {
         when(userRepository.findByUserSecurityEmail("inexistente@investir.com")).thenReturn(null);
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class, 
@@ -88,7 +88,7 @@ class UserServiceTest {
     }
 
     @Test
-    void registerUser_QuandoPerfilForAdmin_DeveLancarBadRequest() {
+    void registerUser_WhenRoleIsAdmin_ShouldThrowBadRequest() {
         UserRequestDTO dto = new UserRequestDTO("Admin", 30, "admin@investir.com", "password123", UserRole.ADMIN);
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class, 
@@ -99,7 +99,7 @@ class UserServiceTest {
     }
 
     @Test
-    void registerUser_ComSucesso_DeveSalvarEEnviarOtt() {
+    void registerUser_OnSuccess_ShouldSaveAndSendOtt() {
         UserRequestDTO dto = new UserRequestDTO("Felipe", 22, "felipe@investir.com", "password123", UserRole.STUDENT);
         UserResponseDTO responseDTO = new UserResponseDTO(
             UUID.randomUUID(), 
@@ -127,7 +127,7 @@ class UserServiceTest {
     }
 
     @Test
-    void updatePassword_QuandoSenhaAtualInvalida_DeveLancarUnauthorized() {
+    void updatePassword_WhenCurrentPasswordIsInvalid_ShouldThrowUnauthorized() {
         UpdatePasswordDTO dto = new UpdatePasswordDTO("senhaIncorreta", "novaSenha123");
         when(userRepository.findByUserSecurityEmail("felipe@investir.com")).thenReturn(user);
         when(passwordEncoder.matches("senhaIncorreta", "encoded_password")).thenReturn(false);
@@ -139,7 +139,7 @@ class UserServiceTest {
     }
 
     @Test
-    void updatePassword_ComSucesso_DeveAtualizarEGuardar() {
+    void updatePassword_OnSuccess_ShouldUpdateAndSave() {
         UpdatePasswordDTO dto = new UpdatePasswordDTO("encoded_password", "novaSenha123");
         when(userRepository.findByUserSecurityEmail("felipe@investir.com")).thenReturn(user);
         when(passwordEncoder.matches("encoded_password", "encoded_password")).thenReturn(true);
@@ -152,7 +152,7 @@ class UserServiceTest {
     }
 
     @Test
-    void forgotPassword_QuandoUsuarioNaoExiste_NaoDeveEnviarEmail() {
+    void forgotPassword_WhenUserDoesNotExist_ShouldNotSendEmail() {
         ForgotPasswordRequestDTO dto = new ForgotPasswordRequestDTO("inexistente@investir.com");
         when(userRepository.findByUserSecurityEmail("inexistente@investir.com")).thenReturn(null);
 
@@ -162,7 +162,7 @@ class UserServiceTest {
     }
 
     @Test
-    void forgotPassword_QuandoUsuarioExiste_DeveGerarEEnviarOtt() {
+    void forgotPassword_WhenUserExists_ShouldGenerateAndSendOtt() {
         ForgotPasswordRequestDTO dto = new ForgotPasswordRequestDTO("felipe@investir.com");
         OneTimeToken ott = new DefaultOneTimeToken("token-ott", "felipe@investir.com", Instant.now().plusSeconds(300));
 
@@ -175,7 +175,7 @@ class UserServiceTest {
     }
 
     @Test
-    void resetPassword_QuandoTokenInvalido_DeveLancarBadRequest() {
+    void resetPassword_WhenTokenIsInvalid_ShouldThrowBadRequest() {
         ResetPasswordRequestDTO dto = new ResetPasswordRequestDTO("token-invalido", "novaSenha123");
         when(oneTimeTokenService.consume(any(OneTimeTokenAuthenticationToken.class))).thenReturn(null);
 
@@ -186,7 +186,7 @@ class UserServiceTest {
     }
 
     @Test
-    void resetPassword_ComSucesso_DeveAtualizarSenhaEAtivarEmail() {
+    void resetPassword_OnSuccess_ShouldUpdatePasswordAndVerifyEmail() {
         ResetPasswordRequestDTO dto = new ResetPasswordRequestDTO("token-valido", "novaSenha123");
         OneTimeToken ott = new DefaultOneTimeToken("token-valido", "felipe@investir.com", Instant.now().plusSeconds(300));
 

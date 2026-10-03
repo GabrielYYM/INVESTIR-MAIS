@@ -34,7 +34,7 @@ public class User {
 
     private String name;
 
-    private int age;
+    private Integer age;
 
     @Embedded
     private UserSecurity userSecurity;

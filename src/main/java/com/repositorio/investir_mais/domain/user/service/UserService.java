@@ -13,6 +13,7 @@ import com.repositorio.investir_mais.domain.user.DTO.ForgotPasswordRequestDTO;
 import com.repositorio.investir_mais.domain.user.DTO.ResetPasswordRequestDTO;
 import com.repositorio.investir_mais.domain.user.DTO.UpdatePasswordDTO;
 import com.repositorio.investir_mais.domain.user.DTO.UserRequestDTO;
+import com.repositorio.investir_mais.domain.user.DTO.UserProfileUpdateDTO;
 import com.repositorio.investir_mais.domain.user.DTO.UserResponseDTO;
 import com.repositorio.investir_mais.domain.user.mapper.UserMapper;
 import com.repositorio.investir_mais.domain.user.model.User;
@@ -40,14 +41,56 @@ public class UserService {
         return user;
     }
 
+    public UserResponseDTO getProfile(String principalName, java.util.UUID requestedId) {
+        User user = findAuthenticatedUser(principalName);
+        if (!user.getId().equals(requestedId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não pode acessar este perfil.");
+        }
+        return userMapper.toDTO(user);
+    }
+
+    public UserResponseDTO updateProfile(String principalName, java.util.UUID requestedId, UserProfileUpdateDTO dto) {
+        User user = findAuthenticatedUser(principalName);
+        if (!user.getId().equals(requestedId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não pode alterar este perfil.");
+        }
+
+        User existingWithEmail = userRepository.findByUserSecurityEmail(dto.email());
+        if (existingWithEmail != null && !existingWithEmail.getId().equals(user.getId())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Este e-mail já está cadastrado.");
+        }
+
+        user.setName(dto.name());
+        if (dto.age() != null) {
+            user.setAge(dto.age());
+        }
+        user.getUserSecurity().setEmail(dto.email());
+        return userMapper.toDTO(userRepository.save(user));
+    }
+
+    public User findAuthenticatedUser(String principalName) {
+        try {
+            return userRepository.findById(java.util.UUID.fromString(principalName))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
+        } catch (IllegalArgumentException ignored) {
+            return findByEmail(principalName);
+        }
+    }
+
     public UserResponseDTO registerUser(UserRequestDTO dto) {
         if (dto.role() == UserRole.ADMIN) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não é permitido cadastrar perfil ADMIN diretamente.");
         }
 
         User user = userMapper.toEntity(dto);
+        if (user.getUserSecurity().getRole() == null) {
+            user.getUserSecurity().setRole(UserRole.STUDENT);
+        }
         user.getUserSecurity().setPassword(passwordEncoder.encode(dto.password()));
         user.getUserSecurity().setEmailVerified(false);
+        if (userRepository.findByUserSecurityEmail(dto.email()) != null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Este e-mail já está cadastrado.");
+        }
         User savedUser = userRepository.save(user);
 
         String email = savedUser.getUserSecurity().getEmail();
@@ -58,7 +101,7 @@ public class UserService {
     }
 
     public void updatePassword(String email, UpdatePasswordDTO dto) {
-        User user = findByEmail(email);
+        User user = findAuthenticatedUser(email);
 
         if (!passwordEncoder.matches(dto.currentPassword(), user.getUserSecurity().getPassword())) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Senha atual inválida.");

@@ -78,7 +78,7 @@ class LessonServiceTest {
     }
 
     @Test
-    void createLesson_QuandoNaoForDonoDoCurso_DeveLancarForbidden() {
+    void createLesson_WhenUserIsNotCourseOwner_ShouldThrowForbidden() {
         LessonRequestDTO request = new LessonRequestDTO("Aula 1", "Desc", "url_video", "url_thumb");
         when(userService.findByEmail("outro@investir.com")).thenReturn(outroUser);
         when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
@@ -91,7 +91,7 @@ class LessonServiceTest {
     }
 
     @Test
-    void createLesson_ComSucesso_DeveVincularCursoESalvar() {
+    void createLesson_OnSuccess_ShouldBindCourseAndSave() {
         LessonRequestDTO request = new LessonRequestDTO("Aula 1", "Desc", "url_video", "url_thumb");
         LessonResponseDTO responseDTO = new LessonResponseDTO(lessonId, "Aula 1", "Desc", "url_video", "url_thumb", courseId);
 
@@ -109,7 +109,7 @@ class LessonServiceTest {
     }
 
     @Test
-    void getLessonById_QuandoExiste_DeveRetornarDTO() {
+    void getLessonById_WhenLessonExists_ShouldReturnDTO() {
         LessonResponseDTO responseDTO = new LessonResponseDTO(lessonId, "Aula 1", "Desc", "url_video", "url_thumb", courseId);
         when(lessonRepository.findById(lessonId)).thenReturn(Optional.of(lesson));
         when(lessonMapper.toDTO(lesson)).thenReturn(responseDTO);
@@ -121,7 +121,7 @@ class LessonServiceTest {
     }
 
     @Test
-    void getLessonsByCourseId_DeveRetornarPagina() {
+    void getLessonsByCourseId_ShouldReturnPage() {
         Pageable pageable = PageRequest.of(0, 10);
         Page<Lesson> page = new PageImpl<>(List.of(lesson));
         LessonResponseDTO responseDTO = new LessonResponseDTO(lessonId, "Aula 1", "Desc", "url_video", "url_thumb", courseId);
@@ -136,7 +136,7 @@ class LessonServiceTest {
     }
 
     @Test
-    void updateLesson_ComSucesso_DeveAtualizarESalvar() {
+    void updateLesson_OnSuccess_ShouldUpdateAndSave() {
         LessonRequestDTO request = new LessonRequestDTO("Aula 1 Atualizada", "Desc", "url_video", "url_thumb");
         LessonResponseDTO responseDTO = new LessonResponseDTO(lessonId, "Aula 1 Atualizada", "Desc", "url_video", "url_thumb", courseId);
 
@@ -153,7 +153,7 @@ class LessonServiceTest {
     }
 
     @Test
-    void deleteLesson_ComSucesso_DeveDeletar() {
+    void deleteLesson_OnSuccess_ShouldDelete() {
         when(userService.findByEmail("prof@investir.com")).thenReturn(professor);
         when(lessonRepository.findByIdAndCourse_Professor_Id(lessonId, professor.getId())).thenReturn(Optional.of(lesson));
 

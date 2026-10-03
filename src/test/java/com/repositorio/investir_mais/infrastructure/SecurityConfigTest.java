@@ -30,7 +30,7 @@ class SecurityConfigTest {
     private final SecurityConfig securityConfig = new SecurityConfig();
 
     @Test
-    void passwordEncoder_DeveCriptografarEValidarSenhaComArgon2() {
+    void passwordEncoder_ShouldEncryptAndValidatePasswordWithArgon2() {
         PasswordEncoder encoder = securityConfig.passwordEncoder();
         assertNotNull(encoder);
         assertTrue(encoder instanceof Argon2PasswordEncoder);
@@ -42,7 +42,7 @@ class SecurityConfigTest {
     }
 
     @Test
-    void userDetailsService_QuandoUsuarioExiste_DeveRetornarUserDetails() {
+    void userDetailsService_WhenUserExists_ShouldReturnUserDetails() {
         UserSecurity userSecurity = new UserSecurity();
         userSecurity.setEmail("felipe@investir.com");
         userSecurity.setPassword("hashed_password");
@@ -63,7 +63,7 @@ class SecurityConfigTest {
     }
 
     @Test
-    void userDetailsService_QuandoUsuarioNaoExiste_DeveLancarExcecao() {
+    void userDetailsService_WhenUserDoesNotExist_ShouldThrowException() {
         when(userRepository.findByUserSecurityEmail("inexistente@investir.com")).thenReturn(null);
 
         UserDetailsService userDetailsService = securityConfig.userDetailsService(userRepository);

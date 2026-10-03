@@ -32,19 +32,19 @@ class SecurityFilterChainIntegrationTest {
     private JavaMailSender mailSender;
 
     @Test
-    void rotasPublicas_DevemPermitirAcessoSemAutenticacao() throws Exception {
+    void publicRoutes_ShouldAllowAccessWithoutAuthentication() throws Exception {
         mockMvc.perform(post("/api/users/register"))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
-    void rotasPrivadas_DevemBloquearAcessoSemAutenticacao() throws Exception {
+    void privateRoutes_ShouldBlockAccessWithoutAuthentication() throws Exception {
         mockMvc.perform(get("/api/users/me"))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
-    void h2Console_DevePermitirFrames() throws Exception {
+    void h2Console_ShouldAllowFrames() throws Exception {
         mockMvc.perform(get("/h2-console"))
                 .andExpect(header().doesNotExist("X-Frame-Options"));
     }

@@ -14,7 +14,7 @@ import com.repositorio.investir_mais.domain.tools.model.Portfolio;
 import com.repositorio.investir_mais.domain.tools.model.enums.AssetRole;
 
 @Component
-public class PortfolioRebalanceEngine {
+public class RebalanceEngine {
 
     public Map<String, Object> rebalance(Portfolio portfolio, BigDecimal totalCurrentValue, BigDecimal aporteAmount, Map<AssetRole, BigDecimal> roleTargets) {
         BigDecimal newTotalValue = totalCurrentValue.add(aporteAmount);

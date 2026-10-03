@@ -68,7 +68,7 @@ class CourseServiceTest {
     }
 
     @Test
-    void createCourse_ComSucesso_DeveVincularProfessorESalvar() {
+    void createCourse_OnSuccess_ShouldBindProfessorAndSave() {
         CourseRequestDTO request = new CourseRequestDTO("Finanças Pessoais", "Descrição do Curso");
         CourseResponseDTO responseDTO = new CourseResponseDTO(courseId, "Finanças Pessoais", "Descrição do Curso", professorId);
 
@@ -85,7 +85,7 @@ class CourseServiceTest {
     }
 
     @Test
-    void getCourseById_QuandoExiste_DeveRetornarDTO() {
+    void getCourseById_WhenCourseExists_ShouldReturnDTO() {
         CourseResponseDTO responseDTO = new CourseResponseDTO(courseId, "Finanças Pessoais", "Descrição do Curso", professorId);
         when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
         when(courseMapper.toDTO(course)).thenReturn(responseDTO);
@@ -97,7 +97,7 @@ class CourseServiceTest {
     }
 
     @Test
-    void getCourseById_QuandoNaoExiste_DeveLancarNotFound() {
+    void getCourseById_WhenCourseDoesNotExist_ShouldThrowNotFound() {
         when(courseRepository.findById(courseId)).thenReturn(Optional.empty());
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class, 
@@ -107,7 +107,7 @@ class CourseServiceTest {
     }
 
     @Test
-    void getAllCourses_DeveRetornarPagina() {
+    void getAllCourses_ShouldReturnPage() {
         Pageable pageable = PageRequest.of(0, 10);
         Page<Course> page = new PageImpl<>(List.of(course));
         CourseResponseDTO responseDTO = new CourseResponseDTO(courseId, "Finanças Pessoais", "Descrição do Curso", professorId);
@@ -122,7 +122,7 @@ class CourseServiceTest {
     }
 
     @Test
-    void getCoursesByProfessor_DeveRetornarPagina() {
+    void getCoursesByProfessor_ShouldReturnPage() {
         Pageable pageable = PageRequest.of(0, 10);
         Page<Course> page = new PageImpl<>(List.of(course));
         CourseResponseDTO responseDTO = new CourseResponseDTO(courseId, "Finanças Pessoais", "Descrição do Curso", professorId);
@@ -137,7 +137,7 @@ class CourseServiceTest {
     }
 
     @Test
-    void updateCourse_QuandoNaoForOProprietario_DeveLancarForbidden() {
+    void updateCourse_WhenUserIsNotOwner_ShouldThrowForbidden() {
         CourseRequestDTO request = new CourseRequestDTO("Finanças Avançadas", "Nova Descrição");
         when(userService.findByEmail("outro@investir.com")).thenReturn(outroProfessor);
         when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
@@ -150,7 +150,7 @@ class CourseServiceTest {
     }
 
     @Test
-    void updateCourse_ComSucesso_DeveAtualizarESalvar() {
+    void updateCourse_OnSuccess_ShouldUpdateAndSave() {
         CourseRequestDTO request = new CourseRequestDTO("Finanças Avançadas", "Nova Descrição");
         CourseResponseDTO responseDTO = new CourseResponseDTO(courseId, "Finanças Avançadas", "Nova Descrição", professorId);
 
@@ -167,7 +167,7 @@ class CourseServiceTest {
     }
 
     @Test
-    void deleteCourse_ComSucesso_DeveDeletar() {
+    void deleteCourse_OnSuccess_ShouldDelete() {
         when(userService.findByEmail("prof@investir.com")).thenReturn(professor);
         when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
 

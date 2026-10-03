@@ -45,7 +45,7 @@ class EmailOttHandlerTest {
     }
 
     @Test
-    void sendOttEmail_DeveMontarEmailEEnviarComSucesso() {
+    void sendOttEmail_ShouldBuildAndSendEmailSuccessfully() {
         String email = "dev@investir.com";
         String token = "abc-123-token";
 
@@ -61,7 +61,7 @@ class EmailOttHandlerTest {
     }
 
     @Test
-    void handle_DeveEnviarEmailEConfigurarRespostaHttpResponseCorretamente() throws Exception {
+    void handle_ShouldSendEmailAndConfigureHttpResponseCorrectly() throws Exception {
         HttpServletRequest request = mock(HttpServletRequest.class);
         HttpServletResponse response = mock(HttpServletResponse.class);
         StringWriter stringWriter = new StringWriter();
@@ -83,7 +83,7 @@ class EmailOttHandlerTest {
     }
 
     @Test
-    void handle_QuandoEnvioDeEmailFalha_DeveLancarExcecao() {
+    void handle_WhenEmailSendingFails_ShouldThrowException() {
         HttpServletRequest request = mock(HttpServletRequest.class);
         HttpServletResponse response = mock(HttpServletResponse.class);
         OneTimeToken ott = new DefaultOneTimeToken("token-123", "user@investir.com", Instant.now().plusSeconds(300));

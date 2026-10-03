@@ -57,7 +57,7 @@ class UserControllerTest {
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 
     @Test
-    void registerUser_ComDadosValidos_DeveRetornarCreated() throws Exception {
+    void registerUser_WithValidData_ShouldReturnCreated() throws Exception {
         UserRequestDTO requestDTO = new UserRequestDTO("Felipe", 22, "felipe@investir.com", "senha12345",
                 UserRole.STUDENT);
         UserResponseDTO responseDTO = new UserResponseDTO(
@@ -81,7 +81,7 @@ class UserControllerTest {
     }
 
     @Test
-    void updatePassword_ComDadosValidos_DeveRetornarOk() throws Exception {
+    void updatePassword_WithValidData_ShouldReturnOk() throws Exception {
         UpdatePasswordDTO dto = new UpdatePasswordDTO("senhaAntiga123", "novaSenha123");
 
         Principal mockPrincipal = () -> "felipe@investir.com";
@@ -98,7 +98,7 @@ class UserControllerTest {
     }
 
     @Test
-    void forgotPassword_ComEmailValido_DeveRetornarOk() throws Exception {
+    void forgotPassword_WithValidEmail_ShouldReturnOk() throws Exception {
         ForgotPasswordRequestDTO dto = new ForgotPasswordRequestDTO("felipe@investir.com");
 
         mockMvc.perform(post("/api/users/forgot-password")
@@ -112,7 +112,7 @@ class UserControllerTest {
     }
 
     @Test
-    void resetPassword_ComDadosValidos_DeveRetornarOk() throws Exception {
+    void resetPassword_WithValidData_ShouldReturnOk() throws Exception {
         ResetPasswordRequestDTO dto = new ResetPasswordRequestDTO("token-123", "novaSenha123");
 
         mockMvc.perform(post("/api/users/reset-password")
@@ -126,7 +126,7 @@ class UserControllerTest {
     }
 
     @Test
-    void resetPassword_ComDadosInvalidos_DeveRetornarBadRequest() throws Exception {
+    void resetPassword_WithInvalidData_ShouldReturnBadRequest() throws Exception {
         ResetPasswordRequestDTO dto = new ResetPasswordRequestDTO("", "123");
 
         mockMvc.perform(post("/api/users/reset-password")

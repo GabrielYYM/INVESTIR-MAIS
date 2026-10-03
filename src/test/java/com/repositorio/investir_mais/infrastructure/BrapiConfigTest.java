@@ -17,7 +17,7 @@ class BrapiConfigTest {
     private RestClient brapiClient;
 
     @Test
-    void brapiClient_DeveSerInstanciadoEInjetado() {
+    void brapiClient_ShouldBeInstantiatedAndInjected() {
         assertNotNull(brapiClient);
     }
 }

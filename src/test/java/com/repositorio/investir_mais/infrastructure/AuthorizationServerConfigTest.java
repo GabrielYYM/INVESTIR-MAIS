@@ -27,7 +27,7 @@ import com.repositorio.investir_mais.domain.user.repository.UserRepository;
     AuthorizationServerConfig.class, 
     SecurityConfig.class, 
     EmailOttHandler.class,
-    WebMvcAutoConfiguration.class // Adiciona o MvcHandlerMappingIntrospector ao contexto
+    WebMvcAutoConfiguration.class
 })
 @ActiveProfiles("test")
 class AuthorizationServerConfigTest {
@@ -48,7 +48,7 @@ class AuthorizationServerConfigTest {
     private JwtEncoder jwtEncoder;
 
     @Test
-    void registeredClientRepository_DeveConfigurarClienteInvestirMaisApp() {
+    void registeredClientRepository_ShouldConfigureInvestirMaisAppClient() {
         RegisteredClient client = registeredClientRepository.findByClientId("investir-mais-app");
         assertNotNull(client);
         assertEquals("investir-mais-app", client.getClientId());
@@ -56,7 +56,7 @@ class AuthorizationServerConfigTest {
     }
 
     @Test
-    void jwtEncoderEDecoder_DevemCodificarEDescodificarTokenComSucesso() {
+    void jwtEncoderAndDecoder_ShouldEncodeAndDecodeTokenSuccessfully() {
         JwsHeader jwsHeader = JwsHeader.with(SignatureAlgorithm.RS256).build();
         JwtClaimsSet claims = JwtClaimsSet.builder()
                 .issuer("http://localhost:8080")

@@ -56,7 +56,7 @@ class CourseControllerTest {
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 
     @Test
-    void createCourse_ComDadosValidos_DeveRetornarCreated() throws Exception {
+    void createCourse_WithValidData_ShouldReturnCreated() throws Exception {
         UUID courseId = UUID.randomUUID();
         UUID professorId = UUID.randomUUID();
         CourseRequestDTO requestDTO = new CourseRequestDTO("Curso de Investimentos", "Descrição exaustiva");
@@ -76,7 +76,7 @@ class CourseControllerTest {
     }
 
     @Test
-    void getAllCourses_DeveRetornarOkEPage() throws Exception {
+    void getAllCourses_ShouldReturnOkAndPage() throws Exception {
         when(courseService.getAllCourses(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
 
         mockMvc.perform(get("/api/courses"))
@@ -84,7 +84,7 @@ class CourseControllerTest {
     }
 
     @Test
-    void getCourseById_DeveRetornarOk() throws Exception {
+    void getCourseById_ShouldReturnOk() throws Exception {
         UUID courseId = UUID.randomUUID();
         CourseResponseDTO responseDTO = new CourseResponseDTO(courseId, "Curso A", "Descrição", UUID.randomUUID());
 
@@ -96,7 +96,7 @@ class CourseControllerTest {
     }
 
     @Test
-    void updateCourse_DeveRetornarOk() throws Exception {
+    void updateCourse_ShouldReturnOk() throws Exception {
         UUID courseId = UUID.randomUUID();
         CourseRequestDTO requestDTO = new CourseRequestDTO("Curso Atualizado", "Nova Descrição");
         CourseResponseDTO responseDTO = new CourseResponseDTO(courseId, "Curso Atualizado", "Nova Descrição", UUID.randomUUID());
@@ -115,7 +115,7 @@ class CourseControllerTest {
     }
 
     @Test
-    void deleteCourse_DeveRetornarNoContent() throws Exception {
+    void deleteCourse_ShouldReturnNoContent() throws Exception {
         UUID courseId = UUID.randomUUID();
         Principal principal = () -> "prof@investir.com";
 

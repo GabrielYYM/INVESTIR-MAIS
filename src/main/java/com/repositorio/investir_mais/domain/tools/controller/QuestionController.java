@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import com.repositorio.investir_mais.domain.tools.DTO.QuestionRequestDTO;
 import com.repositorio.investir_mais.domain.tools.DTO.QuestionResponseDTO;
@@ -38,16 +39,19 @@ public class QuestionController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public QuestionResponseDTO create(@Valid @RequestBody QuestionRequestDTO request) {
         return questionService.createQuestion(request);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public QuestionResponseDTO update(@PathVariable UUID id, @Valid @RequestBody QuestionRequestDTO request) {
         return questionService.updateQuestion(id, request);
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public void delete(@PathVariable UUID id) {
         questionService.deleteQuestion(id);
     }

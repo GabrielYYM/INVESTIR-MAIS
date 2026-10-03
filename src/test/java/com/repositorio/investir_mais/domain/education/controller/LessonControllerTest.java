@@ -56,7 +56,7 @@ class LessonControllerTest {
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 
     @Test
-    void createLesson_DeveRetornarCreated() throws Exception {
+    void createLesson_ShouldReturnCreated() throws Exception {
         UUID courseId = UUID.randomUUID();
         UUID lessonId = UUID.randomUUID();
         LessonRequestDTO requestDTO = new LessonRequestDTO("Aula 1", "Descrição", "url_video", "url_thumb");
@@ -76,7 +76,7 @@ class LessonControllerTest {
     }
 
     @Test
-    void getLessonsByCourse_DeveRetornarOk() throws Exception {
+    void getLessonsByCourse_ShouldReturnOk() throws Exception {
         UUID courseId = UUID.randomUUID();
         when(lessonService.getLessonsByCourseId(eq(courseId), any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
 
@@ -85,7 +85,7 @@ class LessonControllerTest {
     }
 
     @Test
-    void updateLesson_DeveRetornarOk() throws Exception {
+    void updateLesson_ShouldReturnOk() throws Exception {
         UUID lessonId = UUID.randomUUID();
         LessonRequestDTO requestDTO = new LessonRequestDTO("Aula Alterada", "Descrição", "url_video", "url_thumb");
         LessonResponseDTO responseDTO = new LessonResponseDTO(lessonId, "Aula Alterada", "Descrição", "url_video", "url_thumb", UUID.randomUUID());
@@ -104,7 +104,7 @@ class LessonControllerTest {
     }
 
     @Test
-    void deleteLesson_DeveRetornarNoContent() throws Exception {
+    void deleteLesson_ShouldReturnNoContent() throws Exception {
         UUID lessonId = UUID.randomUUID();
         Principal principal = () -> "prof@investir.com";
 
