@@ -24,8 +24,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.repositorio.investir_mais.domain.user.DTO.LoginRequestDTO;
-import com.repositorio.investir_mais.domain.user.DTO.VerifyTwoFactorRequestDTO;
+import com.repositorio.investir_mais.domain.user.DTO.AuthDTO;
 import com.repositorio.investir_mais.domain.user.model.User;
 import com.repositorio.investir_mais.domain.user.service.UserService;
 import com.repositorio.investir_mais.infrastructure.EmailOttHandler;
@@ -46,7 +45,7 @@ public class AuthController {
     private final RevokedTokenStore revokedTokenStore;
 
     @PostMapping("/login")
-    public Map<String, String> login(@Valid @RequestBody LoginRequestDTO request) {
+    public Map<String, String> login(@Valid @RequestBody AuthDTO.LoginRequest request) {
         authenticationManager.authenticate(
             new UsernamePasswordAuthenticationToken(request.email(), request.password()));
 
@@ -56,7 +55,7 @@ public class AuthController {
     }
 
     @PostMapping("/verify-2fa")
-    public Map<String, String> verifyTwoFactor(@Valid @RequestBody VerifyTwoFactorRequestDTO request) {
+    public Map<String, String> verifyTwoFactor(@Valid @RequestBody AuthDTO.VerifyTwoFactorRequest request) {
         OneTimeToken token = oneTimeTokenService.consume(new OneTimeTokenAuthenticationToken(request.code()));
         if (token == null || !token.getUsername().equalsIgnoreCase(request.email())) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Código inválido ou expirado.");
@@ -80,7 +79,7 @@ public class AuthController {
 
     @PostMapping("/logout")
     public org.springframework.http.ResponseEntity<Void> logout(@AuthenticationPrincipal Jwt jwt) {
-        revokedTokenStore.revoke(jwt.getId(), jwt.getExpiresAt());
+        revokedTokenStore.revoke(jwt.getId());
         return org.springframework.http.ResponseEntity.noContent().build();
     }
 }

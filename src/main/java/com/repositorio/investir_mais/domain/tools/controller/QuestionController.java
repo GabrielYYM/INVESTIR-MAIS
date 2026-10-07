@@ -14,8 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.security.access.prepost.PreAuthorize;
 
-import com.repositorio.investir_mais.domain.tools.DTO.QuestionRequestDTO;
-import com.repositorio.investir_mais.domain.tools.DTO.QuestionResponseDTO;
+import com.repositorio.investir_mais.domain.tools.DTO.QuestionDTO;
 import com.repositorio.investir_mais.domain.tools.model.enums.AssetRole;
 import com.repositorio.investir_mais.domain.tools.service.QuestionService;
 
@@ -29,24 +28,24 @@ public class QuestionController {
     private final QuestionService questionService;
 
     @GetMapping("/roles/{role}")
-    public Page<QuestionResponseDTO> getByRole(@PathVariable AssetRole role, Pageable pageable) {
+    public Page<QuestionDTO.Response> getByRole(@PathVariable AssetRole role, Pageable pageable) {
         return questionService.getQuestionsByRole(role, pageable);
     }
 
     @GetMapping("/{id}")
-    public QuestionResponseDTO getById(@PathVariable UUID id) {
+    public QuestionDTO.Response getById(@PathVariable UUID id) {
         return questionService.getQuestionById(id);
     }
 
     @PostMapping
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
-    public QuestionResponseDTO create(@Valid @RequestBody QuestionRequestDTO request) {
+    public QuestionDTO.Response create(@Valid @RequestBody QuestionDTO.Request request) {
         return questionService.createQuestion(request);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
-    public QuestionResponseDTO update(@PathVariable UUID id, @Valid @RequestBody QuestionRequestDTO request) {
+    public QuestionDTO.Response update(@PathVariable UUID id, @Valid @RequestBody QuestionDTO.Request request) {
         return questionService.updateQuestion(id, request);
     }
 

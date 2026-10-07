@@ -18,8 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.repositorio.investir_mais.domain.education.DTO.CourseRequestDTO;
-import com.repositorio.investir_mais.domain.education.DTO.CourseResponseDTO;
+import com.repositorio.investir_mais.domain.education.DTO.CourseDTO;
 import com.repositorio.investir_mais.domain.education.service.CourseService;
 
 import jakarta.validation.Valid;
@@ -29,30 +28,29 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/api/courses")
 @RequiredArgsConstructor
 public class CourseController {
-
     private final CourseService courseService;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
-    public CourseResponseDTO createCourse(
+    public CourseDTO.Response createCourse(
             Principal principal,
-            @Valid @RequestBody CourseRequestDTO dto) {
+            @Valid @RequestBody CourseDTO.Request dto) {
         return courseService.createCourse(dto, principal.getName());
     }
 
     @GetMapping
-    public Page<CourseResponseDTO> getAllCourses(@PageableDefault(size = 10, sort = "name") Pageable pageable) {
+    public Page<CourseDTO.Response> getAllCourses(@PageableDefault(size = 10, sort = "name") Pageable pageable) {
         return courseService.getAllCourses(pageable);
     }
 
     @GetMapping("/{courseId}")
-    public CourseResponseDTO getCourseById(@PathVariable UUID courseId) {
+    public CourseDTO.Response getCourseById(@PathVariable UUID courseId) {
         return courseService.getCourseById(courseId);
     }
 
     @GetMapping("/professor/{professorId}")
-    public Page<CourseResponseDTO> getCoursesByProfessor(
+    public Page<CourseDTO.Response> getCoursesByProfessor(
             @PathVariable UUID professorId,
             @PageableDefault(size = 10, sort = "name") Pageable pageable) {
         return courseService.getCoursesByProfessor(professorId, pageable);
@@ -60,10 +58,10 @@ public class CourseController {
 
     @PutMapping("/{courseId}")
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
-    public CourseResponseDTO updateCourse(
+    public CourseDTO.Response updateCourse(
             @PathVariable UUID courseId,
             Principal principal,
-            @Valid @RequestBody CourseRequestDTO dto) {
+            @Valid @RequestBody CourseDTO.Request dto) {
         return courseService.updateCourse(courseId, dto, principal.getName());
     }
 

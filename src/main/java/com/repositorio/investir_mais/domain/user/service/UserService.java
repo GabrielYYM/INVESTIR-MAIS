@@ -9,12 +9,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.repositorio.investir_mais.domain.user.DTO.ForgotPasswordRequestDTO;
-import com.repositorio.investir_mais.domain.user.DTO.ResetPasswordRequestDTO;
-import com.repositorio.investir_mais.domain.user.DTO.UpdatePasswordDTO;
-import com.repositorio.investir_mais.domain.user.DTO.UserRequestDTO;
-import com.repositorio.investir_mais.domain.user.DTO.UserProfileUpdateDTO;
-import com.repositorio.investir_mais.domain.user.DTO.UserResponseDTO;
+import com.repositorio.investir_mais.domain.user.DTO.AuthDTO;
+import com.repositorio.investir_mais.domain.user.DTO.UserDTO;
+import com.repositorio.investir_mais.domain.user.DTO.UserDTO.Request;
 import com.repositorio.investir_mais.domain.user.mapper.UserMapper;
 import com.repositorio.investir_mais.domain.user.model.User;
 import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
@@ -41,7 +38,7 @@ public class UserService {
         return user;
     }
 
-    public UserResponseDTO getProfile(String principalName, java.util.UUID requestedId) {
+    public UserDTO.Response getProfile(String principalName, java.util.UUID requestedId) {
         User user = findAuthenticatedUser(principalName);
         if (!user.getId().equals(requestedId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não pode acessar este perfil.");
@@ -49,7 +46,7 @@ public class UserService {
         return userMapper.toDTO(user);
     }
 
-    public UserResponseDTO updateProfile(String principalName, java.util.UUID requestedId, UserProfileUpdateDTO dto) {
+    public UserDTO.Response updateProfile(String principalName, java.util.UUID requestedId, UserDTO.UpdateProfileRequest dto) {
         User user = findAuthenticatedUser(principalName);
         if (!user.getId().equals(requestedId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não pode alterar este perfil.");
@@ -77,7 +74,7 @@ public class UserService {
         }
     }
 
-    public UserResponseDTO registerUser(UserRequestDTO dto) {
+    public UserDTO.Response registerUser(Request dto) {
         if (dto.role() == UserRole.ADMIN) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não é permitido cadastrar perfil ADMIN diretamente.");
         }
@@ -100,7 +97,7 @@ public class UserService {
         return userMapper.toDTO(savedUser);
     }
 
-    public void updatePassword(String email, UpdatePasswordDTO dto) {
+    public void updatePassword(String email, AuthDTO.UpdatePasswordRequest dto) {
         User user = findAuthenticatedUser(email);
 
         if (!passwordEncoder.matches(dto.currentPassword(), user.getUserSecurity().getPassword())) {
@@ -111,7 +108,7 @@ public class UserService {
         userRepository.save(user);
     }
 
-    public void forgotPassword(ForgotPasswordRequestDTO dto) {
+    public void forgotPassword(AuthDTO.ForgotPasswordRequest dto) {
         User user = userRepository.findByUserSecurityEmail(dto.email());
         if (user == null) {
             return;
@@ -121,7 +118,7 @@ public class UserService {
         emailOttHandler.sendOttEmail(dto.email(), ott.getTokenValue());
     }
 
-    public void resetPassword(ResetPasswordRequestDTO dto) {
+    public void resetPassword(AuthDTO.ResetPasswordRequest dto) {
         OneTimeToken consumedOtt = oneTimeTokenService.consume(new OneTimeTokenAuthenticationToken(dto.token()));
 
         if (consumedOtt == null) {

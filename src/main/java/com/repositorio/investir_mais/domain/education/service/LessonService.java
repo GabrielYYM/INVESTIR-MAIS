@@ -9,8 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.repositorio.investir_mais.domain.education.DTO.LessonRequestDTO;
-import com.repositorio.investir_mais.domain.education.DTO.LessonResponseDTO;
+import com.repositorio.investir_mais.domain.education.DTO.LessonDTO;
 import com.repositorio.investir_mais.domain.education.mapper.LessonMapper;
 import com.repositorio.investir_mais.domain.education.model.Course;
 import com.repositorio.investir_mais.domain.education.model.Lesson;
@@ -25,13 +24,12 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 @Transactional
 public class LessonService {
-
     private final LessonRepository lessonRepository;
     private final CourseRepository courseRepository;
     private final LessonMapper lessonMapper;
     private final UserService userService;
 
-    public LessonResponseDTO createLesson(UUID courseId, LessonRequestDTO request, String userEmail) {
+    public LessonDTO.Response createLesson(UUID courseId, LessonDTO.Request request, String userEmail) {
         User user = userService.findByEmail(userEmail);
         
         Course course = courseRepository.findById(courseId)
@@ -48,19 +46,19 @@ public class LessonService {
     }
 
     @Transactional(readOnly = true)
-    public LessonResponseDTO getLessonById(UUID lessonId) {
+    public LessonDTO.Response getLessonById(UUID lessonId) {
         return lessonRepository.findById(lessonId)
             .map(lessonMapper::toDTO)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Aula não encontrada."));
     }
 
     @Transactional(readOnly = true)
-    public Page<LessonResponseDTO> getLessonsByCourseId(UUID courseId, Pageable pageable) {
+    public Page<LessonDTO.Response> getLessonsByCourseId(UUID courseId, Pageable pageable) {
         return lessonRepository.findAllByCourseId(courseId, pageable)
             .map(lessonMapper::toDTO);
     }
 
-    public LessonResponseDTO updateLesson(UUID lessonId, LessonRequestDTO request, String userEmail) {
+    public LessonDTO.Response updateLesson(UUID lessonId, LessonDTO.Request request, String userEmail) {
         Lesson lesson = findLessonOwnedBy(lessonId, userEmail);
         lessonMapper.updateEntity(request, lesson);
         return lessonMapper.toDTO(lessonRepository.save(lesson));

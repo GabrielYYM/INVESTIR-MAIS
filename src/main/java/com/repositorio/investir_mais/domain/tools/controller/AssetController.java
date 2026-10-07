@@ -14,8 +14,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.repositorio.investir_mais.domain.tools.DTO.AssetRequestDTO;
-import com.repositorio.investir_mais.domain.tools.DTO.AssetResponseDTO;
+import com.repositorio.investir_mais.domain.tools.DTO.AssetDTO;
 import com.repositorio.investir_mais.domain.tools.service.AssetService;
 
 import jakarta.validation.Valid;
@@ -28,24 +27,24 @@ public class AssetController {
     private final AssetService assetService;
 
     @GetMapping
-    public List<AssetResponseDTO> listAllAssets(Principal principal) {
+    public List<AssetDTO.Response> listAllAssets(Principal principal) {
         return principal == null ? assetService.listAllAssets() : assetService.listAllAssets(principal.getName());
     }
 
     @GetMapping("/roles/{role}")
-    public List<AssetResponseDTO> listByRole(@PathVariable AssetRole role, Principal principal) {
+    public List<AssetDTO.Response> listByRole(@PathVariable AssetRole role, Principal principal) {
         return principal == null ? assetService.listAssetsByRole(role)
             : assetService.listAssetsByRole(principal.getName(), role);
     }
 
     @PostMapping
-    public AssetResponseDTO createAsset(@Valid @RequestBody AssetRequestDTO request, Principal principal) {
+    public AssetDTO.Response createAsset(@Valid @RequestBody AssetDTO.Request request, Principal principal) {
         return principal == null ? assetService.createAsset(request)
             : assetService.createAsset(principal.getName(), request);
     }
 
     @PutMapping("/{id}")
-    public AssetResponseDTO updateAsset(@PathVariable UUID id, @Valid @RequestBody AssetRequestDTO request,
+    public AssetDTO.Response updateAsset(@PathVariable UUID id, @Valid @RequestBody AssetDTO.Request request,
             Principal principal) {
         return principal == null ? assetService.updateAsset(id, request)
             : assetService.updateAsset(principal.getName(), id, request);
@@ -68,4 +67,3 @@ public class AssetController {
         return assetService.getAssetQuote(ticker);
     }
 }
-

@@ -6,18 +6,17 @@ import org.mapstruct.MappingTarget;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.NullValuePropertyMappingStrategy;
 
-import com.repositorio.investir_mais.domain.tools.DTO.QuestionRequestDTO;
-import com.repositorio.investir_mais.domain.tools.DTO.QuestionResponseDTO;
+import com.repositorio.investir_mais.domain.tools.DTO.QuestionDTO;
 import com.repositorio.investir_mais.domain.tools.model.Question;
 
 @Mapper(componentModel = "spring")
 public interface QuestionMapper {
-    QuestionResponseDTO toResponseDTO(Question entity);
+    QuestionDTO.Response toResponseDTO(Question entity);
 
     @Mapping(target = "id", ignore = true)
-    Question toEntity(QuestionRequestDTO dto);
+    Question toEntity(QuestionDTO.Request dto);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "id", ignore = true)
-    void updateEntityFromDto(QuestionRequestDTO dto, @MappingTarget Question entity);
+    void updateEntityFromDto(QuestionDTO.Request dto, @MappingTarget Question entity);
 }

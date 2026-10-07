@@ -6,7 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.repositorio.investir_mais.domain.tools.DTO.PortfolioResponseDTO;
+import com.repositorio.investir_mais.domain.tools.DTO.PortfolioDTO;
 import com.repositorio.investir_mais.domain.tools.mapper.PortfolioMapper;
 import com.repositorio.investir_mais.domain.tools.model.Portfolio;
 import com.repositorio.investir_mais.domain.tools.repository.PortfolioRepository;
@@ -24,19 +24,19 @@ public class PortfolioService {
     private final UserRepository userRepository;
     private final PortfolioMapper portfolioMapper;
 
-    public PortfolioResponseDTO findPortfolioById(UUID id) {
+    public PortfolioDTO.Response findPortfolioById(UUID id) {
         return portfolioRepository.findById(id)
             .map(portfolioMapper::toDto)
             .orElseThrow(() -> new EntityNotFoundException("Portfolio não encontrado com o ID: " + id));
     }
 
-    public PortfolioResponseDTO findByUserId(UUID userId) {
+    public PortfolioDTO.Response findByUserId(UUID userId) {
         return portfolioRepository.findByUserId_Id(userId)
             .map(portfolioMapper::toDto)
             .orElseThrow(() -> new EntityNotFoundException("Portfolio não encontrado para o usuário: " + userId));
     }
 
-    public PortfolioResponseDTO createPortfolio(UUID userId) {
+    public PortfolioDTO.Response createPortfolio(UUID userId) {
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
 
@@ -51,7 +51,7 @@ public class PortfolioService {
             .orElseThrow(() -> new EntityNotFoundException("Portfolio não encontrado com o ID: " + id));
     }
 
-    public PortfolioResponseDTO createPortfolioForUser(UUID userId) {
+    public PortfolioDTO.Response createPortfolioForUser(UUID userId) {
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado con el ID: " + userId));
 

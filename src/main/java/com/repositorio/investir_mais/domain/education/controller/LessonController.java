@@ -18,8 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.repositorio.investir_mais.domain.education.DTO.LessonRequestDTO;
-import com.repositorio.investir_mais.domain.education.DTO.LessonResponseDTO;
+import com.repositorio.investir_mais.domain.education.DTO.LessonDTO;
 import com.repositorio.investir_mais.domain.education.service.LessonService;
 
 import jakarta.validation.Valid;
@@ -34,30 +33,30 @@ public class LessonController {
     @PostMapping("/course/{courseId}")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
-    public LessonResponseDTO createLesson(
+    public LessonDTO.Response createLesson(
             @PathVariable UUID courseId,
-            @Valid @RequestBody LessonRequestDTO dto,
+            @Valid @RequestBody LessonDTO.Request dto,
             Principal principal) {
         return lessonService.createLesson(courseId, dto, principal.getName());
     }
 
     @GetMapping("/course/{courseId}")
-    public Page<LessonResponseDTO> getLessonsByCourse(
+    public Page<LessonDTO.Response> getLessonsByCourse(
             @PathVariable UUID courseId,
             @PageableDefault(size = 20) Pageable pageable) {
         return lessonService.getLessonsByCourseId(courseId, pageable);
     }
 
     @GetMapping("/{lessonId}")
-    public LessonResponseDTO getLessonById(@PathVariable UUID lessonId) {
+    public LessonDTO.Response getLessonById(@PathVariable UUID lessonId) {
         return lessonService.getLessonById(lessonId);
     }
 
     @PutMapping("/{lessonId}")
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
-    public LessonResponseDTO updateLesson(
+    public LessonDTO.Response updateLesson(
             @PathVariable UUID lessonId,
-            @Valid @RequestBody LessonRequestDTO dto,
+            @Valid @RequestBody LessonDTO.Request dto,
             Principal principal) {
         return lessonService.updateLesson(lessonId, dto, principal.getName());
     }

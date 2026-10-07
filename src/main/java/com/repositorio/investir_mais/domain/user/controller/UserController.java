@@ -14,12 +14,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.repositorio.investir_mais.domain.user.DTO.ForgotPasswordRequestDTO;
-import com.repositorio.investir_mais.domain.user.DTO.ResetPasswordRequestDTO;
-import com.repositorio.investir_mais.domain.user.DTO.UpdatePasswordDTO;
-import com.repositorio.investir_mais.domain.user.DTO.UserRequestDTO;
-import com.repositorio.investir_mais.domain.user.DTO.UserProfileUpdateDTO;
-import com.repositorio.investir_mais.domain.user.DTO.UserResponseDTO;
+import com.repositorio.investir_mais.domain.user.DTO.AuthDTO;
+import com.repositorio.investir_mais.domain.user.DTO.UserDTO;
+import com.repositorio.investir_mais.domain.user.DTO.UserDTO.Request;
 import com.repositorio.investir_mais.domain.user.service.UserService;
 
 import jakarta.validation.Valid;
@@ -34,37 +31,37 @@ public class UserController {
 
     @PostMapping({"", "/register"})
     @ResponseStatus(HttpStatus.CREATED)
-    public UserResponseDTO registerUser(@Valid @RequestBody UserRequestDTO dto) {
+    public UserDTO.Response registerUser(@Valid @RequestBody Request dto) {
         return userService.registerUser(dto);
     }
 
     @GetMapping("/{id}")
-    public UserResponseDTO getProfile(Principal principal, @PathVariable UUID id) {
+    public UserDTO.Response getProfile(Principal principal, @PathVariable UUID id) {
         return userService.getProfile(principal.getName(), id);
     }
 
     @PutMapping("/{id}")
-    public UserResponseDTO updateProfile(Principal principal, @PathVariable UUID id,
-            @Valid @RequestBody UserProfileUpdateDTO dto) {
+    public UserDTO.Response updateProfile(Principal principal, @PathVariable UUID id,
+            @Valid @RequestBody UserDTO.UpdateProfileRequest dto) {
         return userService.updateProfile(principal.getName(), id, dto);
     }
 
     @PutMapping("/update-password")
-    public Map<String, String> updatePassword(Principal principal, @Valid @RequestBody UpdatePasswordDTO dto) {
+    public Map<String, String> updatePassword(Principal principal, @Valid @RequestBody AuthDTO.UpdatePasswordRequest dto) {
         userService.updatePassword(principal.getName(), dto);
         return Map.of("message", "Senha atualizada com sucesso!");
     }
 
     @PostMapping("/forgot-password")
     @ResponseStatus(HttpStatus.OK)
-    public Map<String, String> forgotPassword(@Valid @RequestBody ForgotPasswordRequestDTO dto) {
+    public Map<String, String> forgotPassword(@Valid @RequestBody AuthDTO.ForgotPasswordRequest dto) {
         userService.forgotPassword(dto);
         return Map.of("message", "Se o e-mail existir na nossa base, um link de recuperação será enviado.");
     }
 
     @PostMapping("/reset-password")
     @ResponseStatus(HttpStatus.OK)
-    public Map<String, String> resetPassword(@Valid @RequestBody ResetPasswordRequestDTO dto) {
+    public Map<String, String> resetPassword(@Valid @RequestBody AuthDTO.ResetPasswordRequest dto) {
         userService.resetPassword(dto);
         return Map.of("message", "Senha redefinida com sucesso!");
     }

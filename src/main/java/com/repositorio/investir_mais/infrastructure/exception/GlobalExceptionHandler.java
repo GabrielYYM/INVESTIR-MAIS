@@ -12,13 +12,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ProblemDetail handleValidation(MethodArgumentNotValidException ex) {
-        String message = ex.getBindingResult().getFieldErrors().stream().findFirst().map(FieldError::getDefaultMessage)
+        String message = ex.getBindingResult().getFieldErrors().stream()
+            .findFirst()
+            .map(FieldError::getDefaultMessage)
             .orElse("Dados inválidos.");
 
-        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
-        problem.setTitle("Erro de validação");
-        problem.setDetail(message);
-
-        return problem;
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, message);
     }
 }

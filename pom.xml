@@ -6,7 +6,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.5.16</version>
+		<version>3.4.3</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 
@@ -19,6 +19,7 @@
 	<properties>
 		<java.version>21</java.version>
 		<mapstruct.version>1.6.3</mapstruct.version>
+		<spring-cloud.version>2024.0.0</spring-cloud.version>
 	</properties>
 
 	<dependencyManagement>
@@ -30,10 +31,22 @@
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
+			<!-- Added Spring Cloud BOM for version management -->
+			<dependency>
+				<groupId>org.springframework.cloud</groupId>
+				<artifactId>spring-cloud-dependencies</artifactId>
+				<version>${spring-cloud.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
 		</dependencies>
 	</dependencyManagement>
 
 	<dependencies>
+		<dependency>
+	    	<groupId>org.springframework.boot</groupId>
+	    	<artifactId>spring-boot-starter-cache</artifactId>
+		</dependency>
 		<dependency>
     		<groupId>org.bouncycastle</groupId>
     		<artifactId>bcprov-jdk18on</artifactId>
@@ -58,6 +71,12 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+
+		<!-- Added Spring Cloud OpenFeign -->
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-starter-openfeign</artifactId>
 		</dependency>
 		
 		<!-- Spring Data JPA & PostgreSQL -->
@@ -97,6 +116,7 @@
 			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
 			<version>2.8.5</version>
 		</dependency>
+
 		<!-- Ferramentas e Utilitários -->
 		<dependency>
 			<groupId>org.projectlombok</groupId>
@@ -112,7 +132,6 @@
 			<groupId>me.paulschwarz</groupId>
 			<artifactId>springboot4-dotenv</artifactId>
 		</dependency>
-
 
 		<!-- DevTools -->
 		<dependency>

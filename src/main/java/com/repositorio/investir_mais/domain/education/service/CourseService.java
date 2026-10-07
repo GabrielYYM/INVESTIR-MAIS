@@ -9,8 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.repositorio.investir_mais.domain.education.DTO.CourseRequestDTO;
-import com.repositorio.investir_mais.domain.education.DTO.CourseResponseDTO;
+import com.repositorio.investir_mais.domain.education.DTO.CourseDTO;
 import com.repositorio.investir_mais.domain.education.mapper.CourseMapper;
 import com.repositorio.investir_mais.domain.education.model.Course;
 import com.repositorio.investir_mais.domain.education.repository.CourseRepository;
@@ -23,12 +22,11 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 @Transactional
 public class CourseService {
-
     private final CourseRepository courseRepository;
     private final CourseMapper courseMapper;
     private final UserService userService;
 
-    public CourseResponseDTO createCourse(CourseRequestDTO request, String userEmail) {
+    public CourseDTO.Response createCourse(CourseDTO.Request request, String userEmail) {
         User professor = userService.findByEmail(userEmail);
         Course course = courseMapper.toEntity(request);
         course.setProfessor(professor);
@@ -36,23 +34,23 @@ public class CourseService {
     }
 
     @Transactional(readOnly = true)
-    public CourseResponseDTO getCourseById(UUID courseId) {
+    public CourseDTO.Response getCourseById(UUID courseId) {
         return courseRepository.findById(courseId)
             .map(courseMapper::toDTO)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Curso não encontrado."));
     }
 
     @Transactional(readOnly = true)
-    public Page<CourseResponseDTO> getAllCourses(Pageable pageable) {
+    public Page<CourseDTO.Response> getAllCourses(Pageable pageable) {
         return courseRepository.findAll(pageable).map(courseMapper::toDTO);
     }
 
     @Transactional(readOnly = true)
-    public Page<CourseResponseDTO> getCoursesByProfessor(UUID professorId, Pageable pageable) {
+    public Page<CourseDTO.Response> getCoursesByProfessor(UUID professorId, Pageable pageable) {
         return courseRepository.findAllByProfessorId(professorId, pageable).map(courseMapper::toDTO);
     }
 
-    public CourseResponseDTO updateCourse(UUID courseId, CourseRequestDTO request, String userEmail) {
+    public CourseDTO.Response updateCourse(UUID courseId, CourseDTO.Request request, String userEmail) {
         Course course = findCourseOwnedBy(courseId, userEmail);
         courseMapper.updateEntity(request, course);
         return courseMapper.toDTO(courseRepository.save(course));

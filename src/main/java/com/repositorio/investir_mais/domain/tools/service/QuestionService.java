@@ -9,8 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.repositorio.investir_mais.domain.tools.DTO.QuestionRequestDTO;
-import com.repositorio.investir_mais.domain.tools.DTO.QuestionResponseDTO;
+import com.repositorio.investir_mais.domain.tools.DTO.QuestionDTO;
 import com.repositorio.investir_mais.domain.tools.mapper.QuestionMapper;
 import com.repositorio.investir_mais.domain.tools.model.Question;
 import com.repositorio.investir_mais.domain.tools.model.enums.AssetRole;
@@ -26,19 +25,19 @@ public class QuestionService {
     private final QuestionMapper questionMapper;
 
     @Transactional(readOnly = true)
-    public Page<QuestionResponseDTO> getQuestionsByRole(AssetRole role, Pageable pageable) {
+    public Page<QuestionDTO.Response> getQuestionsByRole(AssetRole role, Pageable pageable) {
         return questionRepository.findByRole(role, pageable)
             .map(questionMapper::toResponseDTO);
     }
 
     @Transactional(readOnly = true)
-    public QuestionResponseDTO getQuestionById(UUID questionId) {
+    public QuestionDTO.Response getQuestionById(UUID questionId) {
         return questionRepository.findById(questionId)
             .map(questionMapper::toResponseDTO)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Questão não encontrada com o ID: " + questionId));
     }
 
-    public QuestionResponseDTO createQuestion(QuestionRequestDTO request) {
+    public QuestionDTO.Response createQuestion(QuestionDTO.Request request) {
         if (request.role() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O tipo de ativo é obrigatório.");
         }
@@ -47,7 +46,7 @@ public class QuestionService {
         return questionMapper.toResponseDTO(questionRepository.save(question));
     }
 
-    public QuestionResponseDTO updateQuestion(UUID questionId, QuestionRequestDTO request) {
+    public QuestionDTO.Response updateQuestion(UUID questionId, QuestionDTO.Request request) {
         Question question = questionRepository.findById(questionId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Questão não encontrada."));
 
