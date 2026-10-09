@@ -30,8 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.repositorio.investir_mais.domain.education.DTO.CourseRequestDTO;
-import com.repositorio.investir_mais.domain.education.DTO.CourseResponseDTO;
+import com.repositorio.investir_mais.domain.education.DTO.CourseDTO;
 import com.repositorio.investir_mais.domain.education.service.CourseService;
 import com.repositorio.investir_mais.domain.user.repository.UserRepository;
 
@@ -59,12 +58,12 @@ class CourseControllerTest {
     void createCourse_WithValidData_ShouldReturnCreated() throws Exception {
         UUID courseId = UUID.randomUUID();
         UUID professorId = UUID.randomUUID();
-        CourseRequestDTO requestDTO = new CourseRequestDTO("Curso de Investimentos", "Descrição exaustiva");
-        CourseResponseDTO responseDTO = new CourseResponseDTO(courseId, "Curso de Investimentos", "Descrição exaustiva", professorId);
+        CourseDTO.Request requestDTO = new CourseDTO.Request("Curso de Investimentos", "Descrição exaustiva");
+        CourseDTO.Response responseDTO = new CourseDTO.Response(courseId, "Curso de Investimentos", "Descrição exaustiva", professorId);
 
         Principal principal = () -> "prof@investir.com";
 
-        when(courseService.createCourse(any(CourseRequestDTO.class), eq("prof@investir.com"))).thenReturn(responseDTO);
+        when(courseService.createCourse(any(CourseDTO.Request.class), eq("prof@investir.com"))).thenReturn(responseDTO);
 
         mockMvc.perform(post("/api/courses")
                 .principal(principal)
@@ -86,7 +85,7 @@ class CourseControllerTest {
     @Test
     void getCourseById_ShouldReturnOk() throws Exception {
         UUID courseId = UUID.randomUUID();
-        CourseResponseDTO responseDTO = new CourseResponseDTO(courseId, "Curso A", "Descrição", UUID.randomUUID());
+        CourseDTO.Response responseDTO = new CourseDTO.Response(courseId, "Curso A", "Descrição", UUID.randomUUID());
 
         when(courseService.getCourseById(courseId)).thenReturn(responseDTO);
 
@@ -98,12 +97,12 @@ class CourseControllerTest {
     @Test
     void updateCourse_ShouldReturnOk() throws Exception {
         UUID courseId = UUID.randomUUID();
-        CourseRequestDTO requestDTO = new CourseRequestDTO("Curso Atualizado", "Nova Descrição");
-        CourseResponseDTO responseDTO = new CourseResponseDTO(courseId, "Curso Atualizado", "Nova Descrição", UUID.randomUUID());
+        CourseDTO.Request requestDTO = new CourseDTO.Request("Curso Atualizado", "Nova Descrição");
+        CourseDTO.Response responseDTO = new CourseDTO.Response(courseId, "Curso Atualizado", "Nova Descrição", UUID.randomUUID());
 
         Principal principal = () -> "prof@investir.com";
 
-        when(courseService.updateCourse(eq(courseId), any(CourseRequestDTO.class), eq("prof@investir.com"))).thenReturn(responseDTO);
+        when(courseService.updateCourse(eq(courseId), any(CourseDTO.Request.class), eq("prof@investir.com"))).thenReturn(responseDTO);
 
         mockMvc.perform(put("/api/courses/{courseId}", courseId)
                 .principal(principal)

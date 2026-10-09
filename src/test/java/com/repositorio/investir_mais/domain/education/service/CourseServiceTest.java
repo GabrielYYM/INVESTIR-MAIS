@@ -24,8 +24,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.repositorio.investir_mais.domain.education.DTO.CourseRequestDTO;
-import com.repositorio.investir_mais.domain.education.DTO.CourseResponseDTO;
+import com.repositorio.investir_mais.domain.education.DTO.CourseDTO;
 import com.repositorio.investir_mais.domain.education.mapper.CourseMapper;
 import com.repositorio.investir_mais.domain.education.model.Course;
 import com.repositorio.investir_mais.domain.education.repository.CourseRepository;
@@ -69,15 +68,15 @@ class CourseServiceTest {
 
     @Test
     void createCourse_OnSuccess_ShouldBindProfessorAndSave() {
-        CourseRequestDTO request = new CourseRequestDTO("Finanças Pessoais", "Descrição do Curso");
-        CourseResponseDTO responseDTO = new CourseResponseDTO(courseId, "Finanças Pessoais", "Descrição do Curso", professorId);
+        CourseDTO.Request request = new CourseDTO.Request("Finanças Pessoais", "Descrição do Curso");
+        CourseDTO.Response responseDTO = new CourseDTO.Response(courseId, "Finanças Pessoais", "Descrição do Curso", professorId);
 
-        when(userService.findByEmail("prof@investir.com")).thenReturn(professor);
+        when(userService.findAuthenticatedUser("prof@investir.com")).thenReturn(professor);
         when(courseMapper.toEntity(request)).thenReturn(course);
         when(courseRepository.save(course)).thenReturn(course);
         when(courseMapper.toDTO(course)).thenReturn(responseDTO);
 
-        CourseResponseDTO result = courseService.createCourse(request, "prof@investir.com");
+        CourseDTO.Response result = courseService.createCourse(request, "prof@investir.com");
 
         assertNotNull(result);
         assertEquals(courseId, result.id());
@@ -86,11 +85,11 @@ class CourseServiceTest {
 
     @Test
     void getCourseById_WhenCourseExists_ShouldReturnDTO() {
-        CourseResponseDTO responseDTO = new CourseResponseDTO(courseId, "Finanças Pessoais", "Descrição do Curso", professorId);
+        CourseDTO.Response responseDTO = new CourseDTO.Response(courseId, "Finanças Pessoais", "Descrição do Curso", professorId);
         when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
         when(courseMapper.toDTO(course)).thenReturn(responseDTO);
 
-        CourseResponseDTO result = courseService.getCourseById(courseId);
+        CourseDTO.Response result = courseService.getCourseById(courseId);
 
         assertNotNull(result);
         assertEquals("Finanças Pessoais", result.name());
@@ -110,12 +109,12 @@ class CourseServiceTest {
     void getAllCourses_ShouldReturnPage() {
         Pageable pageable = PageRequest.of(0, 10);
         Page<Course> page = new PageImpl<>(List.of(course));
-        CourseResponseDTO responseDTO = new CourseResponseDTO(courseId, "Finanças Pessoais", "Descrição do Curso", professorId);
+        CourseDTO.Response responseDTO = new CourseDTO.Response(courseId, "Finanças Pessoais", "Descrição do Curso", professorId);
 
         when(courseRepository.findAll(pageable)).thenReturn(page);
         when(courseMapper.toDTO(course)).thenReturn(responseDTO);
 
-        Page<CourseResponseDTO> result = courseService.getAllCourses(pageable);
+        Page<CourseDTO.Response> result = courseService.getAllCourses(pageable);
 
         assertNotNull(result);
         assertEquals(1, result.getTotalElements());
@@ -125,12 +124,12 @@ class CourseServiceTest {
     void getCoursesByProfessor_ShouldReturnPage() {
         Pageable pageable = PageRequest.of(0, 10);
         Page<Course> page = new PageImpl<>(List.of(course));
-        CourseResponseDTO responseDTO = new CourseResponseDTO(courseId, "Finanças Pessoais", "Descrição do Curso", professorId);
+        CourseDTO.Response responseDTO = new CourseDTO.Response(courseId, "Finanças Pessoais", "Descrição do Curso", professorId);
 
         when(courseRepository.findAllByProfessorId(professorId, pageable)).thenReturn(page);
         when(courseMapper.toDTO(course)).thenReturn(responseDTO);
 
-        Page<CourseResponseDTO> result = courseService.getCoursesByProfessor(professorId, pageable);
+        Page<CourseDTO.Response> result = courseService.getCoursesByProfessor(professorId, pageable);
 
         assertNotNull(result);
         assertEquals(1, result.getTotalElements());
@@ -138,8 +137,8 @@ class CourseServiceTest {
 
     @Test
     void updateCourse_WhenUserIsNotOwner_ShouldThrowForbidden() {
-        CourseRequestDTO request = new CourseRequestDTO("Finanças Avançadas", "Nova Descrição");
-        when(userService.findByEmail("outro@investir.com")).thenReturn(outroProfessor);
+        CourseDTO.Request request = new CourseDTO.Request("Finanças Avançadas", "Nova Descrição");
+        when(userService.findAuthenticatedUser("outro@investir.com")).thenReturn(outroProfessor);
         when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class, 
@@ -151,15 +150,15 @@ class CourseServiceTest {
 
     @Test
     void updateCourse_OnSuccess_ShouldUpdateAndSave() {
-        CourseRequestDTO request = new CourseRequestDTO("Finanças Avançadas", "Nova Descrição");
-        CourseResponseDTO responseDTO = new CourseResponseDTO(courseId, "Finanças Avançadas", "Nova Descrição", professorId);
+        CourseDTO.Request request = new CourseDTO.Request("Finanças Avançadas", "Nova Descrição");
+        CourseDTO.Response responseDTO = new CourseDTO.Response(courseId, "Finanças Avançadas", "Nova Descrição", professorId);
 
-        when(userService.findByEmail("prof@investir.com")).thenReturn(professor);
+        when(userService.findAuthenticatedUser("prof@investir.com")).thenReturn(professor);
         when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
         when(courseRepository.save(course)).thenReturn(course);
         when(courseMapper.toDTO(course)).thenReturn(responseDTO);
 
-        CourseResponseDTO result = courseService.updateCourse(courseId, request, "prof@investir.com");
+        CourseDTO.Response result = courseService.updateCourse(courseId, request, "prof@investir.com");
 
         assertNotNull(result);
         verify(courseMapper).updateEntity(request, course);
@@ -168,11 +167,23 @@ class CourseServiceTest {
 
     @Test
     void deleteCourse_OnSuccess_ShouldDelete() {
-        when(userService.findByEmail("prof@investir.com")).thenReturn(professor);
+        when(userService.findAuthenticatedUser("prof@investir.com")).thenReturn(professor);
         when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
 
         courseService.deleteCourse(courseId, "prof@investir.com");
 
         verify(courseRepository).delete(course);
+    }
+
+    @Test
+    void deleteCourse_WhenUserIsNotOwner_ShouldThrowForbidden() {
+        when(userService.findAuthenticatedUser("outro@investir.com")).thenReturn(outroProfessor);
+        when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, 
+            () -> courseService.deleteCourse(courseId, "outro@investir.com"));
+
+        assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
+        verify(courseRepository, never()).delete(any());
     }
 }

@@ -26,8 +26,8 @@ public class CourseService {
     private final CourseMapper courseMapper;
     private final UserService userService;
 
-    public CourseDTO.Response createCourse(CourseDTO.Request request, String userEmail) {
-        User professor = userService.findByEmail(userEmail);
+    public CourseDTO.Response createCourse(CourseDTO.Request request, String principalName) {
+        User professor = userService.findAuthenticatedUser(principalName);
         Course course = courseMapper.toEntity(request);
         course.setProfessor(professor);
         return courseMapper.toDTO(courseRepository.save(course));
@@ -50,19 +50,19 @@ public class CourseService {
         return courseRepository.findAllByProfessorId(professorId, pageable).map(courseMapper::toDTO);
     }
 
-    public CourseDTO.Response updateCourse(UUID courseId, CourseDTO.Request request, String userEmail) {
-        Course course = findCourseOwnedBy(courseId, userEmail);
+    public CourseDTO.Response updateCourse(UUID courseId, CourseDTO.Request request, String principalName) {
+        Course course = findCourseOwnedBy(courseId, principalName);
         courseMapper.updateEntity(request, course);
         return courseMapper.toDTO(courseRepository.save(course));
     }
 
-    public void deleteCourse(UUID courseId, String userEmail) {
-        Course course = findCourseOwnedBy(courseId, userEmail);
+    public void deleteCourse(UUID courseId, String principalName) {
+        Course course = findCourseOwnedBy(courseId, principalName);
         courseRepository.delete(course);
     }
 
-    private Course findCourseOwnedBy(UUID courseId, String userEmail) {
-        User professor = userService.findByEmail(userEmail);
+    private Course findCourseOwnedBy(UUID courseId, String principalName) {
+        User professor = userService.findAuthenticatedUser(principalName);
         Course course = courseRepository.findById(courseId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Curso não encontrado."));
 

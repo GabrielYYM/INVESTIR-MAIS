@@ -29,8 +29,8 @@ public class LessonService {
     private final LessonMapper lessonMapper;
     private final UserService userService;
 
-    public LessonDTO.Response createLesson(UUID courseId, LessonDTO.Request request, String userEmail) {
-        User user = userService.findByEmail(userEmail);
+    public LessonDTO.Response createLesson(UUID courseId, LessonDTO.Request request, String principalName) {
+        User user = userService.findAuthenticatedUser(principalName);
         
         Course course = courseRepository.findById(courseId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Curso não encontrado."));
@@ -58,18 +58,18 @@ public class LessonService {
             .map(lessonMapper::toDTO);
     }
 
-    public LessonDTO.Response updateLesson(UUID lessonId, LessonDTO.Request request, String userEmail) {
-        Lesson lesson = findLessonOwnedBy(lessonId, userEmail);
+    public LessonDTO.Response updateLesson(UUID lessonId, LessonDTO.Request request, String principalName) {
+        Lesson lesson = findLessonOwnedBy(lessonId, principalName);
         lessonMapper.updateEntity(request, lesson);
         return lessonMapper.toDTO(lessonRepository.save(lesson));
     }
 
-    public void deleteLesson(UUID lessonId, String userEmail) {
-        lessonRepository.delete(findLessonOwnedBy(lessonId, userEmail));
+    public void deleteLesson(UUID lessonId, String principalName) {
+        lessonRepository.delete(findLessonOwnedBy(lessonId, principalName));
     }
 
-    public Lesson findLessonOwnedBy(UUID lessonId, String userEmail) {
-        User professor = userService.findByEmail(userEmail);
+    public Lesson findLessonOwnedBy(UUID lessonId, String principalName) {
+        User professor = userService.findAuthenticatedUser(principalName);
         return lessonRepository.findByIdAndCourse_Professor_Id(lessonId, professor.getId())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Aula não encontrada ou sem permissão."));
     }

@@ -53,7 +53,7 @@ public class PortfolioService {
 
     public PortfolioDTO.Response createPortfolioForUser(UUID userId) {
         User user = userRepository.findById(userId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado con el ID: " + userId));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado com o ID: " + userId));
 
         Portfolio portfolio = new Portfolio();
         portfolio.setUserId(user);
