@@ -1,28 +1,21 @@
 package com.repositorio.investir_mais.domain.user.model;
 
-import java.time.LocalDateTime;
-import java.util.UUID;
-
+import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.Email;
+import lombok.*;
 import org.hibernate.envers.Audited;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Embedded;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EntityListeners;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "TB_USER")
-@Data 
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Audited
@@ -36,8 +29,16 @@ public class User {
 
     private Integer age;
 
-    @Embedded
-    private UserSecurity userSecurity;
+    @Email
+    @Column(nullable = false, unique = true)
+    private String email;
+
+    private String password;
+
+    @Enumerated(EnumType.STRING)
+    private UserRole role;
+
+    private boolean emailVerified;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)

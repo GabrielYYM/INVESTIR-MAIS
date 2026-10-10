@@ -1,25 +1,13 @@
 package com.repositorio.investir_mais.infrastructure;
 
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.time.Instant;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import static org.mockito.ArgumentMatchers.any;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
-
 import org.springframework.mail.MailSendException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -27,8 +15,13 @@ import org.springframework.security.authentication.ott.DefaultOneTimeToken;
 import org.springframework.security.authentication.ott.OneTimeToken;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.time.Instant;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class EmailOttHandlerTest {
@@ -75,11 +68,10 @@ class EmailOttHandlerTest {
 
         verify(mailSender).send(any(SimpleMailMessage.class));
         verify(response).setStatus(HttpServletResponse.SC_OK);
-        verify(response).setContentType("application/json");
-        verify(response).setCharacterEncoding("UTF-8");
+        verify(response).setContentType("application/json;charset=UTF-8");
 
         printWriter.flush();
-        assertEquals("{\"message\": \"Link de acesso enviado para o seu e-mail!\"}", stringWriter.toString());
+        assertEquals("{\"status\": 200, \"message\": \"Link de acesso enviado para o seu e-mail!\"}", stringWriter.toString());
     }
 
     @Test

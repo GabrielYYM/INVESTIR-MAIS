@@ -1,41 +1,27 @@
 package com.repositorio.investir_mais.infrastructure;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import com.repositorio.investir_mais.domain.user.repository.UserRepository;
 import org.junit.jupiter.api.Test;
-
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
-import org.springframework.security.oauth2.jwt.JwsHeader;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.jwt.JwtClaimsSet;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.JwtEncoder;
-import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
+import org.springframework.security.oauth2.jwt.*;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-import com.repositorio.investir_mais.domain.user.repository.UserRepository;
+import static org.junit.jupiter.api.Assertions.*;
 
-@SpringBootTest(classes = {
-    AuthorizationServerConfig.class, 
-    SecurityConfig.class, 
-    EmailOttHandler.class,
-    WebMvcAutoConfiguration.class
-})
+@SpringBootTest
 @ActiveProfiles("test")
 class AuthorizationServerConfigTest {
 
-    @MockBean
+    @MockitoBean
     private UserRepository userRepository;
 
-    @MockBean
+    @MockitoBean
     private JavaMailSender mailSender;
 
     @Autowired
@@ -52,7 +38,7 @@ class AuthorizationServerConfigTest {
         RegisteredClient client = registeredClientRepository.findByClientId("investir-mais-app");
         assertNotNull(client);
         assertEquals("investir-mais-app", client.getClientId());
-        assertTrue(client.getRedirectUris().contains("http://localhost:3000/callback"));
+        assertTrue(client.getRedirectUris().contains("http://127.0.0.1:8080/login/oauth2/code/investir-mais-client"));
     }
 
     @Test

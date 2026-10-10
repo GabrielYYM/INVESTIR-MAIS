@@ -1,21 +1,18 @@
 package com.repositorio.investir_mais.domain.education.service;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import com.repositorio.investir_mais.domain.education.DTO.LessonDTO;
+import com.repositorio.investir_mais.domain.education.mapper.LessonMapper;
+import com.repositorio.investir_mais.domain.education.model.Course;
+import com.repositorio.investir_mais.domain.education.model.Lesson;
+import com.repositorio.investir_mais.domain.education.repository.CourseRepository;
+import com.repositorio.investir_mais.domain.education.repository.LessonRepository;
+import com.repositorio.investir_mais.domain.user.model.User;
+import com.repositorio.investir_mais.domain.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import static org.mockito.ArgumentMatchers.any;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -24,15 +21,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.repositorio.investir_mais.domain.education.DTO.LessonRequestDTO;
-import com.repositorio.investir_mais.domain.education.DTO.LessonResponseDTO;
-import com.repositorio.investir_mais.domain.education.mapper.LessonMapper;
-import com.repositorio.investir_mais.domain.education.model.Course;
-import com.repositorio.investir_mais.domain.education.model.Lesson;
-import com.repositorio.investir_mais.domain.education.repository.CourseRepository;
-import com.repositorio.investir_mais.domain.education.repository.LessonRepository;
-import com.repositorio.investir_mais.domain.user.model.User;
-import com.repositorio.investir_mais.domain.user.service.UserService;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class LessonServiceTest {
@@ -79,8 +74,8 @@ class LessonServiceTest {
 
     @Test
     void createLesson_WhenUserIsNotCourseOwner_ShouldThrowForbidden() {
-        LessonRequestDTO request = new LessonRequestDTO("Aula 1", "Desc", "url_video", "url_thumb");
-        when(userService.findByEmail("outro@investir.com")).thenReturn(outroUser);
+        LessonDTO.Request request = new LessonDTO.Request("Aula 1", "Desc", "url_video", "url_thumb");
+        when(userService.findAuthenticatedUser("outro@investir.com")).thenReturn(outroUser);
         when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class, 
@@ -92,16 +87,16 @@ class LessonServiceTest {
 
     @Test
     void createLesson_OnSuccess_ShouldBindCourseAndSave() {
-        LessonRequestDTO request = new LessonRequestDTO("Aula 1", "Desc", "url_video", "url_thumb");
-        LessonResponseDTO responseDTO = new LessonResponseDTO(lessonId, "Aula 1", "Desc", "url_video", "url_thumb", courseId);
+        LessonDTO.Request request = new LessonDTO.Request("Aula 1", "Desc", "url_video", "url_thumb");
+        LessonDTO.Response responseDTO = new LessonDTO.Response(lessonId, "Aula 1", "Desc", "url_video", "url_thumb", courseId);
 
-        when(userService.findByEmail("prof@investir.com")).thenReturn(professor);
+        when(userService.findAuthenticatedUser("prof@investir.com")).thenReturn(professor);
         when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
         when(lessonMapper.toEntity(request)).thenReturn(lesson);
         when(lessonRepository.save(lesson)).thenReturn(lesson);
         when(lessonMapper.toDTO(lesson)).thenReturn(responseDTO);
 
-        LessonResponseDTO result = lessonService.createLesson(courseId, request, "prof@investir.com");
+        LessonDTO.Response result = lessonService.createLesson(courseId, request, "prof@investir.com");
 
         assertNotNull(result);
         assertEquals(lessonId, result.id());
@@ -110,11 +105,11 @@ class LessonServiceTest {
 
     @Test
     void getLessonById_WhenLessonExists_ShouldReturnDTO() {
-        LessonResponseDTO responseDTO = new LessonResponseDTO(lessonId, "Aula 1", "Desc", "url_video", "url_thumb", courseId);
+        LessonDTO.Response responseDTO = new LessonDTO.Response(lessonId, "Aula 1", "Desc", "url_video", "url_thumb", courseId);
         when(lessonRepository.findById(lessonId)).thenReturn(Optional.of(lesson));
         when(lessonMapper.toDTO(lesson)).thenReturn(responseDTO);
 
-        LessonResponseDTO result = lessonService.getLessonById(lessonId);
+        LessonDTO.Response result = lessonService.getLessonById(lessonId);
 
         assertNotNull(result);
         assertEquals("Aula 1", result.title());
@@ -124,12 +119,12 @@ class LessonServiceTest {
     void getLessonsByCourseId_ShouldReturnPage() {
         Pageable pageable = PageRequest.of(0, 10);
         Page<Lesson> page = new PageImpl<>(List.of(lesson));
-        LessonResponseDTO responseDTO = new LessonResponseDTO(lessonId, "Aula 1", "Desc", "url_video", "url_thumb", courseId);
+        LessonDTO.Response responseDTO = new LessonDTO.Response(lessonId, "Aula 1", "Desc", "url_video", "url_thumb", courseId);
 
         when(lessonRepository.findAllByCourseId(courseId, pageable)).thenReturn(page);
         when(lessonMapper.toDTO(lesson)).thenReturn(responseDTO);
 
-        Page<LessonResponseDTO> result = lessonService.getLessonsByCourseId(courseId, pageable);
+        Page<LessonDTO.Response> result = lessonService.getLessonsByCourseId(courseId, pageable);
 
         assertNotNull(result);
         assertEquals(1, result.getTotalElements());
@@ -137,15 +132,15 @@ class LessonServiceTest {
 
     @Test
     void updateLesson_OnSuccess_ShouldUpdateAndSave() {
-        LessonRequestDTO request = new LessonRequestDTO("Aula 1 Atualizada", "Desc", "url_video", "url_thumb");
-        LessonResponseDTO responseDTO = new LessonResponseDTO(lessonId, "Aula 1 Atualizada", "Desc", "url_video", "url_thumb", courseId);
+        LessonDTO.Request request = new LessonDTO.Request("Aula 1 Atualizada", "Desc", "url_video", "url_thumb");
+        LessonDTO.Response responseDTO = new LessonDTO.Response(lessonId, "Aula 1 Atualizada", "Desc", "url_video", "url_thumb", courseId);
 
-        when(userService.findByEmail("prof@investir.com")).thenReturn(professor);
+        when(userService.findAuthenticatedUser("prof@investir.com")).thenReturn(professor);
         when(lessonRepository.findByIdAndCourse_Professor_Id(lessonId, professor.getId())).thenReturn(Optional.of(lesson));
         when(lessonRepository.save(lesson)).thenReturn(lesson);
         when(lessonMapper.toDTO(lesson)).thenReturn(responseDTO);
 
-        LessonResponseDTO result = lessonService.updateLesson(lessonId, request, "prof@investir.com");
+        LessonDTO.Response result = lessonService.updateLesson(lessonId, request, "prof@investir.com");
 
         assertNotNull(result);
         verify(lessonMapper).updateEntity(request, lesson);
@@ -154,7 +149,7 @@ class LessonServiceTest {
 
     @Test
     void deleteLesson_OnSuccess_ShouldDelete() {
-        when(userService.findByEmail("prof@investir.com")).thenReturn(professor);
+        when(userService.findAuthenticatedUser("prof@investir.com")).thenReturn(professor);
         when(lessonRepository.findByIdAndCourse_Professor_Id(lessonId, professor.getId())).thenReturn(Optional.of(lesson));
 
         lessonService.deleteLesson(lessonId, "prof@investir.com");

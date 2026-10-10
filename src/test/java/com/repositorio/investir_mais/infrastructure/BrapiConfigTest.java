@@ -1,23 +1,22 @@
 package com.repositorio.investir_mais.infrastructure;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import org.junit.jupiter.api.Test;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.web.client.RestClientAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.web.client.RestClient;
 
-@SpringBootTest(classes = {BrapiConfig.class, RestClientAutoConfiguration.class})
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
+@SpringBootTest(classes = {ClientConfig.class, RestClientAutoConfiguration.class})
 @ActiveProfiles("test")
-class BrapiConfigTest {
+class ClientConfigTest {
 
     @Autowired
-    private RestClient brapiClient;
+    private AssetQuoteClient assetQuoteClient;
 
     @Test
-    void brapiClient_ShouldBeInstantiatedAndInjected() {
-        assertNotNull(brapiClient);
+    void assetQuoteClient_ShouldBeInstantiatedAndInjected() {
+        assertNotNull(assetQuoteClient);
     }
 }

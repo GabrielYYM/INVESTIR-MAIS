@@ -1,25 +1,22 @@
 package com.repositorio.investir_mais.infrastructure;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import com.repositorio.investir_mais.domain.user.model.User;
+import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
+import com.repositorio.investir_mais.domain.user.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
-
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import com.repositorio.investir_mais.domain.user.model.User;
-import com.repositorio.investir_mais.domain.user.model.UserSecurity;
-import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
-import com.repositorio.investir_mais.domain.user.repository.UserRepository;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class SecurityConfigTest {
@@ -43,15 +40,12 @@ class SecurityConfigTest {
 
     @Test
     void userDetailsService_WhenUserExists_ShouldReturnUserDetails() {
-        UserSecurity userSecurity = new UserSecurity();
-        userSecurity.setEmail("felipe@investir.com");
-        userSecurity.setPassword("hashed_password");
-        userSecurity.setRole(UserRole.STUDENT);
-
         User user = new User();
-        user.setUserSecurity(userSecurity);
+        user.setEmail("felipe@investir.com");
+        user.setPassword("hashed_password");
+        user.setRole(UserRole.STUDENT);
 
-        when(userRepository.findByUserSecurityEmail("felipe@investir.com")).thenReturn(user);
+        when(userRepository.findByEmail("felipe@investir.com")).thenReturn(Optional.of(user));
 
         UserDetailsService userDetailsService = securityConfig.userDetailsService(userRepository);
         UserDetails userDetails = userDetailsService.loadUserByUsername("felipe@investir.com");
@@ -64,7 +58,7 @@ class SecurityConfigTest {
 
     @Test
     void userDetailsService_WhenUserDoesNotExist_ShouldThrowException() {
-        when(userRepository.findByUserSecurityEmail("inexistente@investir.com")).thenReturn(null);
+        when(userRepository.findByEmail("inexistente@investir.com")).thenReturn(Optional.empty());
 
         UserDetailsService userDetailsService = securityConfig.userDetailsService(userRepository);
 
