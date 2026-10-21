@@ -5,6 +5,8 @@ import lombok.*;
 
 import java.util.UUID;
 
+import org.hibernate.validator.constraints.URL;
+
 @Entity
 @Table(name = "TB_LESSON")
 @Getter
@@ -14,7 +16,7 @@ import java.util.UUID;
 public class Lesson {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @GeneratedValue
     private UUID id;
 
     @Column(nullable = false)
@@ -23,6 +25,7 @@ public class Lesson {
     @Column(nullable = false)
     private String description;
 
+    @URL
     @Column(nullable = false)
     private String mediaUrl;
 

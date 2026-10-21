@@ -8,14 +8,11 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
+import java.security.Principal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -23,7 +20,6 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/courses")
 @RequiredArgsConstructor
-@Slf4j
 @Tag(name = "Cursos", description = "Endpoints para gerenciamento do catálogo de cursos")
 public class CourseController {
 
@@ -37,10 +33,8 @@ public class CourseController {
     })
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
-    public CourseDTO.Response createCourse(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody CourseDTO.Request dto) {
-        log.info("Solicitação de criação de curso enviada pelo usuário: {}", jwt.getSubject());
-        return courseService.createCourse(dto, jwt.getSubject());
+    public CourseDTO.Response createCourse(Principal principal, @Valid @RequestBody CourseDTO.Request dto) {
+        return courseService.createCourse(dto, principal.getName());
     }
 
     @Operation(summary = "Listar todos os cursos", description = "Retorna uma lista paginada com todos os cursos cadastrados.")
@@ -74,10 +68,8 @@ public class CourseController {
         @ApiResponse(responseCode = "404", description = "Curso não encontrado")
     })
     @PutMapping("/{courseId}")
-    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
-    public CourseDTO.Response updateCourse(@PathVariable UUID courseId,  @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody CourseDTO.Request dto) {
-        log.info("Solicitação de atualização do curso ID: {} pelo usuário: {}", courseId, jwt.getSubject());
-        return courseService.updateCourse(courseId, dto, jwt.getSubject());
+    public CourseDTO.Response updateCourse(@PathVariable UUID courseId,  Principal principal, @Valid @RequestBody CourseDTO.Request dto) {
+        return courseService.updateCourse(courseId, dto, principal.getName());
     }
 
     @Operation(summary = "Excluir curso", description = "Remove um curso existente. Exige que o usuário seja o proprietário do curso ou ADMIN.")
@@ -88,9 +80,7 @@ public class CourseController {
     })
     @DeleteMapping("/{courseId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
-    public void deleteCourse(@PathVariable UUID courseId, @AuthenticationPrincipal Jwt jwt) {
-        log.info("Solicitação de remoção do curso ID: {} pelo usuário: {}", courseId, jwt.getSubject());
-        courseService.deleteCourse(courseId, jwt.getSubject());
+    public void deleteCourse(@PathVariable UUID courseId, Principal principal) {
+        courseService.deleteCourse(courseId, principal.getName());
     }
 }

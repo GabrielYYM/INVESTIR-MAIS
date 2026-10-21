@@ -77,3 +77,6 @@ build/
 
 ### Data ###
 *.sql
+!src/main/resources/schema-postgresql.sql
+*.p12
+*.jks

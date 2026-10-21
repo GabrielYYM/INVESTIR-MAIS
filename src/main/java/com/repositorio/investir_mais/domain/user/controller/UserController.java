@@ -9,19 +9,16 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 import java.util.UUID;
+import java.security.Principal;
 
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
-@Slf4j
 @Tag(name = "Usuários", description = "Endpoints para gerenciamento de perfis, cadastros e redefinição de senhas")
 public class UserController {
 
@@ -30,14 +27,26 @@ public class UserController {
     @Operation(summary = "Cadastrar novo usuário", description = "Registra um novo usuário no sistema e envia um e-mail com o link de ativação.")
     @ApiResponses({
         @ApiResponse(responseCode = "201", description = "Usuário cadastrado com sucesso"),
-        @ApiResponse(responseCode = "400", description = "Requisição inválida (ex: tentativa de criar perfil ADMIN)"),
+        @ApiResponse(responseCode = "400", description = "Requisição inválida ou perfil diferente de STUDENT"),
         @ApiResponse(responseCode = "409", description = "E-mail já cadastrado")
     })
-    @PostMapping({"", "/register"})
+    @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
     public UserDTO.Response registerUser(@Valid @RequestBody UserDTO.Request dto) {
-        log.info("Recebida requisição de cadastro de usuário para o e-mail: {}", dto.email());
         return userService.registerUser(dto);
+    }
+
+    @Operation(summary = "Verificar e-mail", description = "Consome o link de verificação enviado ao endereço cadastrado.")
+    @GetMapping("/verify-email")
+    public Map<String, String> verifyEmail(@RequestParam String token) {
+        userService.verifyEmail(token);
+        return Map.of("message", "E-mail verificado com sucesso.");
+    }
+
+    @PostMapping("/resend-verification")
+    public Map<String, String> resendVerification(@Valid @RequestBody AuthDTO.ForgotPasswordRequest dto) {
+        userService.resendVerification(dto.email());
+        return Map.of("message", "Se houver uma conta pendente para este e-mail, uma nova confirmação será enviada.");
     }
 
     @Operation(summary = "Obter perfil do usuário por ID", description = "Retorna os detalhes do perfil do usuário autenticado.")
@@ -47,8 +56,8 @@ public class UserController {
         @ApiResponse(responseCode = "404", description = "Usuário não encontrado")
     })
     @GetMapping("/{id}")
-    public UserDTO.Response getProfile(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
-        return userService.getProfile(jwt.getSubject(), id);
+    public UserDTO.Response getProfile(Principal principal, @PathVariable UUID id) {
+        return userService.getProfile(principal.getName(), id);
     }
 
     @Operation(summary = "Atualizar dados do perfil", description = "Atualiza nome, idade ou e-mail do usuário autenticado.")
@@ -58,10 +67,8 @@ public class UserController {
         @ApiResponse(responseCode = "409", description = "Novo e-mail informado já está em uso")
     })
     @PutMapping("/{id}")
-    public UserDTO.Response updateProfile(@AuthenticationPrincipal Jwt jwt, 
-                                          @PathVariable UUID id,
-                                          @Valid @RequestBody UserDTO.UpdateProfileRequest dto) {
-        return userService.updateProfile(jwt.getSubject(), id, dto);
+    public UserDTO.Response updateProfile(Principal principal, @PathVariable UUID id, @Valid @RequestBody UserDTO.UpdateProfileRequest dto) {
+        return userService.updateProfile(principal.getName(), id, dto);
     }
 
     @Operation(summary = "Atualizar senha do usuário logado", description = "Permite alterar a senha mediante confirmação da senha atual.")
@@ -70,9 +77,8 @@ public class UserController {
         @ApiResponse(responseCode = "401", description = "Senha atual incorreta")
     })
     @PutMapping("/update-password")
-    public Map<String, String> updatePassword(@AuthenticationPrincipal Jwt jwt, 
-                                             @Valid @RequestBody AuthDTO.UpdatePasswordRequest dto) {
-        userService.updatePassword(jwt.getSubject(), dto);
+    public Map<String, String> updatePassword(Principal principal, @Valid @RequestBody AuthDTO.UpdatePasswordRequest dto) {
+        userService.updatePassword(principal.getName(), dto);
         return Map.of("message", "Senha atualizada com sucesso!");
     }
 

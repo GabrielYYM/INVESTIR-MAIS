@@ -3,6 +3,7 @@ package com.repositorio.investir_mais.domain.user.DTO;
 import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
+import org.hibernate.validator.constraints.Range;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -21,6 +22,7 @@ public class UserDTO {
 
         @Schema(description = "Idade do usuário", example = "22")
         @NotNull(message = "A idade é obrigatória")
+        @Range(min = 0, max = 120, message = "A idade deve estar entre 0 e 120 anos")
         Integer age,
 
         @Schema(description = "Endereço de e-mail único", example = "usuario@gmail.com")
@@ -33,7 +35,7 @@ public class UserDTO {
         @Size(min = 8, message = "A senha deve ter no mínimo 8 caracteres")
         String password,
 
-        @Schema(description = "Perfil de acesso no sistema (não é permitido passar ADMIN no cadastro público)", example = "STUDENT")
+        @Schema(description = "Perfil de acesso no sistema. O cadastro público aceita apenas STUDENT.", example = "STUDENT")
         UserRole role
     ) {}
 
@@ -49,6 +51,7 @@ public class UserDTO {
         String email,
         
         @Schema(description = "Idade do usuário", example = "23")
+        @Range(min = 0, max = 120, message = "A idade deve estar entre 0 e 120 anos")
         Integer age
     ) {}
 

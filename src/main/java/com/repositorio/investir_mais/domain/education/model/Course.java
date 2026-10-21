@@ -20,7 +20,7 @@ import java.util.UUID;
 public class Course {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @GeneratedValue
     private UUID id;
 
     @Column(nullable = false, length = 100)

@@ -3,15 +3,20 @@ package com.repositorio.investir_mais.domain.user.model;
 import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
+import org.hibernate.validator.constraints.Range;
+
 import lombok.*;
-import org.hibernate.envers.Audited;
+
+import org.hibernate.annotations.Audited;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+import org.springframework.modulith.NamedInterface;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+@NamedInterface("user-model")
 @Entity
 @Table(name = "TB_USER")
 @Getter
@@ -19,14 +24,17 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Audited
+@Audited.Table(name = "TB_USER_AUDIT")
 @EntityListeners(AuditingEntityListener.class)
 public class User {
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @GeneratedValue
+    @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 
     private String name;
 
+    @Range(min = 0, max = 120)
     private Integer age;
 
     @Email

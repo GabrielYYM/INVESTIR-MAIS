@@ -7,11 +7,11 @@ import com.repositorio.investir_mais.domain.education.model.Lesson;
 import com.repositorio.investir_mais.domain.education.repository.CourseRepository;
 import com.repositorio.investir_mais.domain.education.repository.LessonRepository;
 import com.repositorio.investir_mais.domain.user.model.User;
+import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
@@ -41,7 +41,8 @@ class LessonServiceTest {
     @Mock
     private UserService userService;
 
-    @InjectMocks
+    private CourseService courseService;
+
     private LessonService lessonService;
 
     private User professor;
@@ -53,6 +54,8 @@ class LessonServiceTest {
 
     @BeforeEach
     void setUp() {
+        courseService = new CourseService(courseRepository, null, userService);
+        lessonService = new LessonService(lessonRepository, courseService, lessonMapper, userService);
         UUID professorId = UUID.randomUUID();
         professor = new User();
         professor.setId(professorId);
@@ -75,7 +78,7 @@ class LessonServiceTest {
     @Test
     void createLesson_WhenUserIsNotCourseOwner_ShouldThrowForbidden() {
         LessonDTO.Request request = new LessonDTO.Request("Aula 1", "Desc", "url_video", "url_thumb");
-        when(userService.findAuthenticatedUser("outro@investir.com")).thenReturn(outroUser);
+        when(userService.findByEmail("outro@investir.com")).thenReturn(outroUser);
         when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class, 
@@ -90,7 +93,7 @@ class LessonServiceTest {
         LessonDTO.Request request = new LessonDTO.Request("Aula 1", "Desc", "url_video", "url_thumb");
         LessonDTO.Response responseDTO = new LessonDTO.Response(lessonId, "Aula 1", "Desc", "url_video", "url_thumb", courseId);
 
-        when(userService.findAuthenticatedUser("prof@investir.com")).thenReturn(professor);
+        when(userService.findByEmail("prof@investir.com")).thenReturn(professor);
         when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
         when(lessonMapper.toEntity(request)).thenReturn(lesson);
         when(lessonRepository.save(lesson)).thenReturn(lesson);
@@ -100,6 +103,22 @@ class LessonServiceTest {
 
         assertNotNull(result);
         assertEquals(lessonId, result.id());
+        verify(lessonRepository).save(lesson);
+    }
+
+    @Test
+    void createLesson_WhenUserIsAdmin_ShouldAllowAddingLessonToAnotherProfessorsCourse() {
+        LessonDTO.Request request = new LessonDTO.Request("Aula 1", "Desc", "url_video", "url_thumb");
+        User admin = new User();
+        admin.setId(UUID.randomUUID());
+        admin.setRole(UserRole.ADMIN);
+        when(userService.findByEmail("admin@investir.com")).thenReturn(admin);
+        when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
+        when(lessonMapper.toEntity(request)).thenReturn(lesson);
+        when(lessonRepository.save(lesson)).thenReturn(lesson);
+
+        lessonService.createLesson(courseId, request, "admin@investir.com");
+
         verify(lessonRepository).save(lesson);
     }
 
@@ -135,21 +154,37 @@ class LessonServiceTest {
         LessonDTO.Request request = new LessonDTO.Request("Aula 1 Atualizada", "Desc", "url_video", "url_thumb");
         LessonDTO.Response responseDTO = new LessonDTO.Response(lessonId, "Aula 1 Atualizada", "Desc", "url_video", "url_thumb", courseId);
 
-        when(userService.findAuthenticatedUser("prof@investir.com")).thenReturn(professor);
+        when(userService.findByEmail("prof@investir.com")).thenReturn(professor);
         when(lessonRepository.findByIdAndCourse_Professor_Id(lessonId, professor.getId())).thenReturn(Optional.of(lesson));
-        when(lessonRepository.save(lesson)).thenReturn(lesson);
         when(lessonMapper.toDTO(lesson)).thenReturn(responseDTO);
 
         LessonDTO.Response result = lessonService.updateLesson(lessonId, request, "prof@investir.com");
 
         assertNotNull(result);
         verify(lessonMapper).updateEntity(request, lesson);
-        verify(lessonRepository).save(lesson);
+        verify(lessonRepository, never()).save(lesson);
+    }
+
+    @Test
+    void updateLesson_WhenUserIsAdmin_ShouldAllowUpdatingAnotherProfessorsLesson() {
+        LessonDTO.Request request = new LessonDTO.Request("Aula atualizada", "Descrição", "https://video", "https://thumb");
+        User admin = new User();
+        admin.setId(UUID.randomUUID());
+        admin.setRole(UserRole.ADMIN);
+        when(userService.findByEmail("admin@investir.com")).thenReturn(admin);
+        when(lessonRepository.findById(lessonId)).thenReturn(Optional.of(lesson));
+        when(lessonMapper.toDTO(lesson)).thenReturn(new LessonDTO.Response(
+            lessonId, request.title(), request.description(), request.mediaUrl(), request.thumbnailUrl(), courseId));
+
+        LessonDTO.Response result = lessonService.updateLesson(lessonId, request, "admin@investir.com");
+
+        assertEquals("Aula atualizada", result.title());
+        verify(lessonMapper).updateEntity(request, lesson);
     }
 
     @Test
     void deleteLesson_OnSuccess_ShouldDelete() {
-        when(userService.findAuthenticatedUser("prof@investir.com")).thenReturn(professor);
+        when(userService.findByEmail("prof@investir.com")).thenReturn(professor);
         when(lessonRepository.findByIdAndCourse_Professor_Id(lessonId, professor.getId())).thenReturn(Optional.of(lesson));
 
         lessonService.deleteLesson(lessonId, "prof@investir.com");

@@ -44,6 +44,7 @@ class SecurityConfigTest {
         user.setEmail("felipe@investir.com");
         user.setPassword("hashed_password");
         user.setRole(UserRole.STUDENT);
+        user.setEmailVerified(true);
 
         when(userRepository.findByEmail("felipe@investir.com")).thenReturn(Optional.of(user));
 

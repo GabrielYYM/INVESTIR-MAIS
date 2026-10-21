@@ -1,6 +1,6 @@
 package com.repositorio.investir_mais.domain.user.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.repositorio.investir_mais.domain.user.DTO.AuthDTO;
 import com.repositorio.investir_mais.domain.user.DTO.UserDTO;
 import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
@@ -8,8 +8,8 @@ import com.repositorio.investir_mais.domain.user.repository.UserRepository;
 import com.repositorio.investir_mais.domain.user.service.UserService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;

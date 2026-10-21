@@ -4,15 +4,16 @@ import com.repositorio.investir_mais.domain.education.DTO.LessonDTO;
 import com.repositorio.investir_mais.domain.education.mapper.LessonMapper;
 import com.repositorio.investir_mais.domain.education.model.Course;
 import com.repositorio.investir_mais.domain.education.model.Lesson;
-import com.repositorio.investir_mais.domain.education.repository.CourseRepository;
 import com.repositorio.investir_mais.domain.education.repository.LessonRepository;
 import com.repositorio.investir_mais.domain.user.model.User;
+import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -26,24 +27,13 @@ import java.util.UUID;
 public class LessonService {
 
     private final LessonRepository lessonRepository;
-    private final CourseRepository courseRepository;
+    private final CourseService courseService;
     private final LessonMapper lessonMapper;
     private final UserService userService;
 
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public LessonDTO.Response createLesson(UUID courseId, LessonDTO.Request request, String principalName) {
-        User user = userService.findAuthenticatedUser(principalName);
-
-        Course course = courseRepository.findById(courseId)
-            .orElseThrow(() -> {
-                log.warn("Tentativa de adicionar aula em curso inexistente. Curso ID: {}", courseId);
-                return new ResponseStatusException(HttpStatus.NOT_FOUND, "Curso não encontrado.");
-            });
-
-        if (!course.getProfessor().getId().equals(user.getId())) {
-            log.warn("Acesso negado: Usuário {} tentou adicionar aula ao curso {} do professor {}", 
-                user.getId(), courseId, course.getProfessor().getId());
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não tem permissão para adicionar aulas neste curso.");
-        }
+        Course course = courseService.findCourseOwnedBy(courseId, principalName);
 
         Lesson lesson = lessonMapper.toEntity(request);
         lesson.setCourse(course);
@@ -69,15 +59,16 @@ public class LessonService {
             .map(lessonMapper::toDTO);
     }
 
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public LessonDTO.Response updateLesson(UUID lessonId, LessonDTO.Request request, String principalName) {
         Lesson lesson = findLessonOwnedBy(lessonId, principalName);
         lessonMapper.updateEntity(request, lesson);
         
-        Lesson updatedLesson = lessonRepository.save(lesson);
-        log.info("Aula atualizada com sucesso. ID: {}", updatedLesson.getId());
-        return lessonMapper.toDTO(updatedLesson);
+        log.info("Aula atualizada com sucesso. ID: {}", lesson.getId());
+        return lessonMapper.toDTO(lesson);
     }
 
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public void deleteLesson(UUID lessonId, String principalName) {
         Lesson lesson = findLessonOwnedBy(lessonId, principalName);
         lessonRepository.delete(lesson);
@@ -85,7 +76,11 @@ public class LessonService {
     }
 
     public Lesson findLessonOwnedBy(UUID lessonId, String principalName) {
-        User professor = userService.findAuthenticatedUser(principalName);
+        User professor = userService.findByEmail(principalName);
+        if (professor.getRole() == UserRole.ADMIN) {
+            return lessonRepository.findById(lessonId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Aula não encontrada."));
+        }
         return lessonRepository.findByIdAndCourse_Professor_Id(lessonId, professor.getId())
             .orElseThrow(() -> {
                 log.warn("Acesso negado ou aula não encontrada. Aula ID: {}, Usuário: {}", lessonId, professor.getId());

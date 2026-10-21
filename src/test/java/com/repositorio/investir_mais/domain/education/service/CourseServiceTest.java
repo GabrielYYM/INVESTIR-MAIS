@@ -5,6 +5,7 @@ import com.repositorio.investir_mais.domain.education.mapper.CourseMapper;
 import com.repositorio.investir_mais.domain.education.model.Course;
 import com.repositorio.investir_mais.domain.education.repository.CourseRepository;
 import com.repositorio.investir_mais.domain.user.model.User;
+import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -67,7 +68,7 @@ class CourseServiceTest {
         CourseDTO.Request request = new CourseDTO.Request("Finanças Pessoais", "Descrição do Curso");
         CourseDTO.Response responseDTO = new CourseDTO.Response(courseId, "Finanças Pessoais", "Descrição do Curso", professorId);
 
-        when(userService.findAuthenticatedUser("prof@investir.com")).thenReturn(professor);
+        when(userService.findByEmail("prof@investir.com")).thenReturn(professor);
         when(courseMapper.toEntity(request)).thenReturn(course);
         when(courseRepository.save(course)).thenReturn(course);
         when(courseMapper.toDTO(course)).thenReturn(responseDTO);
@@ -134,7 +135,7 @@ class CourseServiceTest {
     @Test
     void updateCourse_WhenUserIsNotOwner_ShouldThrowForbidden() {
         CourseDTO.Request request = new CourseDTO.Request("Finanças Avançadas", "Nova Descrição");
-        when(userService.findAuthenticatedUser("outro@investir.com")).thenReturn(outroProfessor);
+        when(userService.findByEmail("outro@investir.com")).thenReturn(outroProfessor);
         when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class, 
@@ -149,21 +150,37 @@ class CourseServiceTest {
         CourseDTO.Request request = new CourseDTO.Request("Finanças Avançadas", "Nova Descrição");
         CourseDTO.Response responseDTO = new CourseDTO.Response(courseId, "Finanças Avançadas", "Nova Descrição", professorId);
 
-        when(userService.findAuthenticatedUser("prof@investir.com")).thenReturn(professor);
+        when(userService.findByEmail("prof@investir.com")).thenReturn(professor);
         when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
-        when(courseRepository.save(course)).thenReturn(course);
         when(courseMapper.toDTO(course)).thenReturn(responseDTO);
 
         CourseDTO.Response result = courseService.updateCourse(courseId, request, "prof@investir.com");
 
         assertNotNull(result);
         verify(courseMapper).updateEntity(request, course);
-        verify(courseRepository).save(course);
+        verify(courseRepository, never()).save(course);
+    }
+
+    @Test
+    void updateCourse_WhenUserIsAdmin_ShouldAllowUpdatingAnotherProfessorsCourse() {
+        CourseDTO.Request request = new CourseDTO.Request("Finanças Avançadas", "Nova Descrição");
+        User admin = new User();
+        admin.setId(UUID.randomUUID());
+        admin.setRole(UserRole.ADMIN);
+        when(userService.findByEmail("admin@investir.com")).thenReturn(admin);
+        when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
+        when(courseMapper.toDTO(course)).thenReturn(new CourseDTO.Response(
+            courseId, request.name(), request.description(), professorId));
+
+        CourseDTO.Response result = courseService.updateCourse(courseId, request, "admin@investir.com");
+
+        assertEquals("Finanças Avançadas", result.name());
+        verify(courseMapper).updateEntity(request, course);
     }
 
     @Test
     void deleteCourse_OnSuccess_ShouldDelete() {
-        when(userService.findAuthenticatedUser("prof@investir.com")).thenReturn(professor);
+        when(userService.findByEmail("prof@investir.com")).thenReturn(professor);
         when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
 
         courseService.deleteCourse(courseId, "prof@investir.com");
@@ -173,7 +190,7 @@ class CourseServiceTest {
 
     @Test
     void deleteCourse_WhenUserIsNotOwner_ShouldThrowForbidden() {
-        when(userService.findAuthenticatedUser("outro@investir.com")).thenReturn(outroProfessor);
+        when(userService.findByEmail("outro@investir.com")).thenReturn(outroProfessor);
         when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class, 
