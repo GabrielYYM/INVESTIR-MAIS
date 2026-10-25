@@ -42,7 +42,8 @@ public class UserDTO {
     @Schema(description = "Dados para atualização de perfil")
     public record UpdateProfileRequest(
         @Schema(description = "Nome do usuário", example = "Usuario da Silva")
-        @NotBlank(message = "O nome é obrigatório") 
+        @NotBlank(message = "O nome é obrigatório")
+        @Size(min = 2, max = 100, message = "O nome deve ter entre 2 e 100 caracteres")
         String name,
         
         @Schema(description = "Novo endereço de e-mail", example = "usuario@gmail.com")
@@ -52,7 +53,11 @@ public class UserDTO {
         
         @Schema(description = "Idade do usuário", example = "23")
         @Range(min = 0, max = 120, message = "A idade deve estar entre 0 e 120 anos")
-        Integer age
+        Integer age,
+
+        @Schema(description = "Senha atual para confirmar a alteração do perfil")
+        @NotBlank(message = "A senha atual é obrigatória")
+        String currentPassword
     ) {}
 
     @Schema(description = "Resposta com dados do usuário")

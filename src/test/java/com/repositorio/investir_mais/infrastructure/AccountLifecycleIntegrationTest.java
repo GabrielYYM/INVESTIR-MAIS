@@ -1,11 +1,17 @@
 package com.repositorio.investir_mais.infrastructure;
 
+import com.repositorio.investir_mais.domain.education.model.Course;
+import com.repositorio.investir_mais.domain.education.model.Lesson;
+import com.repositorio.investir_mais.domain.education.repository.CourseRepository;
+import com.repositorio.investir_mais.domain.education.repository.LessonRepository;
+import com.repositorio.investir_mais.domain.education.service.CourseService;
 import com.repositorio.investir_mais.domain.user.DTO.AuthDTO;
 import com.repositorio.investir_mais.domain.user.DTO.UserDTO;
 import com.repositorio.investir_mais.domain.user.model.User;
 import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.repository.UserRepository;
 import com.repositorio.investir_mais.domain.user.service.UserService;
+import com.repositorio.investir_mais.infrastructure.config.AuthenticationRateLimitProperties;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,43 +19,45 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.redis.core.ScanOptions;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.MailSendException;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.modulith.events.EventPublication;
 import org.springframework.modulith.events.FailedEventPublications;
 import org.springframework.modulith.events.ResubmissionOptions;
-import org.springframework.modulith.events.EventPublication;
 import org.springframework.modulith.events.core.EventPublicationRegistry;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.support.TransactionTemplate;
-import java.time.Duration;
-import java.sql.Timestamp;
-import java.time.Instant;
-import static org.awaitility.Awaitility.await;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.session.FindByIndexNameSessionRepository;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.sql.Timestamp;
+import java.time.Duration;
+import java.time.Instant;
+
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 
-@SpringBootTest(properties = {
-    "spring.datasource.url=jdbc:h2:mem:account-lifecycle;DB_CLOSE_DELAY=-1",
-    "spring.datasource.driver-class-name=org.h2.Driver", "spring.datasource.username=sa", "spring.datasource.password=",
-    "spring.session.jdbc.schema=classpath:org/springframework/session/jdbc/schema-h2.sql",
-    "app.security.rate-limit.capacity=3", "app.mail.retry-delay=1h"
-})
+@SpringBootTest(properties = {"app.security.rate-limit.capacity=3", "app.mail.retry-delay=1s"})
+@Testcontainers(disabledWithoutDocker = true)
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-class AccountLifecycleIntegrationTest {
+class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
     private static final String EMAIL = "account@investir.com";
     private static final String PASSWORD = "SenhaSegura123";
     @Autowired private MockMvc mvc;
@@ -61,52 +69,27 @@ class AccountLifecycleIntegrationTest {
     @Autowired private FailedEventPublications failedPublications;
     @Autowired private EventPublicationRegistry publications;
     @Autowired private PlatformTransactionManager transactionManager;
+    @Autowired private CourseRepository courses;
+    @Autowired private LessonRepository lessons;
+    @Autowired private CourseService courseService;
 
-    @Autowired private AuthenticationRateLimitStore rateLimits;
-
-    @Test
-    void nativeRetryRollsBackEachFailedAttemptBeforeTryingAgain() {
-        String key = "retry-rollback";
-        String insert = "INSERT INTO app_auth_rate_limit (bucket_key, window_started_at, request_count) VALUES (?, ?, 1)";
-        doAnswer(invocation -> {
-            invocation.callRealMethod();
-            throw new org.springframework.dao.DuplicateKeyException("simulated concurrent insert");
-        }).doCallRealMethod().when(jdbc).update(eq(insert), eq(key), any(Timestamp.class));
-
-        assertTrue(rateLimits.tryConsume(key, 3));
-
-        verify(jdbc, times(2)).update(eq(insert), eq(key), any(Timestamp.class));
-        assertEquals(1, jdbc.queryForObject("SELECT request_count FROM app_auth_rate_limit WHERE bucket_key = ?", Integer.class, key));
-    }
-
-    @Test
-    void nativeRetryStopsAfterThreeDuplicateKeyFailures() {
-        String insert = "INSERT INTO app_auth_rate_limit (bucket_key, window_started_at, request_count) VALUES (?, ?, 1)";
-        doThrow(new org.springframework.dao.DuplicateKeyException("simulated conflict"))
-                .when(jdbc).update(eq(insert), eq("retry-exhausted"), any(Timestamp.class));
-
-        assertThrows(org.springframework.dao.DuplicateKeyException.class, () -> rateLimits.tryConsume("retry-exhausted", 3));
-        verify(jdbc, times(3)).update(eq(insert), eq("retry-exhausted"), any(Timestamp.class));
-    }
-
-    @Test
-    void nativeRetryDoesNotRepeatOtherPersistenceFailures() {
-        String insert = "INSERT INTO app_auth_rate_limit (bucket_key, window_started_at, request_count) VALUES (?, ?, 1)";
-        doThrow(new DataIntegrityViolationException("unrelated failure"))
-                .when(jdbc).update(eq(insert), eq("retry-unrelated"), any(Timestamp.class));
-
-        assertThrows(DataIntegrityViolationException.class, () -> rateLimits.tryConsume("retry-unrelated", 3));
-        verify(jdbc).update(eq(insert), eq("retry-unrelated"), any(Timestamp.class));
-    }
+    @Autowired private StringRedisTemplate redis;
+    @Autowired private FindByIndexNameSessionRepository<?> sessions;
+    @Autowired private AuthenticationRateLimitProperties rateLimitProperties;
 
     @BeforeEach
     void clean() {
         await().atMost(Duration.ofSeconds(5)).until(() -> publications.findIncompletePublications().isEmpty());
         reset(users, mail, jdbc);
-        jdbc.update("DELETE FROM SPRING_SESSION");
+        sessions.findByPrincipalName(EMAIL).keySet().forEach(sessions::deleteById);
+        try (var keys = redis.scan(ScanOptions.scanOptions()
+                .match(rateLimitProperties.namespace() + ":*").count(100).build())) {
+            keys.forEachRemaining(redis::delete);
+        }
         jdbc.update("DELETE FROM one_time_tokens");
         jdbc.update("DELETE FROM app_one_time_token");
-        jdbc.update("DELETE FROM app_auth_rate_limit");
+        lessons.deleteAll();
+        courses.deleteAll();
         users.deleteAll();
     }
 
@@ -119,6 +102,40 @@ class AccountLifecycleIntegrationTest {
         failedPublications.resubmit(ResubmissionOptions.defaults());
         verify(mail, timeout(3000)).send(any(SimpleMailMessage.class));
         await().atMost(Duration.ofSeconds(5)).until(() -> publications.findIncompletePublications().isEmpty());
+    }
+
+    @Test
+    void failedEmailIsDeliveredByTheManagedRetryScheduler() {
+        doThrow(new MailSendException("temporary SMTP failure")).doNothing()
+                .when(mail).send(any(SimpleMailMessage.class));
+        service.registerUser(new UserDTO.Request("Conta", 22, EMAIL, PASSWORD, UserRole.STUDENT));
+        verify(mail, timeout(5000).times(2)).send(any(SimpleMailMessage.class));
+        await().atMost(Duration.ofSeconds(5)).until(() -> publications.findIncompletePublications().isEmpty());
+    }
+
+    @Test
+    @WithMockUser(username = EMAIL,
+            authorities = {"ROLE_TEACHER", "FACTOR_PASSWORD", "FACTOR_OTT"})
+    void deletingCourseAlsoDeletesItsLessonsAndSupportsLongDescriptionsAndUrls() {
+        User owner = createVerifiedUser();
+        var course = new Course();
+        course.setName("Curso de teste");
+        course.setDescription("Descrição");
+        course.setProfessor(owner);
+        course = courses.saveAndFlush(course);
+        var lesson = new Lesson();
+        lesson.setTitle("Aula de teste");
+        lesson.setDescription("x".repeat(1000));
+        lesson.setMediaUrl("https://media.example.com/" + "v".repeat(500));
+        lesson.setThumbnailUrl("https://media.example.com/" + "t".repeat(500));
+        lesson.setCourse(course);
+        lesson = lessons.saveAndFlush(lesson);
+        assertEquals(1000, lessons.findById(lesson.getId()).orElseThrow().getDescription().length());
+
+        courseService.deleteCourse(course.getId(), EMAIL);
+
+        assertFalse(courses.existsById(course.getId()));
+        assertFalse(lessons.existsById(lesson.getId()));
     }
 
     @Test
@@ -173,7 +190,7 @@ class AccountLifecycleIntegrationTest {
         service.forgotPassword(new AuthDTO.ForgotPasswordRequest(EMAIL));
         assertEquals(200, browser.write(put("/api/users/{id}", users.findByEmail(EMAIL).orElseThrow().getId())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\":\"Conta\",\"email\":\"new@investir.com\",\"age\":22}")).getResponse().getStatus());
+                .content("{\"name\":\"Conta\",\"email\":\"new@investir.com\",\"age\":22,\"currentPassword\":\"" + PASSWORD + "\"}")).getResponse().getStatus());
         assertEquals(401, browser.read(get("/auth/me")).getResponse().getStatus());
         assertTrue(users.findByEmail(EMAIL).isEmpty());
         assertFalse(users.findByEmail("new@investir.com").orElseThrow().isEmailVerified());

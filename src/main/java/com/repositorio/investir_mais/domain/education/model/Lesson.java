@@ -22,14 +22,15 @@ public class Lesson {
     @Column(nullable = false)
     private String title;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String description;
 
     @URL
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String mediaUrl;
 
-    @Column(nullable = false)
+    @URL
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String thumbnailUrl;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

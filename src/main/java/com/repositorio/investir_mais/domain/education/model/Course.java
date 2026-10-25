@@ -9,6 +9,8 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "TB_COURSE")
@@ -32,6 +34,9 @@ public class Course {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "professor_id", nullable = false)
     private User professor;
+
+    @OneToMany(mappedBy = "course", cascade = CascadeType.REMOVE)
+    private List<Lesson> lessons = new ArrayList<>();
 
     @CreatedDate
     @Column(updatable = false)

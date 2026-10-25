@@ -1,20 +1,24 @@
 package com.repositorio.investir_mais.infrastructure;
 
+import com.repositorio.investir_mais.domain.user.mapper.UserMapper;
 import com.repositorio.investir_mais.domain.user.model.User;
 import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.repository.UserRepository;
 import com.repositorio.investir_mais.domain.user.service.UserService;
+import com.repositorio.investir_mais.infrastructure.config.AuthenticationRateLimitProperties;
+import com.repositorio.investir_mais.infrastructure.config.WebApplicationProperties;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mapstruct.factory.Mappers;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import com.repositorio.investir_mais.infrastructure.config.AuthenticationRateLimitProperties;
-import com.repositorio.investir_mais.infrastructure.config.WebApplicationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseBuilder;
 import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseType;
@@ -36,10 +40,10 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
-import javax.sql.DataSource;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
+import javax.sql.DataSource;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -61,7 +65,7 @@ class SpringLoginFlowTest {
     @Autowired private UserRepository users;
     @Autowired private UserService userService;
     @Autowired private AuthenticationEmailHandler emails;
-    @Autowired private AuthenticationRateLimitStore rateLimits;
+    @Autowired private StringRedisTemplate rateLimits;
     @Autowired private OneTimeTokenService tokens;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private JdbcTemplate jdbc;
@@ -73,7 +77,7 @@ class SpringLoginFlowTest {
         mvc = webAppContextSetup(context).apply(springSecurity()).build();
         reset(users, userService, emails, rateLimits);
         jdbc.update("DELETE FROM one_time_tokens");
-        when(rateLimits.tryConsume(anyString(), anyInt())).thenReturn(true);
+        when(rateLimits.execute(any(RedisScript.class), anyList(), anyString(), anyString())).thenReturn(0L);
         user = new User();
         user.setId(UUID.randomUUID());
         user.setName("Usuário");
@@ -204,7 +208,7 @@ class SpringLoginFlowTest {
             mvc.perform(post(endpoint)).andExpect(status().isForbidden());
         }
         MockHttpSession session = login();
-        when(rateLimits.tryConsume(endsWith(":/auth/code"), anyInt())).thenReturn(false);
+        when(rateLimits.execute(any(RedisScript.class), argThat(keys -> keys.getFirst().endsWith(":/auth/code")), anyString(), anyString())).thenReturn(1000L);
         mvc.perform(post("/auth/code").session(session).with(csrf())).andExpect(status().isTooManyRequests());
         verify(emails).sendLoginCode(eq(EMAIL), anyString());
     }
@@ -281,13 +285,13 @@ class SpringLoginFlowTest {
     @EnableWebMvc
     @EnableConfigurationProperties({AuthenticationRateLimitProperties.class, WebApplicationProperties.class})
     static class Config {
-        @Bean com.repositorio.investir_mais.domain.user.mapper.UserMapper userMapper() {
-            return org.mapstruct.factory.Mappers.getMapper(com.repositorio.investir_mais.domain.user.mapper.UserMapper.class);
+        @Bean UserMapper userMapper() {
+            return Mappers.getMapper(UserMapper.class);
         }
         @Bean UserRepository users() { return mock(UserRepository.class); }
         @Bean UserService userService() { return mock(UserService.class); }
         @Bean AuthenticationEmailHandler emails() { return mock(AuthenticationEmailHandler.class); }
-        @Bean AuthenticationRateLimitStore rateLimits() { return mock(AuthenticationRateLimitStore.class); }
+        @Bean StringRedisTemplate rateLimits() { return mock(StringRedisTemplate.class); }
         @Bean ProtectedEndpoints protectedEndpoints() { return new ProtectedEndpoints(); }
         @Bean(destroyMethod = "shutdown") DataSource dataSource() {
             return new EmbeddedDatabaseBuilder().generateUniqueName(true).setType(EmbeddedDatabaseType.H2)

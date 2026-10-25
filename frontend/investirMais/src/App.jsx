@@ -6,17 +6,32 @@ import Login from "./pages/Login.jsx";
 import Perfil from "./pages/Perfil.jsx";
 import { getCategorias } from "./services/carteiraService";
 import { getQuestoesPorCategoria } from "./services/questoesService";
+import { getCurrentUser } from "./services/authService";
 
 export default function App() {
-  const [activePage, setActivePage] = useState(() => {
-    return localStorage.getItem("authToken") ? "Carteira" : "Login";
-  });
+  const [activePage, setActivePage] = useState("Login");
+  const [currentUser, setCurrentUser] = useState(null);
+  const [sessionChecked, setSessionChecked] = useState(false);
 
   // Categorias vindas do backend (carregadas uma vez)
   const [categorias, setCategorias] = useState([]);
 
   // Perguntas globais: todas as perguntas de todas as categorias da carteira
   const [questions, setQuestions] = useState([]);
+  const navigate = (page) => {
+    if (page === "Login") setCurrentUser(null);
+    setActivePage(page);
+  };
+
+  useEffect(() => {
+    getCurrentUser()
+      .then((user) => {
+        setCurrentUser(user);
+        setActivePage("Carteira");
+      })
+      .catch(() => setCurrentUser(null))
+      .finally(() => setSessionChecked(true));
+  }, []);
 
   const carregarDados = useCallback(async () => {
     try {
@@ -40,8 +55,8 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const isAuth = !!localStorage.getItem("authToken");
-    if (!isAuth && activePage !== "Login" && activePage !== "SignUp") {
+    const isAuth = !!currentUser;
+    if (sessionChecked && !isAuth && activePage !== "Login" && activePage !== "SignUp") {
       setActivePage("Login");
       return;
     }
@@ -49,12 +64,12 @@ export default function App() {
     if (isAuth && (activePage === "Carteira" || activePage === "Questões")) {
       carregarDados();
     }
-  }, [carregarDados, activePage]);
+  }, [carregarDados, activePage, currentUser, sessionChecked]);
 
   const pages = {
     Carteira: (
       <Carteira
-        onNavigate={setActivePage}
+        onNavigate={navigate}
         questions={questions}
         categorias={categorias}
         onDadosChange={carregarDados}
@@ -62,16 +77,17 @@ export default function App() {
     ),
     Questões: (
       <QuestionsManager
-        onNavigate={setActivePage}
+        onNavigate={navigate}
         questions={questions}
         categorias={categorias}
         onDadosChange={carregarDados}
       />
     ),
-    Perfil: <Perfil onNavigate={setActivePage} />,
-    SignUp: <SignUp onNavigate={setActivePage} />,
-    Login: <Login onNavigate={setActivePage} />,
+    Perfil: <Perfil onNavigate={navigate} />,
+    SignUp: <SignUp onNavigate={navigate} />,
+    Login: <Login onNavigate={navigate} onAuthenticated={setCurrentUser} />,
   };
 
+  if (!sessionChecked) return <div className="min-h-screen bg-[#171522]" />;
   return pages[activePage] || <Carteira onNavigate={setActivePage} questions={questions} />;
 }

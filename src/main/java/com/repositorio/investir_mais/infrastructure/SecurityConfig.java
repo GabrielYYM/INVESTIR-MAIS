@@ -1,46 +1,48 @@
 package com.repositorio.investir_mais.infrastructure;
 
 import com.repositorio.investir_mais.domain.user.repository.UserRepository;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-
-import java.util.List;
-
-import org.springframework.beans.factory.annotation.Value;
 import com.repositorio.investir_mais.infrastructure.config.AuthenticationRateLimitProperties;
 import com.repositorio.investir_mais.infrastructure.config.WebApplicationProperties;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.ott.GenerateOneTimeTokenRequest;
+import org.springframework.security.authentication.ott.JdbcOneTimeTokenService;
 import org.springframework.security.authentication.ott.OneTimeTokenService;
-import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.ObjectPostProcessor;
 import org.springframework.security.config.annotation.authorization.EnableMultiFactorAuthentication;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.core.authority.FactorGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.core.authority.FactorGrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.access.HttpStatusAccessDeniedHandler;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
-import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
-import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler;
 import org.springframework.security.web.authentication.ott.GenerateOneTimeTokenFilter;
 import org.springframework.security.web.authentication.ott.GenerateOneTimeTokenRequestResolver;
 import org.springframework.security.web.authentication.ott.OneTimeTokenGenerationSuccessHandler;
-import org.springframework.security.web.savedrequest.NullRequestCache;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.http.HttpStatus;
+
+import java.util.List;
 
 
 @Configuration(proxyBeanMethods = false)
@@ -71,8 +73,11 @@ public class SecurityConfig {
     }
 
     @Bean
-    public OneTimeTokenService loginOneTimeTokenService(JdbcTemplate jdbcTemplate) {
-        return new org.springframework.security.authentication.ott.JdbcOneTimeTokenService(jdbcTemplate);
+    public OneTimeTokenService loginOneTimeTokenService(JdbcTemplate jdbcTemplate) throws Exception {
+        var tokens = new JdbcOneTimeTokenService(jdbcTemplate);
+        tokens.destroy();
+        tokens.setCleanupCron(null);
+        return tokens;
     }
 
     @Bean
@@ -121,12 +126,14 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http, AuthenticationRateLimitStore rateLimitStore, CookieCsrfTokenRepository csrfRepository, AuthenticationSuccessHandler passwordLoginSuccess, AuthenticationRateLimitProperties rateLimitProperties) throws Exception {
+    public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http, StringRedisTemplate redis, CookieCsrfTokenRepository csrfRepository, AuthenticationSuccessHandler passwordLoginSuccess, AuthenticationRateLimitProperties rateLimitProperties) throws Exception {
         http.cors(Customizer.withDefaults())
-            .addFilterBefore(new AuthenticationRateLimitFilter(rateLimitProperties.capacity(), rateLimitStore), GenerateOneTimeTokenFilter.class)
-            .requestCache(cache -> cache.requestCache(new NullRequestCache()))
+            .addFilterBefore(new SecurityFilter(redis, rateLimitProperties), GenerateOneTimeTokenFilter.class)
+            .requestCache(AbstractHttpConfigurer::disable)
             .csrf(csrf -> csrf.csrfTokenRepository(csrfRepository).csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
-            .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)).accessDeniedHandler((request, response, exception) -> response.setStatus(HttpStatus.FORBIDDEN.value())))
+            .exceptionHandling(exceptions -> exceptions
+                .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
+                .accessDeniedHandler(new HttpStatusAccessDeniedHandler(HttpStatus.FORBIDDEN)))
             .formLogin(login -> login
                 .loginProcessingUrl("/auth/login")
                 .usernameParameter("email")

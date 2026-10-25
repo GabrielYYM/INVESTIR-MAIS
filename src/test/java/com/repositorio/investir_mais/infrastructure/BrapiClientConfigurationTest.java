@@ -1,40 +1,45 @@
 package com.repositorio.investir_mais.infrastructure;
 
+import com.repositorio.investir_mais.infrastructure.config.BrapiProperties;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import com.repositorio.investir_mais.infrastructure.config.BrapiProperties;
 import org.springframework.boot.http.client.autoconfigure.imperative.ImperativeHttpClientAutoConfiguration;
 import org.springframework.boot.http.client.autoconfigure.service.HttpServiceClientPropertiesAutoConfiguration;
 import org.springframework.boot.restclient.autoconfigure.RestClientAutoConfiguration;
 import org.springframework.boot.restclient.autoconfigure.service.HttpServiceClientAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.cloud.client.circuitbreaker.CircuitBreaker;
 import org.springframework.cloud.client.circuitbreaker.CircuitBreakerFactory;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.resilience.annotation.EnableResilientMethods;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.service.registry.HttpServiceProxyRegistry;
+
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.springframework.resilience.annotation.EnableResilientMethods;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Supplier;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @SpringBootTest(classes = BrapiClientConfiguration.class)
-@Import({BrapiClientConfigurationTest.BreakerConfig.class, BrapiQuoteController.class})
+@Import({BrapiClientConfigurationTest.BreakerConfig.class, BrapiQuoteController.class, AssetQuoteService.class})
 @ImportAutoConfiguration({RestClientAutoConfiguration.class, HttpServiceClientAutoConfiguration.class,
         HttpServiceClientPropertiesAutoConfiguration.class, ImperativeHttpClientAutoConfiguration.class})
 class BrapiClientConfigurationTest {
@@ -99,8 +104,8 @@ class BrapiClientConfigurationTest {
         assertEquals(3, attempts.get());
     }
 
-    @org.junit.jupiter.params.ParameterizedTest
-    @org.junit.jupiter.params.provider.ValueSource(strings = {"BADREQUEST", "UNAUTHORIZED", "NOTFOUND"})
+    @ParameterizedTest
+    @ValueSource(strings = {"BADREQUEST", "UNAUTHORIZED", "NOTFOUND"})
     void clientErrorsAreNotRetried(String ticker) {
         assertThrows(ResponseStatusException.class, () -> controller.getQuote(ticker));
         assertEquals(1, attempts.get());
@@ -135,6 +140,6 @@ class BrapiClientConfigurationTest {
             });
             server.start();
             return server;
-        } catch (java.io.IOException exception) { throw new IllegalStateException(exception); }
+        } catch (IOException exception) { throw new IllegalStateException(exception); }
     }
 }

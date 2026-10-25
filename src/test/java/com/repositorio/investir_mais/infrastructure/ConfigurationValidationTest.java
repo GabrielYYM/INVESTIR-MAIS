@@ -18,7 +18,6 @@ class ConfigurationValidationTest {
             assertThat(context).hasNotFailed();
             assertThat(context).hasSingleBean(AuthenticationRateLimitProperties.class)
                     .hasSingleBean(WebApplicationProperties.class)
-                    .hasSingleBean(AccountMailProperties.class)
                     .hasSingleBean(BrapiProperties.class);
             assertThat(context.getBean(AuthenticationRateLimitProperties.class).capacity()).isEqualTo(10);
         });
@@ -26,8 +25,23 @@ class ConfigurationValidationTest {
 
     @Test void invalidSettingsFailAtStartup() {
         for (String property : new String[]{"app.security.rate-limit.capacity=0", "app.security.rate-limit.refill-period=0s",
-                "app.mail.retry-delay=-1s", "app.public-base-url=invalid", "app.cors.allowed-origin=invalid"}) {
+                "app.security.rate-limit.namespace=", "app.public-base-url=invalid", "app.cors.allowed-origin=invalid"}) {
             runner.withPropertyValues(property).run(context -> assertThat(context).hasFailed());
+        }
+    }
+
+    @Test void invalidMailRetryDelayFailsAtStartup() {
+        for (String delay : new String[]{"-1s", "0s", "500ms"}) {
+            runner.withUserConfiguration(AuthenticationEmailHandler.class)
+                    .withBean(org.springframework.mail.javamail.JavaMailSender.class,
+                            () -> org.mockito.Mockito.mock(org.springframework.mail.javamail.JavaMailSender.class))
+                    .withBean(com.repositorio.investir_mais.domain.AccountSecurityService.class,
+                            () -> org.mockito.Mockito.mock(com.repositorio.investir_mais.domain.AccountSecurityService.class))
+                    .withBean(org.springframework.modulith.events.FailedEventPublications.class,
+                            () -> org.mockito.Mockito.mock(org.springframework.modulith.events.FailedEventPublications.class))
+                    .withPropertyValues("app.mail.retry-delay=" + delay)
+                    .run(context -> assertThat(context).hasFailed()
+                            .getFailure().hasRootCauseMessage("app.mail.retry-delay deve ser de pelo menos 1 segundo"));
         }
     }
 

@@ -4,6 +4,8 @@ import tools.jackson.databind.ObjectMapper;
 import com.repositorio.investir_mais.domain.education.DTO.LessonDTO;
 import com.repositorio.investir_mais.domain.education.service.LessonService;
 import com.repositorio.investir_mais.domain.user.repository.UserRepository;
+import com.repositorio.investir_mais.infrastructure.exception.GlobalExceptionHandler;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -13,6 +15,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -29,6 +32,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@ContextConfiguration(classes = {LessonController.class, GlobalExceptionHandler.class})
 @WebMvcTest(LessonController.class)
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -53,8 +57,8 @@ class LessonControllerTest {
     void createLesson_ShouldReturnCreated() throws Exception {
         UUID courseId = UUID.randomUUID();
         UUID lessonId = UUID.randomUUID();
-        LessonDTO.Request requestDTO = new LessonDTO.Request("Aula 1", "Descrição", "url_video", "url_thumb");
-        LessonDTO.Response responseDTO = new LessonDTO.Response(lessonId, "Aula 1", "Descrição", "url_video", "url_thumb", courseId);
+        LessonDTO.Request requestDTO = new LessonDTO.Request("Aula 1", "Descrição", "https://media.example.com/video.mp4", "https://media.example.com/thumb.jpg");
+        LessonDTO.Response responseDTO = new LessonDTO.Response(lessonId, "Aula 1", "Descrição", "https://media.example.com/video.mp4", "https://media.example.com/thumb.jpg", courseId);
 
         when(lessonService.createLesson(eq(courseId), any(LessonDTO.Request.class), eq("prof@investir.com"))).thenReturn(responseDTO);
 
@@ -80,7 +84,7 @@ class LessonControllerTest {
     @Test
     void getLessonById_ShouldReturnOk() throws Exception {
         UUID lessonId = UUID.randomUUID();
-        LessonDTO.Response responseDTO = new LessonDTO.Response(lessonId, "Aula 1", "Descrição", "url_video", "url_thumb", UUID.randomUUID());
+        LessonDTO.Response responseDTO = new LessonDTO.Response(lessonId, "Aula 1", "Descrição", "https://media.example.com/video.mp4", "https://media.example.com/thumb.jpg", UUID.randomUUID());
 
         when(lessonService.getLessonById(lessonId)).thenReturn(responseDTO);
 
@@ -93,8 +97,8 @@ class LessonControllerTest {
     @Test
     void updateLesson_ShouldReturnOk() throws Exception {
         UUID lessonId = UUID.randomUUID();
-        LessonDTO.Request requestDTO = new LessonDTO.Request("Aula Alterada", "Descrição", "url_video", "url_thumb");
-        LessonDTO.Response responseDTO = new LessonDTO.Response(lessonId, "Aula Alterada", "Descrição", "url_video", "url_thumb", UUID.randomUUID());
+        LessonDTO.Request requestDTO = new LessonDTO.Request("Aula Alterada", "Descrição", "https://media.example.com/video.mp4", "https://media.example.com/thumb.jpg");
+        LessonDTO.Response responseDTO = new LessonDTO.Response(lessonId, "Aula Alterada", "Descrição", "https://media.example.com/video.mp4", "https://media.example.com/thumb.jpg", UUID.randomUUID());
 
         when(lessonService.updateLesson(eq(lessonId), any(LessonDTO.Request.class), eq("prof@investir.com"))).thenReturn(responseDTO);
 

@@ -26,6 +26,7 @@ import org.springframework.security.authentication.AuthenticationCredentialsNotF
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -93,7 +94,7 @@ class EducationMethodSecurityTest {
     @WithMockUser(username = EMAIL, roles = "TEACHER")
     void teacherStillCannotWriteOtherTeachersResources(String operation) {
         prepareResources(UserRole.TEACHER, false);
-        var failure = assertThrows(org.springframework.web.server.ResponseStatusException.class, write(operation));
+        var failure = assertThrows(ResponseStatusException.class, write(operation));
         assertEquals(403, failure.getStatusCode().value());
         verify(courseRepository, never()).save(any());
         verify(courseRepository, never()).delete(any());

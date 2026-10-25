@@ -6,10 +6,9 @@ import com.repositorio.investir_mais.domain.user.mapper.UserMapper;
 import com.repositorio.investir_mais.domain.user.model.User;
 import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.repository.UserRepository;
-import com.repositorio.investir_mais.domain.AccountSessions;
 import com.repositorio.investir_mais.domain.AccountEmailRequested;
 import org.springframework.context.ApplicationEventPublisher;
-import com.repositorio.investir_mais.domain.AccountTokens;
+import com.repositorio.investir_mais.domain.AccountSecurityService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,11 +40,9 @@ class UserServiceTest {
     @Mock
     private UserMapper userMapper;
     @Mock
-    private AccountTokens oneTimeTokenService;
+    private AccountSecurityService accountSecurity;
     @Mock
     private ApplicationEventPublisher events;
-    @Mock
-    private AccountSessions accountSessions;
 
     @InjectMocks
     private UserService userService;
@@ -112,14 +109,15 @@ class UserServiceTest {
         var exception = assertThrows(ResponseStatusException.class, () -> userService.registerUser(dto));
 
         assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
-        verifyNoInteractions(passwordEncoder, userMapper, events, oneTimeTokenService);
+        verifyNoInteractions(passwordEncoder, userMapper, events, accountSecurity);
     }
 
     @Test
     void updateProfile_WhenEmailBelongsToAnotherUser_ShouldRejectBeforeChangingProfile() {
-        var dto = new UserDTO.UpdateProfileRequest("Outro nome", "other@investir.com", 30);
+        var dto = new UserDTO.UpdateProfileRequest("Outro nome", "other@investir.com", 30, "correct-password");
         when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
         when(userRepository.existsByEmailAndIdNot(dto.email(), user.getId())).thenReturn(true);
+        when(passwordEncoder.matches("correct-password", "encoded_password")).thenReturn(true);
 
         var exception = assertThrows(ResponseStatusException.class,
             () -> userService.updateProfile(user.getEmail(), user.getId(), dto));
@@ -127,7 +125,23 @@ class UserServiceTest {
         assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
         assertEquals("felipe@investir.com", user.getEmail());
         assertNull(user.getName());
-        verifyNoInteractions(accountSessions, oneTimeTokenService, events);
+        verifyNoInteractions(accountSecurity, events);
+    }
+
+    @Test
+    void updateProfile_WhenConfirmationPasswordIsWrong_ShouldNotChangeAccount() {
+        var dto = new UserDTO.UpdateProfileRequest("Outro nome", "other@investir.com", 30, "wrong-password");
+        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("wrong-password", "encoded_password")).thenReturn(false);
+
+        var exception = assertThrows(ResponseStatusException.class,
+                () -> userService.updateProfile(user.getEmail(), user.getId(), dto));
+
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.getStatusCode());
+        assertEquals("felipe@investir.com", user.getEmail());
+        assertNull(user.getName());
+        verifyNoInteractions(accountSecurity, events, userMapper);
+        verify(userRepository, never()).existsByEmailAndIdNot(anyString(), any());
     }
 
     @Test
@@ -143,7 +157,7 @@ class UserServiceTest {
         when(userMapper.toEntity(dto)).thenReturn(user);
         when(passwordEncoder.encode("password123")).thenReturn("encoded_password");
         when(userRepository.save(user)).thenReturn(user);
-        when(oneTimeTokenService.generateEmailVerificationToken(anyString())).thenReturn(ott);
+        when(accountSecurity.generateEmailVerificationToken(anyString())).thenReturn(ott);
         when(userMapper.toDTO(user)).thenReturn(responseDTO);
 
         UserDTO.Response result = userService.registerUser(dto);
@@ -175,22 +189,23 @@ class UserServiceTest {
         userService.updatePassword(user.getEmail(), dto);
 
         assertEquals("new_encoded_password", user.getPassword());
-        verify(accountSessions).revokeAll("felipe@investir.com");
-        verify(oneTimeTokenService).invalidateAll("felipe@investir.com");
+        verify(accountSecurity).revokeAllSessions("felipe@investir.com");
+        verify(accountSecurity).invalidateAll("felipe@investir.com");
     }
 
     @Test
     void updateProfile_WhenEmailChanges_ShouldRequireVerificationAndSendLink() {
         UUID userId = user.getId();
         user.setEmailVerified(true);
-        UserDTO.UpdateProfileRequest dto = new UserDTO.UpdateProfileRequest("Felipe", "novo@investir.com", 22);
+        UserDTO.UpdateProfileRequest dto = new UserDTO.UpdateProfileRequest("Felipe", "novo@investir.com", 22, "correct-password");
+        when(passwordEncoder.matches("correct-password", "encoded_password")).thenReturn(true);
         UserDTO.Response response = new UserDTO.Response(
             userId, "Felipe", 22, "novo@investir.com", UserRole.STUDENT, false, LocalDateTime.now());
         OneTimeToken ott = new DefaultOneTimeToken(
             "verification-token", "novo@investir.com", Instant.now().plusSeconds(300));
 
         when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
-        when(oneTimeTokenService.generateEmailVerificationToken(anyString())).thenReturn(ott);
+        when(accountSecurity.generateEmailVerificationToken(anyString())).thenReturn(ott);
         when(userMapper.toDTO(user)).thenReturn(response);
 
         UserDTO.Response result = userService.updateProfile(user.getEmail(), userId, dto);
@@ -198,8 +213,8 @@ class UserServiceTest {
         assertFalse(user.isEmailVerified());
         assertEquals("novo@investir.com", result.email());
         verify(events).publishEvent(new AccountEmailRequested("novo@investir.com", "verification-token", AccountEmailRequested.Purpose.VERIFY_EMAIL));
-        verify(accountSessions).revokeAll("felipe@investir.com");
-        verify(oneTimeTokenService).invalidateAll("felipe@investir.com");
+        verify(accountSecurity).revokeAllSessions("felipe@investir.com");
+        verify(accountSecurity).invalidateAll("felipe@investir.com");
     }
 
     @Test
@@ -210,7 +225,7 @@ class UserServiceTest {
         userService.forgotPassword(dto);
 
         verifyNoInteractions(events);
-        verify(oneTimeTokenService, never()).generatePasswordResetToken(anyString());
+        verify(accountSecurity, never()).generatePasswordResetToken(anyString());
     }
 
     @Test
@@ -218,18 +233,18 @@ class UserServiceTest {
         AuthDTO.ForgotPasswordRequest dto = new AuthDTO.ForgotPasswordRequest("felipe@investir.com");
 
         when(userRepository.existsByEmail("felipe@investir.com")).thenReturn(true);
-        when(oneTimeTokenService.generatePasswordResetToken("felipe@investir.com")).thenReturn("token-ott");
+        when(accountSecurity.generatePasswordResetToken("felipe@investir.com")).thenReturn("token-ott");
 
         userService.forgotPassword(dto);
 
         verify(events).publishEvent(new AccountEmailRequested("felipe@investir.com", "token-ott", AccountEmailRequested.Purpose.PASSWORD_RESET));
-        verify(oneTimeTokenService, never()).generateEmailVerificationToken(anyString());
+        verify(accountSecurity, never()).generateEmailVerificationToken(anyString());
     }
 
     @Test
     void resetPassword_WhenTokenIsInvalid_ShouldThrowBadRequest() {
         AuthDTO.ResetPasswordRequest dto = new AuthDTO.ResetPasswordRequest("token-invalido", "novaSenha123");
-        when(oneTimeTokenService.consumePasswordResetToken("token-invalido")).thenReturn(Optional.empty());
+        when(accountSecurity.consumePasswordResetToken("token-invalido")).thenReturn(Optional.empty());
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class, 
             () -> userService.resetPassword(dto));
@@ -242,7 +257,7 @@ class UserServiceTest {
         AuthDTO.ResetPasswordRequest dto = new AuthDTO.ResetPasswordRequest("token-valido", "novaSenha123");
         OneTimeToken ott = new DefaultOneTimeToken("token-valido", "felipe@investir.com", Instant.now().plusSeconds(300));
 
-        when(oneTimeTokenService.consumePasswordResetToken("token-valido"))
+        when(accountSecurity.consumePasswordResetToken("token-valido"))
             .thenReturn(Optional.of("felipe@investir.com"));
         when(userRepository.findByEmail("felipe@investir.com")).thenReturn(Optional.of(user));
         when(passwordEncoder.encode("novaSenha123")).thenReturn("new_encoded_password");
@@ -250,8 +265,8 @@ class UserServiceTest {
         userService.resetPassword(dto);
 
         assertEquals("new_encoded_password", user.getPassword());
-        verify(accountSessions).revokeAll("felipe@investir.com");
-        verify(oneTimeTokenService).invalidateAll("felipe@investir.com");
+        verify(accountSecurity).revokeAllSessions("felipe@investir.com");
+        verify(accountSecurity).invalidateAll("felipe@investir.com");
         assertTrue(user.isEmailVerified());
     }
 }

@@ -4,13 +4,18 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
+  withXSRFToken: true,
+  xsrfCookieName: "XSRF-TOKEN",
+  xsrfHeaderName: "X-XSRF-TOKEN",
 });
 
-// Interceptor: adiciona o token JWT automaticamente em todas as requisições
-apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem("authToken");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+apiClient.interceptors.request.use(async (config) => {
+  const method = (config.method || "get").toLowerCase();
+  if (!["get", "head", "options"].includes(method) && !config.url?.endsWith("/csrf")) {
+    // Spring rotates the CSRF token after authentication and logout.
+    const { data } = await apiClient.get("/csrf");
+    config.headers["X-XSRF-TOKEN"] = data.token;
   }
   return config;
 });

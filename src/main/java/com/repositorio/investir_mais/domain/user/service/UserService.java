@@ -7,8 +7,7 @@ import com.repositorio.investir_mais.domain.user.model.User;
 import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.repository.UserRepository;
 import com.repositorio.investir_mais.domain.AccountEmailRequested;
-import com.repositorio.investir_mais.domain.AccountSessions;
-import com.repositorio.investir_mais.domain.AccountTokens;
+import com.repositorio.investir_mais.domain.AccountSecurityService;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.modulith.NamedInterface;
@@ -32,8 +31,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
-    private final AccountTokens oneTimeTokenService;
-    private final AccountSessions accountSessions;
+    private final AccountSecurityService accountSecurity;
     private final ApplicationEventPublisher events;
 
     @Transactional(readOnly = true)
@@ -62,6 +60,10 @@ public class UserService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não pode alterar este perfil.");
         }
 
+        if (!passwordEncoder.matches(dto.currentPassword(), user.getPassword())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Senha atual inválida.");
+        }
+
         if (userRepository.existsByEmailAndIdNot(dto.email(), user.getId())) {
             log.warn("Falha na atualização de perfil: E-mail {} já está em uso", dto.email());
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Este e-mail já está cadastrado.");
@@ -76,8 +78,8 @@ public class UserService {
         user.setEmail(dto.email());
         if (emailChanged) {
             user.setEmailVerified(false);
-            accountSessions.revokeAll(previousEmail);
-            oneTimeTokenService.invalidateAll(previousEmail);
+            accountSecurity.revokeAllSessions(previousEmail);
+            accountSecurity.invalidateAll(previousEmail);
             sendVerificationLink(user.getEmail());
         }
         log.info("Perfil do usuário {} atualizado com sucesso", user.getId());
@@ -117,40 +119,40 @@ public class UserService {
         }
 
         user.setPassword(passwordEncoder.encode(dto.newPassword()));
-        accountSessions.revokeAll(user.getEmail());
-        oneTimeTokenService.invalidateAll(user.getEmail());
+        accountSecurity.revokeAllSessions(user.getEmail());
+        accountSecurity.invalidateAll(user.getEmail());
         log.info("Senha atualizada com sucesso para o usuário: {}", user.getId());
     }
 
     public void forgotPassword(AuthDTO.ForgotPasswordRequest dto) {
         if (userRepository.existsByEmail(dto.email())) {
-            String token = oneTimeTokenService.generatePasswordResetToken(dto.email());
+            String token = accountSecurity.generatePasswordResetToken(dto.email());
             events.publishEvent(new AccountEmailRequested(dto.email(), token, AccountEmailRequested.Purpose.PASSWORD_RESET));
             log.info("Solicitação de recuperação de senha processada para o e-mail: {}", dto.email());
         }
     }
 
     public void resetPassword(AuthDTO.ResetPasswordRequest dto) {
-        String email = oneTimeTokenService.consumePasswordResetToken(dto.token())
+        String email = accountSecurity.consumePasswordResetToken(dto.token())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Token inválido ou expirado."));
 
         User user = findByEmail(email);
         user.setPassword(passwordEncoder.encode(dto.newPassword()));
         user.setEmailVerified(true);
-        accountSessions.revokeAll(email);
-        oneTimeTokenService.invalidateAll(email);
+        accountSecurity.revokeAllSessions(email);
+        accountSecurity.invalidateAll(email);
         log.info("Senha redefinida e e-mail ativado com sucesso para o usuário: {}", user.getId());
     }
 
     public void verifyEmail(String tokenValue) {
-        String email = oneTimeTokenService.consumeEmailVerificationToken(tokenValue)
+        String email = accountSecurity.consumeEmailVerificationToken(tokenValue)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Link inválido ou expirado."));
         User user = findByEmail(email);
         user.setEmailVerified(true);
     }
 
     private void sendVerificationLink(String email) {
-        OneTimeToken token = oneTimeTokenService.generateEmailVerificationToken(email);
+        OneTimeToken token = accountSecurity.generateEmailVerificationToken(email);
         events.publishEvent(new AccountEmailRequested(email, token.getTokenValue(), AccountEmailRequested.Purpose.VERIFY_EMAIL));
     }
 

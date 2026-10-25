@@ -3,6 +3,7 @@ package com.repositorio.investir_mais.domain.education.DTO;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import org.hibernate.validator.constraints.URL;
 
 import java.util.UUID;
 
@@ -20,10 +21,12 @@ public class LessonDTO {
 
         @Schema(description = "URL do vídeo/mídia hospedada", example = "https://media.investirmais.com/videos/aula-1.mp4")
         @NotBlank(message = "A URL da mídia é obrigatória")
+        @URL(message = "A URL da mídia é inválida")
         String mediaUrl,
 
         @Schema(description = "URL da imagem de capa/thumbnail", example = "https://media.investirmais.com/thumbs/aula-1.jpg")
         @NotBlank(message = "A URL da thumbnail é obrigatória")
+        @URL(message = "A URL da thumbnail é inválida")
         String thumbnailUrl
     ) {}
 

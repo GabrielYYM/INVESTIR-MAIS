@@ -4,6 +4,8 @@ import tools.jackson.databind.ObjectMapper;
 import com.repositorio.investir_mais.domain.education.DTO.CourseDTO;
 import com.repositorio.investir_mais.domain.education.service.CourseService;
 import com.repositorio.investir_mais.domain.user.repository.UserRepository;
+import com.repositorio.investir_mais.infrastructure.exception.GlobalExceptionHandler;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -13,6 +15,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -29,6 +32,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@ContextConfiguration(classes = {CourseController.class, GlobalExceptionHandler.class})
 @WebMvcTest(CourseController.class)
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -73,7 +77,9 @@ class CourseControllerTest {
 
         mockMvc.perform(get("/api/courses")
                 .with(user("user@investir.com").roles("STUDENT")))
-               .andExpect(status().isOk());
+               .andExpect(status().isOk())
+               .andExpect(jsonPath("$.content").isArray())
+               .andExpect(jsonPath("$.page.totalElements").value(0));
     }
 
     @Test

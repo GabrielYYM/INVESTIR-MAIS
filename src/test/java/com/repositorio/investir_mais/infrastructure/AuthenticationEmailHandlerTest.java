@@ -1,7 +1,8 @@
 package com.repositorio.investir_mais.infrastructure;
 
 import com.repositorio.investir_mais.infrastructure.config.WebApplicationProperties;
-import com.repositorio.investir_mais.infrastructure.token.AccountTokenRepository;
+import com.repositorio.investir_mais.domain.AccountSecurityService;
+import org.springframework.modulith.events.FailedEventPublications;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,13 +23,16 @@ class AuthenticationEmailHandlerTest {
     private JavaMailSender mailSender;
 
     @Mock
-    private AccountTokenRepository tokens;
+    private AccountSecurityService accountSecurity;
+
+    @Mock
+    private FailedEventPublications publications;
 
     private AuthenticationEmailHandler handler;
 
     @BeforeEach
     void setUp() {
-        handler = new AuthenticationEmailHandler(mailSender, new WebApplicationProperties("http://localhost:8080", new WebApplicationProperties.Cors("http://localhost:5173")), tokens);
+        handler = new AuthenticationEmailHandler(mailSender, new WebApplicationProperties("http://localhost:8080", new WebApplicationProperties.Cors("http://localhost:5173")), accountSecurity, publications, "30s");
     }
 
     @Test

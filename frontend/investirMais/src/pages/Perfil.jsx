@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar.jsx";
 import Topbar from "../components/Topbar.jsx";
 import { User, Mail, Lock, Eye, EyeOff, Save, CheckCircle2, AlertCircle } from "lucide-react";
-import { getUserIdFromToken, getUserProfile, updateUserProfile } from "../services/authService";
+import { getCurrentUser, getUserProfile, updateUserProfile } from "../services/authService";
 
 export default function Perfil({ onNavigate }) {
   const [profile, setProfile] = useState({
@@ -24,14 +24,10 @@ export default function Perfil({ onNavigate }) {
 
   useEffect(() => {
     async function loadUser() {
-      const userId = getUserIdFromToken();
-      if (!userId) {
-        if (onNavigate) onNavigate("Login");
-        return;
-      }
-
       try {
         setLoading(true);
+        const currentUser = await getCurrentUser();
+        const userId = currentUser.id;
         const data = await getUserProfile(userId);
         setProfile(data);
         setForm({
@@ -71,7 +67,7 @@ export default function Perfil({ onNavigate }) {
 
     setSaving(true);
     try {
-      const userId = profile.id || getUserIdFromToken();
+      const userId = profile.id;
       const updated = await updateUserProfile(userId, {
         name: form.name,
         email: profile.email,

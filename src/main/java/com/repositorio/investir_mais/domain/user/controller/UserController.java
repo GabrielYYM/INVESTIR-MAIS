@@ -63,6 +63,7 @@ public class UserController {
     @Operation(summary = "Atualizar dados do perfil", description = "Atualiza nome, idade ou e-mail do usuário autenticado.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Perfil atualizado com sucesso"),
+        @ApiResponse(responseCode = "401", description = "Senha atual incorreta"),
         @ApiResponse(responseCode = "403", description = "Acesso negado para atualizar perfis de terceiros"),
         @ApiResponse(responseCode = "409", description = "Novo e-mail informado já está em uso")
     })
