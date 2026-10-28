@@ -1,4 +1,4 @@
-import { apiClient } from "./carteiraService";
+import { apiClient } from "./api";
 
 export async function login(email, password) {
   await apiClient.post("/auth/login", new URLSearchParams({ email, password }));
@@ -11,6 +11,18 @@ export async function verify2FA(code) {
 
 export async function register(userData) {
   const { data } = await apiClient.post("/api/users/register", userData);
+  return data;
+}
+
+export async function verifyEmail(token) {
+  const { data } = await apiClient.get("/api/users/verify-email", {
+    params: { token },
+  });
+  return data;
+}
+
+export async function resendVerification(email) {
+  const { data } = await apiClient.post("/api/users/resend-verification", { email });
   return data;
 }
 
@@ -30,5 +42,23 @@ export async function getUserProfile(id) {
 
 export async function updateUserProfile(id, updateData) {
   const { data } = await apiClient.put(`/api/users/${id}`, updateData);
+  return data;
+}
+
+export async function forgotPassword(email) {
+  const { data } = await apiClient.post("/api/users/forgot-password", { email });
+  return data;
+}
+
+export async function resetPassword(token, newPassword) {
+  const { data } = await apiClient.post("/api/users/reset-password", { token, newPassword });
+  return data;
+}
+
+export async function updatePassword(currentPassword, newPassword) {
+  const { data } = await apiClient.put("/api/users/update-password", {
+    currentPassword,
+    newPassword,
+  });
   return data;
 }
