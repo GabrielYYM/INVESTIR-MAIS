@@ -13,7 +13,7 @@ import java.util.UUID;
 
 public class UserDTO {
 
-    @Schema(description = "Dados para cadastro de um novo usuário")
+    @Schema(name = "UserRegisterRequest", description = "Dados para cadastro de um novo usuário")
     public record Request(
         @Schema(description = "Nome completo do usuário", example = "Usuario da Silva")
         @NotBlank(message = "O nome é obrigatório")
@@ -39,7 +39,7 @@ public class UserDTO {
         UserRole role
     ) {}
 
-    @Schema(description = "Dados para atualização de perfil")
+    @Schema(name = "UserProfileUpdateRequest", description = "Dados para atualização de perfil")
     public record UpdateProfileRequest(
         @Schema(description = "Nome do usuário", example = "Usuario da Silva")
         @NotBlank(message = "O nome é obrigatório")
@@ -60,7 +60,7 @@ public class UserDTO {
         String currentPassword
     ) {}
 
-    @Schema(description = "Resposta com dados do usuário")
+    @Schema(name = "UserResponse", description = "Resposta com dados do usuário")
     public record Response(
         @Schema(description = "Identificador único (UUID)", example = "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d")
         UUID id,

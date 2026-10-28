@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.HttpStatus;
 import java.security.Principal;
 import org.springframework.web.bind.annotation.*;
@@ -40,7 +41,7 @@ public class CourseController {
     @Operation(summary = "Listar todos os cursos", description = "Retorna uma lista paginada com todos os cursos cadastrados.")
     @ApiResponse(responseCode = "200", description = "Página de cursos retornada com sucesso")
     @GetMapping
-    public Page<CourseDTO.Response> getAllCourses(@PageableDefault(size = 10, sort = "name") Pageable pageable) {
+    public Page<CourseDTO.Response> getAllCourses(@ParameterObject @PageableDefault(size = 10, sort = "name") Pageable pageable) {
         return courseService.getAllCourses(pageable);
     }
 
@@ -57,7 +58,7 @@ public class CourseController {
     @Operation(summary = "Listar cursos por professor", description = "Retorna uma lista paginada de cursos criados por um determinado professor.")
     @ApiResponse(responseCode = "200", description = "Página de cursos retornada com sucesso")
     @GetMapping("/professor/{professorId}")
-    public Page<CourseDTO.Response> getCoursesByProfessor(@PathVariable UUID professorId, @PageableDefault(size = 10, sort = "name") Pageable pageable) {
+    public Page<CourseDTO.Response> getCoursesByProfessor(@PathVariable UUID professorId, @ParameterObject @PageableDefault(size = 10, sort = "name") Pageable pageable) {
         return courseService.getCoursesByProfessor(professorId, pageable);
     }
 

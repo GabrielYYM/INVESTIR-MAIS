@@ -1,8 +1,16 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-body {
-  margin: 0;
-  font-family: "Inter", system-ui, -apple-system, sans-serif;
+@theme { --font-sans: "Inter", system-ui, sans-serif; }
+@layer base {
+  body { @apply m-0 bg-[#171522] font-sans text-zinc-100 antialiased; }
+  button, a { -webkit-tap-highlight-color: transparent; }
+  button { @apply cursor-pointer disabled:cursor-not-allowed disabled:opacity-50; }
+  :focus-visible { @apply outline-2 outline-offset-4 outline-amber-400; }
+}
+@layer components {
+  .panel { @apply rounded-2xl border border-white/10 bg-[#1e1c2a] p-5 sm:p-7; }
+  .field { @apply w-full rounded-xl border border-white/15 bg-black/15 px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-amber-400 focus:outline-none; }
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-xl bg-amber-400 px-4 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-amber-300; }
+  .btn-secondary { @apply inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 px-4 py-2.5 text-sm text-zinc-200 transition hover:bg-white/5; }
+  .link { @apply text-sm text-amber-400 underline-offset-4 hover:underline; }
 }

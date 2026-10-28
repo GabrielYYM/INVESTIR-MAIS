@@ -1,19 +1,10 @@
-import { Search } from "lucide-react";
+import { UserRound } from "lucide-react";
+import { Link } from "react-router";
 
-export default function Topbar() {
-  return (
-    <header className="flex items-center justify-between px-8 py-5">
-      <span className="font-bold tracking-wide text-white">INVESTIR MAIS</span>
-
-      <div className="flex-1 max-w-md mx-8 relative">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
-        <input
-          type="text"
-          placeholder="Pesquise"
-          className="w-full bg-white/5 rounded-full pl-9 pr-4 py-2 text-sm text-zinc-200 placeholder:text-zinc-500 outline-none"
-        />
-      </div>
-    </header>
-  );
+const ROLES = { STUDENT: "Aluno", TEACHER: "Professor", ADMIN: "Administrador" };
+export default function Topbar({ user }) {
+  return <header className="flex items-center justify-end gap-3 border-b border-white/5 px-4 py-5 sm:px-8">
+    <div className="text-right"><p className="text-sm font-medium">{user.name}</p><p className="text-xs text-zinc-400">{ROLES[user.role] || user.role}</p></div>
+    <Link to="/perfil" aria-label="Abrir meu perfil" className="rounded-full bg-amber-400/10 p-2.5 text-amber-400"><UserRound size={20} /></Link>
+  </header>;
 }
-

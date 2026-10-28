@@ -45,24 +45,12 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public UserDTO.Response getProfile(String principalName, UUID requestedId) {
-        User user = findByEmail(principalName);
-        if (!user.getId().equals(requestedId)) {
-            log.warn("Acesso negado: Usuário {} tentou acessar o perfil {}", user.getId(), requestedId);
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não pode acessar este perfil.");
-        }
-        return userMapper.toDTO(user);
+        return userMapper.toDTO(findOwnedProfile(principalName, requestedId, "acessar"));
     }
 
     public UserDTO.Response updateProfile(String principalName, UUID requestedId, UserDTO.UpdateProfileRequest dto) {
-        User user = findByEmail(principalName);
-        if (!user.getId().equals(requestedId)) {
-            log.warn("Acesso negado: Usuário {} tentou alterar o perfil {}", user.getId(), requestedId);
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não pode alterar este perfil.");
-        }
-
-        if (!passwordEncoder.matches(dto.currentPassword(), user.getPassword())) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Senha atual inválida.");
-        }
+        User user = findOwnedProfile(principalName, requestedId, "alterar");
+        requireCurrentPassword(user, dto.currentPassword());
 
         if (userRepository.existsByEmailAndIdNot(dto.email(), user.getId())) {
             log.warn("Falha na atualização de perfil: E-mail {} já está em uso", dto.email());
@@ -78,8 +66,7 @@ public class UserService {
         user.setEmail(dto.email());
         if (emailChanged) {
             user.setEmailVerified(false);
-            accountSecurity.revokeAllSessions(previousEmail);
-            accountSecurity.invalidateAll(previousEmail);
+            revokeAccountAccess(previousEmail);
             sendVerificationLink(user.getEmail());
         }
         log.info("Perfil do usuário {} atualizado com sucesso", user.getId());
@@ -113,14 +100,10 @@ public class UserService {
     public void updatePassword(String email, AuthDTO.UpdatePasswordRequest dto) {
         User user = findByEmail(email);
 
-        if (!passwordEncoder.matches(dto.currentPassword(), user.getPassword())) {
-            log.warn("Falha ao atualizar senha para o usuário {}: Senha atual incorreta", user.getId());
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Senha atual inválida.");
-        }
+        requireCurrentPassword(user, dto.currentPassword());
 
         user.setPassword(passwordEncoder.encode(dto.newPassword()));
-        accountSecurity.revokeAllSessions(user.getEmail());
-        accountSecurity.invalidateAll(user.getEmail());
+        revokeAccountAccess(user.getEmail());
         log.info("Senha atualizada com sucesso para o usuário: {}", user.getId());
     }
 
@@ -139,8 +122,7 @@ public class UserService {
         User user = findByEmail(email);
         user.setPassword(passwordEncoder.encode(dto.newPassword()));
         user.setEmailVerified(true);
-        accountSecurity.revokeAllSessions(email);
-        accountSecurity.invalidateAll(email);
+        revokeAccountAccess(email);
         log.info("Senha redefinida e e-mail ativado com sucesso para o usuário: {}", user.getId());
     }
 
@@ -159,5 +141,25 @@ public class UserService {
     public void resendVerification(String email) {
         userRepository.findByEmail(email).filter(user -> !user.isEmailVerified())
                 .ifPresent(user -> sendVerificationLink(user.getEmail()));
+    }
+
+    private User findOwnedProfile(String principalName, UUID requestedId, String operation) {
+        User user = findByEmail(principalName);
+        if (!user.getId().equals(requestedId)) {
+            log.warn("Acesso negado: Usuário {} tentou {} o perfil {}", user.getId(), operation, requestedId);
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não pode " + operation + " este perfil.");
+        }
+        return user;
+    }
+
+    private void requireCurrentPassword(User user, String currentPassword) {
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Senha atual inválida.");
+        }
+    }
+
+    private void revokeAccountAccess(String email) {
+        accountSecurity.revokeAllSessions(email);
+        accountSecurity.invalidateAll(email);
     }
 }

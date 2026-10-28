@@ -1,0 +1,5 @@
+{
+  "$schema": "https://unpkg.com/knip/schema.json",
+  "project": ["src/**/*.{js,jsx,ts,css}!", "scripts/**/*.mjs", "tests/**/*.{js,jsx}"],
+  "ignore": ["src/generated/**"]
+}

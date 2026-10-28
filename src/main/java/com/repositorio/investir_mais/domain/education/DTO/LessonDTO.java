@@ -8,7 +8,7 @@ import org.hibernate.validator.constraints.URL;
 import java.util.UUID;
 
 public class LessonDTO {
-    @Schema(description = "Dados para criação ou atualização de uma aula")
+    @Schema(name = "LessonRequest", description = "Dados para criação ou atualização de uma aula")
     public record Request(
         @Schema(description = "Título da aula", example = "Aula 1 - O que é Renda Fixa?")
         @NotBlank(message = "O título é obrigatório")
@@ -30,7 +30,7 @@ public class LessonDTO {
         String thumbnailUrl
     ) {}
 
-    @Schema(description = "Resposta com dados da aula")
+    @Schema(name = "LessonResponse", description = "Resposta com dados da aula")
     public record Response(
         @Schema(description = "Identificador único da aula (UUID)", example = "c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e8f")
         UUID id,
