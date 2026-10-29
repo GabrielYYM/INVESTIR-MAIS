@@ -11,8 +11,7 @@ import org.springframework.stereotype.Service;
 public class AssetQuoteService {
     private final AssetQuoteClient assetQuoteClient;
 
-    @Cacheable(cacheNames = "cotacoes", key = "#p0.toUpperCase(T(java.util.Locale).ROOT)",
-            unless = "#result == null || #result.isBlank()")
+    @Cacheable(cacheNames = "cotacoes", key = "#p0.toUpperCase(T(java.util.Locale).ROOT)", unless = "#result == null || #result.isBlank()")
     public String getQuote(String ticker) {
         return assetQuoteClient.getQuote(ticker.toUpperCase(Locale.ROOT));
     }

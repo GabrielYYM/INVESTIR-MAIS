@@ -11,7 +11,7 @@ npm run check
 ```
 
 Abra http://localhost:5173 e execute o backend Spring em http://localhost:8080.
-O proxy do Vite encaminha `/auth`, `/csrf` e `/api`; não é necessário `.env` no desenvolvimento local.
+O proxy do Vite encaminha `/auth` e `/api`; não é necessário `.env` no desenvolvimento local.
 `npm run check` executa Knip, testes e build. O resultado de produção fica em `dist/`.
 
 Em produção, encaminhe os mesmos caminhos ao backend por um proxy reverso. Para outra origem, configure `VITE_API_BASE_URL` no build e os cookies/CORS no servidor. Variáveis `VITE_*` são públicas; o token da Brapi pertence somente ao backend.
@@ -21,7 +21,7 @@ Em produção, encaminhe os mesmos caminhos ao backend por um proxy reverso. Par
 - React Router fornece navegação, histórico, carregamento/cancelamento por loaders, envio por actions/Form/fetchers, revalidação após alterações e telas de erro.
 - Curso aberto e paginação ficam na URL, como `#/cursos/{id}?page=2`. Voltar/avançar e atualização da página mantêm o endereço.
 - Formulários usam validação HTML e o diálogo usa `<dialog>` nativo.
-- `services/api.js` adapta o protocolo do Spring: sessão por cookie, CSRF atualizado antes de escritas, `ProblemDetail` e respostas vazias. Um 401 em escrita revalida `/auth/me` para distinguir sessão expirada de senha atual incorreta.
+- `services/api.js` adapta o protocolo do Spring: sessão por cookie, CSRF pelo cookie `XSRF-TOKEN` e header `X-XSRF-TOKEN`, inicializado via `/auth/me` quando ausente, `ProblemDetail` e respostas vazias. Um 401 em escrita revalida `/auth/me` para distinguir sessão expirada de senha atual incorreta.
 - `src/generated/spring.ts` contém o cliente e os modelos gerados pelo Orval a partir do OpenAPI real dos controllers Spring. Não editar manualmente.
 - Os filtros nativos de login/OTT/logout e o endpoint de cotações continuam em adaptadores pequenos, pois não fazem parte do contrato CRUD exportado.
 
@@ -49,3 +49,5 @@ O teste `OpenApiContractTest` também verifica nomes exclusivos dos schemas e a 
 A confirmação de e-mail usa o link enviado pelo backend (`/api/users/verify-email?token=...`). Carteira e questões, que não possuem APIs no backend atual, foram removidas junto com os componentes e serviços sem uso.
 
 Os testes do frontend simulam respostas HTTP. Testes integrados de PostgreSQL/Redis no backend exigem Docker; não são substituídos por essas simulações.
+
+Em produção, sirva o frontend e a API pelo mesmo domínio via proxy reverso para permitir a leitura do cookie CSRF. `VITE_API_BASE_URL` em outro domínio exige adaptar a entrega do token.

@@ -7,7 +7,7 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
-    proxy: Object.fromEntries(["/api", "/auth", "/csrf"].map((path) => [path, "http://localhost:8080"])),
+    proxy: Object.fromEntries(["/api", "/auth"].map((path) => [path, "http://localhost:8080"])),
   },
   test: { environment: "jsdom", restoreMocks: true, unstubGlobals: true },
 });

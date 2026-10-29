@@ -20,12 +20,30 @@ export class SessionExpiredError extends ApiError {
   constructor() { super(401, { detail: "Sua sessão expirou. Entre novamente." }); }
 }
 
+const csrfCookie = () => document.cookie.split(";").map((cookie) => cookie.trim())
+  .find((cookie) => cookie.startsWith("XSRF-TOKEN="))?.slice("XSRF-TOKEN=".length);
+let csrfInitialization;
+
+async function getCsrfToken(signal) {
+  signal?.throwIfAborted();
+  if (!csrfCookie()) {
+    // Even an anonymous 401/403 passes through CsrfFilter and initializes the cookie.
+    csrfInitialization ??= request("/auth/me").catch((error) => {
+      if (error.status !== 401 && error.status !== 403) throw error;
+    }).finally(() => { csrfInitialization = undefined; });
+    await csrfInitialization;
+  }
+  signal?.throwIfAborted();
+  const token = csrfCookie();
+  if (!token) throw new ApiError(0, { detail: "Não foi possível obter o cookie de segurança. Verifique se o frontend e a API usam o mesmo domínio." });
+  return decodeURIComponent(token);
+}
+
 export async function request(path, { method = "GET", body, signal } = {}) {
   method = method.toUpperCase();
   const headers = new Headers({ Accept: "application/json, application/problem+json" });
   if (!SAFE_METHODS.has(method)) {
-    const csrf = await request("/csrf", { signal });
-    headers.set("X-XSRF-TOKEN", csrf.token);
+    headers.set("X-XSRF-TOKEN", await getCsrfToken(signal));
   }
   if (body instanceof URLSearchParams) headers.set("Content-Type", "application/x-www-form-urlencoded;charset=UTF-8");
   else if (body !== undefined) { headers.set("Content-Type", "application/json"); if (typeof body !== "string") body = JSON.stringify(body); }

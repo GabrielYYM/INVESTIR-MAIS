@@ -214,16 +214,26 @@ class SpringLoginFlowTest {
     }
 
     @Test
+    void browserWritesRequireValidCsrfToken() throws Exception {
+        mvc.perform(post("/auth/login").param("email", EMAIL).param("password", PASSWORD))
+                .andExpect(status().isForbidden());
+        Cookie cookie = csrfCookie(null);
+        mvc.perform(post("/auth/login").cookie(cookie).header("X-XSRF-TOKEN", "invalid")
+                        .param("email", EMAIL).param("password", PASSWORD))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void browserCanRefreshCsrfBetweenPasswordTokenAndLogout() throws Exception {
-        // Exercise the actual cookie/header protocol used by Axios, without the csrf() test shortcut.
+        // Exercise the actual cookie/header protocol used by fetch, without the csrf() test shortcut.
         Cookie csrfCookie = csrfCookie(null);
         var passwordResult = mvc.perform(post("/auth/login").cookie(csrfCookie)
                         .header("X-XSRF-TOKEN", csrfCookie.getValue()).param("email", EMAIL).param("password", PASSWORD))
                 .andExpect(status().isNoContent()).andReturn();
         MockHttpSession session = (MockHttpSession) passwordResult.getRequest().getSession(false);
-        assertEquals(0, passwordResult.getResponse().getCookie("XSRF-TOKEN").getMaxAge());
-
-        Cookie nextCookie = csrfCookie(session);
+        Cookie nextCookie = java.util.Arrays.stream(passwordResult.getResponse().getCookies())
+                .filter(cookie -> cookie.getName().equals("XSRF-TOKEN") && cookie.getMaxAge() != 0)
+                .reduce((first, last) -> last).orElseThrow();
         assertNotEquals(csrfCookie.getValue(), nextCookie.getValue());
         mvc.perform(post("/auth/code").session(session).cookie(nextCookie).header("X-XSRF-TOKEN", nextCookie.getValue()))
                 .andExpect(status().isNoContent());
@@ -241,9 +251,9 @@ class SpringLoginFlowTest {
     }
 
     private Cookie csrfCookie(MockHttpSession session) throws Exception {
-        var request = get("/csrf");
+        var request = get("/auth/me");
         if (session != null) request.session(session);
-        Cookie cookie = mvc.perform(request).andExpect(status().isOk())
+        Cookie cookie = mvc.perform(request)
                 .andReturn().getResponse().getCookie("XSRF-TOKEN");
         assertNotNull(cookie);
         return cookie;

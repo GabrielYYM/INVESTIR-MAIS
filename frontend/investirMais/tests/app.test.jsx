@@ -18,7 +18,7 @@ function server(options = {}) {
     const method = init.method;
     const url = new URL(path, "http://localhost");
     const body = init.body instanceof URLSearchParams ? Object.fromEntries(init.body) : init.body ? JSON.parse(init.body) : {};
-    if (path === "/csrf") return json({ token: "csrf" });
+    document.cookie = "XSRF-TOKEN=csrf; path=/";
     if (path === "/auth/me") return state.user ? json(state.user) : new Response(null, { status: 401 });
     if (path === "/auth/login") return empty();
     if (path === "/auth/verify-2fa") {

@@ -282,7 +282,7 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
             return result;
         }
         MvcResult write(MockHttpServletRequestBuilder request) throws Exception {
-            Cookie csrf = read(get("/csrf")).getResponse().getCookie("XSRF-TOKEN");
+            Cookie csrf = read(get("/auth/me")).getResponse().getCookie("XSRF-TOKEN");
             assertNotNull(csrf);
             return read(request.cookie(csrf).header("X-XSRF-TOKEN", csrf.getValue()));
         }
