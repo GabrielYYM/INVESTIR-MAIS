@@ -167,7 +167,6 @@ public class SecurityConfig {
                         "/api/users/resend-verification",
                         "/api/users/forgot-password",
                         "/api/users/reset-password",
-                        "/api/questions/roles/**",
                         "/swagger-ui/**",
                         "/v3/api-docs/**"
                     )
