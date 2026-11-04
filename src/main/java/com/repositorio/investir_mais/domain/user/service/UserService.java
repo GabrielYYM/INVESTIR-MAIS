@@ -66,7 +66,7 @@ public class UserService {
 
         if (userRepository.existsByEmailAndIdNot(dto.email(), user.getId())) {
             log.warn("Falha na atualização de perfil: E-mail {} já está em uso", dto.email());
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Este e-mail já está cadastrado.");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Não foi possível atualizar o perfil. Verifique os dados informados.");
         }
 
         user.setName(dto.name());
@@ -94,7 +94,7 @@ public class UserService {
 
         if (userRepository.existsByEmail(dto.email())) {
             log.warn("Tentativa de cadastro com e-mail duplicado: {}", dto.email());
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Este e-mail já está cadastrado.");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Não foi possível criar sua conta. Verifique os dados informados.");
         }
 
         User user = userMapper.toEntity(dto);
