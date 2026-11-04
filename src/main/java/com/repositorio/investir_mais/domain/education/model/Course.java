@@ -3,6 +3,8 @@ package com.repositorio.investir_mais.domain.education.model;
 import com.repositorio.investir_mais.domain.user.model.User;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SoftDelete;
+import org.hibernate.annotations.SoftDeleteType;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -14,6 +16,7 @@ import java.util.List;
 
 @Entity
 @Table(name = "TB_COURSE")
+@SoftDelete(strategy = SoftDeleteType.TIMESTAMP, columnName = "deleted_at")
 @Getter
 @Setter
 @NoArgsConstructor

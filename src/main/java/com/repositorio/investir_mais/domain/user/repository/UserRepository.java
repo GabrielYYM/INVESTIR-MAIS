@@ -2,6 +2,8 @@ package com.repositorio.investir_mais.domain.user.repository;
 
 import com.repositorio.investir_mais.domain.user.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.data.repository.history.RevisionRepository;
 import org.springframework.modulith.NamedInterface;
 
@@ -14,5 +16,9 @@ public interface UserRepository extends JpaRepository<User, UUID>, RevisionRepos
 
     boolean existsByEmail(String email);
 
-    boolean existsByEmailAndIdNot(String email, UUID id);
+    @Query(value = "SELECT EXISTS (SELECT 1 FROM tb_user WHERE email = :email)", nativeQuery = true)
+    boolean existsByEmailIncludingDeleted(@Param("email") String email);
+
+    @Query(value = "SELECT EXISTS (SELECT 1 FROM tb_user WHERE email = :email AND id <> :id)", nativeQuery = true)
+    boolean existsByEmailAndIdNot(@Param("email") String email, @Param("id") UUID id);
 }

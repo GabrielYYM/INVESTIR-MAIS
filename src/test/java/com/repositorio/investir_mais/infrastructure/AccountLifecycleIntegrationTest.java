@@ -41,6 +41,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.web.server.ResponseStatusException;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.sql.Timestamp;
@@ -88,9 +89,9 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
         }
         jdbc.update("DELETE FROM one_time_tokens");
         jdbc.update("DELETE FROM app_one_time_token");
-        lessons.deleteAll();
-        courses.deleteAll();
-        users.deleteAll();
+        jdbc.update("DELETE FROM tb_lesson");
+        jdbc.update("DELETE FROM tb_course");
+        jdbc.update("DELETE FROM tb_user");
     }
 
     @Test
@@ -116,7 +117,7 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
     @Test
     @WithMockUser(username = EMAIL,
             authorities = {"ROLE_TEACHER", "FACTOR_PASSWORD", "FACTOR_OTT"})
-    void deletingCourseAlsoDeletesItsLessonsAndSupportsLongDescriptionsAndUrls() {
+    void deletingCourseSoftDeletesItsLessonsAndSupportsLongDescriptionsAndUrls() {
         User owner = createVerifiedUser();
         var course = new Course();
         course.setName("Curso de teste");
@@ -136,6 +137,8 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
 
         assertFalse(courses.existsById(course.getId()));
         assertFalse(lessons.existsById(lesson.getId()));
+        assertNotNull(jdbc.queryForObject("SELECT deleted_at FROM tb_course WHERE id = ?", Timestamp.class, course.getId()));
+        assertNotNull(jdbc.queryForObject("SELECT deleted_at FROM tb_lesson WHERE id = ?", Timestamp.class, lesson.getId()));
     }
 
     @Test
@@ -181,6 +184,30 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
         assertEquals(400, browser.read(get("/api/users/verify-email").param("token", first)).getResponse().getStatus());
         assertEquals(200, browser.read(get("/api/users/verify-email").param("token", second)).getResponse().getStatus());
         assertTrue(users.findByEmail(EMAIL).orElseThrow().isEmailVerified());
+    }
+
+    @Test
+    void deletingAccountRevokesEverySessionAndPreventsLoginAndTokenRecovery() throws Exception {
+        User user = createVerifiedUser();
+        Browser first = authenticatedBrowser();
+        Browser second = authenticatedBrowser();
+        service.forgotPassword(new AuthDTO.ForgotPasswordRequest(EMAIL));
+        String resetToken = accountToken("PASSWORD_RESET");
+
+        assertEquals(204, first.write(delete("/api/users/{id}", user.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"currentPassword\":\"" + PASSWORD + "\"}")).getResponse().getStatus());
+
+        assertEquals(401, first.read(get("/auth/me")).getResponse().getStatus());
+        assertEquals(401, second.read(get("/auth/me")).getResponse().getStatus());
+        assertEquals(401, new Browser().write(post("/auth/login")
+                .param("email", EMAIL).param("password", PASSWORD)).getResponse().getStatus());
+        assertTrue(users.findByEmail(EMAIL).isEmpty());
+        assertNotNull(jdbc.queryForObject("SELECT deleted_at FROM tb_user WHERE id = ?", Timestamp.class, user.getId()));
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM app_one_time_token WHERE username = ?", Integer.class, EMAIL));
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM one_time_tokens WHERE username = ?", Integer.class, EMAIL));
+        assertThrows(ResponseStatusException.class,
+                () -> service.resetPassword(new AuthDTO.ResetPasswordRequest(resetToken, "NovaSenha123")));
     }
 
     @Test

@@ -60,6 +60,13 @@ public class UserDTO {
         String currentPassword
     ) {}
 
+    @Schema(description = "Confirmação para exclusão da própria conta")
+    public record DeleteAccountRequest(
+        @Schema(description = "Senha atual do usuário")
+        @NotBlank(message = "A senha atual é obrigatória")
+        String currentPassword
+    ) {}
+
     @Schema(description = "Resposta com dados do usuário")
     public record Response(
         @Schema(description = "Identificador único (UUID)", example = "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d")

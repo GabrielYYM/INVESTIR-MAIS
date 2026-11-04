@@ -72,6 +72,20 @@ public class UserController {
         return userService.updateProfile(principal.getName(), id, dto);
     }
 
+    @Operation(summary = "Excluir a própria conta", description = "Exclui logicamente o usuário e seus cursos e aulas, preservando os registros. Exige a senha atual e encerra todas as sessões da conta.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "204", description = "Conta excluída logicamente"),
+        @ApiResponse(responseCode = "400", description = "Senha de confirmação ausente"),
+        @ApiResponse(responseCode = "401", description = "Senha atual incorreta ou usuário não autenticado"),
+        @ApiResponse(responseCode = "403", description = "Acesso negado para excluir outra conta"),
+        @ApiResponse(responseCode = "404", description = "Usuário não encontrado")
+    })
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteAccount(Principal principal, @PathVariable UUID id, @Valid @RequestBody UserDTO.DeleteAccountRequest dto) {
+        userService.deleteAccount(principal.getName(), id, dto);
+    }
+
     @Operation(summary = "Atualizar senha do usuário logado", description = "Permite alterar a senha mediante confirmação da senha atual.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Senha atualizada com sucesso"),

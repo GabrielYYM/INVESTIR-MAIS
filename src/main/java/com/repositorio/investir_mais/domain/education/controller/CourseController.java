@@ -72,7 +72,7 @@ public class CourseController {
         return courseService.updateCourse(courseId, dto, principal.getName());
     }
 
-    @Operation(summary = "Excluir curso", description = "Remove um curso existente. Exige que o usuário seja o proprietário do curso ou ADMIN.")
+    @Operation(summary = "Excluir curso", description = "Exclui logicamente o curso e suas aulas, preservando os registros no banco. Exige que o usuário seja o proprietário do curso ou ADMIN.")
     @ApiResponses({
         @ApiResponse(responseCode = "204", description = "Curso removido com sucesso"),
         @ApiResponse(responseCode = "403", description = "Sem permissão para excluir este curso"),

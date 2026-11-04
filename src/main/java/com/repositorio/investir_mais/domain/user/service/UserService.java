@@ -92,7 +92,7 @@ public class UserService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O cadastro público permite apenas o perfil STUDENT.");
         }
 
-        if (userRepository.existsByEmail(dto.email())) {
+        if (userRepository.existsByEmailIncludingDeleted(dto.email())) {
             log.warn("Tentativa de cadastro com e-mail duplicado: {}", dto.email());
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Este e-mail já está cadastrado.");
         }
@@ -108,6 +108,22 @@ public class UserService {
         sendVerificationLink(savedUser.getEmail());
 
         return userMapper.toDTO(savedUser);
+    }
+
+    public void deleteAccount(String principalName, UUID requestedId, UserDTO.DeleteAccountRequest dto) {
+        User user = findByEmail(principalName);
+        if (!user.getId().equals(requestedId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não pode excluir outra conta.");
+        }
+        if (!passwordEncoder.matches(dto.currentPassword(), user.getPassword())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Senha atual inválida.");
+        }
+
+        userRepository.delete(user);
+        userRepository.flush();
+        accountSecurity.invalidateAll(user.getEmail());
+        accountSecurity.revokeAllSessions(user.getEmail());
+        log.info("Conta excluída logicamente com sucesso. Usuário ID: {}", user.getId());
     }
 
     public void updatePassword(String email, AuthDTO.UpdatePasswordRequest dto) {

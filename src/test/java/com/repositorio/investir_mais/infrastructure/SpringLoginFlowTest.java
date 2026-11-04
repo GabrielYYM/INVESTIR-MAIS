@@ -1,6 +1,8 @@
 package com.repositorio.investir_mais.infrastructure;
 
 import com.repositorio.investir_mais.domain.user.mapper.UserMapper;
+import com.repositorio.investir_mais.domain.user.controller.UserController;
+import com.repositorio.investir_mais.domain.user.DTO.UserDTO;
 import com.repositorio.investir_mais.domain.user.model.User;
 import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.repository.UserRepository;
@@ -56,7 +58,7 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppC
 // Real Spring Security filters and native JDBC token storage, without a running Docker/database server.
 @ExtendWith(SpringExtension.class)
 @WebAppConfiguration
-@ContextConfiguration(classes = {SecurityConfig.class, AuthenticationController.class, SpringLoginFlowTest.Config.class})
+@ContextConfiguration(classes = {SecurityConfig.class, AuthenticationController.class, UserController.class, SpringLoginFlowTest.Config.class})
 class SpringLoginFlowTest {
     private static final String EMAIL = "user@investir.com";
     private static final String PASSWORD = "MinhaSenhaSegura123";
@@ -96,6 +98,33 @@ class SpringLoginFlowTest {
                 .andExpect(status().isUnauthorized());
         assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM one_time_tokens", Integer.class));
         verifyNoInteractions(emails, userService);
+    }
+
+    @Test
+    void accountDeletionRequiresBothAuthenticationFactors() throws Exception {
+        mvc.perform(delete("/api/users/{id}", user.getId()).with(csrf())
+                        .contentType("application/json").content("{\"currentPassword\":\"" + PASSWORD + "\"}"))
+                .andExpect(status().isUnauthorized());
+        MockHttpSession session = login();
+        mvc.perform(delete("/api/users/{id}", user.getId()).session(session).with(csrf())
+                        .contentType("application/json").content("{\"currentPassword\":\"" + PASSWORD + "\"}"))
+                .andExpect(status().isForbidden());
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    void accountDeletionRequiresCsrfAndAcceptsAFullyAuthenticatedUser() throws Exception {
+        MockHttpSession session = login();
+        session = verifyCode(session, sentCode());
+        mvc.perform(delete("/api/users/{id}", user.getId()).session(session)
+                        .contentType("application/json").content("{\"currentPassword\":\"" + PASSWORD + "\"}"))
+                .andExpect(status().isForbidden());
+        verifyNoInteractions(userService);
+
+        mvc.perform(delete("/api/users/{id}", user.getId()).session(session).with(csrf())
+                        .contentType("application/json").content("{\"currentPassword\":\"" + PASSWORD + "\"}"))
+                .andExpect(status().isNoContent());
+        verify(userService).deleteAccount(EMAIL, user.getId(), new UserDTO.DeleteAccountRequest(PASSWORD));
     }
 
     @Test

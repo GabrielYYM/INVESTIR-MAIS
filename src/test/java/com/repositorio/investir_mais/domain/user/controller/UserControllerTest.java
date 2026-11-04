@@ -29,6 +29,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -70,6 +71,30 @@ class UserControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.email").value("felipe@investir.com"))
                 .andExpect(jsonPath("$.emailVerified").value(false));
+    }
+
+    @Test
+    void deleteAccount_WithConfirmation_ShouldReturnNoContent() throws Exception {
+        UUID id = UUID.randomUUID();
+        var dto = new UserDTO.DeleteAccountRequest("current-password");
+
+        mockMvc.perform(delete("/api/users/{id}", id)
+                .principal(() -> "felipe@investir.com")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isNoContent());
+
+        verify(userService).deleteAccount("felipe@investir.com", id, dto);
+    }
+
+    @Test
+    void deleteAccount_WithoutPassword_ShouldReturnBadRequest() throws Exception {
+        mockMvc.perform(delete("/api/users/{id}", UUID.randomUUID())
+                .principal(() -> "felipe@investir.com")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+                .andExpect(status().isBadRequest());
+        org.mockito.Mockito.verifyNoInteractions(userService);
     }
 
     @Test

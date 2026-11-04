@@ -65,7 +65,7 @@ public class LessonController {
         return lessonService.updateLesson(lessonId, dto, principal.getName());
     }
 
-    @Operation(summary = "Excluir aula", description = "Remove uma aula existente. Exige que o usuário seja proprietário do curso associado ou ADMIN.")
+    @Operation(summary = "Excluir aula", description = "Exclui logicamente a aula, preservando o registro no banco. Exige que o usuário seja proprietário do curso associado ou ADMIN.")
     @ApiResponses({
         @ApiResponse(responseCode = "204", description = "Aula removida com sucesso"),
         @ApiResponse(responseCode = "403", description = "Sem permissão para remover esta aula"),

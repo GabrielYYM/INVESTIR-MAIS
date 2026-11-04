@@ -104,7 +104,7 @@ class UserServiceTest {
     @Test
     void registerUser_WhenEmailExists_ShouldRejectWithoutPublishingEmail() {
         var dto = new UserDTO.Request("Felipe", 22, user.getEmail(), "password123", UserRole.STUDENT);
-        when(userRepository.existsByEmail(dto.email())).thenReturn(true);
+        when(userRepository.existsByEmailIncludingDeleted(dto.email())).thenReturn(true);
 
         var exception = assertThrows(ResponseStatusException.class, () -> userService.registerUser(dto));
 
@@ -153,7 +153,7 @@ class UserServiceTest {
         
         OneTimeToken ott = new DefaultOneTimeToken("token-123", "felipe@investir.com", Instant.now().plusSeconds(300));
 
-        when(userRepository.existsByEmail("felipe@investir.com")).thenReturn(false);
+        when(userRepository.existsByEmailIncludingDeleted("felipe@investir.com")).thenReturn(false);
         when(userMapper.toEntity(dto)).thenReturn(user);
         when(passwordEncoder.encode("password123")).thenReturn("encoded_password");
         when(userRepository.save(user)).thenReturn(user);
@@ -165,6 +165,45 @@ class UserServiceTest {
         assertNotNull(result);
         verify(events).publishEvent(new AccountEmailRequested("felipe@investir.com", "token-123", AccountEmailRequested.Purpose.VERIFY_EMAIL));
         verify(userRepository).save(user);
+    }
+
+    @Test
+    void deleteAccount_WhenUserOwnsAccount_ShouldDeleteAndRevokeAccess() {
+        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("current-password", user.getPassword())).thenReturn(true);
+
+        userService.deleteAccount(user.getEmail(), user.getId(), new UserDTO.DeleteAccountRequest("current-password"));
+
+        var deletion = inOrder(userRepository, accountSecurity);
+        deletion.verify(userRepository).delete(user);
+        deletion.verify(userRepository).flush();
+        deletion.verify(accountSecurity).invalidateAll(user.getEmail());
+        deletion.verify(accountSecurity).revokeAllSessions(user.getEmail());
+        verifyNoInteractions(events);
+    }
+
+    @Test
+    void deleteAccount_WhenPasswordIsWrong_ShouldLeaveAccountAndAccessUntouched() {
+        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+
+        var failure = assertThrows(ResponseStatusException.class, () -> userService.deleteAccount(
+                user.getEmail(), user.getId(), new UserDTO.DeleteAccountRequest("wrong-password")));
+
+        assertEquals(HttpStatus.UNAUTHORIZED, failure.getStatusCode());
+        verify(userRepository, never()).delete(any());
+        verifyNoInteractions(accountSecurity, events);
+    }
+
+    @Test
+    void deleteAccount_WhenIdBelongsToAnotherUser_ShouldNotDeleteOrCheckPassword() {
+        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+
+        var failure = assertThrows(ResponseStatusException.class, () -> userService.deleteAccount(
+                user.getEmail(), UUID.randomUUID(), new UserDTO.DeleteAccountRequest("current-password")));
+
+        assertEquals(HttpStatus.FORBIDDEN, failure.getStatusCode());
+        verify(userRepository, never()).delete(any());
+        verifyNoInteractions(passwordEncoder, accountSecurity, events);
     }
 
     @Test
