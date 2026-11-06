@@ -272,9 +272,10 @@ class SpringLoginFlowTest {
     private Cookie csrfCookie(MockHttpSession session) throws Exception {
         var request = get("/csrf");
         if (session != null) request.session(session);
-        Cookie cookie = mvc.perform(request).andExpect(status().isOk())
-                .andReturn().getResponse().getCookie("XSRF-TOKEN");
+        var response = mvc.perform(request).andExpect(status().isOk());
+        Cookie cookie = response.andReturn().getResponse().getCookie("XSRF-TOKEN");
         assertNotNull(cookie);
+        response.andExpect(jsonPath("$.token").value(cookie.getValue()));
         return cookie;
     }
 

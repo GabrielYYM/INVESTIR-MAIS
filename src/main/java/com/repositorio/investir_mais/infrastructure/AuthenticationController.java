@@ -2,9 +2,10 @@ package com.repositorio.investir_mais.infrastructure;
 
 import com.repositorio.investir_mais.domain.user.mapper.UserMapper;
 import com.repositorio.investir_mais.domain.user.service.UserService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.security.web.csrf.DeferredCsrfToken;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -17,8 +18,9 @@ public class AuthenticationController {
     private final UserMapper userMapper;
 
     @GetMapping("/csrf")
-    public Map<String, String> csrf(CsrfToken csrfToken) {
-        return Map.of("token", csrfToken.getToken());
+    public Map<String, String> csrf(HttpServletRequest request) {
+        var token = (DeferredCsrfToken) request.getAttribute(DeferredCsrfToken.class.getName());
+        return Map.of("token", token.get().getToken());
     }
 
     @GetMapping("/auth/me")

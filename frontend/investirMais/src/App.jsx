@@ -1,63 +1,53 @@
-import { useState, useEffect } from "react";
-import SignUp from "./pages/SignUp.jsx";
+import { createBrowserRouter, redirect } from "react-router";
+import { RouterProvider } from "react-router/dom";
+import AppLayout, { signOut } from "./components/AppLayout.jsx";
+import { PageError, PendingPage } from "./components/PageState.jsx";
+import { getCurrentUser } from "./services/authService.js";
 import Login from "./pages/Login.jsx";
+import SignUp from "./pages/SignUp.jsx";
 import ForgotPassword from "./pages/ForgotPassword.jsx";
 import Perfil from "./pages/Perfil.jsx";
-import Home from "./pages/Home.jsx";
-import { getCurrentUser } from "./services/authService";
+import Home, { dashboardLoader, quoteLoader } from "./pages/Home.jsx";
+import Education, { catalogLoader } from "./pages/Education.jsx";
+import Course, { courseLoader } from "./pages/Course.jsx";
+
+async function requireSession({ request }) {
+  try {
+    return await getCurrentUser(request.signal);
+  } catch (error) {
+    if ([401, 403].includes(error.response?.status)) {
+      const url = new URL(request.url);
+      const next = new URLSearchParams({ retorno: url.pathname + url.search });
+      throw redirect("/entrar?" + next);
+    }
+    throw error;
+  }
+}
+
+const router = createBrowserRouter([
+  {
+    id: "app",
+    Component: AppLayout,
+    loader: requireSession,
+    shouldRevalidate: ({ currentUrl, nextUrl, defaultShouldRevalidate }) =>
+      currentUrl.pathname !== nextUrl.pathname || defaultShouldRevalidate,
+    HydrateFallback: PendingPage,
+    ErrorBoundary: PageError,
+    children: [
+      { index: true, Component: Home, loader: dashboardLoader, ErrorBoundary: PageError },
+      { path: "cotacao", loader: quoteLoader },
+      { path: "educacao", Component: Education, loader: catalogLoader, ErrorBoundary: PageError },
+      { path: "educacao/:courseId/:lessonId?", Component: Course, loader: courseLoader, ErrorBoundary: PageError },
+      { path: "perfil", Component: Perfil },
+      { path: "sair", action: signOut },
+    ],
+  },
+  { path: "entrar", Component: Login },
+  { path: "cadastro", Component: SignUp },
+  { path: "recuperar-senha", Component: ForgotPassword },
+  { path: "*", Component: PageError },
+]);
 
 export default function App() {
-  const [activePage, setActivePage] = useState("Login");
-  const [currentUser, setCurrentUser] = useState(null);
-  const [sessionChecked, setSessionChecked] = useState(false);
-
-  const navigate = (page) => {
-    if (page === "Login") {
-      setCurrentUser(null);
-      setActivePage("Login");
-      return;
-    }
-    if (page === "Carteira" || page === "Questões") {
-      setActivePage("Home");
-      return;
-    }
-    setActivePage(page);
-  };
-
-  useEffect(() => {
-    getCurrentUser()
-      .then((user) => {
-        setCurrentUser(user);
-        setActivePage("Home");
-      })
-      .catch(() => setCurrentUser(null))
-      .finally(() => setSessionChecked(true));
-  }, []);
-
-  useEffect(() => {
-    const isAuth = !!currentUser;
-    const publicPages = ["Login", "SignUp", "ForgotPassword"];
-    if (sessionChecked && !isAuth && !publicPages.includes(activePage)) {
-      setActivePage("Login");
-    }
-  }, [activePage, currentUser, sessionChecked]);
-
-  const pages = {
-    Home: <Home onNavigate={navigate} user={currentUser} />,
-    Perfil: <Perfil onNavigate={navigate} user={currentUser} />,
-    SignUp: <SignUp onNavigate={navigate} />,
-    ForgotPassword: <ForgotPassword onNavigate={navigate} />,
-    Login: (
-      <Login
-        onNavigate={navigate}
-        onAuthenticated={(user) => {
-          setCurrentUser(user);
-          setActivePage("Home");
-        }}
-      />
-    ),
-  };
-
-  if (!sessionChecked) return <div className="min-h-screen bg-[#171522]" />;
-  return pages[activePage] || <Home onNavigate={navigate} user={currentUser} />;
+  return <RouterProvider router={router} />;
 }

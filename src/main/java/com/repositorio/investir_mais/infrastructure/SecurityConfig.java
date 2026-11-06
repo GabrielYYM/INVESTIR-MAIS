@@ -37,7 +37,6 @@ import org.springframework.security.web.authentication.ott.GenerateOneTimeTokenF
 import org.springframework.security.web.authentication.ott.GenerateOneTimeTokenRequestResolver;
 import org.springframework.security.web.authentication.ott.OneTimeTokenGenerationSuccessHandler;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
-import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -130,7 +129,7 @@ public class SecurityConfig {
         http.cors(Customizer.withDefaults())
             .addFilterBefore(new SecurityFilter(redis, rateLimitProperties), GenerateOneTimeTokenFilter.class)
             .requestCache(AbstractHttpConfigurer::disable)
-            .csrf(csrf -> csrf.csrfTokenRepository(csrfRepository).csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
+            .csrf(csrf -> csrf.spa().csrfTokenRepository(csrfRepository))
             .exceptionHandling(exceptions -> exceptions
                 .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
                 .accessDeniedHandler(new HttpStatusAccessDeniedHandler(HttpStatus.FORBIDDEN)))

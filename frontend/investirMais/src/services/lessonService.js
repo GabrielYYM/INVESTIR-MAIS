@@ -5,15 +5,16 @@ export async function criarAula(courseId, lessonData) {
   return data;
 }
 
-export async function listarAulasDoCurso(courseId, { page = 0, size = 10 } = {}) {
+export async function listarAulasDoCurso(courseId, { page = 0, size = 10, signal } = {}) {
   const { data } = await apiClient.get(`/api/lessons/course/${courseId}`, {
-    params: { page, size },
+    params: { page, size, sort: "title" },
+    signal,
   });
   return data;
 }
 
-export async function buscarAula(lessonId) {
-  const { data } = await apiClient.get(`/api/lessons/${lessonId}`);
+export async function buscarAula(lessonId, signal) {
+  const { data } = await apiClient.get(`/api/lessons/${lessonId}`, { signal });
   return data;
 }
 

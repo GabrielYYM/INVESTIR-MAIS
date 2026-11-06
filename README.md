@@ -166,14 +166,10 @@ Em um novo terminal, navegue até o diretório do frontend e instale as dependê
 
 ```bash
 cd frontend/investirMais
-npm install
+npm ci
 ```
 
-Configure as variáveis de ambiente criando/editando o arquivo `.env` localizado dentro de `frontend/investirMais/`:
-```env
-VITE_API_BASE_URL=http://localhost:8080
-VITE_BRAPI_TOKEN=seu_token_da_brapi_aqui
-```
+O Vite encaminha `/api`, `/auth` e `/csrf` ao Spring em `http://localhost:8080`. Se o backend estiver em outro endereço, defina `VITE_DEV_API_TARGET` no `.env` do frontend. Configure o token da Brapi no backend.
 
 Inicie a aplicação no modo de desenvolvimento:
 ```bash
@@ -181,6 +177,8 @@ npm run dev
 ```
 
 - **Aplicação Web Frontend:** `http://localhost:5173`
+
+Para configuração de produção e publicação de aulas, consulte o [README do frontend](./frontend/investirMais/README.md).
 
 ---
 

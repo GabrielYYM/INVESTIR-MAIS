@@ -5,13 +5,13 @@ export async function criarCurso(courseData) {
   return data;
 }
 
-export async function listarCursos({ page = 0, size = 10, sort = "name" } = {}) {
-  const { data } = await apiClient.get("/api/courses", { params: { page, size, sort } });
+export async function listarCursos({ page = 0, size = 10, sort = "name", signal } = {}) {
+  const { data } = await apiClient.get("/api/courses", { params: { page, size, sort }, signal });
   return data;
 }
 
-export async function buscarCurso(courseId) {
-  const { data } = await apiClient.get(`/api/courses/${courseId}`);
+export async function buscarCurso(courseId, signal) {
+  const { data } = await apiClient.get(`/api/courses/${courseId}`, { signal });
   return data;
 }
 
