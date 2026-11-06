@@ -2,7 +2,9 @@ package com.repositorio.investir_mais.infrastructure;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Locale;
 
+import com.repositorio.investir_mais.domain.TokenDigest;
 import com.repositorio.investir_mais.infrastructure.config.AuthenticationRateLimitProperties;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -16,7 +18,6 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.http.HttpMethod;
-import org.springframework.security.web.util.matcher.OrRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 
 import static org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher.pathPattern;
@@ -36,29 +37,37 @@ public class SecurityFilter extends OncePerRequestFilter {
         end
         return 0
         """, Long.class);
-    private static final RequestMatcher AUTHENTICATION_REQUESTS = new OrRequestMatcher(
-        pathPattern(HttpMethod.POST, "/auth/login"),
-        pathPattern(HttpMethod.POST, "/auth/code"),
-        pathPattern(HttpMethod.POST, "/auth/verify-2fa"),
-        pathPattern(HttpMethod.POST, "/api/users/register"),
-        pathPattern(HttpMethod.POST, "/api/users/forgot-password"),
-        pathPattern(HttpMethod.POST, "/api/users/reset-password"),
-        pathPattern(HttpMethod.POST, "/api/users/resend-verification"));
+    private static final List<LimitedRoute> AUTHENTICATION_REQUESTS = List.of(
+        new LimitedRoute("/auth/login"),
+        new LimitedRoute("/auth/code"),
+        new LimitedRoute("/auth/verify-2fa"),
+        new LimitedRoute("/api/users/register"),
+        new LimitedRoute("/api/users/verify-email"),
+        new LimitedRoute("/api/users/forgot-password"),
+        new LimitedRoute("/api/users/reset-password"),
+        new LimitedRoute("/api/users/resend-verification"));
     private final StringRedisTemplate redis;
     private final AuthenticationRateLimitProperties properties;
 
     @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) {
-        return !AUTHENTICATION_REQUESTS.matches(request);
-    }
-
-    @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain) throws ServletException, IOException {
-        String key = properties.namespace() + ":" + request.getRemoteAddr() + ":" + request.getRequestURI();
+        var route = AUTHENTICATION_REQUESTS.stream().filter(candidate -> candidate.matcher().matches(request)).findFirst();
+        if (route.isEmpty()) {
+            chain.doFilter(request, response);
+            return;
+        }
+        String path = route.get().path();
+        String key = properties.namespace() + ":" + request.getRemoteAddr() + ":" + path;
         Long retryAfter;
         try {
-            retryAfter = redis.execute(CONSUME, List.of(key),
-                    Integer.toString(properties.capacity()), Long.toString(properties.refillPeriod().toMillis()));
+            retryAfter = consume(key);
+            if (Long.valueOf(0).equals(retryAfter) && "/auth/login".equals(path)) {
+                String email = request.getParameter("email");
+                if (email != null && !email.isBlank() && email.length() <= 320) {
+                    String account = TokenDigest.sha256(email.strip().toLowerCase(Locale.ROOT));
+                    retryAfter = consume(properties.namespace() + ":account:" + account + ":" + path);
+                }
+            }
         } catch (DataAccessException exception) {
             log.error("Redis indisponível ao verificar o limite de autenticação", exception);
             retryAfter = null;
@@ -78,5 +87,16 @@ public class SecurityFilter extends OncePerRequestFilter {
             return;
         }
         chain.doFilter(request, response);
+    }
+
+    private Long consume(String key) {
+        return redis.execute(CONSUME, List.of(key), Integer.toString(properties.capacity()),
+                Long.toString(properties.refillPeriod().toMillis()));
+    }
+
+    private record LimitedRoute(String path, RequestMatcher matcher) {
+        LimitedRoute(String path) {
+            this(path, pathPattern(HttpMethod.POST, path));
+        }
     }
 }

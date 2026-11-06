@@ -1,7 +1,9 @@
 package com.repositorio.investir_mais.domain.user.repository;
 
 import com.repositorio.investir_mais.domain.user.model.User;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.repository.history.RevisionRepository;
@@ -13,6 +15,11 @@ import java.util.UUID;
 @NamedInterface("user-repository")
 public interface UserRepository extends JpaRepository<User, UUID>, RevisionRepository<User, UUID, Integer> {
     Optional<User> findByEmail(String email);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from User u where u.email = :email")
+    Optional<User> findByEmailForUpdate(@Param("email") String email);
+
 
     boolean existsByEmail(String email);
 

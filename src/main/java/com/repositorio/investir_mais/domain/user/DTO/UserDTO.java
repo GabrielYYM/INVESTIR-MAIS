@@ -28,11 +28,12 @@ public class UserDTO {
         @Schema(description = "Endereço de e-mail único", example = "usuario@gmail.com")
         @NotBlank(message = "O e-mail é obrigatório")
         @Email(message = "E-mail inválido")
+        @Size(max = 254)
         String email,
 
         @Schema(description = "Senha de acesso do usuário", example = "SenhaSegura123")
         @NotBlank(message = "A senha é obrigatória")
-        @Size(min = 8, message = "A senha deve ter no mínimo 8 caracteres")
+        @Size(min = 8, max = 4096, message = "A senha deve ter entre 8 e 4096 caracteres")
         String password,
 
         @Schema(description = "Perfil de acesso no sistema. O cadastro público aceita apenas STUDENT.", example = "STUDENT")
@@ -49,6 +50,7 @@ public class UserDTO {
         @Schema(description = "Novo endereço de e-mail", example = "usuario@gmail.com")
         @NotBlank(message = "O e-mail é obrigatório") 
         @Email(message = "E-mail inválido") 
+        @Size(max = 254)
         String email,
         
         @Schema(description = "Idade do usuário", example = "23")
@@ -57,6 +59,7 @@ public class UserDTO {
 
         @Schema(description = "Senha atual para confirmar a alteração do perfil")
         @NotBlank(message = "A senha atual é obrigatória")
+        @Size(max = 4096)
         String currentPassword
     ) {}
 
@@ -64,6 +67,7 @@ public class UserDTO {
     public record DeleteAccountRequest(
         @Schema(description = "Senha atual do usuário")
         @NotBlank(message = "A senha atual é obrigatória")
+        @Size(max = 4096)
         String currentPassword
     ) {}
 

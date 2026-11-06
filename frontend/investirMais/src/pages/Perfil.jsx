@@ -1,32 +1,47 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import { Lock, Mail, Save, User } from "lucide-react";
 import { useForm } from "react-hook-form";
-import { useRevalidator, useRouteLoaderData } from "react-router";
+import { data, redirect, useFetcher, useRouteLoaderData } from "react-router";
 import { Field } from "../components/FormFields.jsx";
 import { Notice } from "../components/PageState.jsx";
 import { roleNames } from "../components/Topbar.jsx";
 import { apiError } from "../services/api.js";
-import { updateUserProfile } from "../services/authService.js";
+import { getCurrentUser, updateUserProfile } from "../services/authService.js";
+
+export async function profileAction({ request }) {
+  const { id, name, email, currentPassword } = await request.json();
+  try {
+    return { updated: await updateUserProfile(id, { name, email, currentPassword }) };
+  } catch (error) {
+    const status = error.response?.status ?? 500;
+    if (status === 401) {
+      try {
+        await getCurrentUser(request.signal);
+      } catch (sessionError) {
+        if ([401, 403].includes(sessionError.response?.status)) return redirect("/entrar?retorno=%2Fperfil");
+      }
+    }
+    return data({ error: apiError(error, "Não foi possível salvar. Confira a senha atual e tente novamente.") }, { status });
+  }
+}
 
 export default function Perfil() {
   const user = useRouteLoaderData("app");
-  const { revalidate } = useRevalidator();
-  const [saved, setSaved] = useState(false);
+  const fetcher = useFetcher();
   const form = useForm({ defaultValues: { name: user.name, currentPassword: "" } });
-  const { errors, isSubmitting } = form.formState;
+  const { errors } = form.formState;
+  const { reset } = form;
+  const isSubmitting = fetcher.state !== "idle";
+  const updated = fetcher.data?.updated;
 
-  const submit = form.handleSubmit(async ({ name, currentPassword }) => {
-    setSaved(false);
-    try {
-      const updated = await updateUserProfile(user.id, { name, email: user.email, currentPassword });
-      form.reset({ name: updated.name, currentPassword: "" });
-      setSaved(true);
-      await revalidate();
-    } catch (error) {
-      form.setError("root", { message: apiError(error, "Não foi possível salvar. Confira a senha atual e tente novamente.") });
-      if (error.response?.status === 401) await revalidate();
-    }
-  });
+  useEffect(() => {
+    if (updated && !isSubmitting) reset({ name: updated.name, currentPassword: "" });
+  }, [isSubmitting, reset, updated]);
+
+  const submit = form.handleSubmit((fields) => fetcher.submit({ ...fields, id: user.id, email: user.email }, {
+    method: "post",
+    encType: "application/json",
+  }));
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -39,8 +54,8 @@ export default function Perfil() {
         <p className="text-sm break-words text-muted">{user.email}</p>
         <p className="mt-2 text-xs font-semibold text-amber-400">{roleNames[user.role]}</p>
       </section>
-      {saved && <Notice>Perfil atualizado.</Notice>}
-      {errors.root && <Notice error>{errors.root.message}</Notice>}
+      {!isSubmitting && updated && <Notice>Perfil atualizado.</Notice>}
+      {!isSubmitting && fetcher.data?.error && <Notice error>{fetcher.data.error}</Notice>}
       <form onSubmit={submit} className="panel space-y-6 p-6 shadow-xl sm:p-8" noValidate>
         <h2 className="border-b border-line pb-4 font-semibold">Alterar informações</h2>
         <Field label="Nome completo" icon={User} autoComplete="name" maxLength={100} error={errors.name?.message}

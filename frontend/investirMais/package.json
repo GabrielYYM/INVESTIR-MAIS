@@ -4,7 +4,10 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "api:generate": "orval --config orval.config.mjs",
+    "predev": "npm run api:generate",
     "dev": "vite",
+    "prebuild": "npm run api:generate",
     "build": "vite build",
     "preview": "vite preview"
   },
@@ -19,6 +22,7 @@
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.4",
     "@vitejs/plugin-react": "^6.2.1",
+    "orval": "8.46.0",
     "tailwindcss": "^4.3.4",
     "vite": "^8.3.5"
   }

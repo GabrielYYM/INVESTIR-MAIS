@@ -3,13 +3,14 @@ import { RouterProvider } from "react-router/dom";
 import AppLayout, { signOut } from "./components/AppLayout.jsx";
 import { PageError, PendingPage } from "./components/PageState.jsx";
 import { getCurrentUser } from "./services/authService.js";
-import Login from "./pages/Login.jsx";
+import Login, { LoginLink } from "./pages/Login.jsx";
 import SignUp from "./pages/SignUp.jsx";
 import ForgotPassword from "./pages/ForgotPassword.jsx";
-import Perfil from "./pages/Perfil.jsx";
+import Perfil, { profileAction } from "./pages/Perfil.jsx";
 import Home, { dashboardLoader, quoteLoader } from "./pages/Home.jsx";
 import Education, { catalogLoader } from "./pages/Education.jsx";
 import Course, { courseLoader } from "./pages/Course.jsx";
+import { catalogAction, courseAction } from "./services/educationData.js";
 
 async function requireSession({ request }) {
   try {
@@ -36,13 +37,14 @@ const router = createBrowserRouter([
     children: [
       { index: true, Component: Home, loader: dashboardLoader, ErrorBoundary: PageError },
       { path: "cotacao", loader: quoteLoader },
-      { path: "educacao", Component: Education, loader: catalogLoader, ErrorBoundary: PageError },
-      { path: "educacao/:courseId/:lessonId?", Component: Course, loader: courseLoader, ErrorBoundary: PageError },
-      { path: "perfil", Component: Perfil },
+      { path: "educacao", Component: Education, loader: catalogLoader, action: catalogAction, ErrorBoundary: PageError },
+      { path: "educacao/:courseId/:lessonId?", Component: Course, loader: courseLoader, action: courseAction, ErrorBoundary: PageError },
+      { path: "perfil", Component: Perfil, action: profileAction },
       { path: "sair", action: signOut },
     ],
   },
   { path: "entrar", Component: Login },
+  { path: "entrar/link", Component: LoginLink },
   { path: "cadastro", Component: SignUp },
   { path: "recuperar-senha", Component: ForgotPassword },
   { path: "*", Component: PageError },

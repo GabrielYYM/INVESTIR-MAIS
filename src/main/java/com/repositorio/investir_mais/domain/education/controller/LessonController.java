@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -40,7 +41,7 @@ public class LessonController {
     @Operation(summary = "Listar aulas de um curso", description = "Retorna uma lista paginada com todas as aulas de um determinado curso.")
     @ApiResponse(responseCode = "200", description = "Página de aulas retornada com sucesso")
     @GetMapping("/course/{courseId}")
-    public Page<LessonDTO.Response> getLessonsByCourse(@PathVariable UUID courseId, @PageableDefault(size = 20) Pageable pageable) {
+    public Page<LessonDTO.Response> getLessonsByCourse(@PathVariable UUID courseId, @ParameterObject @PageableDefault(size = 20) Pageable pageable) {
         return lessonService.getLessonsByCourseId(courseId, pageable);
     }
 

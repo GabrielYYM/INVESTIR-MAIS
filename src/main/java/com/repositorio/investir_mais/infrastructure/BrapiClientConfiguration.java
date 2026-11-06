@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.support.RestClientHttpServiceGroupConfigurer;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.service.registry.HttpServiceProxyRegistry;
@@ -30,6 +31,12 @@ public class BrapiClientConfiguration {
         var delegate = registry.getClient("brapi", AssetQuoteClient.class);
         var circuitBreaker = circuitBreakerFactory.create("brapi");
         return ticker -> circuitBreaker.run(() -> delegate.getQuote(ticker), failure -> {
+            if (failure instanceof HttpClientErrorException.NotFound) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Ativo não encontrado.");
+            }
+            if (failure instanceof HttpClientErrorException.BadRequest) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ticker inválido para o provedor de cotação.");
+            }
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Serviço de cotação temporariamente indisponível.", failure);
         });
     }

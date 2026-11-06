@@ -78,5 +78,6 @@ build/
 ### Data ###
 *.sql
 !src/main/resources/schema-postgresql.sql
+!src/test/resources/account-security-schema.sql
 *.p12
 *.jks

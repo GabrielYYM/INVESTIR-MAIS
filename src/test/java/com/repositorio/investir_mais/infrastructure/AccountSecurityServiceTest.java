@@ -66,9 +66,19 @@ class AccountSecurityServiceTest {
         assertTrue(service.consumeEmailVerificationToken(first).isEmpty());
         assertTrue(service.consumePasswordResetToken(reset).isPresent());
         jdbc.update("UPDATE app_one_time_token SET expires_at = ? WHERE token_value = ?",
-                Timestamp.from(Instant.now().minusSeconds(10)), second);
+                Timestamp.from(Instant.now().minusSeconds(10)), com.repositorio.investir_mais.domain.TokenDigest.sha256(second));
         assertTrue(service.consumeEmailVerificationToken(second).isEmpty());
         assertFalse(service.isTokenActive(new AccountEmailRequested(EMAIL, second, AccountEmailRequested.Purpose.VERIFY_EMAIL)));
+    }
+
+    @Test
+    void repeatedEmailRequestsKeepTheExistingTokenActive() {
+        String reset = service.requestPasswordResetToken(EMAIL).orElseThrow();
+        assertTrue(service.requestPasswordResetToken(EMAIL).isEmpty());
+        var verification = service.requestEmailVerificationToken(EMAIL).orElseThrow();
+        assertTrue(service.requestEmailVerificationToken(EMAIL).isEmpty());
+        assertEquals(Optional.of(EMAIL), service.consumePasswordResetToken(reset));
+        assertEquals(Optional.of(EMAIL), service.consumeEmailVerificationToken(verification.getTokenValue()));
     }
 
     @Test
@@ -141,7 +151,9 @@ class AccountSecurityServiceTest {
                 Timestamp.from(Instant.now().minusSeconds(10)), "EMAIL_VERIFICATION");
         jdbc.update("INSERT INTO one_time_tokens VALUES (?, ?, ?)", "login-expired", EMAIL, Timestamp.from(Instant.now().minusSeconds(10)));
         service.cleanupExpiredTokens();
-        assertEquals(List.of(valid), jdbc.queryForList("SELECT token_value FROM app_one_time_token", String.class));
+        String digest = com.repositorio.investir_mais.domain.TokenDigest.sha256(valid);
+        assertEquals(List.of(digest), jdbc.queryForList("SELECT token_value FROM app_one_time_token", String.class));
+        assertTrue(service.consumePasswordResetToken(digest).isEmpty());
         assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM one_time_tokens", Integer.class));
     }
 

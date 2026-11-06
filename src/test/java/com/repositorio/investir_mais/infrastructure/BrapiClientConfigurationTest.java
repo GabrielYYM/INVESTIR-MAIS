@@ -107,7 +107,12 @@ class BrapiClientConfigurationTest {
     @ParameterizedTest
     @ValueSource(strings = {"BADREQUEST", "UNAUTHORIZED", "NOTFOUND"})
     void clientErrorsAreNotRetried(String ticker) {
-        assertThrows(ResponseStatusException.class, () -> controller.getQuote(ticker));
+        var failure = assertThrows(ResponseStatusException.class, () -> controller.getQuote(ticker));
+        assertEquals(switch (ticker) {
+            case "BADREQUEST" -> 400;
+            case "NOTFOUND" -> 404;
+            default -> 503;
+        }, failure.getStatusCode().value());
         assertEquals(1, attempts.get());
     }
 

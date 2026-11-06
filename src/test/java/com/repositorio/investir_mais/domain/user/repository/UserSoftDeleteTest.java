@@ -92,7 +92,7 @@ class UserSoftDeleteTest {
         assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM one_time_tokens", Integer.class));
         assertTrue(security.consumePasswordResetToken(resetToken).isEmpty());
         assertTrue(security.consumeEmailVerificationToken(verificationToken).isEmpty());
-        verify(sessions).deleteById(session.getId());
+        verifyNoInteractions(sessions);
 
         service.forgotPassword(new AuthDTO.ForgotPasswordRequest(deleted.getEmail()));
         service.resendVerification(deleted.getEmail());

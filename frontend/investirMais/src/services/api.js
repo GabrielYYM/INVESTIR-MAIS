@@ -7,6 +7,7 @@ const safeMethods = new Set(["get", "head", "options", "trace"]);
 export const apiClient = axios.create({
   baseURL,
   withCredentials: true,
+  timeout: 30000,
   xsrfCookieName: "XSRF-TOKEN",
   xsrfHeaderName: "X-XSRF-TOKEN",
   headers: { Accept: "application/json" },
@@ -31,7 +32,13 @@ apiClient.interceptors.request.use(async (config) => {
 });
 
 export function apiError(error, fallback) {
-  const { status, data } = error.response ?? {};
-  if (status === 429) return "Muitas tentativas. Aguarde alguns instantes e tente novamente.";
-  return data?.detail || data?.message || fallback;
+  const { status, data, headers } = error.response ?? {};
+  if (status === 429) {
+    const seconds = Number(headers?.["retry-after"]);
+    return Number.isSafeInteger(seconds) && seconds > 0
+      ? `Muitas tentativas. Aguarde ${seconds} s e tente novamente.`
+      : "Muitas tentativas. Aguarde alguns instantes e tente novamente.";
+  }
+  const message = data?.detail || data?.message;
+  return typeof message === "string" ? message : fallback;
 }

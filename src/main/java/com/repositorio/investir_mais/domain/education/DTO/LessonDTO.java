@@ -8,7 +8,7 @@ import org.hibernate.validator.constraints.URL;
 import java.util.UUID;
 
 public class LessonDTO {
-    @Schema(description = "Dados para criação ou atualização de uma aula")
+    @Schema(name = "LessonRequest", description = "Dados para criação ou atualização de uma aula")
     public record Request(
         @Schema(description = "Título da aula", example = "Aula 1 - O que é Renda Fixa?")
         @NotBlank(message = "O título é obrigatório")
@@ -17,20 +17,23 @@ public class LessonDTO {
 
         @Schema(description = "Descrição do conteúdo da aula", example = "Conceitos fundamentais sobre Tesouro Direto e CDBs.")
         @NotBlank(message = "A descrição é obrigatória")
+        @Size(max = 10000)
         String description,
 
         @Schema(description = "URL do vídeo/mídia hospedada", example = "https://media.investirmais.com/videos/aula-1.mp4")
         @NotBlank(message = "A URL da mídia é obrigatória")
+        @Size(max = 4096)
         @URL(message = "A URL da mídia é inválida")
         String mediaUrl,
 
         @Schema(description = "URL da imagem de capa/thumbnail", example = "https://media.investirmais.com/thumbs/aula-1.jpg")
         @NotBlank(message = "A URL da thumbnail é obrigatória")
+        @Size(max = 4096)
         @URL(message = "A URL da thumbnail é inválida")
         String thumbnailUrl
     ) {}
 
-    @Schema(description = "Resposta com dados da aula")
+    @Schema(name = "LessonResponse", description = "Resposta com dados da aula")
     public record Response(
         @Schema(description = "Identificador único da aula (UUID)", example = "c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e8f")
         UUID id,

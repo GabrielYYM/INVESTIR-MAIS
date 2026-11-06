@@ -20,7 +20,7 @@ export default function SignUp() {
       setEmail(email);
     } catch (error) {
       const fallback = "Não foi possível criar sua conta. Verifique os dados informados.";
-      form.setError("root", { message: error.response?.status === 409 ? fallback : apiError(error, fallback) });
+      form.setError("root", { message: apiError(error, fallback) });
     }
   });
 
@@ -36,7 +36,7 @@ export default function SignUp() {
     <AuthCard
       icon={email ? CheckCircle2 : ShieldCheck}
       title={email ? "Confirme seu e-mail" : "Crie sua conta"}
-      description={email ? "Enviamos um link de ativação para " + email + ". Confira também a pasta de spam." : "Crie uma conta para explorar os cursos e consultar cotações."}
+      description={email ? "Se o cadastro puder ser realizado, você receberá um link em " + email + ". Confira também a pasta de spam." : "Crie uma conta para explorar os cursos e consultar cotações."}
     >
       {email ? (
         <form onSubmit={resendLink} className="space-y-4">

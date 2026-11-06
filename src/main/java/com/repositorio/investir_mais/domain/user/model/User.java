@@ -49,6 +49,7 @@ public class User {
     @Column(nullable = false, unique = true)
     private String email;
 
+    @Audited.Excluded
     private String password;
 
     @Enumerated(EnumType.STRING)

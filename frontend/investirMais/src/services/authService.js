@@ -1,7 +1,7 @@
 import { apiClient } from "./api";
 
-export async function login(email, password) {
-  await apiClient.post("/auth/login", new URLSearchParams({ email, password }));
+export async function login(email, password, retorno) {
+  await apiClient.post("/auth/login", new URLSearchParams({ email, password, retorno }));
 }
 
 export async function verify2FA(code) {
@@ -10,13 +10,6 @@ export async function verify2FA(code) {
 
 export async function register(userData) {
   const { data } = await apiClient.post("/api/users/register", userData);
-  return data;
-}
-
-export async function verifyEmail(token) {
-  const { data } = await apiClient.get("/api/users/verify-email", {
-    params: { token },
-  });
   return data;
 }
 
@@ -46,13 +39,5 @@ export async function forgotPassword(email) {
 
 export async function resetPassword(token, newPassword) {
   const { data } = await apiClient.post("/api/users/reset-password", { token, newPassword });
-  return data;
-}
-
-export async function updatePassword(currentPassword, newPassword) {
-  const { data } = await apiClient.put("/api/users/update-password", {
-    currentPassword,
-    newPassword,
-  });
   return data;
 }

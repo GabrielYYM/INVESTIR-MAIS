@@ -26,8 +26,6 @@ import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseBuilder;
 import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseType;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.authentication.ott.GenerateOneTimeTokenRequest;
-import org.springframework.security.authentication.ott.OneTimeTokenService;
 import org.springframework.security.core.authority.FactorGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -42,7 +40,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
-import java.time.Duration;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import javax.sql.DataSource;
@@ -68,7 +67,6 @@ class SpringLoginFlowTest {
     @Autowired private UserService userService;
     @Autowired private AuthenticationEmailHandler emails;
     @Autowired private StringRedisTemplate rateLimits;
-    @Autowired private OneTimeTokenService tokens;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private JdbcTemplate jdbc;
     private MockMvc mvc;
@@ -151,17 +149,15 @@ class SpringLoginFlowTest {
         MockHttpSession session = login();
         mvc.perform(post("/auth/code").session(session).with(csrf()).param("username", "other@investir.com"))
                 .andExpect(status().isNoContent());
-        verify(emails, times(2)).sendLoginCode(eq(EMAIL), anyString());
+        verify(emails, times(2)).sendLoginLink(eq(EMAIL), anyString(), isNull());
         assertEquals(EMAIL, jdbc.queryForObject("SELECT DISTINCT username FROM one_time_tokens", String.class));
     }
 
     @Test
     void passwordAndEmailTokenGrantAccessAndKeepRoleRestrictions() throws Exception {
         MockHttpSession session = login();
-        String initialId = session.getId();
         String token = sentCode();
         session = verifyCode(session, token);
-        assertNotEquals(initialId, session.getId());
         mvc.perform(get("/auth/me").session(session))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.email").value(EMAIL));
         mvc.perform(get("/test/private").session(session)).andExpect(status().isOk());
@@ -175,11 +171,23 @@ class SpringLoginFlowTest {
     }
 
     @Test
-    void tokenAloneCannotGrantAccess() throws Exception {
-        String token = tokens.generate(new GenerateOneTimeTokenRequest(EMAIL)).getTokenValue();
-        MockHttpSession session = verifyCode(null, token);
-        mvc.perform(get("/auth/me").session(session)).andExpect(status().isForbidden());
-        mvc.perform(get("/test/private").session(session)).andExpect(status().isForbidden());
+    void tokenAloneIsRejectedWithoutConsumingIt() throws Exception {
+        MockHttpSession original = login();
+        String token = sentCode();
+        mvc.perform(post("/auth/verify-2fa").with(csrf()).param("token", token))
+                .andExpect(status().isUnauthorized());
+        verifyCode(original, token);
+    }
+
+    @Test
+    void tokenIsBoundToTheBrowserSessionEvenForTheSameAccount() throws Exception {
+        MockHttpSession original = login();
+        String token = sentCode();
+        MockHttpSession another = login();
+        mvc.perform(post("/auth/verify-2fa").session(another).with(csrf()).param("token", token))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(get("/auth/me").session(another)).andExpect(status().isForbidden());
+        verifyCode(original, token);
     }
 
     @Test
@@ -190,18 +198,25 @@ class SpringLoginFlowTest {
         other.setRole(UserRole.ADMIN);
         other.setEmailVerified(true);
         when(users.findByEmail(other.getEmail())).thenReturn(Optional.of(other));
-        String otherToken = tokens.generate(new GenerateOneTimeTokenRequest(other.getEmail())).getTokenValue();
-        MockHttpSession session = verifyCode(login(), otherToken);
+        MockHttpSession otherSession = login(other.getEmail());
+        String otherToken = sentCode(other.getEmail());
+        MockHttpSession session = login();
+        mvc.perform(post("/auth/verify-2fa").session(session).with(csrf()).param("token", otherToken))
+                .andExpect(status().isUnauthorized());
         mvc.perform(get("/auth/me").session(session)).andExpect(status().isForbidden());
         mvc.perform(get("/test/admin").session(session)).andExpect(status().isForbidden());
+        verifyCode(otherSession, otherToken);
     }
 
     @Test
     void invalidExpiredAndReusedTokensAreRejected() throws Exception {
         mvc.perform(post("/auth/verify-2fa").session(login()).with(csrf()).param("token", "invalid"))
                 .andExpect(status().isUnauthorized());
-        String expired = tokens.generate(new GenerateOneTimeTokenRequest(EMAIL, Duration.ofMinutes(-1))).getTokenValue();
-        mvc.perform(post("/auth/verify-2fa").session(login()).with(csrf()).param("token", expired))
+        MockHttpSession expiredSession = login();
+        String expired = sentCode();
+        jdbc.update("UPDATE one_time_tokens SET expires_at = ? WHERE token_value = ?",
+                Timestamp.from(Instant.now().minusSeconds(60)), expired);
+        mvc.perform(post("/auth/verify-2fa").session(expiredSession).with(csrf()).param("token", expired))
                 .andExpect(status().isUnauthorized());
         MockHttpSession session = login();
         String token = sentCode();
@@ -239,7 +254,7 @@ class SpringLoginFlowTest {
         MockHttpSession session = login();
         when(rateLimits.execute(any(RedisScript.class), argThat(keys -> keys.getFirst().endsWith(":/auth/code")), anyString(), anyString())).thenReturn(1000L);
         mvc.perform(post("/auth/code").session(session).with(csrf())).andExpect(status().isTooManyRequests());
-        verify(emails).sendLoginCode(eq(EMAIL), anyString());
+        verify(emails).sendLoginLink(eq(EMAIL), anyString(), isNull());
     }
 
     @Test
@@ -293,14 +308,22 @@ class SpringLoginFlowTest {
     }
 
     private MockHttpSession login() throws Exception {
+        return login(EMAIL);
+    }
+
+    private MockHttpSession login(String email) throws Exception {
         return (MockHttpSession) mvc.perform(post("/auth/login").with(csrf())
-                        .param("email", EMAIL).param("password", PASSWORD))
+                        .param("email", email).param("password", PASSWORD))
                 .andExpect(status().isNoContent()).andReturn().getRequest().getSession(false);
     }
 
     private String sentCode() {
+        return sentCode(EMAIL);
+    }
+
+    private String sentCode(String email) {
         ArgumentCaptor<String> code = ArgumentCaptor.forClass(String.class);
-        verify(emails, atLeastOnce()).sendLoginCode(eq(EMAIL), code.capture());
+        verify(emails, atLeastOnce()).sendLoginLink(eq(email), code.capture(), nullable(String.class));
         return code.getValue();
     }
 

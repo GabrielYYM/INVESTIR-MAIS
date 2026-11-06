@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { BookOpen, Plus } from "lucide-react";
-import { useLoaderData, useNavigate, useRouteLoaderData } from "react-router";
+import { useLoaderData, useRouteLoaderData } from "react-router";
 import { CourseCard, Pagination } from "../components/EducationParts.jsx";
 import EducationDialog from "../components/EducationDialog.jsx";
-import { criarCurso } from "../services/courseService.js";
 import { canManageEducation } from "../services/educationData.js";
 
 export { catalogLoader } from "../services/educationData.js";
@@ -11,14 +10,8 @@ export { catalogLoader } from "../services/educationData.js";
 export default function Education() {
   const page = useLoaderData();
   const user = useRouteLoaderData("app");
-  const navigate = useNavigate();
   const [creating, setCreating] = useState(false);
   const canCreate = canManageEducation(user);
-
-  async function createCourse(payload) {
-    const course = await criarCurso(payload);
-    await navigate("/educacao/" + course.id);
-  }
 
   return (
     <>
@@ -47,7 +40,7 @@ export default function Education() {
         )}
         <Pagination page={page} pathname="/educacao" />
       </section>
-      {creating && canCreate && <EducationDialog kind="curso" onClose={() => setCreating(false)} onSave={createCourse} />}
+      {creating && canCreate && <EducationDialog kind="curso" onClose={() => setCreating(false)} />}
     </>
   );
 }

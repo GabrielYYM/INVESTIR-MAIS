@@ -115,7 +115,7 @@ class UserServiceTest {
     @Test
     void updateProfile_WhenEmailBelongsToAnotherUser_ShouldRejectBeforeChangingProfile() {
         var dto = new UserDTO.UpdateProfileRequest("Outro nome", "other@investir.com", 30, "correct-password");
-        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(userRepository.findByEmailForUpdate(user.getEmail())).thenReturn(Optional.of(user));
         when(userRepository.existsByEmailAndIdNot(dto.email(), user.getId())).thenReturn(true);
         when(passwordEncoder.matches("correct-password", "encoded_password")).thenReturn(true);
 
@@ -131,7 +131,7 @@ class UserServiceTest {
     @Test
     void updateProfile_WhenConfirmationPasswordIsWrong_ShouldNotChangeAccount() {
         var dto = new UserDTO.UpdateProfileRequest("Outro nome", "other@investir.com", 30, "wrong-password");
-        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(userRepository.findByEmailForUpdate(user.getEmail())).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("wrong-password", "encoded_password")).thenReturn(false);
 
         var exception = assertThrows(ResponseStatusException.class,
@@ -169,7 +169,7 @@ class UserServiceTest {
 
     @Test
     void deleteAccount_WhenUserOwnsAccount_ShouldDeleteAndRevokeAccess() {
-        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(userRepository.findByEmailForUpdate(user.getEmail())).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("current-password", user.getPassword())).thenReturn(true);
 
         userService.deleteAccount(user.getEmail(), user.getId(), new UserDTO.DeleteAccountRequest("current-password"));
@@ -184,7 +184,7 @@ class UserServiceTest {
 
     @Test
     void deleteAccount_WhenPasswordIsWrong_ShouldLeaveAccountAndAccessUntouched() {
-        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(userRepository.findByEmailForUpdate(user.getEmail())).thenReturn(Optional.of(user));
 
         var failure = assertThrows(ResponseStatusException.class, () -> userService.deleteAccount(
                 user.getEmail(), user.getId(), new UserDTO.DeleteAccountRequest("wrong-password")));
@@ -196,7 +196,7 @@ class UserServiceTest {
 
     @Test
     void deleteAccount_WhenIdBelongsToAnotherUser_ShouldNotDeleteOrCheckPassword() {
-        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(userRepository.findByEmailForUpdate(user.getEmail())).thenReturn(Optional.of(user));
 
         var failure = assertThrows(ResponseStatusException.class, () -> userService.deleteAccount(
                 user.getEmail(), UUID.randomUUID(), new UserDTO.DeleteAccountRequest("current-password")));
@@ -209,7 +209,7 @@ class UserServiceTest {
     @Test
     void updatePassword_WhenCurrentPasswordIsInvalid_ShouldThrowUnauthorized() {
         AuthDTO.UpdatePasswordRequest dto = new AuthDTO.UpdatePasswordRequest("senhaIncorreta", "novaSenha123");
-        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(userRepository.findByEmailForUpdate(user.getEmail())).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("senhaIncorreta", "encoded_password")).thenReturn(false);
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class, 
@@ -221,7 +221,7 @@ class UserServiceTest {
     @Test
     void updatePassword_OnSuccess_ShouldUpdateAndRevokeSessions() {
         AuthDTO.UpdatePasswordRequest dto = new AuthDTO.UpdatePasswordRequest("encoded_password", "novaSenha123");
-        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(userRepository.findByEmailForUpdate(user.getEmail())).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("encoded_password", "encoded_password")).thenReturn(true);
         when(passwordEncoder.encode("novaSenha123")).thenReturn("new_encoded_password");
 
@@ -243,7 +243,7 @@ class UserServiceTest {
         OneTimeToken ott = new DefaultOneTimeToken(
             "verification-token", "novo@investir.com", Instant.now().plusSeconds(300));
 
-        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(userRepository.findByEmailForUpdate(user.getEmail())).thenReturn(Optional.of(user));
         when(accountSecurity.generateEmailVerificationToken(anyString())).thenReturn(ott);
         when(userMapper.toDTO(user)).thenReturn(response);
 
@@ -264,7 +264,7 @@ class UserServiceTest {
         userService.forgotPassword(dto);
 
         verifyNoInteractions(events);
-        verify(accountSecurity, never()).generatePasswordResetToken(anyString());
+        verify(accountSecurity, never()).requestPasswordResetToken(anyString());
     }
 
     @Test
@@ -272,7 +272,7 @@ class UserServiceTest {
         AuthDTO.ForgotPasswordRequest dto = new AuthDTO.ForgotPasswordRequest("felipe@investir.com");
 
         when(userRepository.existsByEmail("felipe@investir.com")).thenReturn(true);
-        when(accountSecurity.generatePasswordResetToken("felipe@investir.com")).thenReturn("token-ott");
+        when(accountSecurity.requestPasswordResetToken("felipe@investir.com")).thenReturn(Optional.of("token-ott"));
 
         userService.forgotPassword(dto);
 

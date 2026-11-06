@@ -1,17 +1,21 @@
 package com.repositorio.investir_mais.infrastructure;
 
+import com.repositorio.investir_mais.domain.TokenDigest;
 import com.repositorio.investir_mais.domain.user.repository.UserRepository;
 import com.repositorio.investir_mais.infrastructure.config.AuthenticationRateLimitProperties;
 import com.repositorio.investir_mais.infrastructure.config.WebApplicationProperties;
-import lombok.extern.slf4j.Slf4j;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.ott.GenerateOneTimeTokenRequest;
 import org.springframework.security.authentication.ott.JdbcOneTimeTokenService;
+import org.springframework.security.authentication.ott.OneTimeTokenAuthenticationToken;
 import org.springframework.security.authentication.ott.OneTimeTokenService;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.ObjectPostProcessor;
@@ -20,6 +24,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.FactorGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.User;
@@ -41,6 +46,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.net.URI;
 import java.util.List;
 
 
@@ -50,8 +56,9 @@ import java.util.List;
 @EnableMultiFactorAuthentication(authorities = {
     FactorGrantedAuthority.PASSWORD_AUTHORITY, FactorGrantedAuthority.OTT_AUTHORITY
 })
-@Slf4j
 public class SecurityConfig {
+    private static final String PENDING_LOGIN_TOKEN = SecurityConfig.class.getName() + ".pendingLoginToken";
+
     @Bean
     public UserDetailsService userDetailsService(UserRepository userRepository) {
         return email -> userRepository.findByEmail(email)
@@ -60,15 +67,12 @@ public class SecurityConfig {
                     .roles(user.getRole().name())
                     .disabled(!user.isEmailVerified())
                     .build())
-            .orElseThrow(() -> {
-                log.warn("Falha na autenticação: Usuário não encontrado para o e-mail {}", email);
-                return new UsernameNotFoundException("Usuário não encontrado.");
-            });
+            .orElseThrow(() -> new UsernameNotFoundException("Usuário não encontrado."));
     }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return Argon2PasswordEncoder.defaultsForSpringSecurity_v5_8();
+        return new Argon2PasswordEncoder(16, 32, 1, 19 * 1024, 2);
     }
 
     @Bean
@@ -83,8 +87,7 @@ public class SecurityConfig {
     public GenerateOneTimeTokenRequestResolver loginTokenRequestResolver() {
         return request -> {
             var authentication = SecurityContextHolder.getContext().getAuthentication();
-            if (authentication == null || authentication.getAuthorities().stream()
-                    .noneMatch(authority -> FactorGrantedAuthority.PASSWORD_AUTHORITY.equals(authority.getAuthority()))) {
+            if (!hasPasswordFactor(authentication)) {
                 return null;
             }
             return new GenerateOneTimeTokenRequest(authentication.getName());
@@ -94,7 +97,8 @@ public class SecurityConfig {
     @Bean
     public OneTimeTokenGenerationSuccessHandler loginTokenDelivery(AuthenticationEmailHandler emailHandler) {
         return (request, response, token) -> {
-            emailHandler.sendLoginCode(token.getUsername(), token.getTokenValue());
+            request.getSession().setAttribute(PENDING_LOGIN_TOKEN, loginTokenDigest(token.getUsername(), token.getTokenValue()));
+            emailHandler.sendLoginLink(token.getUsername(), token.getTokenValue(), request.getParameter("retorno"));
             response.setStatus(HttpStatus.NO_CONTENT.value());
         };
     }
@@ -105,6 +109,26 @@ public class SecurityConfig {
             tokens.generate(new GenerateOneTimeTokenRequest(authentication.getName())));
     }
 
+    private static boolean hasPasswordFactor(Authentication authentication) {
+        return authentication != null && authentication.isAuthenticated() && authentication.getAuthorities().stream()
+                .anyMatch(authority -> FactorGrantedAuthority.PASSWORD_AUTHORITY.equals(authority.getAuthority()));
+    }
+
+    private static String loginTokenDigest(String username, String token) {
+        return TokenDigest.sha256(username + "\0" + token);
+    }
+
+    private static Authentication convertLoginToken(HttpServletRequest request) {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        var session = request.getSession(false);
+        String token = request.getParameter("token");
+        if (!hasPasswordFactor(authentication) || session == null || token == null || token.length() > 64
+                || !loginTokenDigest(authentication.getName(), token).equals(session.getAttribute(PENDING_LOGIN_TOKEN))) {
+            throw new BadCredentialsException("Link ou código inválido para esta sessão de login.");
+        }
+        return OneTimeTokenAuthenticationToken.unauthenticated(token);
+    }
+
     @Bean
     public CookieCsrfTokenRepository csrfTokenRepository(@Value("${server.servlet.session.cookie.secure:false}") boolean secureCookie) {
         CookieCsrfTokenRepository repository = CookieCsrfTokenRepository.withHttpOnlyFalse();
@@ -113,15 +137,26 @@ public class SecurityConfig {
     }
 
     @Bean
-    public CorsConfigurationSource corsConfigurationSource(WebApplicationProperties properties) {
+    public CorsConfigurationSource corsConfigurationSource(WebApplicationProperties properties, Environment environment) {
+        if (environment.matchesProfiles("prod") && (!isHttpsOrigin(properties.publicBaseUrl())
+                || !isHttpsOrigin(properties.cors().allowedOrigin()))) {
+            throw new IllegalArgumentException("Produção exige origens HTTPS na URL pública e no CORS.");
+        }
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(List.of(properties.cors().allowedOrigin()));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Content-Type", "X-XSRF-TOKEN"));
+        configuration.setExposedHeaders(List.of("Retry-After"));
         configuration.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
+    }
+
+    private static boolean isHttpsOrigin(String value) {
+        URI uri = URI.create(value);
+        return "https".equalsIgnoreCase(uri.getScheme()) && uri.getHost() != null && uri.getUserInfo() == null
+                && (uri.getPath().isEmpty() || "/".equals(uri.getPath())) && uri.getQuery() == null && uri.getFragment() == null;
     }
 
     @Bean
@@ -149,13 +184,17 @@ public class SecurityConfig {
                     .tokenGeneratingUrl("/auth/code")
                     .loginProcessingUrl("/auth/verify-2fa")
                     .showDefaultSubmitPage(false)
-                    .successHandler((request, response, authentication) -> response.setStatus(HttpStatus.NO_CONTENT.value()))
+                    .authenticationConverter(SecurityConfig::convertLoginToken)
+                    .successHandler((request, response, authentication) -> {
+                        var session = request.getSession(false);
+                        if (session != null) session.removeAttribute(PENDING_LOGIN_TOKEN);
+                        response.setStatus(HttpStatus.NO_CONTENT.value());
+                    })
                     .failureHandler((request, response, exception) -> response.setStatus(HttpStatus.UNAUTHORIZED.value())))
                 .logout(logout -> logout
                     .logoutUrl("/auth/logout")
                     .deleteCookies("SESSION")
                     .logoutSuccessHandler(new HttpStatusReturningLogoutSuccessHandler(HttpStatus.NO_CONTENT)))
-                .headers(headers -> headers.frameOptions(frame -> frame.disable()))
                 .authorizeHttpRequests(auth -> auth
                     .requestMatchers(
                         "/auth/login",

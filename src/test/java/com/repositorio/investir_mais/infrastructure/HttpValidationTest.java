@@ -83,15 +83,14 @@ class HttpValidationTest {
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400));
         verifyNoInteractions(lessons);
     }
-    @Test void uniqueConstraintConflictReturns409WithoutLeakingDatabaseDetails() throws Exception {
+    @Test void concurrentDuplicateRegistrationReturnsGenericAcceptance() throws Exception {
         var violation = new ConstraintViolationException("private SQL details",
                 new SQLException("duplicate", "23505"),
                 ConstraintViolationException.ConstraintKind.UNIQUE, "private_constraint");
         when(users.registerUser(any())).thenThrow(new DataIntegrityViolationException("private details", violation));
         mvc.perform(post("/api/users/register").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\":\"Teste\",\"age\":22,\"email\":\"test@example.com\",\"password\":\"Senha1234\"}"))
-                .andExpect(status().isConflict()).andExpect(jsonPath("$.status").value(409))
-                .andExpect(jsonPath("$.detail").value("Já existe um registro com esses dados."));
+                .andExpect(status().isAccepted()).andExpect(jsonPath("$.message").isString());
     }
 
     @Test void unknownIntegrityFailureRemainsInternalServerError() throws Exception {
@@ -123,7 +122,7 @@ class HttpValidationTest {
     void boundaryAgesAreAccepted(int age) throws Exception {
         mvc.perform(post("/api/users/register").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\":\"Teste\",\"age\":" + age + ",\"email\":\"test@example.com\",\"password\":\"Senha1234\"}"))
-                .andExpect(status().isCreated());
+                .andExpect(status().isAccepted());
         verify(users).registerUser(argThat(request -> request.age() == age));
     }
 }

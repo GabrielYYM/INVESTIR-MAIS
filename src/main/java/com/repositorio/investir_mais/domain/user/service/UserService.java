@@ -37,10 +37,7 @@ public class UserService {
     @Transactional(readOnly = true)
     public User findByEmail(String email) {
         return userRepository.findByEmail(email)
-            .orElseThrow(() -> {
-                log.warn("Tentativa de busca por e-mail não cadastrado: {}", email);
-                return new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado.");
-            });
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
     }
 
     @Transactional(readOnly = true)
@@ -54,7 +51,7 @@ public class UserService {
     }
 
     public UserDTO.Response updateProfile(String principalName, UUID requestedId, UserDTO.UpdateProfileRequest dto) {
-        User user = findByEmail(principalName);
+        User user = findByEmailForUpdate(principalName);
         if (!user.getId().equals(requestedId)) {
             log.warn("Acesso negado: Usuário {} tentou alterar o perfil {}", user.getId(), requestedId);
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não pode alterar este perfil.");
@@ -65,7 +62,6 @@ public class UserService {
         }
 
         if (userRepository.existsByEmailAndIdNot(dto.email(), user.getId())) {
-            log.warn("Falha na atualização de perfil: E-mail {} já está em uso", dto.email());
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Não foi possível atualizar o perfil. Verifique os dados informados.");
         }
 
@@ -88,12 +84,10 @@ public class UserService {
 
     public UserDTO.Response registerUser(UserDTO.Request dto) {
         if (dto.role() != null && dto.role() != UserRole.STUDENT) {
-            log.warn("Tentativa de cadastro público com perfil não permitido para o e-mail: {}", dto.email());
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O cadastro público permite apenas o perfil STUDENT.");
         }
 
         if (userRepository.existsByEmailIncludingDeleted(dto.email())) {
-            log.warn("Tentativa de cadastro com e-mail duplicado: {}", dto.email());
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Não foi possível criar sua conta. Verifique os dados informados.");
         }
 
@@ -111,7 +105,7 @@ public class UserService {
     }
 
     public void deleteAccount(String principalName, UUID requestedId, UserDTO.DeleteAccountRequest dto) {
-        User user = findByEmail(principalName);
+        User user = findByEmailForUpdate(principalName);
         if (!user.getId().equals(requestedId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não pode excluir outra conta.");
         }
@@ -127,7 +121,7 @@ public class UserService {
     }
 
     public void updatePassword(String email, AuthDTO.UpdatePasswordRequest dto) {
-        User user = findByEmail(email);
+        User user = findByEmailForUpdate(email);
 
         if (!passwordEncoder.matches(dto.currentPassword(), user.getPassword())) {
             log.warn("Falha ao atualizar senha para o usuário {}: Senha atual incorreta", user.getId());
@@ -142,9 +136,8 @@ public class UserService {
 
     public void forgotPassword(AuthDTO.ForgotPasswordRequest dto) {
         if (userRepository.existsByEmail(dto.email())) {
-            String token = accountSecurity.generatePasswordResetToken(dto.email());
-            events.publishEvent(new AccountEmailRequested(dto.email(), token, AccountEmailRequested.Purpose.PASSWORD_RESET));
-            log.info("Solicitação de recuperação de senha processada para o e-mail: {}", dto.email());
+            accountSecurity.requestPasswordResetToken(dto.email()).ifPresent(token ->
+                    events.publishEvent(new AccountEmailRequested(dto.email(), token, AccountEmailRequested.Purpose.PASSWORD_RESET)));
         }
     }
 
@@ -174,6 +167,13 @@ public class UserService {
 
     public void resendVerification(String email) {
         userRepository.findByEmail(email).filter(user -> !user.isEmailVerified())
-                .ifPresent(user -> sendVerificationLink(user.getEmail()));
+                .flatMap(user -> accountSecurity.requestEmailVerificationToken(user.getEmail()))
+                .ifPresent(token -> events.publishEvent(new AccountEmailRequested(email, token.getTokenValue(),
+                        AccountEmailRequested.Purpose.VERIFY_EMAIL)));
+    }
+
+    private User findByEmailForUpdate(String email) {
+        return userRepository.findByEmailForUpdate(email)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
     }
 }

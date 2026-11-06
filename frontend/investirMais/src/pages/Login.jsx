@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { KeyRound, Lock, Mail, ShieldCheck } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate, useSearchParams } from "react-router";
@@ -14,6 +14,42 @@ function returnPath(value) {
   return url.origin === window.location.origin && protectedPath ? url.pathname + url.search : "/";
 }
 
+export function LoginLink() {
+  const [token] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get("ott"));
+  const [error, setError] = useState("");
+  const attempt = useRef();
+  const navigate = useNavigate();
+  const [search] = useSearchParams();
+  const destination = returnPath(search.get("retorno"));
+  const loginPath = "/entrar?" + new URLSearchParams({ retorno: destination });
+  const failure = error || (!token && "Abra o link enviado por e-mail ou entre novamente para solicitar outro.");
+
+  useEffect(() => {
+    if (!token) return;
+    if (!attempt.current) {
+      const { pathname, search } = window.location;
+      window.history.replaceState(window.history.state, "", pathname + search);
+      attempt.current = verify2FA(token);
+    }
+
+    let active = true;
+    attempt.current.then(
+      () => { if (active) void navigate(destination, { replace: true }); },
+      (error) => {
+        if (active) setError(apiError(error, "O link expirou ou não pertence a esta sessão. Entre novamente neste navegador."));
+      },
+    );
+    return () => { active = false; };
+  }, [destination, navigate, token]);
+
+  return (
+    <AuthCard icon={KeyRound} title={failure ? "Não foi possível concluir o acesso" : "Confirmando acesso"}
+      description={failure ? "Você pode iniciar outro login para receber um novo link." : "Estamos validando o link enviado por e-mail."}>
+      {failure && <><Notice error>{failure}</Notice><Link className="button-primary w-full" to={loginPath} replace>Voltar para entrar</Link></>}
+    </AuthCard>
+  );
+}
+
 export default function Login() {
   const [email, setEmail] = useState("");
   const [search] = useSearchParams();
@@ -22,9 +58,9 @@ export default function Login() {
   const verification = useForm();
   const { errors, isSubmitting } = email ? verification.formState : credentials.formState;
 
-  const sendCode = credentials.handleSubmit(async ({ email, password }) => {
+  const sendLink = credentials.handleSubmit(async ({ email, password }) => {
     try {
-      await login(email, password);
+      await login(email, password, returnPath(search.get("retorno")));
       credentials.reset({ email, password: "" });
       setEmail(email);
     } catch (error) {
@@ -44,21 +80,26 @@ export default function Login() {
   return (
     <AuthCard
       icon={email ? KeyRound : ShieldCheck}
-      title={email ? "Verificação em duas etapas" : "Bem-vindo de volta"}
-      description={email ? "Digite o código enviado para " + email + ". Ele expira em cinco minutos." : "Entre na sua conta para acessar o Investir+."}
+      title={email ? "Confira seu e-mail" : "Bem-vindo de volta"}
+      description={email ? `Enviamos um link para ${email}. Abra a mensagem e clique em “Concluir acesso” neste navegador. O link expira em cinco minutos.` : "Entre na sua conta para acessar o Investir+."}
     >
       {email ? (
-        <form key="code" onSubmit={verify} className="space-y-4" noValidate>
-          {errors.root && <Notice error>{errors.root.message}</Notice>}
-          <Field label="Código de verificação" autoComplete="one-time-code" maxLength={64} error={errors.code?.message}
-            {...verification.register("code", { required: "Informe o código recebido.", setValueAs: (value) => value.trim() })} />
-          <button className="button-primary w-full" disabled={isSubmitting}>{isSubmitting ? "Confirmando…" : "Confirmar acesso"}</button>
+        <div className="space-y-4">
+          <details className="rounded-xl border border-white/10 p-3">
+            <summary className="cursor-pointer text-sm font-medium text-muted hover:text-ink">Usar código manualmente</summary>
+            <form onSubmit={verify} className="mt-4 space-y-4" noValidate>
+              {errors.root && <Notice error>{errors.root.message}</Notice>}
+              <Field label="Código de verificação" autoComplete="one-time-code" maxLength={64} error={errors.code?.message}
+                {...verification.register("code", { required: "Informe o código recebido.", setValueAs: (value) => value.trim() })} />
+              <button className="button-primary w-full" disabled={isSubmitting}>{isSubmitting ? "Confirmando…" : "Confirmar acesso"}</button>
+            </form>
+          </details>
           <button type="button" className="w-full text-sm text-muted hover:text-ink" disabled={isSubmitting} onClick={() => { verification.reset(); setEmail(""); }}>
             Voltar e usar outro e-mail
           </button>
-        </form>
+        </div>
       ) : (
-        <form key="credentials" onSubmit={sendCode} className="space-y-4" noValidate>
+        <form key="credentials" onSubmit={sendLink} className="space-y-4" noValidate>
           {errors.root && <Notice error>{errors.root.message}</Notice>}
           <Field label="E-mail" icon={Mail} type="email" autoComplete="username" error={errors.email?.message} {...credentials.register("email", emailRules)} />
           <Field label="Senha" icon={Lock} type="password" autoComplete="current-password" error={errors.password?.message}

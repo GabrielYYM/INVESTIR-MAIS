@@ -1,11 +1,9 @@
 import { useState } from "react";
 import { ArrowLeft, ExternalLink, Pencil, Play, Plus, Trash2, Video } from "lucide-react";
-import { Link, NavLink, useLoaderData, useNavigate, useRevalidator, useRouteLoaderData } from "react-router";
+import { Link, NavLink, useLoaderData, useRouteLoaderData } from "react-router";
 import EducationDialog from "../components/EducationDialog.jsx";
 import { Pagination } from "../components/EducationParts.jsx";
-import { atualizarCurso, excluirCurso } from "../services/courseService.js";
 import { canManageEducation, pageHref } from "../services/educationData.js";
-import { atualizarAula, criarAula, excluirAula } from "../services/lessonService.js";
 import { externalMediaUrl, youtubeVideo } from "../services/youtube.js";
 
 export { courseLoader } from "../services/educationData.js";
@@ -59,36 +57,7 @@ export default function Course() {
   const user = useRouteLoaderData("app");
   const canManage = canManageEducation(user, course);
   const [editor, setEditor] = useState(null);
-  const navigate = useNavigate();
-  const { revalidate } = useRevalidator();
   const coursePath = "/educacao/" + course.id;
-
-  async function saveCourse(payload) {
-    if (editor.remove) {
-      await excluirCurso(course.id);
-      await navigate("/educacao", { replace: true });
-    } else {
-      await atualizarCurso(course.id, payload);
-      await revalidate();
-    }
-  }
-
-  async function saveLesson(payload) {
-    if (editor.remove) {
-      await excluirAula(editor.item.id);
-      if (editor.item.id === lesson?.id) {
-        await navigate(pageHref(coursePath, page.number), { replace: true });
-        return;
-      }
-    } else if (editor.item) {
-      await atualizarAula(editor.item.id, payload);
-    } else {
-      const created = await criarAula(course.id, payload);
-      await navigate(coursePath + "/" + created.id);
-      return;
-    }
-    await revalidate();
-  }
 
   return (
     <>
@@ -148,7 +117,7 @@ export default function Course() {
         </section>
       </div>
       {editor && canManage && (
-        <EducationDialog {...editor} onClose={() => setEditor(null)} onSave={editor.kind === "aula" ? saveLesson : saveCourse} />
+        <EducationDialog {...editor} onClose={() => setEditor(null)} />
       )}
     </>
   );

@@ -6,16 +6,14 @@
 
 A entidade `User` (`domain/user/model/User.java`) contém nome, idade, e-mail, senha, perfil, estado de verificação do e-mail e datas de criação/alteração. O backend usa `Argon2PasswordEncoder` para codificar senhas. A entidade tem auditoria Envers e campos temporais de Spring Data JPA Auditing.
 
-O backend também armazena cursos e aulas. Tokens de uso único, autorizações OAuth e sessões são persistidos em tabelas JDBC/PostgreSQL. O armazenamento exato e os períodos de retenção dependem da configuração do banco e dos componentes utilizados.
+O backend também armazena cursos e aulas. O PostgreSQL mantém os registros de tokens de uso único e as publicações pendentes de e-mail. O Redis mantém as sessões e os contadores de tentativas. Os períodos de retenção também dependem da configuração de armazenamento e de backups.
 
 ## Controles técnicos observados
 
-- Senhas: hash por Argon2 via Spring Security; isso não é criptografia reversível de senha.
-- Autenticação de API: validação de JWT RSA com Spring Security OAuth2 Resource Server.
-- Chaves de assinatura: keystore PKCS#12 configurável; produção desabilita a geração de chave efêmera.
-- Sessão: cookie `HttpOnly`, `SameSite=Lax`; o perfil `prod` exige cookie `Secure`.
-- Integração de cotação: o backend consulta Brapi com timeouts configurados e Circuit Breaker.
-- Rate limit de autenticação: contador persistido no banco via `JdbcTemplate`.
+- O Spring Security usa Argon2id para senhas e exclui o hash das revisões de auditoria.
+- A API usa sessão com senha, código de e-mail e CSRF para gravações. O cookie de sessão usa `HttpOnly` e `SameSite=Lax`. O perfil `prod` exige `Secure`.
+- A tabela de validação armazena o hash dos novos tokens de confirmação e recuperação. O código necessário para envio continua na publicação de e-mail pendente até o processamento.
+- O backend consulta a Brapi com timeouts e circuit breaker. O Redis limita as requisições de autenticação por IP e rota e também por conta no login.
 
 ## Limites e itens a confirmar
 

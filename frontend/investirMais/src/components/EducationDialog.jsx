@@ -1,16 +1,17 @@
 import { useEffect, useId, useRef } from "react";
 import { X } from "lucide-react";
 import { useForm } from "react-hook-form";
-import { useRevalidator } from "react-router";
+import { useFetcher, useLocation } from "react-router";
 import { Field } from "./FormFields.jsx";
 import { Notice } from "./PageState.jsx";
-import { apiError } from "../services/api.js";
 import { youtubeVideo } from "../services/youtube.js";
 
-export default function EducationDialog({ kind, item, remove, onClose, onSave }) {
+export default function EducationDialog({ kind, item, remove, onClose }) {
   const dialog = useRef(null);
   const headingId = useId();
-  const { revalidate } = useRevalidator();
+  const fetcher = useFetcher();
+  const location = useLocation();
+  const initialLocation = useRef(location.key);
   const lesson = kind === "aula";
   const form = useForm({
     defaultValues: {
@@ -19,7 +20,8 @@ export default function EducationDialog({ kind, item, remove, onClose, onSave })
       mediaUrl: item?.mediaUrl ?? "",
     },
   });
-  const { errors, isSubmitting } = form.formState;
+  const { errors } = form.formState;
+  const isSubmitting = fetcher.state !== "idle";
 
   useEffect(() => {
     const element = dialog.current;
@@ -27,26 +29,24 @@ export default function EducationDialog({ kind, item, remove, onClose, onSave })
     return () => element.close();
   }, []);
 
-  const submit = form.handleSubmit(async ({ title, description, mediaUrl }) => {
-    try {
-      if (remove) {
-        await onSave();
-      } else if (lesson) {
-        const video = youtubeVideo(mediaUrl);
-        await onSave({
-          title,
-          description,
-          mediaUrl: video?.watchUrl ?? mediaUrl,
-          thumbnailUrl: video?.thumbnailUrl ?? item.thumbnailUrl,
-        });
-      } else {
-        await onSave({ name: title, description });
-      }
+  useEffect(() => {
+    if (location.key !== initialLocation.current || (!isSubmitting && fetcher.data?.ok)) {
       onClose();
-    } catch (error) {
-      form.setError("root", { message: apiError(error, "Não foi possível concluir a operação. Tente novamente.") });
-      if (error.response?.status === 401) await revalidate();
     }
+  }, [location.key, isSubmitting, fetcher.data, onClose]);
+
+  const submit = form.handleSubmit(({ title, description, mediaUrl }) => {
+    const operation = remove ? "delete" : item ? "update" : "create";
+    const video = lesson && !remove ? youtubeVideo(mediaUrl) : null;
+    const payload = lesson
+      ? { title, description, mediaUrl: video?.watchUrl ?? mediaUrl, thumbnailUrl: video?.thumbnailUrl ?? item?.thumbnailUrl }
+      : { name: title, description };
+
+    return fetcher.submit({ intent: `${operation}-${kind}`, id: item?.id, payload }, {
+      method: "post",
+      encType: "application/json",
+      action: location.pathname + location.search,
+    });
   });
 
   return (
@@ -63,7 +63,7 @@ export default function EducationDialog({ kind, item, remove, onClose, onSave })
         <button type="button" onClick={onClose} disabled={isSubmitting} aria-label="Fechar" className="rounded-md p-2 text-muted hover:bg-raised hover:text-ink"><X size={18} /></button>
       </header>
       <form onSubmit={submit} className="space-y-4 p-5 sm:p-6" noValidate>
-        {errors.root && <Notice error>{errors.root.message}</Notice>}
+        {fetcher.data?.error && <Notice error>{fetcher.data.error}</Notice>}
         {remove ? (
           <p className="text-sm leading-relaxed text-muted">
             {lesson ? "A aula deixará de aparecer no curso." : "O curso e suas aulas deixarão de aparecer no catálogo."} Deseja excluir <strong className="text-ink">{item.title || item.name}</strong>?

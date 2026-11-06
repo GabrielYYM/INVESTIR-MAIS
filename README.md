@@ -1,7 +1,7 @@
 # INVESTIR MAIS
 
 [![Java Version](https://img.shields.io/badge/Java-21-orange?style=flat-square&logo=openjdk)](https://openjdk.org/)
-[![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.1.1-brightgreen?style=flat-square&logo=springboot)](https://spring.io/projects/spring-boot)
+[![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.1.2-brightgreen?style=flat-square&logo=springboot)](https://spring.io/projects/spring-boot)
 [![Node.js](https://img.shields.io/badge/Node.js-22-green?style=flat-square&logo=node.js)](https://nodejs.org/)
 [![React](https://img.shields.io/badge/React-18-blue?style=flat-square&logo=react)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-5-purple?style=flat-square&logo=vite)](https://vitejs.dev/)
@@ -20,7 +20,7 @@ O **INVESTIR MAIS** é um sistema educacional que conecta docentes, com conhecim
 | Tecnologia | Versão |
 |-----------|--------|
 | Java | 21 |
-| Spring Boot | 4.1.1 |
+| Spring Boot | 4.1.2 |
 | Spring Cloud | 2025.1.3 |
 | Spring Modulith | 2.1.1 |
 | Node.js | 22.13.1 |
@@ -141,7 +141,11 @@ O cliente da Brapi é registrado por `@ImportHttpServices` no grupo `brapi`. URL
 
 Tokens de confirmação e recuperação são persistidos pelo `AccountSecurityService`, via `JdbcClient` do Spring, na tabela existente `app_one_time_token`. O mesmo serviço concentra a revogação de sessões Redis e a remoção de códigos de login pendentes, sem interfaces intermediárias ou entidade/repositório JPA para tokens. O consumo usa bloqueio pessimista dentro da transação da conta, preservando uso único e rollback. Os tokens de login continuam no serviço JDBC nativo do Spring Security.
 
+Após validar a senha, o e-mail de login inclui **Concluir acesso** e um código para preenchimento manual. O link abre `/entrar/link` na origem configurada em `APP_CORS_ALLOWED_ORIGIN`. O React lê o token do fragmento da URL e o envia por POST com CSRF. O token fica vinculado à sessão que iniciou o login, por isso o link deve ser aberto no mesmo navegador.
+
 Os eventos de e-mail de confirmação e recuperação usam o registro persistente do Spring Modulith (JPA). O registro é gravado na transação da conta e removido após entrega; falhas são reprocessadas pelo próprio `AuthenticationEmailHandler` a cada `ACCOUNT_MAIL_RETRY_DELAY` (padrão `30s`) e publicações pendentes são recuperadas ao reiniciar. Antes de enviar, o listener verifica se o token ainda está ativo: tokens expirados, consumidos ou substituídos são descartados. SMTP pode entregar uma mensagem antes de uma falha no processo ser registrada, portanto um reprocessamento pode produzir uma mensagem duplicada. E-mails de login continuam sendo disparados pelo handler do fluxo de segurança.
+
+O cadastro público retorna `202` com resposta genérica, inclusive para e-mails já cadastrados. O link de confirmação abre um formulário e só ativa a conta após o envio via `POST` com CSRF. Novos tokens de confirmação e recuperação são armazenados como SHA-256 na tabela de validação. `ACCOUNT_EMAIL_COOLDOWN` controla o intervalo mínimo entre solicitações por conta e finalidade, com padrão de 30 segundos. A senha é excluída das revisões de auditoria e a inicialização PostgreSQL remove a coluna de hashes históricos da tabela de revisões. As sessões Redis são revogadas após o commit da alteração de conta.
 
 As propriedades de limite de requisições, URLs e intervalo de reenvio usam `@ConfigurationProperties` com validação na inicialização. Configurações inválidas interrompem a inicialização em vez de falhar apenas durante uma requisição.
 
@@ -154,7 +158,7 @@ $env:SPRING_PROFILES_ACTIVE = "dev"
 ./mvnw.cmd spring-boot:run
 ```
 
-Em produção, ative o perfil `prod`, configure a URL/credenciais do banco e defina `APP_CORS_ALLOWED_ORIGIN` para a origem real do frontend. O perfil `prod` habilita cookies de sessão Secure, portanto exige HTTPS.
+Em produção, ative o perfil `prod` e forneça `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `REDIS_HOST`, `REDIS_PASSWORD` e `APP_PUBLIC_BASE_URL`. Use a origem pública HTTPS sem caminho e configure `APP_CORS_ALLOWED_ORIGIN` quando a origem da SPA for diferente. O perfil `prod` habilita cookies `Secure`, usa TLS no Redis por padrão, exige STARTTLS no SMTP e desativa Swagger e `/v3/api-docs`. Se houver proxy, aceite cabeçalhos de encaminhamento somente de intermediários confiáveis que sobrescrevam os valores enviados pelo cliente.
 
 As configurações dos perfis `dev`, `prod` e `test` ficam em documentos separados dentro de `src/main/resources/application.properties`.
 

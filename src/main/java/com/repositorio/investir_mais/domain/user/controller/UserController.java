@@ -7,14 +7,23 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.CacheControl;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.util.HtmlUtils;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
 import java.util.UUID;
 import java.security.Principal;
+import java.sql.SQLException;
 
 @RestController
 @RequestMapping("/api/users")
@@ -26,18 +35,56 @@ public class UserController {
 
     @Operation(summary = "Cadastrar novo usuário", description = "Registra um novo usuário no sistema e envia um e-mail com o link de ativação.")
     @ApiResponses({
-        @ApiResponse(responseCode = "201", description = "Usuário cadastrado com sucesso"),
-        @ApiResponse(responseCode = "400", description = "Requisição inválida ou perfil diferente de STUDENT"),
-        @ApiResponse(responseCode = "409", description = "E-mail já cadastrado")
+        @ApiResponse(responseCode = "202", description = "Solicitação recebida"),
+        @ApiResponse(responseCode = "400", description = "Requisição inválida ou perfil diferente de STUDENT")
     })
     @PostMapping("/register")
-    @ResponseStatus(HttpStatus.CREATED)
-    public UserDTO.Response registerUser(@Valid @RequestBody UserDTO.Request dto) {
-        return userService.registerUser(dto);
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public Map<String, String> registerUser(@Valid @RequestBody UserDTO.Request dto) {
+        try {
+            userService.registerUser(dto);
+        } catch (ResponseStatusException exception) {
+            if (exception.getStatusCode() != HttpStatus.CONFLICT) throw exception;
+        } catch (DataIntegrityViolationException exception) {
+            if (!(exception.getMostSpecificCause() instanceof SQLException sql) || !"23505".equals(sql.getSQLState())) {
+                throw exception;
+            }
+        }
+        return Map.of("message", "Se o cadastro puder ser realizado, um link de confirmação será enviado.");
     }
 
-    @Operation(summary = "Verificar e-mail", description = "Consome o link de verificação enviado ao endereço cadastrado.")
-    @GetMapping("/verify-email")
+    @Operation(summary = "Abrir a confirmação de e-mail")
+    @GetMapping(value = "/verify-email", produces = MediaType.TEXT_HTML_VALUE)
+    public ResponseEntity<String> emailVerificationForm(@RequestParam String token, CsrfToken csrf,
+            HttpServletRequest request) {
+        if (token.length() != 36) {
+            return ResponseEntity.badRequest().cacheControl(CacheControl.noStore()).body("Link inválido.");
+        }
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .header("Referrer-Policy", "strict-origin")
+                .header("Content-Security-Policy", "default-src 'none'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'")
+                .body("""
+                    <!doctype html>
+                    <html lang="pt-BR">
+                    <meta charset="utf-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1">
+                    <title>Confirmação de e-mail · Investir Mais</title>
+                    <main>
+                      <h1>Confirme seu e-mail</h1>
+                      <p>Selecione o botão para ativar sua conta no Investir Mais.</p>
+                      <form method="post" action="%s/api/users/verify-email">
+                        <input type="hidden" name="token" value="%s">
+                        <input type="hidden" name="%s" value="%s">
+                        <button>Confirmar e-mail</button>
+                      </form>
+                    </main>
+                    </html>
+                    """.formatted(HtmlUtils.htmlEscape(request.getContextPath()), HtmlUtils.htmlEscape(token),
+                            HtmlUtils.htmlEscape(csrf.getParameterName()), HtmlUtils.htmlEscape(csrf.getToken())));
+    }
+
+    @Operation(summary = "Verificar e-mail", description = "Consome o token após a confirmação do usuário.")
+    @PostMapping(value = "/verify-email", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
     public Map<String, String> verifyEmail(@RequestParam String token) {
         userService.verifyEmail(token);
         return Map.of("message", "E-mail verificado com sucesso.");

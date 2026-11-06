@@ -7,7 +7,7 @@ import jakarta.validation.constraints.Size;
 import java.util.UUID;
 
 public class CourseDTO {
-    @Schema(description = "Dados para criação ou atualização de um curso")
+    @Schema(name = "CourseRequest", description = "Dados para criação ou atualização de um curso")
     public record Request(
         @Schema(description = "Nome do curso", example = "Introdução aos Investimentos")
         @NotBlank(message = "O nome é obrigatório") 
@@ -16,10 +16,11 @@ public class CourseDTO {
 
         @Schema(description = "Descrição detalhada sobre o conteúdo do curso", example = "Aprenda os conceitos básicos de renda fixa e variável.")
         @NotBlank(message = "A descrição é obrigatória") 
+        @Size(max = 10000)
         String description
     ) {}
 
-    @Schema(description = "Resposta com dados do curso")
+    @Schema(name = "CourseResponse", description = "Resposta com dados do curso")
     public record Response(
         @Schema(description = "Identificador único do curso (UUID)", example = "b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e")
         UUID id,

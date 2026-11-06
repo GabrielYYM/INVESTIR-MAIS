@@ -56,7 +56,7 @@ class UserControllerTest {
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 
     @Test
-    void registerUser_WithValidData_ShouldReturnCreated() throws Exception {
+    void registerUser_WithValidData_ShouldReturnGenericAcceptance() throws Exception {
         UserDTO.Request requestDTO = new UserDTO.Request("Felipe", 22, "felipe@investir.com", "senha12345", UserRole.STUDENT);
         UserDTO.Response responseDTO = new UserDTO.Response(
             UUID.randomUUID(), "Felipe", 22, "felipe@investir.com", UserRole.STUDENT, false, LocalDateTime.now()
@@ -68,9 +68,9 @@ class UserControllerTest {
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(requestDTO)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.email").value("felipe@investir.com"))
-                .andExpect(jsonPath("$.emailVerified").value(false));
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.message").isString())
+                .andExpect(jsonPath("$.email").doesNotExist());
     }
 
     @Test

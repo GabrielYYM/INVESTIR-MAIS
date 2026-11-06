@@ -5,6 +5,8 @@ import com.repositorio.investir_mais.domain.education.model.Lesson;
 import com.repositorio.investir_mais.domain.education.repository.CourseRepository;
 import com.repositorio.investir_mais.domain.education.repository.LessonRepository;
 import com.repositorio.investir_mais.domain.education.service.CourseService;
+import com.repositorio.investir_mais.domain.AccountSecurityService;
+import com.repositorio.investir_mais.domain.TokenDigest;
 import com.repositorio.investir_mais.domain.user.DTO.AuthDTO;
 import com.repositorio.investir_mais.domain.user.DTO.UserDTO;
 import com.repositorio.investir_mais.domain.user.model.User;
@@ -17,6 +19,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.cloud.client.circuitbreaker.CircuitBreakerFactory;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.redis.core.ScanOptions;
@@ -42,11 +46,24 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.service.registry.HttpServiceProxyRegistry;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.sql.Timestamp;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.regex.Pattern;
 
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.*;
@@ -54,7 +71,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 
-@SpringBootTest(properties = {"app.security.rate-limit.capacity=3", "app.mail.retry-delay=1s"})
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = {"app.security.rate-limit.capacity=3", "app.mail.retry-delay=1s", "app.security.email-cooldown=0s",
+                "springdoc.group-configs[0].group=education",
+                "springdoc.group-configs[0].paths-to-match=/api/courses/**,/api/lessons/**"})
 @Testcontainers(disabledWithoutDocker = true)
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -63,6 +83,9 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
     private static final String PASSWORD = "SenhaSegura123";
     @Autowired private MockMvc mvc;
     @Autowired private UserService service;
+    @Autowired private AccountSecurityService accountSecurity;
+    @Autowired private CircuitBreakerFactory<?, ?> circuitBreakerFactory;
+    @LocalServerPort private int port;
     @MockitoSpyBean private UserRepository users;
     @MockitoSpyBean private PasswordEncoder encoder;
     @MockitoSpyBean private JdbcTemplate jdbc;
@@ -82,6 +105,7 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
     void clean() {
         await().atMost(Duration.ofSeconds(5)).until(() -> publications.findIncompletePublications().isEmpty());
         reset(users, mail, jdbc);
+        when(mail.createMimeMessage()).thenAnswer(invocation -> new jakarta.mail.internet.MimeMessage((jakarta.mail.Session) null));
         sessions.findByPrincipalName(EMAIL).keySet().forEach(sessions::deleteById);
         try (var keys = redis.scan(ScanOptions.scanOptions()
                 .match(rateLimitProperties.namespace() + ":*").count(100).build())) {
@@ -92,6 +116,91 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
         jdbc.update("DELETE FROM tb_lesson");
         jdbc.update("DELETE FROM tb_course");
         jdbc.update("DELETE FROM tb_user");
+    }
+
+    @Test
+    void encodedRequestPathsShareTheOriginalRateLimitBucket() throws Exception {
+        try (var client = HttpClient.newHttpClient()) {
+            for (int i = 0; i < 3; i++) {
+                assertEquals(401, sendInvalidLogin(client, "/auth/login"));
+            }
+            assertEquals(429, sendInvalidLogin(client, "/auth/login"));
+            assertEquals(429, sendInvalidLogin(client, "/%61uth/login"));
+        }
+    }
+
+    private int sendInvalidLogin(HttpClient client, String path) throws Exception {
+        var request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .header("Cookie", "XSRF-TOKEN=rate-limit-test")
+                .header("X-XSRF-TOKEN", "rate-limit-test")
+                .POST(HttpRequest.BodyPublishers.ofString("email=unknown%40investir.com&password=invalid"))
+                .build();
+        return client.send(request, HttpResponse.BodyHandlers.discarding()).statusCode();
+    }
+
+    @Test
+    void concurrentProfileUpdateCannotRestorePasswordFromBeforeReset() throws Exception {
+        User account = createVerifiedUser();
+        String token = accountSecurity.generatePasswordResetToken(EMAIL);
+        String newPassword = "SenhaNova123456!";
+        var started = new CountDownLatch(1);
+        try (var executor = Executors.newSingleThreadExecutor()) {
+            var result = new TransactionTemplate(transactionManager).execute(status -> {
+                service.resetPassword(new AuthDTO.ResetPasswordRequest(token, newPassword));
+                var update = executor.submit(() -> {
+                    started.countDown();
+                    return assertThrows(ResponseStatusException.class, () -> service.updateProfile(EMAIL, account.getId(),
+                            new UserDTO.UpdateProfileRequest("Novo Nome", EMAIL, null, PASSWORD)));
+                });
+                assertDoesNotThrow(() -> assertTrue(started.await(5, TimeUnit.SECONDS)));
+                assertThrows(TimeoutException.class, () -> update.get(500, TimeUnit.MILLISECONDS));
+                return update;
+            });
+            assertEquals(401, result.get(5, TimeUnit.SECONDS).getStatusCode().value());
+        }
+        assertTrue(encoder.matches(newPassword, users.findByEmail(EMAIL).orElseThrow().getPassword()));
+        assertEquals(0, jdbc.queryForObject("""
+                SELECT count(*) FROM information_schema.columns
+                WHERE table_name = 'tb_user_audit' AND column_name = 'password'
+                """, Integer.class));
+    }
+
+    @Test
+    void educationOpenApiIncludesBothResources() throws Exception {
+        var response = mvc.perform(get("/v3/api-docs/education")).andReturn().getResponse();
+        assertEquals(200, response.getStatus());
+        String contract = response.getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+        assertTrue(contract.contains("\"/api/courses\""));
+        assertTrue(contract.contains("\"/api/lessons/course/{courseId}\""));
+        assertTrue(contract.contains("#/components/schemas/CourseRequest"));
+        assertTrue(contract.contains("#/components/schemas/LessonRequest"));
+        assertFalse(contract.contains("\"name\":\"pageable\""));
+        String exportPath = System.getProperty("education.openapi.output");
+        if (exportPath != null) {
+            var mapper = new tools.jackson.databind.ObjectMapper();
+            var document = (tools.jackson.databind.node.ObjectNode) mapper.readTree(contract);
+            document.remove("servers");
+            Files.writeString(Path.of(exportPath), mapper.writerWithDefaultPrettyPrinter().writeValueAsString(document) + "\n");
+        }
+    }
+
+    @Test
+    void invalidBrapiTickersDoNotOpenTheSharedCircuit() {
+        var registry = mock(HttpServiceProxyRegistry.class);
+        when(registry.getClient("brapi", AssetQuoteClient.class)).thenReturn(ticker -> {
+            if (!ticker.equals("PETR4")) {
+                throw HttpClientErrorException.create(org.springframework.http.HttpStatus.NOT_FOUND,
+                        "Not found", org.springframework.http.HttpHeaders.EMPTY, new byte[0], null);
+            }
+            return "ok";
+        });
+        var client = new BrapiClientConfiguration().resilientAssetQuoteClient(registry, circuitBreakerFactory);
+        for (int i = 0; i < 6; i++) {
+            String ticker = "INVALID" + i;
+            assertEquals(404, assertThrows(ResponseStatusException.class, () -> client.getQuote(ticker)).getStatusCode().value());
+        }
+        assertEquals("ok", client.getQuote("PETR4"));
     }
 
     @Test
@@ -181,8 +290,18 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON).content("{\"email\":\"" + EMAIL + "\"}")).getResponse().getStatus());
         String second = accountToken("EMAIL_VERIFICATION");
         assertNotEquals(first, second);
-        assertEquals(400, browser.read(get("/api/users/verify-email").param("token", first)).getResponse().getStatus());
-        assertEquals(200, browser.read(get("/api/users/verify-email").param("token", second)).getResponse().getStatus());
+        assertEquals(400, browser.write(post("/api/users/verify-email").contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .param("token", first)).getResponse().getStatus());
+        var form = browser.read(get("/api/users/verify-email").param("token", second)).getResponse();
+        assertEquals(200, form.getStatus());
+        assertFalse(users.findByEmail(EMAIL).orElseThrow().isEmailVerified());
+        assertEquals("strict-origin", form.getHeader("Referrer-Policy"));
+        var field = Pattern.compile("name=\"_csrf\" value=\"([^\"]+)\"").matcher(form.getContentAsString());
+        assertTrue(field.find());
+        assertEquals(200, mvc.perform(post("/api/users/verify-email").contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .header("Origin", "http://localhost")
+                .cookie(form.getCookie("XSRF-TOKEN")).param("_csrf", field.group(1)).param("token", second))
+                .andReturn().getResponse().getStatus());
         assertTrue(users.findByEmail(EMAIL).orElseThrow().isEmailVerified());
     }
 
@@ -285,16 +404,28 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
     }
 
     private String accountToken(String purpose) {
-        return jdbc.queryForObject("SELECT token_value FROM app_one_time_token WHERE username = ? AND purpose = ?",
+        String digest = jdbc.queryForObject("SELECT token_value FROM app_one_time_token WHERE username = ? AND purpose = ?",
                 String.class, EMAIL, purpose);
+        Pattern uuid = Pattern.compile("[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}");
+        return await().atMost(Duration.ofSeconds(5)).until(() -> mockingDetails(mail).getInvocations().stream()
+                .filter(invocation -> invocation.getMethod().getName().equals("send"))
+                .map(invocation -> invocation.getArgument(0))
+                .filter(SimpleMailMessage.class::isInstance)
+                .map(SimpleMailMessage.class::cast)
+                .flatMap(message -> uuid.matcher(message.getText()).results())
+                .map(java.util.regex.MatchResult::group)
+                .filter(token -> TokenDigest.sha256(token).equals(digest))
+                .findFirst(), java.util.Optional::isPresent).orElseThrow();
     }
 
     private Browser authenticatedBrowser() throws Exception {
         Browser browser = new Browser();
         assertEquals(204, browser.write(post("/auth/login").param("email", EMAIL).param("password", PASSWORD)).getResponse().getStatus());
+        String partialSession = browser.session.getValue();
         assertEquals(403, browser.read(get("/auth/me")).getResponse().getStatus());
         String token = jdbc.queryForObject("SELECT token_value FROM one_time_tokens WHERE username = ?", String.class, EMAIL);
         assertEquals(204, browser.write(post("/auth/verify-2fa").param("token", token)).getResponse().getStatus());
+        assertNotEquals(partialSession, browser.session.getValue());
         assertEquals(200, browser.read(get("/auth/me")).getResponse().getStatus());
         return browser;
     }
