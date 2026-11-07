@@ -25,6 +25,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.RedisConnectionFailureException;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mail.MailSendException;
@@ -98,13 +99,13 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
     @Autowired private CourseService courseService;
 
     @Autowired private StringRedisTemplate redis;
-    @Autowired private FindByIndexNameSessionRepository<?> sessions;
+    @MockitoSpyBean private FindByIndexNameSessionRepository<?> sessions;
     @Autowired private AuthenticationRateLimitProperties rateLimitProperties;
 
     @BeforeEach
     void clean() {
         await().atMost(Duration.ofSeconds(5)).until(() -> publications.findIncompletePublications().isEmpty());
-        reset(users, mail, jdbc);
+        reset(users, mail, jdbc, sessions);
         when(mail.createMimeMessage()).thenAnswer(invocation -> new jakarta.mail.internet.MimeMessage((jakarta.mail.Session) null));
         sessions.findByPrincipalName(EMAIL).keySet().forEach(sessions::deleteById);
         try (var keys = redis.scan(ScanOptions.scanOptions()
@@ -359,6 +360,40 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
         assertEquals(401, second.read(get("/auth/me")).getResponse().getStatus());
         assertTrue(encoder.matches("NovaSenha123", users.findByEmail(EMAIL).orElseThrow().getPassword()));
         assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM app_one_time_token", Integer.class));
+    }
+
+    @Test
+    void failedSessionLookupPreservesPasswordAndAllowsSafeRecoveryRetry() throws Exception {
+        assertRecoveryRollsBackWhenRevocationFails(false);
+    }
+
+    @Test
+    void failedSessionDeletionPreservesPasswordAndAllowsSafeRecoveryRetry() throws Exception {
+        assertRecoveryRollsBackWhenRevocationFails(true);
+    }
+
+    private void assertRecoveryRollsBackWhenRevocationFails(boolean failDeletion) throws Exception {
+        createVerifiedUser();
+        Browser first = authenticatedBrowser();
+        Browser second = authenticatedBrowser();
+        String token = accountSecurity.generatePasswordResetToken(EMAIL);
+        if (failDeletion) {
+            doThrow(new RedisConnectionFailureException("fixture revocation outage"))
+                    .when(sessions).deleteById(anyString());
+        } else {
+            doThrow(new RedisConnectionFailureException("fixture revocation outage"))
+                    .when(sessions).findByPrincipalName(EMAIL);
+        }
+        assertThrows(RedisConnectionFailureException.class,
+                () -> service.resetPassword(new AuthDTO.ResetPasswordRequest(token, "NovaSenha123")));
+        reset(sessions);
+        assertEquals(200, first.read(get("/auth/me")).getResponse().getStatus());
+        assertTrue(encoder.matches(PASSWORD, users.findByEmail(EMAIL).orElseThrow().getPassword()),
+                "A failed revocation must not commit a new password while an old session still works");
+        service.resetPassword(new AuthDTO.ResetPasswordRequest(token, "NovaSenha123"));
+        assertTrue(encoder.matches("NovaSenha123", users.findByEmail(EMAIL).orElseThrow().getPassword()));
+        assertEquals(401, first.read(get("/auth/me")).getResponse().getStatus());
+        assertEquals(401, second.read(get("/auth/me")).getResponse().getStatus());
     }
 
     @Test

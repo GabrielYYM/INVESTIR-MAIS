@@ -17,8 +17,6 @@ import org.springframework.session.FindByIndexNameSessionRepository;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 @Transactional
@@ -71,12 +69,7 @@ public class AccountSecurityService {
 
     public void revokeAllSessions(String email) {
         jdbc.sql("DELETE FROM one_time_tokens WHERE username = ?").param(email).update();
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                sessions.findByPrincipalName(email).keySet().forEach(sessions::deleteById);
-            }
-        });
+        sessions.findByPrincipalName(email).keySet().forEach(sessions::deleteById);
     }
 
     @Scheduled(cron = "${app.security.token-cleanup-cron:0 0 * * * *}")

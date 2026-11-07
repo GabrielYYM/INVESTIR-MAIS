@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.redis.RedisConnectionFailureException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseBuilder;
@@ -25,6 +26,7 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -142,6 +144,37 @@ class AccountSecurityServiceTest {
         service.revokeAllSessions(EMAIL);
         verify(sessions).deleteById(session.getId());
         assertEquals(List.of("other"), jdbc.queryForList("SELECT token_value FROM one_time_tokens", String.class));
+    }
+
+    @Test
+    void failedSessionLookupRollsBackResetTokenConsumption() {
+        when(sessions.findByPrincipalName(EMAIL)).thenThrow(new RedisConnectionFailureException("fixture outage"));
+        assertFailedRevocationPreservesResetToken();
+    }
+
+    @Test
+    void failedSessionDeletionRollsBackResetTokenConsumption() {
+        var first = new MapSession();
+        var second = new MapSession();
+        var indexed = new LinkedHashMap<String, MapSession>();
+        indexed.put(first.getId(), first);
+        indexed.put(second.getId(), second);
+        when(sessions.findByPrincipalName(EMAIL)).thenReturn(indexed);
+        doThrow(new RedisConnectionFailureException("fixture outage")).when(sessions).deleteById(second.getId());
+        assertFailedRevocationPreservesResetToken();
+        var order = inOrder(sessions);
+        order.verify(sessions).deleteById(first.getId());
+        order.verify(sessions).deleteById(second.getId());
+    }
+
+    private void assertFailedRevocationPreservesResetToken() {
+        String token = service.generatePasswordResetToken(EMAIL);
+        assertThrows(RedisConnectionFailureException.class, () ->
+                new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+                    assertEquals(Optional.of(EMAIL), service.consumePasswordResetToken(token));
+                    service.revokeAllSessions(EMAIL);
+                }));
+        assertEquals(Optional.of(EMAIL), service.consumePasswordResetToken(token));
     }
 
     @Test
