@@ -1,54 +1,39 @@
-import { Home, Wallet, PiggyBank, Wrench, HelpCircle, LogOut, User } from "lucide-react";
-import { logout } from "../services/authService";
+import { BookOpen, Home, LogOut, User } from "lucide-react";
+import { Link, NavLink } from "react-router";
 
-const MENU_ITEMS = [
-  { label: "Home", icon: Home, page: null },
-  { label: "Carteira", icon: Wallet, page: "Carteira" },
-  { label: "Questões", icon: HelpCircle, page: "Questões" },
-  { label: "Perfil", icon: User, page: "Perfil" },
-  { label: "Orçamento Doméstico", icon: PiggyBank, page: null },
-  { label: "Ferramentas", icon: Wrench, page: null },
+const links = [
+  { to: "/", label: "Dashboard", icon: Home },
+  { to: "/educacao", label: "Educação", icon: BookOpen },
+  { to: "/perfil", label: "Meu perfil", icon: User },
 ];
 
-export default function Sidebar({ activePage = "Carteira", onNavigate }) {
+export default function Sidebar({ logout }) {
   return (
-    <aside className="w-60 shrink-0 bg-[#171522] px-4 py-6 flex flex-col justify-between min-h-screen">
-      <div>
-        <p className="text-xs tracking-wide text-zinc-500 mb-3 px-2">MENU</p>
-        <nav className="space-y-1">
-          {MENU_ITEMS.map(({ label, icon: Icon, page }) => {
-            const isActive = activePage === page;
-            return (
-              <button
-                key={label}
-                id={`sidebar-${label.toLowerCase().replace(/\s+/g, "-")}`}
-                onClick={() => page && onNavigate?.(page)}
-                className={`w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-left transition-colors ${isActive
-                    ? "bg-amber-500 text-zinc-900 font-medium"
-                    : page
-                      ? "text-zinc-400 hover:bg-white/5 hover:text-zinc-200 cursor-pointer"
-                      : "text-zinc-600 cursor-not-allowed opacity-50"
-                  }`}
-                disabled={!page}
-              >
-                <Icon size={18} />
-                {label}
-              </button>
-            );
-          })}
-        </nav>
+    <aside className="sticky top-0 z-20 flex flex-col gap-4 border-b border-white/5 bg-canvas px-4 py-3 lg:h-dvh lg:border-r lg:border-b-0 lg:py-6">
+      <div className="flex items-center justify-between lg:hidden">
+        <Link to="/" className="font-bold tracking-wide">INVESTIR MAIS</Link>
+        <logout.Form method="post" action="/sair">
+          <button className="button-secondary !min-h-9 !px-3 !py-1.5" disabled={logout.state !== "idle"}><LogOut size={15} /> Sair</button>
+        </logout.Form>
       </div>
 
-      <button
-        onClick={async () => {
-          await logout();
-          if (onNavigate) onNavigate("Login");
-        }}
-        className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-zinc-400 hover:bg-white/5 hover:text-zinc-200 cursor-pointer"
-      >
-        <LogOut size={18} />
-        Sair
-      </button>
+      <nav aria-label="Menu principal" className="grid grid-cols-3 gap-1 lg:grid-cols-1">
+        <p className="mb-2 hidden px-2 text-xs font-medium tracking-wide text-zinc-500 lg:block">MENU</p>
+        {links.map(({ to, label, icon: Icon }) => (
+          <NavLink key={to} to={to} end={to === "/"} className={({ isActive }) =>
+            "flex items-center justify-center gap-2 rounded-xl px-2 py-2.5 text-xs transition-colors sm:text-sm lg:justify-start lg:gap-3 lg:px-3 " +
+            (isActive ? "bg-brand font-semibold text-zinc-900" : "text-muted hover:bg-raised hover:text-zinc-200")
+          }>
+            <Icon size={17} className="shrink-0" /> {label}
+          </NavLink>
+        ))}
+      </nav>
+
+      <logout.Form method="post" action="/sair" className="mt-auto hidden lg:block">
+        <button className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted hover:bg-raised hover:text-negative" disabled={logout.state !== "idle"}>
+          <LogOut size={17} /> {logout.state === "idle" ? "Sair da conta" : "Saindo…"}
+        </button>
+      </logout.Form>
     </aside>
   );
 }

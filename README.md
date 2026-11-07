@@ -1,153 +1,208 @@
-# INVESTIR MAIS
+# Investir Mais
 
-[![Java Version](https://img.shields.io/badge/Java-25_LTS-orange?style=flat-square&logo=openjdk)](https://openjdk.org/)
-[![Spring Boot](https://img.shields.io/badge/Spring_Boot-3-brightgreen?style=flat-square&logo=springboot)](https://spring.io/projects/spring-boot)
-[![Node.js](https://img.shields.io/badge/Node.js-22-green?style=flat-square&logo=node.js)](https://nodejs.org/)
-[![React](https://img.shields.io/badge/React-19-blue?style=flat-square&logo=react)](https://react.dev/)
-[![Vite](https://img.shields.io/badge/Vite-8-purple?style=flat-square&logo=vite)](https://vitejs.dev/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?style=flat-square&logo=tailwindcss)](https://tailwindcss.com/)
+O Investir Mais é uma plataforma de educação financeira com catálogo de cursos e aulas e consulta de cotações. A aplicação reúne uma interface React e uma API Spring Boot. A gestão de carteira faz parte do escopo planejado.
 
-[![java-jwt](https://img.shields.io/badge/Java--JWT-red?style=flat-square)](https://github.com/auth0/java-jwt)
-[![MapStruct](https://img.shields.io/badge/MapStruct-yellow?style=flat-square)](https://mapstruct.org/)
-[![Bucket4j](https://img.shields.io/badge/Bucket4j-lightblue?style=flat-square)](https://bucket4j.com/)
-[![SpringDoc OpenAPI](https://img.shields.io/badge/SpringDoc_OpenAPI-darkgreen?style=flat-square)](https://springdoc.org/)
-[![Lombok](https://img.shields.io/badge/Lombok-pink?style=flat-square&logo=lombok)](https://projectlombok.org/)
+[Diagramas](#diagramas) · [Execução local](#execução-local) · [API](#api) · [Testes](#testes-e-verificações) · [Frontend](frontend/investirMais/README.md) · [Privacidade](docs/lgpd/README.md)
 
-## Escopo
+## Funcionalidades
 
-O **INVESTIR MAIS** é um sistema educacional que conecta docentes, com conhecimentos na área financeira, com crianças e adolescentes, a fim de fomentar a educação financeira infantil, além de oferecer um sistema de gestão patrimonial.
+| Área | O que está disponível |
+| --- | --- |
+| Conta | Cadastro de aluno, confirmação de e-mail, login em duas etapas e recuperação de senha. A tela de perfil permite alterar o nome com a senha atual. |
+| Painel | Entrada comum aos três perfis, com cursos em destaque e consulta de cotações por ticker. |
+| Educação | Catálogo paginado, navegação por curso e aula, reprodução de vídeos do YouTube e ações de gestão conforme o perfil. |
+| Gestão patrimonial | Consulta de cotação sob demanda. Carteira, aportes e projeções estão no escopo planejado. |
 
-## Tecnologias
+| Perfil | Consultar cursos e aulas | Criar cursos | Gerenciar cursos e aulas |
+| --- | --- | --- | --- |
+| `STUDENT` | Sim | — | — |
+| `TEACHER` | Sim | Sim | Cursos próprios e suas aulas |
+| `ADMIN` | Sim | Sim | Todo o catálogo |
 
-| Tecnologia | Versão |
-|-----------|--------|
-| Java | 25 |
-| Spring Boot | 3.5.14 |
-| Node.js | 22.13.1 |
-| React | 19.2.5 |
-| Vite | 8.0.10 |
-| Tailwind CSS | 4.2.4 |
-| java-jwt | 4.5.1 |
-| MapStruct | 1.6.3 |
-| Bucket4j | 8.10.1 |
-| SpringDoc OpenAPI | 2.8.16 |
-| Lombok | 1.18.44 |
+O cadastro público aceita apenas `STUDENT`. A interface exibe as ações disponíveis e a API valida o perfil e a propriedade do curso em cada operação de escrita.
 
-## Estrutura do Projeto
+## Arquitetura
 
-```
-INVEST_MAIS/
-├── .github/
-├── .gitignore
-├── .env.example
-├── pom.xml
-├── README.md
-├── basedata.sql
-├── src/
-│   ├── main/
-│   │   ├── java/
-│   │   │   └── com/repositorio/mvp/
-│   │   │       ├── MvpApplication.java
-│   │   │       ├── common/
-│   │   │       │   ├── DTO/
-│   │   │       │   ├── constants/
-│   │   │       │   ├── model/
-│   │   │       │   ├── result/
-│   │   │       │   ├── security/
-│   │   │       │   └── validation/
-│   │   │       ├── domain/
-│   │   │       │   ├── admin/
-│   │   │       │   ├── asset/
-│   │   │       │   ├── auth/
-│   │   │       │   ├── portfolio/
-│   │   │       │   ├── question/
-│   │   │       │   └── user/
-│   │   │       └── infrastructure/
-│   │   │           ├── config/
-│   │   │           ├── exception/
-│   │   │           ├── security/
-│   │   │           ├── util/
-│   │   │           └── web/
-│   │   └── resources/
-│   │       └── application.properties
-│   └── test/
-└── frontend/
-    ├── package.json
-    ├── vite.config.js
-    ├── src/
-    │   ├── App.jsx
-    │   ├── components/
-    │   ├── pages/
-    │   ├── services/
-    │   └── styles/
-    ├── public/
-    ├── index.html
-    └── dist/
+| Componente | Responsabilidade |
+| --- | --- |
+| React e React Router | Rotas públicas e protegidas, formulários, painel, catálogo, aula e perfil. |
+| Axios e Orval | Axios centraliza cookies, CSRF e tratamento de falhas. Orval gera o cliente de educação a partir do contrato OpenAPI versionado. |
+| Spring Boot e Spring Security | Endpoints HTTP, validação, autorização, autenticação com senha e OTT e regras de conta, educação e cotações. |
+| PostgreSQL | Usuários, cursos, aulas, revisões Envers, tokens de uso único e registro de eventos de e-mail. |
+| Redis | Sessões indexadas por usuário, cache de cotação e contadores de tentativas de autenticação. |
+| SMTP | Entrega dos e-mails de confirmação, login e recuperação. |
+| Brapi e YouTube | Brapi fornece cotações. YouTube hospeda os vídeos referenciados pelas aulas. |
+
+| Stack | Versões e referências |
+| --- | --- |
+| Backend | Java 21, Spring Boot 4.1.2, Spring Cloud 2025.1.3, Spring Modulith 2.1.1, MapStruct 1.6.3 e SpringDoc 3.1.1. [Configuração Maven](pom.xml) |
+| Frontend | Node.js 24 na CI, React 19.3.1, React Router 8.5.1, Vite 8.3.5, Tailwind CSS 4.3.4 e Orval 8.46.0. [Dependências travadas](frontend/investirMais/package-lock.json) |
+| Infraestrutura de integração | PostgreSQL 17 e Redis 8 nos testes com Testcontainers. [Configuração da aplicação](src/main/resources/application.properties) |
+
+```text
+INVESTIR-MAIS/
+├── .github/workflows/        Verificações de backend e frontend
+├── docs/                     Diagramas, auditoria e notas de privacidade
+├── frontend/investirMais/    SPA React e contrato OpenAPI de educação
+├── src/main/java/com/repositorio/investir_mais/
+│   ├── domain/               Conta, usuários, cursos e aulas
+│   └── infrastructure/       Segurança, e-mail e cotações
+├── src/main/resources/       Configuração e SQL de inicialização
+├── src/test/                 Testes unitários, HTTP e de integração
+├── .env.example              Modelo de configuração local do backend
+└── pom.xml                   Build Maven
 ```
 
-## Como Executar
+## Diagramas
+
+As imagens mostram o comportamento implementado. Clique em cada diagrama para abrir o PNG em tamanho original. A [documentação dos diagramas](docs/diagrama-de-classes.md) relaciona cada visão ao código.
+
+### Fluxo de navegação
+
+- O cadastro público cria uma conta de aluno. O link de confirmação abre um formulário que deve ser enviado para ativar a conta. A recuperação usa um código separado para definir a nova senha.
+- Uma rota protegida verifica a sessão com `GET /auth/me`. Sem acesso, o React redireciona ao login e guarda a rota solicitada. Após os dois fatores, o navegador abre um destino interno permitido ou o painel.
+- A área autenticada oferece painel, catálogo, curso, aula e perfil. Professor e administrador veem ações de gestão conforme suas permissões. A saída encerra a sessão no backend.
+
+[![Fluxo da entrada na plataforma ao painel, catálogo, aulas, perfil e saída](docs/diagramas/fluxo-de-navegacao.png)](docs/diagramas/fluxo-de-navegacao.png)
+
+### BPMN do login com senha e OTT
+
+1. A pessoa informa e-mail e senha. O Spring valida as credenciais e exige e-mail confirmado. Nessa etapa existe uma sessão parcial.
+2. O serviço JDBC de OTT do Spring Security gera um token de uso único com validade de cinco minutos. O e-mail inclui o link **Concluir acesso** e a opção de digitar o código.
+3. Na rota `/entrar/link`, o React lê e remove o token do fragmento da URL e o envia com CSRF para `POST /auth/verify-2fa`. O código manual chama o mesmo endpoint. O token pertence à sessão que iniciou o login e deve ser usado no mesmo navegador.
+4. Após validar e consumir o OTT, o Spring combina os fatores e troca o identificador da sessão. O diagrama também mostra as saídas de recusa por credenciais ou token inválido.
+
+[![BPMN do login com raias para pessoa usuária, React e Spring](docs/diagramas/bpmn-login-ott.png)](docs/diagramas/bpmn-login-ott.png)
+
+### Classes de domínio
+
+- `User` representa a conta e seu perfil `UserRole`. A senha é persistida como hash Argon2id e fica fora das revisões Envers.
+- Cada `Course` tem um usuário proprietário e pode ter zero ou mais aulas. Cada `Lesson` pertence a exatamente um curso e guarda os endereços de mídia e miniatura.
+- A exclusão é lógica. Excluir um curso propaga a exclusão às aulas. Excluir uma conta pelo serviço também exclui logicamente os cursos e aulas vinculados.
+
+[![Classes User, Course, Lesson e UserRole com atributos e cardinalidades](docs/diagramas/classes-de-dominio.png)](docs/diagramas/classes-de-dominio.png)
+
+### Classes da aplicação
+
+- Na área de conta, `UserController` e `AuthenticationController` expõem operações de usuário e sessão. `UserService` concentra as regras da conta e usa `AccountSecurityService` para tokens de confirmação e recuperação e para revogação de sessões.
+- No catálogo, controllers chamam `CourseService` e `LessonService`. Os serviços aplicam regras de permissão e propriedade, usam repositórios JPA e mapeiam entidades para DTOs com MapStruct.
+- Em cotações, `BrapiQuoteController` chama `AssetQuoteService`, que normaliza o ticker, consulta o cache e usa o cliente HTTP da Brapi. As setas tracejadas representam dependências entre classes.
+
+[![Classes e dependências das áreas de conta, educação e cotações](docs/diagramas/classes-da-aplicacao.png)](docs/diagramas/classes-da-aplicacao.png)
+
+## Execução local
 
 ### Pré-requisitos
 
-Garante que possui as seguintes ferramentas instaladas em sua máquina:
-- **Java 21 ou superior** (JDK)
-- **Node.js 20 ou superior** e **npm**
-- **Git**
+- Git, JDK 21 e Node.js 24 com npm. O Maven Wrapper está no repositório.
+- PostgreSQL e Redis em execução. Docker é uma opção para iniciar os serviços locais e é usado pelos testes de integração.
+- SMTP configurado para receber confirmação de cadastro, link de login e código de recuperação. Use uma caixa de e-mail à qual tenha acesso.
 
----
-
-### 1. Clonar o Repositório
+### 1. Baixar o projeto e iniciar os serviços
 
 ```bash
-git clone <URL_DO_REPOSITORIO>
-cd INVESTIR-MAIS/investir_mais
+git clone https://github.com/GabrielYYM/INVESTIR-MAIS.git
+cd INVESTIR-MAIS
 ```
 
----
+Se já houver PostgreSQL e Redis disponíveis, configure seus endereços no passo seguinte. Para criar containers locais, com acesso restrito à máquina:
 
-### 2. Executar o Backend (Spring Boot)
+```bash
+docker run -d --name investir-mais-postgres -p 127.0.0.1:5432:5432 -e POSTGRES_DB=investir_mais -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=admin -v investir-mais-postgres:/var/lib/postgresql/data postgres:17-alpine
+docker run -d --name investir-mais-redis -p 127.0.0.1:6379:6379 -v investir-mais-redis:/data redis:8-alpine redis-server --appendonly yes
+docker exec investir-mais-postgres pg_isready -U postgres -d investir_mais
+docker exec investir-mais-redis redis-cli PING
+```
 
-O backend executa por padrão na porta `8080` utilizando um banco de dados H2 em memória.
+A senha `admin` acima é exclusiva do exemplo local. Após a criação, use `docker start investir-mais-postgres investir-mais-redis` para iniciar os mesmos containers.
 
-**No Windows (PowerShell ou Command Prompt):**
+### 2. Configurar e executar o backend
+
+Copie [`.env.example`](.env.example) para `.env` na raiz e substitua os valores de exemplo. Para usar o PostgreSQL dos comandos acima, configure `DB_URL=jdbc:postgresql://localhost:5432/investir_mais`, `DB_USERNAME=postgres` e `DB_PASSWORD=admin`. Variáveis também podem ser fornecidas no ambiente do processo.
+
+| Variáveis | Uso local |
+| --- | --- |
+| `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | Acesso ao PostgreSQL. |
+| `REDIS_HOST`, `REDIS_PORT` | Padrão `localhost:6379`. Configure usuário, senha e TLS se o Redis exigir. |
+| `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD` | Dados do SMTP. Ajuste `MAIL_AUTH` e `MAIL_STARTTLS` conforme o servidor. |
+| `APP_PUBLIC_BASE_URL` | Base pública dos links de confirmação de e-mail. Padrão `http://localhost:8080`. |
+| `APP_CORS_ALLOWED_ORIGIN` | Origem da SPA e base do link de login. Padrão `http://localhost:5173`. |
+| `BRAPI_TOKEN` | Token da Brapi no backend, quando exigido pelo acesso usado para cotar. |
+| `SESSION_TIMEOUT`, `QUOTE_CACHE_TTL` | Inatividade da sessão e expiração do cache. Padrões `30m` e `1m`. |
+
+No PowerShell:
+
 ```powershell
+if (-not (Test-Path -LiteralPath .env)) { Copy-Item .env.example .env }
+# Edite .env com os dados locais antes de iniciar.
 .\mvnw.cmd spring-boot:run
 ```
 
-**No Linux / macOS:**
+No Linux ou macOS:
+
 ```bash
-chmod +x mvnw
-./mvnw spring-boot:run
+test -e .env || cp .env.example .env
+# Edite .env com os dados locais antes de iniciar.
+bash mvnw spring-boot:run
 ```
 
-**PostgreSQL**
-copie o `.env.example` para `.env` na raiz do projeto e configure as credenciais de banco.
+O backend sobe em [localhost:8080](http://localhost:8080) com perfil `dev` por padrão.
 
----
+### 3. Executar o frontend
 
-### 3. Executar o Frontend (React + Vite)
-
-Em um novo terminal, navegue até o diretório do frontend e instale as dependências:
+Em outro terminal, a partir da raiz:
 
 ```bash
 cd frontend/investirMais
-npm install
-```
-
-Configure as variáveis de ambiente criando/editando o arquivo `.env` localizado dentro de `frontend/investirMais/`:
-```env
-VITE_API_BASE_URL=http://localhost:8080
-VITE_BRAPI_TOKEN=seu_token_da_brapi_aqui
-```
-
-Inicie a aplicação no modo de desenvolvimento:
-```bash
+npm ci
 npm run dev
 ```
 
-- **Aplicação Web Frontend:** `http://localhost:5173`
+Abra [localhost:5173](http://localhost:5173). O proxy do Vite encaminha `/api`, `/auth` e `/csrf` para o backend. Para testar o acesso, cadastre um aluno, confirme o e-mail e entre com a senha. Abra **Concluir acesso** no mesmo navegador ou use o código manual. Veja opções de build, rotas e contrato no [README do frontend](frontend/investirMais/README.md).
 
----
+## API
 
-## Materiais Complementares
-[Acessar Documentos](./documentos/)
+No perfil `dev`, o Swagger UI fica em [localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html) e a descrição OpenAPI em [localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs). Os endpoints de login, OTT e logout pertencem aos filtros de segurança.
+
+| Endpoint ou grupo | Responsabilidade |
+| --- | --- |
+| `GET /csrf` | Disponibiliza o token CSRF para operações de escrita. |
+| `POST /auth/login`, `POST /auth/code`, `POST /auth/verify-2fa` | Início por senha, reenvio na sessão parcial e confirmação do OTT. Login e verificação usam parâmetros de formulário. |
+| `GET /auth/me`, `POST /auth/logout` | Identifica o usuário com sessão completa e encerra a sessão. |
+| `/api/users` | Cadastro, verificação de e-mail, reenvio, recuperação e operações da própria conta. |
+| `/api/courses` | Listagem paginada, detalhe, filtro por professor e gestão de cursos. |
+| `/api/lessons` | Aulas por curso, detalhe e operações de gestão. |
+| `GET /api/assets/{ticker}/quote` | Cotação via Brapi, com cache por ticker normalizado. |
+
+### Sessões, dados e operação
+
+- O cookie `SESSION` é `HttpOnly` e usa `SameSite=Lax`. O cliente consulta `/csrf` para preparar escritas, inclusive quando o token é renovado entre etapas da autenticação.
+- O Redis indexa sessões por usuário para revogá-las após alterações de senha ou e-mail e após exclusão de conta. O cache de cotações é independente das sessões. Respostas vazias e exceções não são armazenadas.
+- O limite de autenticação usa Redis por IP e rota e também por conta em `/auth/login`. O padrão é 10 solicitações por janela de um minuto. O limite retorna `429` com `Retry-After`. Se o Redis estiver indisponível, o filtro retorna `503`.
+- Tokens de login usam `one_time_tokens`. Tokens de confirmação e recuperação ficam em `app_one_time_token`, com hash SHA-256 para novas emissões e consumo transacional. O Spring Modulith registra e reprocessa eventos de confirmação e recuperação. O e-mail de login segue o fluxo assíncrono da autenticação.
+- A API exige a senha atual para excluir a própria conta. A exclusão lógica preserva o registro e mantém seu e-mail reservado. As operações do serviço cuidam da cascata e da revogação de acesso.
+
+### Produção
+
+Use o perfil `prod` com PostgreSQL e Redis próprios, credenciais de SMTP e HTTPS. Configure `APP_PUBLIC_BASE_URL` como a origem pública que atende à confirmação de e-mail e `APP_CORS_ALLOWED_ORIGIN` como a origem pública da SPA quando forem diferentes. O perfil ativa cookies `Secure`, requer STARTTLS no SMTP, habilita TLS no Redis por padrão e desativa Swagger e `/v3/api-docs`.
+
+O esquema das entidades usa `ddl-auto=update` e o SQL auxiliar fica em [`schema-postgresql.sql`](src/main/resources/schema-postgresql.sql). As opções de publicação da SPA e do proxy estão no [README do frontend](frontend/investirMais/README.md#publicação).
+
+## Testes e verificações
+
+| Verificação | Comando |
+| --- | --- |
+| Backend no Windows | `.\mvnw.cmd -B verify` na raiz |
+| Backend no Linux ou macOS | `bash mvnw -B verify` na raiz |
+| Build do frontend | `npm ci` e `npm run build` em `frontend/investirMais` |
+| Auditoria de dependências npm | `npm audit --audit-level=high` em `frontend/investirMais` |
+
+A suíte inclui testes do fluxo de login com H2 e Redis simulado, além de testes de integração com PostgreSQL e Redis via Docker. Os testes com Testcontainers configurados com `disabledWithoutDocker` são ignorados quando Docker está indisponível. O [workflow de CI](.github/workflows/checks.yml) executa as verificações em pushes e pull requests.
+
+## Documentação complementar
+
+- [Frontend, rotas e publicação](frontend/investirMais/README.md)
+- [Diagramas e referências ao código](docs/diagrama-de-classes.md)
+- [Auditoria de frontend e segurança](docs/auditoria-frontend-seguranca.md)
+- [Privacidade e dados pessoais](docs/lgpd/README.md)
+- [Licença](LICENSE)

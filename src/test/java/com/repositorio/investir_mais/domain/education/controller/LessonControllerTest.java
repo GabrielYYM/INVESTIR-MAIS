@@ -1,0 +1,125 @@
+package com.repositorio.investir_mais.domain.education.controller;
+
+import tools.jackson.databind.ObjectMapper;
+import com.repositorio.investir_mais.domain.education.DTO.LessonDTO;
+import com.repositorio.investir_mais.domain.education.service.LessonService;
+import com.repositorio.investir_mais.domain.user.repository.UserRepository;
+import com.repositorio.investir_mais.infrastructure.exception.GlobalExceptionHandler;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.util.List;
+import java.util.UUID;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@ContextConfiguration(classes = {LessonController.class, GlobalExceptionHandler.class})
+@WebMvcTest(LessonController.class)
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+class LessonControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @MockitoBean
+    private LessonService lessonService;
+
+    @MockitoBean
+    private UserRepository userRepository;
+
+    @MockitoBean
+    private JpaMetamodelMappingContext jpaMetamodelMappingContext;
+
+    @Test
+    void createLesson_ShouldReturnCreated() throws Exception {
+        UUID courseId = UUID.randomUUID();
+        UUID lessonId = UUID.randomUUID();
+        LessonDTO.Request requestDTO = new LessonDTO.Request("Aula 1", "Descrição", "https://media.example.com/video.mp4", "https://media.example.com/thumb.jpg");
+        LessonDTO.Response responseDTO = new LessonDTO.Response(lessonId, "Aula 1", "Descrição", "https://media.example.com/video.mp4", "https://media.example.com/thumb.jpg", courseId);
+
+        when(lessonService.createLesson(eq(courseId), any(LessonDTO.Request.class), eq("prof@investir.com"))).thenReturn(responseDTO);
+
+        mockMvc.perform(post("/api/lessons/course/{courseId}", courseId)
+                .with(user("prof@investir.com").roles("TEACHER"))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(requestDTO)))
+               .andExpect(status().isCreated())
+               .andExpect(jsonPath("$.title").value("Aula 1"));
+    }
+
+    @Test
+    void getLessonsByCourse_ShouldReturnOk() throws Exception {
+        UUID courseId = UUID.randomUUID();
+        when(lessonService.getLessonsByCourseId(eq(courseId), any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
+
+        mockMvc.perform(get("/api/lessons/course/{courseId}", courseId)
+                .with(user("user@investir.com").roles("STUDENT")))
+               .andExpect(status().isOk());
+    }
+
+    @Test
+    void getLessonById_ShouldReturnOk() throws Exception {
+        UUID lessonId = UUID.randomUUID();
+        LessonDTO.Response responseDTO = new LessonDTO.Response(lessonId, "Aula 1", "Descrição", "https://media.example.com/video.mp4", "https://media.example.com/thumb.jpg", UUID.randomUUID());
+
+        when(lessonService.getLessonById(lessonId)).thenReturn(responseDTO);
+
+        mockMvc.perform(get("/api/lessons/{lessonId}", lessonId)
+                .with(user("user@investir.com").roles("STUDENT")))
+               .andExpect(status().isOk())
+               .andExpect(jsonPath("$.title").value("Aula 1"));
+    }
+
+    @Test
+    void updateLesson_ShouldReturnOk() throws Exception {
+        UUID lessonId = UUID.randomUUID();
+        LessonDTO.Request requestDTO = new LessonDTO.Request("Aula Alterada", "Descrição", "https://media.example.com/video.mp4", "https://media.example.com/thumb.jpg");
+        LessonDTO.Response responseDTO = new LessonDTO.Response(lessonId, "Aula Alterada", "Descrição", "https://media.example.com/video.mp4", "https://media.example.com/thumb.jpg", UUID.randomUUID());
+
+        when(lessonService.updateLesson(eq(lessonId), any(LessonDTO.Request.class), eq("prof@investir.com"))).thenReturn(responseDTO);
+
+        mockMvc.perform(put("/api/lessons/{lessonId}", lessonId)
+                .with(user("prof@investir.com").roles("TEACHER"))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(requestDTO)))
+               .andExpect(status().isOk())
+               .andExpect(jsonPath("$.title").value("Aula Alterada"));
+    }
+
+    @Test
+    void deleteLesson_ShouldReturnNoContent() throws Exception {
+        UUID lessonId = UUID.randomUUID();
+
+        mockMvc.perform(delete("/api/lessons/{lessonId}", lessonId)
+                .with(user("prof@investir.com").roles("TEACHER"))
+                .with(csrf()))
+               .andExpect(status().isNoContent());
+
+        verify(lessonService).deleteLesson(lessonId, "prof@investir.com");
+    }
+}

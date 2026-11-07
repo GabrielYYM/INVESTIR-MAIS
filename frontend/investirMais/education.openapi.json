@@ -1,0 +1,714 @@
+{
+  "openapi" : "3.1.0",
+  "info" : {
+    "title" : "OpenAPI definition",
+    "version" : "v0"
+  },
+  "tags" : [ {
+    "name" : "Cursos",
+    "description" : "Endpoints para gerenciamento do catálogo de cursos"
+  }, {
+    "name" : "Aulas",
+    "description" : "Endpoints para gerenciamento de aulas associadas a cursos"
+  } ],
+  "paths" : {
+    "/api/lessons/{lessonId}" : {
+      "get" : {
+        "tags" : [ "Aulas" ],
+        "summary" : "Obter aula por ID",
+        "description" : "Retorna os detalhes de uma aula específica.",
+        "operationId" : "getLessonById",
+        "parameters" : [ {
+          "name" : "lessonId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Aula encontrada",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LessonResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Aula não encontrada",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LessonResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put" : {
+        "tags" : [ "Aulas" ],
+        "summary" : "Atualizar aula",
+        "description" : "Atualiza os dados de uma aula. Exige que o usuário seja proprietário do curso associado ou ADMIN.",
+        "operationId" : "updateLesson",
+        "parameters" : [ {
+          "name" : "lessonId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/LessonRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Aula atualizada com sucesso",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LessonResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Sem permissão para atualizar esta aula",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LessonResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Aula não encontrada",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LessonResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "Aulas" ],
+        "summary" : "Excluir aula",
+        "description" : "Exclui logicamente a aula, preservando o registro no banco. Exige que o usuário seja proprietário do curso associado ou ADMIN.",
+        "operationId" : "deleteLesson",
+        "parameters" : [ {
+          "name" : "lessonId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Aula removida com sucesso"
+          },
+          "403" : {
+            "description" : "Sem permissão para remover esta aula"
+          },
+          "404" : {
+            "description" : "Aula não encontrada"
+          }
+        }
+      }
+    },
+    "/api/courses/{courseId}" : {
+      "get" : {
+        "tags" : [ "Cursos" ],
+        "summary" : "Obter curso por ID",
+        "description" : "Retorna os detalhes de um curso específico.",
+        "operationId" : "getCourseById",
+        "parameters" : [ {
+          "name" : "courseId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Curso encontrado",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CourseResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Curso não encontrado",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CourseResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put" : {
+        "tags" : [ "Cursos" ],
+        "summary" : "Atualizar curso",
+        "description" : "Atualiza o nome ou descrição do curso. Exige que o usuário seja o proprietário do curso ou ADMIN.",
+        "operationId" : "updateCourse",
+        "parameters" : [ {
+          "name" : "courseId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CourseRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Curso atualizado com sucesso",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CourseResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Sem permissão para alterar este curso",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CourseResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Curso não encontrado",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CourseResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "Cursos" ],
+        "summary" : "Excluir curso",
+        "description" : "Exclui logicamente o curso e suas aulas, preservando os registros no banco. Exige que o usuário seja o proprietário do curso ou ADMIN.",
+        "operationId" : "deleteCourse",
+        "parameters" : [ {
+          "name" : "courseId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Curso removido com sucesso"
+          },
+          "403" : {
+            "description" : "Sem permissão para excluir este curso"
+          },
+          "404" : {
+            "description" : "Curso não encontrado"
+          }
+        }
+      }
+    },
+    "/api/lessons/course/{courseId}" : {
+      "get" : {
+        "tags" : [ "Aulas" ],
+        "summary" : "Listar aulas de um curso",
+        "description" : "Retorna uma lista paginada com todas as aulas de um determinado curso.",
+        "operationId" : "getLessonsByCourse",
+        "parameters" : [ {
+          "name" : "courseId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "page",
+          "in" : "query",
+          "description" : "Zero-based page index (0..N)",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "default" : 0,
+            "minimum" : 0
+          }
+        }, {
+          "name" : "size",
+          "in" : "query",
+          "description" : "The size of the page to be returned",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "default" : 20,
+            "minimum" : 1
+          }
+        }, {
+          "name" : "sort",
+          "in" : "query",
+          "description" : "Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Página de aulas retornada com sucesso",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PagedModelLessonResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "Aulas" ],
+        "summary" : "Cadastrar nova aula em um curso",
+        "description" : "Cria uma nova aula para o curso informado. Exige permissão de proprietário do curso ou ADMIN.",
+        "operationId" : "createLesson",
+        "parameters" : [ {
+          "name" : "courseId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/LessonRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Aula cadastrada com sucesso",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LessonResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Sem permissão para adicionar aulas a este curso",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LessonResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Curso não encontrado",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LessonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/courses" : {
+      "get" : {
+        "tags" : [ "Cursos" ],
+        "summary" : "Listar todos os cursos",
+        "description" : "Retorna uma lista paginada com todos os cursos cadastrados.",
+        "operationId" : "getAllCourses",
+        "parameters" : [ {
+          "name" : "page",
+          "in" : "query",
+          "description" : "Zero-based page index (0..N)",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "default" : 0,
+            "minimum" : 0
+          }
+        }, {
+          "name" : "size",
+          "in" : "query",
+          "description" : "The size of the page to be returned",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "default" : 10,
+            "minimum" : 1
+          }
+        }, {
+          "name" : "sort",
+          "in" : "query",
+          "description" : "Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "default" : [ "name,ASC" ],
+            "items" : {
+              "type" : "string"
+            }
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Página de cursos retornada com sucesso",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PagedModelCourseResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "Cursos" ],
+        "summary" : "Criar um novo curso",
+        "description" : "Cadastra um novo curso. Exige perfil TEACHER ou ADMIN.",
+        "operationId" : "createCourse",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CourseRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Curso criado com sucesso",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CourseResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Requisição inválida",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CourseResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Sem permissão para criar cursos",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CourseResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/courses/professor/{professorId}" : {
+      "get" : {
+        "tags" : [ "Cursos" ],
+        "summary" : "Listar cursos por professor",
+        "description" : "Retorna uma lista paginada de cursos criados por um determinado professor.",
+        "operationId" : "getCoursesByProfessor",
+        "parameters" : [ {
+          "name" : "professorId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "page",
+          "in" : "query",
+          "description" : "Zero-based page index (0..N)",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "default" : 0,
+            "minimum" : 0
+          }
+        }, {
+          "name" : "size",
+          "in" : "query",
+          "description" : "The size of the page to be returned",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "default" : 10,
+            "minimum" : 1
+          }
+        }, {
+          "name" : "sort",
+          "in" : "query",
+          "description" : "Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "default" : [ "name,ASC" ],
+            "items" : {
+              "type" : "string"
+            }
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Página de cursos retornada com sucesso",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PagedModelCourseResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "LessonRequest" : {
+        "type" : "object",
+        "description" : "Dados para criação ou atualização de uma aula",
+        "properties" : {
+          "title" : {
+            "type" : "string",
+            "description" : "Título da aula",
+            "example" : "Aula 1 - O que é Renda Fixa?",
+            "maxLength" : 100,
+            "minLength" : 3
+          },
+          "description" : {
+            "type" : "string",
+            "description" : "Descrição do conteúdo da aula",
+            "example" : "Conceitos fundamentais sobre Tesouro Direto e CDBs.",
+            "maxLength" : 10000,
+            "minLength" : 0
+          },
+          "mediaUrl" : {
+            "type" : "string",
+            "description" : "URL do vídeo/mídia hospedada",
+            "example" : "https://media.investirmais.com/videos/aula-1.mp4",
+            "maxLength" : 4096,
+            "minLength" : 0
+          },
+          "thumbnailUrl" : {
+            "type" : "string",
+            "description" : "URL da imagem de capa/thumbnail",
+            "example" : "https://media.investirmais.com/thumbs/aula-1.jpg",
+            "maxLength" : 4096,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "description", "mediaUrl", "thumbnailUrl", "title" ]
+      },
+      "LessonResponse" : {
+        "type" : "object",
+        "description" : "Resposta com dados da aula",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "Identificador único da aula (UUID)",
+            "example" : "c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e8f"
+          },
+          "title" : {
+            "type" : "string",
+            "description" : "Título da aula",
+            "example" : "Aula 1 - O que é Renda Fixa?"
+          },
+          "description" : {
+            "type" : "string",
+            "description" : "Descrição da aula",
+            "example" : "Conceitos fundamentais sobre Tesouro Direto e CDBs."
+          },
+          "mediaUrl" : {
+            "type" : "string",
+            "description" : "URL da mídia",
+            "example" : "https://media.investirmais.com/videos/aula-1.mp4"
+          },
+          "thumbnailUrl" : {
+            "type" : "string",
+            "description" : "URL da thumbnail",
+            "example" : "https://media.investirmais.com/thumbs/aula-1.jpg"
+          },
+          "courseId" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "ID do curso ao qual esta aula pertence",
+            "example" : "b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e"
+          }
+        }
+      },
+      "CourseRequest" : {
+        "type" : "object",
+        "description" : "Dados para criação ou atualização de um curso",
+        "properties" : {
+          "name" : {
+            "type" : "string",
+            "description" : "Nome do curso",
+            "example" : "Introdução aos Investimentos",
+            "maxLength" : 100,
+            "minLength" : 3
+          },
+          "description" : {
+            "type" : "string",
+            "description" : "Descrição detalhada sobre o conteúdo do curso",
+            "example" : "Aprenda os conceitos básicos de renda fixa e variável.",
+            "maxLength" : 10000,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "description", "name" ]
+      },
+      "CourseResponse" : {
+        "type" : "object",
+        "description" : "Resposta com dados do curso",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "Identificador único do curso (UUID)",
+            "example" : "b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e"
+          },
+          "name" : {
+            "type" : "string",
+            "description" : "Nome do curso",
+            "example" : "Introdução aos Investimentos"
+          },
+          "description" : {
+            "type" : "string",
+            "description" : "Descrição do curso",
+            "example" : "Aprenda os conceitos básicos de renda fixa e variável."
+          },
+          "professorId" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "ID do professor responsável pelo curso",
+            "example" : "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d"
+          }
+        }
+      },
+      "PageMetadata" : {
+        "type" : "object",
+        "properties" : {
+          "size" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "number" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "totalElements" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "totalPages" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }
+      },
+      "PagedModelLessonResponse" : {
+        "type" : "object",
+        "properties" : {
+          "content" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/LessonResponse"
+            }
+          },
+          "page" : {
+            "$ref" : "#/components/schemas/PageMetadata"
+          }
+        }
+      },
+      "PagedModelCourseResponse" : {
+        "type" : "object",
+        "properties" : {
+          "content" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CourseResponse"
+            }
+          },
+          "page" : {
+            "$ref" : "#/components/schemas/PageMetadata"
+          }
+        }
+      }
+    }
+  }
+}

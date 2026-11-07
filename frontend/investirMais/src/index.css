@@ -1,8 +1,75 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss" source(".");
+
+@theme {
+  --color-canvas: #171522;
+  --color-panel: #1e1c2a;
+  --color-raised: rgb(255 255 255 / 5%);
+  --color-line: rgb(255 255 255 / 10%);
+  --font-sans: Inter, system-ui, -apple-system, sans-serif;
+}
+
+@theme inline {
+  --color-ink: var(--color-white);
+  --color-muted: var(--color-zinc-400);
+  --color-brand: var(--color-amber-500);
+  --color-positive: var(--color-emerald-400);
+  --color-negative: var(--color-red-400);
+}
+
+:root {
+  color-scheme: dark;
+}
 
 body {
-  margin: 0;
-  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  @apply min-w-0 bg-canvas font-sans text-ink antialiased;
+}
+
+button, a, input, textarea {
+  @apply focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand;
+}
+
+button:enabled {
+  cursor: pointer;
+}
+
+::selection {
+  @apply bg-brand text-zinc-900;
+}
+
+@layer components {
+  .panel {
+    @apply rounded-2xl border border-line bg-panel;
+  }
+
+  .button-primary, .button-secondary, .button-danger {
+    @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .button-primary {
+    @apply bg-brand text-zinc-900 hover:bg-amber-400;
+  }
+
+  .button-secondary {
+    @apply border border-line bg-raised text-ink hover:bg-white/10;
+  }
+
+  .button-danger {
+    @apply border border-red-500/20 bg-red-500/10 text-negative hover:bg-red-500/20;
+  }
+
+  .field {
+    @apply w-full rounded-xl border border-line bg-raised px-3.5 py-3 text-sm text-zinc-200 outline-none placeholder:text-zinc-500 focus:border-amber-500/50 focus-visible:outline-offset-0 focus-visible:outline-1;
+  }
+
+  .eyebrow {
+    @apply text-xs font-semibold tracking-wider uppercase text-amber-400;
+  }
+
+  .notice {
+    @apply flex gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3.5 py-3 text-sm text-positive;
+  }
+
+  .notice-error {
+    @apply border-red-500/20 bg-red-500/10 text-negative;
+  }
 }

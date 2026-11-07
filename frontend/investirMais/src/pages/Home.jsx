@@ -1,158 +1,122 @@
-import { useEffect, useState } from "react";
-import { Play } from "lucide-react";
-import Sidebar from "../components/Sidebar.jsx";
-import Topbar from "../components/Topbar.jsx";
-import { getConteudoPublicado } from "../services/educationService";
+import { ArrowRight, Award, BookOpen, Search, TrendingDown, TrendingUp } from "lucide-react";
+import { Link, redirect, useFetcher, useLoaderData, useRouteLoaderData } from "react-router";
+import { CourseCard } from "../components/EducationParts.jsx";
+import { Notice } from "../components/PageState.jsx";
+import { roleNames } from "../components/Topbar.jsx";
+import { dashboardCourses } from "../services/educationData.js";
+import { buscarCotacao } from "../services/quoteService.js";
 
-// Cores rotativas pros cards de destaque, já que o modelo não tem
-// conceito de "cor do card" — puramente visual, sem vir do backend.
-const DESTAQUE_CORES = ["bg-teal-500", "bg-red-500", "bg-indigo-500"];
+export async function dashboardLoader({ request }) {
+  try {
+    return { page: await dashboardCourses(request.signal) };
+  } catch (error) {
+    if (error.response?.status === 401) throw redirect("/entrar");
+    return { page: null };
+  }
+}
 
-export default function Home({ onNavigate, onLogout, onSelectContent, usuario }) {
-  const [conteudos, setConteudos] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState("");
-  const [selectedContent, setSelectedContent] = useState(null);
+export async function quoteLoader({ request }) {
+  const ticker = new URL(request.url).searchParams.get("ticker")?.trim().toUpperCase();
+  if (!ticker || !/^[A-Z0-9.-]{1,16}$/.test(ticker)) return { error: "Informe um ticker válido." };
 
-  useEffect(() => {
-    let ativo = true;
-    getConteudoPublicado()
-      .then((data) => {
-        if (ativo) setConteudos(data);
-      })
-      .catch(() => {
-        if (ativo) setErro("Não foi possível carregar os conteúdos agora.");
-      })
-      .finally(() => {
-        if (ativo) setLoading(false);
-      });
-    return () => {
-      ativo = false;
+  try {
+    const data = await buscarCotacao(ticker, request.signal);
+    const quote = data.results?.[0];
+    if (!quote || !Number.isFinite(quote.regularMarketPrice)) return { error: "Nenhuma cotação disponível para " + ticker + "." };
+    return { quote };
+  } catch (error) {
+    if (error.response?.status === 401) throw redirect("/entrar");
+    return {
+      error: error.response?.status === 404
+        ? "Ativo não encontrado. Confira o ticker informado."
+        : "A cotação está indisponível no momento. Tente novamente.",
     };
-  }, []);
+  }
+}
 
-  const handleCardClick = (item) => {
-    setSelectedContent(item);
-    if (onSelectContent) onSelectContent(item);
-  };
-
-  const destaques = conteudos.slice(0, 2);
-  const maisVistos = conteudos.slice(2);
+function MarketQuote() {
+  const lookup = useFetcher();
+  const loading = lookup.state !== "idle";
+  const quote = lookup.data?.quote;
+  const change = quote?.regularMarketChangePercent;
+  const hasChange = Number.isFinite(change);
+  const ChangeIcon = change < 0 ? TrendingDown : TrendingUp;
+  const currency = /^[A-Z]{3}$/.test(quote?.currency) ? quote.currency : undefined;
+  const priceFormat = new Intl.NumberFormat("pt-BR", currency ? { style: "currency", currency } : { maximumFractionDigits: 2 });
 
   return (
-    <div className="flex min-h-screen bg-[#0f0e17]">
-      <Sidebar activePage="Home" onNavigate={onNavigate} onLogout={onLogout} role={usuario?.role} />
-
-      <div className="flex-1">
-        <Topbar usuario={usuario} />
-
-        <main className="px-8 pb-12">
-          <h1 className="text-2xl font-bold text-white mb-4">Descubra</h1>
-
-          {loading && <p className="text-zinc-500 text-sm">Carregando...</p>}
-          {erro && <p className="text-red-400 text-sm">{erro}</p>}
-
-          {!loading && !erro && conteudos.length === 0 && (
-            <p className="text-zinc-500 text-sm">Nenhum conteúdo publicado ainda.</p>
-          )}
-
-          {destaques.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
-              {destaques.map((item, i) => (
-                <button
-                  key={item.id}
-                  onClick={() => handleCardClick(item)}
-                  className={`relative rounded-2xl p-6 text-left overflow-hidden min-h-[220px] flex flex-col justify-between cursor-pointer ${
-                    DESTAQUE_CORES[i % DESTAQUE_CORES.length]
-                  }`}
-                >
-                  <h2 className="text-xl font-bold text-white max-w-[70%]">{item.title}</h2>
-                  <span className="absolute bottom-4 right-4 bg-black/40 text-white text-xs px-3 py-1 rounded-full flex items-center gap-1.5">
-                    <Play size={12} />
-                    {item.type === "VIDEO" ? "vídeo" : "artigo"}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {maisVistos.length > 0 && (
-            <>
-              <h2 className="text-lg font-semibold text-white mb-4">Mais vistos</h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {maisVistos.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => handleCardClick(item)}
-                    className="text-left rounded-xl overflow-hidden bg-[#171522] hover:bg-[#1f1d2e] transition-colors cursor-pointer group"
-                  >
-                    <div className="relative aspect-video bg-amber-500 flex items-center justify-center">
-                      {item.thumbnailUrl ? (
-                        <img
-                          src={item.thumbnailUrl}
-                          alt={item.title}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <Play className="text-zinc-900/40 group-hover:scale-110 transition-transform" size={32} />
-                      )}
-                    </div>
-                    <div className="p-3">
-                      <p className="text-sm text-zinc-100 font-medium line-clamp-2">{item.title}</p>
-                      <p className="text-xs text-zinc-500 mt-1">{item.professorName}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-
-          {/* Modal de Player de Vídeo / Leitor de Conteúdo para o Aluno */}
-          {selectedContent && (
-            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-              <div className="bg-[#171522] border border-white/10 rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl">
-                {/* Visualizador de Mídia */}
-                <div className="relative aspect-video bg-black flex items-center justify-center">
-                  {selectedContent.mediaUrl ? (
-                    <video
-                      src={selectedContent.mediaUrl}
-                      controls
-                      autoPlay
-                      className="w-full h-full object-contain"
-                    />
-                  ) : (
-                    <div className="p-8 text-center text-zinc-400">
-                      <Play size={48} className="mx-auto mb-2 opacity-50" />
-                      <p>Mídia não disponível para reprodução direta.</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Detalhes do Conteúdo */}
-                <div className="p-6">
-                  <div className="flex items-start justify-between gap-4 mb-2">
-                    <div>
-                      <h2 className="text-xl font-bold text-white">{selectedContent.title}</h2>
-                      <p className="text-xs text-amber-500 mt-0.5">Professor: {selectedContent.professorName || "Investir+"}</p>
-                    </div>
-                    <button
-                      onClick={() => setSelectedContent(null)}
-                      className="text-zinc-400 hover:text-white bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg text-xs transition-colors cursor-pointer"
-                    >
-                      Fechar
-                    </button>
-                  </div>
-                  {selectedContent.description && (
-                    <p className="text-sm text-zinc-300 mt-3 leading-relaxed border-t border-white/5 pt-3">
-                      {selectedContent.description}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-        </main>
+    <section className="panel space-y-4 p-5 sm:p-6" aria-labelledby="cotacoes-titulo">
+      <div>
+        <p className="eyebrow">Mercado</p>
+        <h2 id="cotacoes-titulo" className="mt-1 text-xl font-bold">Consultar cotação</h2>
+        <p className="mt-1 text-sm text-muted">Pesquise pelo código do ativo.</p>
       </div>
-    </div>
+      <lookup.Form method="get" action="/cotacao" className="flex flex-wrap gap-2">
+        <label htmlFor="ticker" className="sr-only">Ticker</label>
+        <input id="ticker" name="ticker" required maxLength={16} autoComplete="off" placeholder="Ex.: PETR4" className="field min-w-32 flex-1 uppercase placeholder:normal-case" />
+        <button className="button-primary" disabled={loading}><Search size={16} /> {loading ? "Buscando…" : "Buscar"}</button>
+      </lookup.Form>
+      {!loading && lookup.data?.error && <Notice error>{lookup.data.error}</Notice>}
+      {!loading && quote && (
+        <div className="rounded-xl border border-line bg-canvas p-4" aria-live="polite">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <p className="font-bold">{quote.symbol}</p>
+              <p className="text-xs text-muted">{quote.shortName || quote.longName}</p>
+            </div>
+            {hasChange && <span className={"inline-flex items-center gap-1 text-xs font-semibold " + (change < 0 ? "text-negative" : "text-positive")}><ChangeIcon size={15} /> {change.toLocaleString("pt-BR", { signDisplay: "exceptZero", maximumFractionDigits: 2 })}%</span>}
+          </div>
+          <p className="mt-3 text-2xl font-bold tabular-nums">{priceFormat.format(quote.regularMarketPrice)}</p>
+        </div>
+      )}
+      <p className="text-xs text-muted">Dados da Brapi. As cotações podem ter atraso.</p>
+    </section>
+  );
+}
+
+export default function Home() {
+  const { page } = useLoaderData();
+  const user = useRouteLoaderData("app");
+  const firstName = user.name?.trim().split(/\s+/)[0] || "investidor";
+
+  return (
+    <>
+      <header className="panel border-white/5 p-6 sm:p-8">
+        <h1 className="mb-2 text-3xl font-bold break-words">Olá, {firstName}.</h1>
+        <p className="max-w-xl text-muted">Bem-vindo ao <span className="font-semibold text-amber-400">Investir+</span>. Explore cursos sobre finanças e consulte cotações do mercado.</p>
+        <Link to="/educacao" className="button-primary mt-5">Explorar cursos <ArrowRight size={17} /></Link>
+      </header>
+
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Link to="/educacao" className="panel group flex min-w-0 items-center gap-4 border-white/5 p-5 hover:border-brand/50 sm:p-6">
+          <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-amber-500/20 text-amber-400"><BookOpen size={24} /></span>
+          <span className="min-w-0 flex-1"><span className="block text-xs font-semibold tracking-wider text-zinc-500 uppercase">Cursos disponíveis</span><strong className="block truncate text-lg">{page?.totalItems ?? "—"}</strong></span>
+          <ArrowRight className="size-4 shrink-0 text-muted group-hover:text-brand" />
+        </Link>
+        <Link to="/perfil" className="panel group flex min-w-0 items-center gap-4 border-white/5 p-5 hover:border-brand/50 sm:p-6">
+          <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-blue-500/20 text-blue-400"><Award size={24} /></span>
+          <span className="min-w-0 flex-1"><span className="block text-xs font-semibold tracking-wider text-zinc-500 uppercase">Meu perfil</span><strong className="block text-lg break-words">{roleNames[user.role]}</strong></span>
+          <ArrowRight className="size-4 shrink-0 text-muted group-hover:text-brand" />
+        </Link>
+      </div>
+
+      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.5fr)]">
+        <MarketQuote />
+        <section className="space-y-4" aria-labelledby="educacao-titulo">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="eyebrow">Educação</p>
+              <h2 id="educacao-titulo" className="mt-1 text-2xl font-bold tracking-tight">Comece a aprender</h2>
+            </div>
+            <Link to="/educacao" className="button-secondary">Ver catálogo <ArrowRight size={16} /></Link>
+          </div>
+          {page?.items.length ? (
+            <div className="grid gap-3 sm:grid-cols-3">{page.items.map((course) => <CourseCard key={course.id} course={course} />)}</div>
+          ) : (
+            <p className="panel p-5 text-sm text-muted">{page ? "Ainda não há cursos no catálogo." : "O catálogo está indisponível no momento."}</p>
+          )}
+        </section>
+      </div>
+    </>
   );
 }
