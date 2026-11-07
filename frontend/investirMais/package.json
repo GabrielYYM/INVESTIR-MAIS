@@ -9,7 +9,17 @@
     "dev": "vite",
     "prebuild": "npm run api:generate",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "pretest": "npm run api:generate",
+    "test": "vitest run",
+    "pretest:unit": "npm run api:generate",
+    "test:unit": "vitest run src/test/unit",
+    "pretest:integration": "npm run api:generate",
+    "test:integration": "vitest run src/test/integration",
+    "pretest:watch": "npm run api:generate",
+    "test:watch": "vitest",
+    "pretest:coverage": "npm run api:generate",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "axios": "^1.21.0",
@@ -21,9 +31,17 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.4",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.8",
     "@vitejs/plugin-react": "^6.2.1",
+    "@vitest/coverage-v8": "^5.1.0",
+    "jsdom": "^31.0.0",
+    "msw": "^3.0.4",
     "orval": "8.46.0",
     "tailwindcss": "^4.3.4",
-    "vite": "^8.3.5"
+    "vite": "^8.3.5",
+    "vitest": "^5.1.0"
   }
 }

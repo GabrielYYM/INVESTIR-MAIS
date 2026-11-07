@@ -20,6 +20,23 @@ Abra [localhost:5173](http://localhost:5173). O proxy do Vite encaminha `/api`, 
 | `npm run build` | Gera o cliente de educação e compila o bundle em `dist/`. |
 | `npm run preview` | Serve localmente o bundle gerado pelo build. |
 | `npm run api:generate` | Regenera apenas o cliente OpenAPI de educação. |
+| `npm test` | Executa todos os testes unitários e de integração uma vez. |
+| `npm run test:unit` | Executa apenas os testes unitários. |
+| `npm run test:integration` | Executa apenas os testes de integração do frontend. |
+| `npm run test:watch` | Reexecuta os testes durante a edição dos arquivos. |
+| `npm run test:coverage` | Executa a suíte e gera relatórios de cobertura. |
+
+## Testes
+
+Os testes usam Vitest, React Testing Library e JSDOM. Todos os comandos de teste regeneram o cliente OpenAPI antes da execução. Não é necessário iniciar o backend, Docker ou serviços externos.
+
+- `src/test/unit/`: validação de URLs de vídeo, mensagens HTTP, preparação de CSRF, permissões, loaders, ações, paginação e componentes de formulário.
+- `src/test/integration/`: formulários de cadastro, login por senha e OTT, link de acesso, recuperação de senha, perfil, sessão, cotações e gestão de cursos e aulas. Os testes usam as mesmas rotas da aplicação, Axios e o cliente Orval; o MSW intercepta apenas a camada HTTP, com dados fictícios.
+- `src/test/server.js` e `src/test/fixtures.js`: respostas padrão e dados compartilhados. Cada cenário pode substituir os handlers com `server.use()`. Requisições sem handler causam erro, e handlers, cookies, DOM e roteadores são limpos entre os testes.
+
+Os testes de integração verificam a colaboração entre as partes do frontend com a API simulada. A integração com Spring e infraestrutura real continua coberta pela suíte do backend.
+
+`npm run test:coverage` gera `coverage/index.html` e `coverage/lcov.info`. A CI executa esse comando e exige os mínimos globais de 85% para instruções, funções e linhas e 80% para ramificações. O relatório inclui todo o código da aplicação, exceto o ponto de montagem `main.jsx`, o cliente gerado e os arquivos de teste.
 
 ## Rotas e permissões
 
@@ -48,7 +65,7 @@ A instância Axios compartilhada envia cookies de sessão. Em escritas, consulta
 
 | Arquivo ou diretório | Papel |
 | --- | --- |
-| [`src/App.jsx`](src/App.jsx) | Rotas, verificação de sessão e tratamento de erros de navegação. |
+| [`src/App.jsx`](src/App.jsx) e [`src/routes.jsx`](src/routes.jsx) | Montagem do roteador, rotas, verificação de sessão e tratamento de erros de navegação. |
 | [`src/pages/`](src/pages/) | Telas, formulários e ações dos fluxos da aplicação. |
 | [`src/components/`](src/components/) | Layout, navegação, estados de página, formulários e componentes de educação. |
 | [`src/services/api.js`](src/services/api.js) | Instância Axios, credenciais, CSRF e mensagens de erro. |
