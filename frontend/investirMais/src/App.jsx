@@ -1,80 +1,55 @@
-import { useState, useEffect, useCallback } from "react";
-import Footer from "./components/Footer.jsx";
-import Carteira from "./pages/Carteira.jsx";
-import QuestionsManager from "./pages/QuestionsManager.jsx";
+import { createBrowserRouter, redirect } from "react-router";
+import { RouterProvider } from "react-router/dom";
+import AppLayout, { signOut } from "./components/AppLayout.jsx";
+import { PageError, PendingPage } from "./components/PageState.jsx";
+import { getCurrentUser } from "./services/authService.js";
+import Login, { LoginLink } from "./pages/Login.jsx";
 import SignUp from "./pages/SignUp.jsx";
-import Login from "./pages/Login.jsx";
-import Perfil from "./pages/Perfil.jsx";
-import { getCategorias } from "./services/carteiraService";
-import { getQuestoesPorCategoria } from "./services/questoesService";
-import { isAutenticado, logout, getUsuarioAtual } from "./services/authService";
+import ForgotPassword from "./pages/ForgotPassword.jsx";
+import Perfil, { profileAction } from "./pages/Perfil.jsx";
+import Home, { dashboardLoader, quoteLoader } from "./pages/Home.jsx";
+import Education, { catalogLoader } from "./pages/Education.jsx";
+import Course, { courseLoader } from "./pages/Course.jsx";
+import { catalogAction, courseAction } from "./services/educationData.js";
 
-export default function App() {
-  const [activePage, setActivePage] = useState(() => {
-    return localStorage.getItem("authToken") ? "Carteira" : "Login";
-  });
-
-  // Categorias vindas do backend (carregadas uma vez)
-  const [categorias, setCategorias] = useState([]);
-
-  // Perguntas globais: todas as perguntas de todas as categorias da carteira
-  const [questions, setQuestions] = useState([]);
-
-  const carregarDados = useCallback(async () => {
-    try {
-      const cats = await getCategorias();
-      setCategorias(cats);
-
-      // Carrega perguntas de todas as categorias em paralelo
-      const resultados = await Promise.all(
-        cats.map((cat) =>
-          getQuestoesPorCategoria(cat.id).catch(() => [])
-        )
-      );
-      // Achata e injeta categoryId em cada pergunta
-      const todasPerguntas = cats.flatMap((cat, i) =>
-        resultados[i].map((q) => ({ ...q, categoryId: cat.id }))
-      );
-      setQuestions(todasPerguntas);
-    } catch (err) {
-      console.warn("Não foi possível carregar categorias/perguntas do backend:", err.message);
+async function requireSession({ request }) {
+  try {
+    return await getCurrentUser(request.signal);
+  } catch (error) {
+    if ([401, 403].includes(error.response?.status)) {
+      const url = new URL(request.url);
+      const next = new URLSearchParams({ retorno: url.pathname + url.search });
+      throw redirect("/entrar?" + next);
     }
-  }, []);
-
-  useEffect(() => {
-    const isAuth = !!localStorage.getItem("authToken");
-    if (!isAuth && activePage !== "Login" && activePage !== "SignUp") {
-      setActivePage("Login");
-      return;
-    }
-    
-    if (isAuth && (activePage === "Carteira" || activePage === "Questões")) {
-      carregarDados();
-    }
-  }, [carregarDados, activePage]);
-
-  const pages = {
-    Carteira: (
-      <Carteira
-        onNavigate={setActivePage}
-        questions={questions}
-        categorias={categorias}
-        onDadosChange={carregarDados}
-      />
-    ),
-    Questões: (
-      <QuestionsManager
-        onNavigate={setActivePage}
-        questions={questions}
-        categorias={categorias}
-        onDadosChange={carregarDados}
-      />
-    ),
-    Perfil: <Perfil onNavigate={setActivePage} />,
-    SignUp: <SignUp onNavigate={setActivePage} />,
-    Login: <Login onNavigate={setActivePage} />,
-  };
-
-  return pages[activePage] || <Carteira onNavigate={setActivePage} questions={questions} />;
+    throw error;
+  }
 }
 
+const router = createBrowserRouter([
+  {
+    id: "app",
+    Component: AppLayout,
+    loader: requireSession,
+    shouldRevalidate: ({ currentUrl, nextUrl, defaultShouldRevalidate }) =>
+      currentUrl.pathname !== nextUrl.pathname || defaultShouldRevalidate,
+    HydrateFallback: PendingPage,
+    ErrorBoundary: PageError,
+    children: [
+      { index: true, Component: Home, loader: dashboardLoader, ErrorBoundary: PageError },
+      { path: "cotacao", loader: quoteLoader },
+      { path: "educacao", Component: Education, loader: catalogLoader, action: catalogAction, ErrorBoundary: PageError },
+      { path: "educacao/:courseId/:lessonId?", Component: Course, loader: courseLoader, action: courseAction, ErrorBoundary: PageError },
+      { path: "perfil", Component: Perfil, action: profileAction },
+      { path: "sair", action: signOut },
+    ],
+  },
+  { path: "entrar", Component: Login },
+  { path: "entrar/link", Component: LoginLink },
+  { path: "cadastro", Component: SignUp },
+  { path: "recuperar-senha", Component: ForgotPassword },
+  { path: "*", Component: PageError },
+]);
+
+export default function App() {
+  return <RouterProvider router={router} />;
+}

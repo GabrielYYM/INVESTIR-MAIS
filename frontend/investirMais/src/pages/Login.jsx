@@ -1,201 +1,114 @@
-import { useState } from "react";
-import { Mail, Lock, ShieldCheck, KeyRound, Eye, EyeOff } from "lucide-react";
-import { login, verify2FA } from "../services/authService";
+import { useEffect, useRef, useState } from "react";
+import { KeyRound, Lock, Mail, ShieldCheck } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { Link, useNavigate, useSearchParams } from "react-router";
+import { AuthCard, emailRules, Field } from "../components/FormFields.jsx";
+import { Notice } from "../components/PageState.jsx";
+import { apiError } from "../services/api.js";
+import { login, verify2FA } from "../services/authService.js";
 
-export default function Login({ onNavigate }) {
-  // Etapa 1 = credenciais, Etapa 2 = código 2FA
-  const [step, setStep] = useState(1);
+function returnPath(value) {
+  if (!value?.startsWith("/") || !URL.canParse(value, window.location.origin)) return "/";
+  const url = new URL(value, window.location.origin);
+  const protectedPath = url.pathname === "/" || url.pathname === "/perfil" || /^\/educacao(?:\/|$)/.test(url.pathname);
+  return url.origin === window.location.origin && protectedPath ? url.pathname + url.search : "/";
+}
 
-  const [form, setForm] = useState({ email: "", password: "" });
-  const [code, setCode] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-
+export function LoginLink() {
+  const [token] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get("ott"));
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const attempt = useRef();
+  const navigate = useNavigate();
+  const [search] = useSearchParams();
+  const destination = returnPath(search.get("retorno"));
+  const loginPath = "/entrar?" + new URLSearchParams({ retorno: destination });
+  const failure = error || (!token && "Abra o link enviado por e-mail ou entre novamente para solicitar outro.");
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setError("");
-
-    if (!form.email || !form.password) {
-      return setError("Por favor, preencha todos os campos.");
+  useEffect(() => {
+    if (!token) return;
+    if (!attempt.current) {
+      const { pathname, search } = window.location;
+      window.history.replaceState(window.history.state, "", pathname + search);
+      attempt.current = verify2FA(token);
     }
 
-    setLoading(true);
-    try {
-      await login(form.email, form.password);
-      setStep(2);
-    } catch (err) {
-      setError(err?.response?.data?.detail || err?.response?.data?.message || err.message || "Erro ao fazer login.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerify2FA = async (e) => {
-    e.preventDefault();
-    setError("");
-
-    if (!code.trim()) {
-      return setError("Por favor, insira o código recebido por e-mail.");
-    }
-
-    setLoading(true);
-    try {
-      await verify2FA(form.email, code);
-      if (onNavigate) onNavigate("Carteira");
-    } catch (err) {
-      setError(err?.response?.data?.detail || err?.response?.data?.message || err.message || "Código inválido ou expirado.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    let active = true;
+    attempt.current.then(
+      () => { if (active) void navigate(destination, { replace: true }); },
+      (error) => {
+        if (active) setError(apiError(error, "O link expirou ou não pertence a esta sessão. Entre novamente neste navegador."));
+      },
+    );
+    return () => { active = false; };
+  }, [destination, navigate, token]);
 
   return (
-    <div className="min-h-screen bg-[#171522] flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-[#1e1c2a] rounded-2xl border border-white/10 shadow-2xl overflow-hidden">
+    <AuthCard icon={KeyRound} title={failure ? "Não foi possível concluir o acesso" : "Confirmando acesso"}
+      description={failure ? "Você pode iniciar outro login para receber um novo link." : "Estamos validando o link enviado por e-mail."}>
+      {failure && <><Notice error>{failure}</Notice><Link className="button-primary w-full" to={loginPath} replace>Voltar para entrar</Link></>}
+    </AuthCard>
+  );
+}
 
-        {/* Header */}
-        <div className="px-8 pt-8 pb-6 text-center border-b border-white/10">
-          <div className="w-16 h-16 bg-amber-500/20 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4">
-            {step === 1 ? <ShieldCheck size={32} /> : <KeyRound size={32} />}
-          </div>
-          <h1 className="text-2xl font-bold text-white mb-2">
-            {step === 1 ? "Bem-vindo de volta" : "Verificação em 2 etapas"}
-          </h1>
-          <p className="text-sm text-zinc-400">
-            {step === 1
-              ? <>Acesse o <span className="text-amber-500 font-medium">Investir+</span></>
-              : <>Insira o código enviado para <span className="text-amber-400 font-medium">{form.email}</span></>
-            }
-          </p>
+export default function Login() {
+  const [email, setEmail] = useState("");
+  const [search] = useSearchParams();
+  const navigate = useNavigate();
+  const credentials = useForm();
+  const verification = useForm();
+  const { errors, isSubmitting } = email ? verification.formState : credentials.formState;
+
+  const sendLink = credentials.handleSubmit(async ({ email, password }) => {
+    try {
+      await login(email, password, returnPath(search.get("retorno")));
+      credentials.reset({ email, password: "" });
+      setEmail(email);
+    } catch (error) {
+      credentials.setError("root", { message: apiError(error, "Não foi possível entrar. Confira o e-mail, a senha e a confirmação da conta.") });
+    }
+  });
+
+  const verify = verification.handleSubmit(async ({ code }) => {
+    try {
+      await verify2FA(code);
+      await navigate(returnPath(search.get("retorno")), { replace: true });
+    } catch (error) {
+      verification.setError("root", { message: apiError(error, "Código inválido ou expirado.") });
+    }
+  });
+
+  return (
+    <AuthCard
+      icon={email ? KeyRound : ShieldCheck}
+      title={email ? "Confira seu e-mail" : "Bem-vindo de volta"}
+      description={email ? `Enviamos um link para ${email}. Abra a mensagem e clique em “Concluir acesso” neste navegador. O link expira em cinco minutos.` : "Entre na sua conta para acessar o Investir+."}
+    >
+      {email ? (
+        <div className="space-y-4">
+          <details className="rounded-xl border border-white/10 p-3">
+            <summary className="cursor-pointer text-sm font-medium text-muted hover:text-ink">Usar código manualmente</summary>
+            <form onSubmit={verify} className="mt-4 space-y-4" noValidate>
+              {errors.root && <Notice error>{errors.root.message}</Notice>}
+              <Field label="Código de verificação" autoComplete="one-time-code" maxLength={64} error={errors.code?.message}
+                {...verification.register("code", { required: "Informe o código recebido.", setValueAs: (value) => value.trim() })} />
+              <button className="button-primary w-full" disabled={isSubmitting}>{isSubmitting ? "Confirmando…" : "Confirmar acesso"}</button>
+            </form>
+          </details>
+          <button type="button" className="w-full text-sm text-muted hover:text-ink" disabled={isSubmitting} onClick={() => { verification.reset(); setEmail(""); }}>
+            Voltar e usar outro e-mail
+          </button>
         </div>
-
-        {/* 1. Email e Senha */}
-        {step === 1 && (
-          <form onSubmit={handleLogin} className="p-8 space-y-5">
-            {error && (
-              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm text-center">
-                {error}
-              </div>
-            )}
-
-            <div>
-              <label className="block text-zinc-400 text-sm mb-2">Email</label>
-              <div className="relative">
-                <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" />
-                <input
-                  type="email"
-                  name="email"
-                  value={form.email}
-                  onChange={handleChange}
-                  placeholder="seu@email.com"
-                  className="w-full rounded-xl bg-white/5 border border-white/10 pl-11 pr-4 py-3 text-sm text-zinc-200 placeholder:text-zinc-600 outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/30 transition-colors"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-zinc-400 text-sm mb-2">Senha</label>
-              <div className="relative">
-                <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" />
-                <input
-                  type={showPassword ? "text" : "password"}
-                  name="password"
-                  value={form.password}
-                  onChange={handleChange}
-                  placeholder="••••••••"
-                  className="w-full rounded-xl bg-white/5 border border-white/10 pl-11 pr-11 py-3 text-sm text-zinc-200 placeholder:text-zinc-600 outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/30 transition-colors"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((prev) => !prev)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
-                  aria-label={showPassword ? "Ocultar senha" : "Exibir senha"}
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-
-            <div className="flex justify-end">
-              <a href="#" className="text-sm text-amber-500 hover:text-amber-400 transition-colors">
-                Esqueceu sua senha?
-              </a>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-zinc-900 font-medium rounded-xl px-5 py-3.5 text-sm cursor-pointer"
-            >
-              {loading ? "Verificando..." : "Continuar"}
-            </button>
-
-            <div className="text-center">
-              <p className="text-sm text-zinc-400">
-                Ainda não tem uma conta?{" "}
-                <button
-                  type="button"
-                  onClick={() => onNavigate && onNavigate("SignUp")}
-                  className="text-amber-500 hover:text-amber-400 font-medium transition-colors cursor-pointer"
-                >
-                  Cadastre-se
-                </button>
-              </p>
-            </div>
-          </form>
-        )}
-
-        {/*2. 2FA */}
-        {step === 2 && (
-          <form onSubmit={handleVerify2FA} className="p-8 space-y-5">
-            {error && (
-              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm text-center">
-                {error}
-              </div>
-            )}
-
-            <div>
-              <label className="block text-zinc-400 text-sm mb-2">Código de verificação</label>
-              <input
-                type="text"
-                maxLength={6}
-                value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-                placeholder="000000"
-                className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-center text-2xl font-mono tracking-[0.5em] text-zinc-200 placeholder:text-zinc-600 outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/30 transition-colors"
-              />
-              <p className="text-xs text-zinc-600 mt-2 text-center">
-                O código expira em alguns minutos. Verifique sua caixa de entrada.
-              </p>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-zinc-900 font-medium rounded-xl px-5 py-3.5 text-sm cursor-pointer"
-            >
-              {loading ? "Verificando..." : "Confirmar acesso"}
-            </button>
-
-            <div className="text-center">
-              <button
-                type="button"
-                onClick={() => { setStep(1); setError(""); setCode(""); }}
-                className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
-              >
-                ← Voltar e usar outro e-mail
-              </button>
-            </div>
-          </form>
-        )}
-      </div>
-    </div>
+      ) : (
+        <form key="credentials" onSubmit={sendLink} className="space-y-4" noValidate>
+          {errors.root && <Notice error>{errors.root.message}</Notice>}
+          <Field label="E-mail" icon={Mail} type="email" autoComplete="username" error={errors.email?.message} {...credentials.register("email", emailRules)} />
+          <Field label="Senha" icon={Lock} type="password" autoComplete="current-password" error={errors.password?.message}
+            {...credentials.register("password", { required: "Informe sua senha." })} />
+          <Link to="/recuperar-senha" className="block text-right text-sm text-brand hover:underline">Esqueceu a senha?</Link>
+          <button className="button-primary w-full" disabled={isSubmitting}>{isSubmitting ? "Verificando…" : "Continuar"}</button>
+          <p className="text-center text-sm text-muted">Ainda sem conta? <Link to="/cadastro" className="font-semibold text-brand hover:underline">Cadastre-se</Link></p>
+        </form>
+      )}
+    </AuthCard>
   );
 }

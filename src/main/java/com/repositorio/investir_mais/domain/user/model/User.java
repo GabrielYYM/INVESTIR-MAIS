@@ -1,100 +1,74 @@
 package com.repositorio.investir_mais.domain.user.model;
 
+import com.repositorio.investir_mais.domain.education.model.Course;
+import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.Email;
+import org.hibernate.validator.constraints.Range;
+
+import lombok.*;
+
+import org.hibernate.annotations.Audited;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.jdbc.Expectation;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+import org.springframework.modulith.NamedInterface;
+
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
-import jakarta.persistence.Embedded;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.OneToOne;
-import jakarta.persistence.Table;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-
-import com.repositorio.investir_mais.common.model.Auditable;
-import com.repositorio.investir_mais.domain.portfolio.model.Portfolio;
-import com.repositorio.investir_mais.infrastructure.util.AttributeEncryptor;
-
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
-
+@NamedInterface("user-model")
 @Entity
 @Table(name = "TB_USER")
+@SQLDelete(sql = "UPDATE tb_user SET deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND deleted_at IS NULL", verify = Expectation.RowCount.class)
+@SQLRestriction("deleted_at IS NULL")
 @Getter
 @Setter
-@ToString(onlyExplicitlyIncluded = true)
-@Builder
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-public class User extends Auditable {
+@NoArgsConstructor
+@AllArgsConstructor
+@Audited
+@Audited.Table(name = "TB_USER_AUDIT")
+@EntityListeners(AuditingEntityListener.class)
+public class User {
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @Setter(AccessLevel.NONE)
-    @ToString.Include
+    @GeneratedValue
+    @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 
-    @NotBlank
-    @Column(nullable = false, length = 255)
-    @Convert(converter = AttributeEncryptor.class)
     private String name;
 
-    @NotBlank
+    @Range(min = 0, max = 120)
+    private Integer age;
+
     @Email
-    @Column(nullable = false, unique = true, length = 500)
-    @Convert(converter = AttributeEncryptor.class)
+    @Column(nullable = false, unique = true)
     private String email;
 
-    @Column(name = "birth_date")
-    private java.time.LocalDate birthDate;
+    @Audited.Excluded
+    private String password;
 
-    @Column(name = "guardian_email", length = 500)
-    @Convert(converter = AttributeEncryptor.class)
-    private String guardianEmail;
+    @Enumerated(EnumType.STRING)
+    private UserRole role;
 
-    @Column(name = "terms_accepted", nullable = false)
-    @Builder.Default
-    private Boolean termsAccepted = false;
+    private boolean emailVerified;
 
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private Portfolio portfolio;
-
-    @Embedded
-    private UserSecurity security;
-
-    @Column(name = "deleted_at")
+    @Column(name = "deleted_at", insertable = false, updatable = false)
+    @Setter(AccessLevel.NONE)
     private LocalDateTime deletedAt;
 
-    public void softDelete() {
-        this.deletedAt = LocalDateTime.now();
-    }
+    @OneToMany(mappedBy = "professor", cascade = CascadeType.REMOVE)
+    private List<Course> courses = new ArrayList<>();
 
-    public boolean isDeleted() {
-        return this.deletedAt != null;
-    }
+    @CreatedDate
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
-    public boolean isUnder12() {
-        if (this.birthDate == null) {
-            return false;
-        }
-        return java.time.Period.between(this.birthDate, java.time.LocalDate.now()).getYears() < 12;
-    }
-
-    public void updateProfile(String name, String email, String emailHash) {
-        this.name = name;
-        this.email = email;
-        if (this.security != null) {
-            this.security.setEmailHash(emailHash);
-        }
-    }
+    @LastModifiedDate
+    @Column(name = "last_modified_at")
+    private LocalDateTime lastModifiedAt;
 }
