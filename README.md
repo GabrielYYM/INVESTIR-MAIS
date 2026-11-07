@@ -1,190 +1,208 @@
-# INVESTIR MAIS
+# Investir Mais
 
-[![Java Version](https://img.shields.io/badge/Java-21-orange?style=flat-square&logo=openjdk)](https://openjdk.org/)
-[![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.1.2-brightgreen?style=flat-square&logo=springboot)](https://spring.io/projects/spring-boot)
-[![Node.js](https://img.shields.io/badge/Node.js-22-green?style=flat-square&logo=node.js)](https://nodejs.org/)
-[![React](https://img.shields.io/badge/React-18-blue?style=flat-square&logo=react)](https://react.dev/)
-[![Vite](https://img.shields.io/badge/Vite-5-purple?style=flat-square&logo=vite)](https://vitejs.dev/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3-06B6D4?style=flat-square&logo=tailwindcss)](https://tailwindcss.com/)
+O Investir Mais é uma plataforma de educação financeira com catálogo de cursos e aulas e consulta de cotações. A aplicação reúne uma interface React e uma API Spring Boot. A gestão de carteira faz parte do escopo planejado.
 
-[![MapStruct](https://img.shields.io/badge/MapStruct-yellow?style=flat-square)](https://mapstruct.org/)
-[![SpringDoc OpenAPI](https://img.shields.io/badge/SpringDoc_OpenAPI-darkgreen?style=flat-square)](https://springdoc.org/)
-[![Lombok](https://img.shields.io/badge/Lombok-pink?style=flat-square&logo=lombok)](https://projectlombok.org/)
+[Diagramas](#diagramas) · [Execução local](#execução-local) · [API](#api) · [Testes](#testes-e-verificações) · [Frontend](frontend/investirMais/README.md) · [Privacidade](docs/lgpd/README.md)
 
-## Escopo
+## Funcionalidades
 
-O **INVESTIR MAIS** é um sistema educacional que conecta docentes, com conhecimentos na área financeira, com crianças e adolescentes, a fim de fomentar a educação financeira infantil, além de oferecer um sistema de gestão patrimonial.
+| Área | O que está disponível |
+| --- | --- |
+| Conta | Cadastro de aluno, confirmação de e-mail, login em duas etapas e recuperação de senha. A tela de perfil permite alterar o nome com a senha atual. |
+| Painel | Entrada comum aos três perfis, com cursos em destaque e consulta de cotações por ticker. |
+| Educação | Catálogo paginado, navegação por curso e aula, reprodução de vídeos do YouTube e ações de gestão conforme o perfil. |
+| Gestão patrimonial | Consulta de cotação sob demanda. Carteira, aportes e projeções estão no escopo planejado. |
 
-## Tecnologias
+| Perfil | Consultar cursos e aulas | Criar cursos | Gerenciar cursos e aulas |
+| --- | --- | --- | --- |
+| `STUDENT` | Sim | — | — |
+| `TEACHER` | Sim | Sim | Cursos próprios e suas aulas |
+| `ADMIN` | Sim | Sim | Todo o catálogo |
 
-| Tecnologia | Versão |
-|-----------|--------|
-| Java | 21 |
-| Spring Boot | 4.1.2 |
-| Spring Cloud | 2025.1.3 |
-| Spring Modulith | 2.1.1 |
-| Node.js | 22.13.1 |
-| React | 18.3.1 |
-| Vite | 5.4.8 |
-| Tailwind CSS | 3.4.13 |
-| MapStruct | 1.6.3 |
-| SpringDoc OpenAPI | 3.1.1 |
-| Lombok | 1.18.38 |
-| Resilience4j | gerenciado pelo Spring Cloud |
-| Banco de dados | PostgreSQL (runtime e testes de integração) |
+O cadastro público aceita apenas `STUDENT`. A interface exibe as ações disponíveis e a API valida o perfil e a propriedade do curso em cada operação de escrita.
 
-## Estrutura do Projeto
+## Arquitetura
 
-```
-INVEST_MAIS/
-├── .github/
-├── .gitignore
-├── .env.example
-├── pom.xml
-├── README.md
-├── basedata.sql
-├── src/
-│   ├── main/
-│   │   ├── java/
-│   │   │   └── com/repositorio/mvp/
-│   │   │       ├── MvpApplication.java
-│   │   │       ├── domain/
-│   │   │       │   ├── education/
-│   │   │       │   └── user/
-│   │   │       └── infrastructure/
-│   │   └── resources/
-│   │       └── application.properties
-│   └── test/
-└── frontend/
-    ├── package.json
-    ├── vite.config.js
-    ├── src/
-    │   ├── App.jsx
-    │   ├── components/
-    │   ├── pages/
-    │   ├── services/
-    │   └── styles/
-    ├── public/
-    ├── index.html
-    └── dist/
+| Componente | Responsabilidade |
+| --- | --- |
+| React e React Router | Rotas públicas e protegidas, formulários, painel, catálogo, aula e perfil. |
+| Axios e Orval | Axios centraliza cookies, CSRF e tratamento de falhas. Orval gera o cliente de educação a partir do contrato OpenAPI versionado. |
+| Spring Boot e Spring Security | Endpoints HTTP, validação, autorização, autenticação com senha e OTT e regras de conta, educação e cotações. |
+| PostgreSQL | Usuários, cursos, aulas, revisões Envers, tokens de uso único e registro de eventos de e-mail. |
+| Redis | Sessões indexadas por usuário, cache de cotação e contadores de tentativas de autenticação. |
+| SMTP | Entrega dos e-mails de confirmação, login e recuperação. |
+| Brapi e YouTube | Brapi fornece cotações. YouTube hospeda os vídeos referenciados pelas aulas. |
+
+| Stack | Versões e referências |
+| --- | --- |
+| Backend | Java 21, Spring Boot 4.1.2, Spring Cloud 2025.1.3, Spring Modulith 2.1.1, MapStruct 1.6.3 e SpringDoc 3.1.1. [Configuração Maven](pom.xml) |
+| Frontend | Node.js 24 na CI, React 19.3.1, React Router 8.5.1, Vite 8.3.5, Tailwind CSS 4.3.4 e Orval 8.46.0. [Dependências travadas](frontend/investirMais/package-lock.json) |
+| Infraestrutura de integração | PostgreSQL 17 e Redis 8 nos testes com Testcontainers. [Configuração da aplicação](src/main/resources/application.properties) |
+
+```text
+INVESTIR-MAIS/
+├── .github/workflows/        Verificações de backend e frontend
+├── docs/                     Diagramas, auditoria e notas de privacidade
+├── frontend/investirMais/    SPA React e contrato OpenAPI de educação
+├── src/main/java/com/repositorio/investir_mais/
+│   ├── domain/               Conta, usuários, cursos e aulas
+│   └── infrastructure/       Segurança, e-mail e cotações
+├── src/main/resources/       Configuração e SQL de inicialização
+├── src/test/                 Testes unitários, HTTP e de integração
+├── .env.example              Modelo de configuração local do backend
+└── pom.xml                   Build Maven
 ```
 
-## Como Executar
+## Diagramas
+
+As imagens mostram o comportamento implementado. Clique em cada diagrama para abrir o PNG em tamanho original. A [documentação dos diagramas](docs/diagrama-de-classes.md) relaciona cada visão ao código.
+
+### Fluxo de navegação
+
+- O cadastro público cria uma conta de aluno. O link de confirmação abre um formulário que deve ser enviado para ativar a conta. A recuperação usa um código separado para definir a nova senha.
+- Uma rota protegida verifica a sessão com `GET /auth/me`. Sem acesso, o React redireciona ao login e guarda a rota solicitada. Após os dois fatores, o navegador abre um destino interno permitido ou o painel.
+- A área autenticada oferece painel, catálogo, curso, aula e perfil. Professor e administrador veem ações de gestão conforme suas permissões. A saída encerra a sessão no backend.
+
+[![Fluxo da entrada na plataforma ao painel, catálogo, aulas, perfil e saída](docs/diagramas/fluxo-de-navegacao.png)](docs/diagramas/fluxo-de-navegacao.png)
+
+### BPMN do login com senha e OTT
+
+1. A pessoa informa e-mail e senha. O Spring valida as credenciais e exige e-mail confirmado. Nessa etapa existe uma sessão parcial.
+2. O serviço JDBC de OTT do Spring Security gera um token de uso único com validade de cinco minutos. O e-mail inclui o link **Concluir acesso** e a opção de digitar o código.
+3. Na rota `/entrar/link`, o React lê e remove o token do fragmento da URL e o envia com CSRF para `POST /auth/verify-2fa`. O código manual chama o mesmo endpoint. O token pertence à sessão que iniciou o login e deve ser usado no mesmo navegador.
+4. Após validar e consumir o OTT, o Spring combina os fatores e troca o identificador da sessão. O diagrama também mostra as saídas de recusa por credenciais ou token inválido.
+
+[![BPMN do login com raias para pessoa usuária, React e Spring](docs/diagramas/bpmn-login-ott.png)](docs/diagramas/bpmn-login-ott.png)
+
+### Classes de domínio
+
+- `User` representa a conta e seu perfil `UserRole`. A senha é persistida como hash Argon2id e fica fora das revisões Envers.
+- Cada `Course` tem um usuário proprietário e pode ter zero ou mais aulas. Cada `Lesson` pertence a exatamente um curso e guarda os endereços de mídia e miniatura.
+- A exclusão é lógica. Excluir um curso propaga a exclusão às aulas. Excluir uma conta pelo serviço também exclui logicamente os cursos e aulas vinculados.
+
+[![Classes User, Course, Lesson e UserRole com atributos e cardinalidades](docs/diagramas/classes-de-dominio.png)](docs/diagramas/classes-de-dominio.png)
+
+### Classes da aplicação
+
+- Na área de conta, `UserController` e `AuthenticationController` expõem operações de usuário e sessão. `UserService` concentra as regras da conta e usa `AccountSecurityService` para tokens de confirmação e recuperação e para revogação de sessões.
+- No catálogo, controllers chamam `CourseService` e `LessonService`. Os serviços aplicam regras de permissão e propriedade, usam repositórios JPA e mapeiam entidades para DTOs com MapStruct.
+- Em cotações, `BrapiQuoteController` chama `AssetQuoteService`, que normaliza o ticker, consulta o cache e usa o cliente HTTP da Brapi. As setas tracejadas representam dependências entre classes.
+
+[![Classes e dependências das áreas de conta, educação e cotações](docs/diagramas/classes-da-aplicacao.png)](docs/diagramas/classes-da-aplicacao.png)
+
+## Execução local
 
 ### Pré-requisitos
 
-Garante que possui as seguintes ferramentas instaladas em sua máquina:
-- **Java 21 ou superior** (JDK)
-- **Node.js 20 ou superior** e **npm**
-- **Git**
+- Git, JDK 21 e Node.js 24 com npm. O Maven Wrapper está no repositório.
+- PostgreSQL e Redis em execução. Docker é uma opção para iniciar os serviços locais e é usado pelos testes de integração.
+- SMTP configurado para receber confirmação de cadastro, link de login e código de recuperação. Use uma caixa de e-mail à qual tenha acesso.
 
----
-
-### 1. Clonar o Repositório
+### 1. Baixar o projeto e iniciar os serviços
 
 ```bash
-git clone <URL_DO_REPOSITORIO>
-cd INVESTIR-MAIS/investir_mais
+git clone https://github.com/GabrielYYM/INVESTIR-MAIS.git
+cd INVESTIR-MAIS
 ```
 
----
+Se já houver PostgreSQL e Redis disponíveis, configure seus endereços no passo seguinte. Para criar containers locais, com acesso restrito à máquina:
 
-### Redis: sessões e cache
-
-O backend requer Redis em execução. Se o container `redis` já existe, inicie-o com `docker start redis`. Para criar um ambiente local novo:
-
-```powershell
-docker run -d --name redis -p 127.0.0.1:6379:6379 -v investir-mais-redis:/data redis:8 redis-server --appendonly yes
-docker exec redis redis-cli PING
+```bash
+docker run -d --name investir-mais-postgres -p 127.0.0.1:5432:5432 -e POSTGRES_DB=investir_mais -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=admin -v investir-mais-postgres:/var/lib/postgresql/data postgres:17-alpine
+docker run -d --name investir-mais-redis -p 127.0.0.1:6379:6379 -v investir-mais-redis:/data redis:8-alpine redis-server --appendonly yes
+docker exec investir-mais-postgres pg_isready -U postgres -d investir_mais
+docker exec investir-mais-redis redis-cli PING
 ```
 
-O resultado de `PING` deve ser `PONG`. Configure `REDIS_HOST`, `REDIS_PORT`, `REDIS_USERNAME`, `REDIS_PASSWORD` e `REDIS_SSL_ENABLED` conforme `.env.example`. Para o backend no Windows, o host padrão é `localhost`; em containers na mesma rede, use o nome do serviço Redis. Em produção, use rede restrita, credenciais e TLS conforme o provedor.
+A senha `admin` acima é exclusiva do exemplo local. Após a criação, use `docker start investir-mais-postgres investir-mais-redis` para iniciar os mesmos containers.
 
-`@EnableCaching` fica na classe principal, sem uma classe de configuração adicional. O Spring Cache armazena apenas as respostas de cotação da Brapi, por ticker normalizado, durante `QUOTE_CACHE_TTL` (padrão `1m`). Exceções e respostas vazias não são armazenadas. O cache fica no servidor; a resposta HTTP continua com `Cache-Control: no-store`. Os valores são strings serializadas pelo mecanismo padrão do Spring Data Redis.
+### 2. Configurar e executar o backend
 
-As sessões usam o repositório Redis com índice por usuário, permitindo encerrar todas as sessões ao alterar senha ou e-mail. `SESSION_TIMEOUT` controla a inatividade (padrão `30m`). A migração não reaproveita as sessões antigas do PostgreSQL: usuários precisarão entrar novamente. Cadastro, senhas com hash Argon2, códigos de login e tokens de confirmação/recuperação continuam no PostgreSQL; os limites de tentativas usam Redis. Cache e sessões dependem da disponibilidade do Redis, sem fallback em memória.
+Copie [`.env.example`](.env.example) para `.env` na raiz e substitua os valores de exemplo. Para usar o PostgreSQL dos comandos acima, configure `DB_URL=jdbc:postgresql://localhost:5432/investir_mais`, `DB_USERNAME=postgres` e `DB_PASSWORD=admin`. Variáveis também podem ser fornecidas no ambiente do processo.
 
-No RedisInsight, procure `investir-mais:cache:cotacoes::*` para cotações e `investir-mais:session:*` para sessões. A mesma consulta de cotação dentro do prazo reaproveita o resultado; após a expiração, consulta novamente a Brapi. Evite operações globais como `FLUSHDB`, que também removeriam as sessões. As chaves das sessões podem ter expiração técnica superior ao prazo de inatividade para permitir a limpeza de índices; a validade é controlada pelo Spring Session.
+| Variáveis | Uso local |
+| --- | --- |
+| `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | Acesso ao PostgreSQL. |
+| `REDIS_HOST`, `REDIS_PORT` | Padrão `localhost:6379`. Configure usuário, senha e TLS se o Redis exigir. |
+| `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD` | Dados do SMTP. Ajuste `MAIL_AUTH` e `MAIL_STARTTLS` conforme o servidor. |
+| `APP_PUBLIC_BASE_URL` | Base pública dos links de confirmação de e-mail. Padrão `http://localhost:8080`. |
+| `APP_CORS_ALLOWED_ORIGIN` | Origem da SPA e base do link de login. Padrão `http://localhost:5173`. |
+| `BRAPI_TOKEN` | Token da Brapi no backend, quando exigido pelo acesso usado para cotar. |
+| `SESSION_TIMEOUT`, `QUOTE_CACHE_TTL` | Inatividade da sessão e expiração do cache. Padrões `30m` e `1m`. |
 
-O limite de autenticação usa Redis com um script Lua atômico no `SecurityFilter`: `AUTH_RATE_LIMIT_CAPACITY` requisições por IP e endpoint a cada `AUTH_RATE_LIMIT_PERIOD`, com namespace `AUTH_RATE_LIMIT_NAMESPACE` (padrão `investir-mais:rate-limit`). Requisições bloqueadas recebem HTTP 429 e `Retry-After`; o contador expira automaticamente e tentativas bloqueadas não prolongam a janela. Se Redis estiver indisponível, o filtro retorna HTTP 503 sem liberar a tentativa. A tabela antiga `app_auth_rate_limit` deixa de ser usada e não é mais criada; bancos existentes não têm dados ou tabelas removidos automaticamente.
+No PowerShell:
 
-Tokens de confirmação/recuperação mantêm uso único e rollback no PostgreSQL. A emissão para contas existentes é serializada por usuário para que reenvios simultâneos não deixem vários tokens da mesma finalidade ativos. A atualização de perfil exige `currentPassword` no JSON, além de `name`, `email` e `age` opcional. O frontend já envia a senha atual.
-
-Cursos e aulas usam soft delete: excluir preenche `deleted_at`, preserva os dados e oculta os registros das consultas JPA, inclusive buscas por ID, paginação e contagens. Excluir um curso também exclui logicamente suas aulas na mesma transação. O Hibernate gerencia a coluna com `@SoftDelete`; a configuração atual `ddl-auto=update` adiciona a coluna nas tabelas existentes, mantendo os registros com `deleted_at` nulo como ativos. Não há endpoint de restauração. URLs de aulas são validadas na entrada HTTP, e descrições e URLs são armazenadas como texto sem o limite anterior de 255 caracteres.
-
-Usuários também usam soft delete com `deleted_at`. `DELETE /api/users/{id}` exclui somente a própria conta autenticada e exige JSON com `currentPassword`, além dos dois fatores de autenticação e do token CSRF usados nas demais escritas. A exclusão preserva os registros do usuário, exclui logicamente seus cursos e aulas na mesma transação, invalida os tokens de conta/login e encerra todas as sessões. Usuários excluídos ficam ocultos das buscas JPA, não conseguem entrar nem solicitar recuperação ou confirmação de e-mail. O e-mail permanece reservado pela restrição de unicidade, inclusive para novos cadastros e alterações de perfil. A coluna é adicionada ao banco existente por `ddl-auto=update` na próxima inicialização; contas existentes continuam ativas com `deleted_at` nulo. Na entidade `User`, `@SQLDelete` substitui o DELETE por UPDATE e `@SQLRestriction` filtra as consultas, preservando a auditoria existente: a combinação de `@SoftDelete` com a auditoria nativa foi verificada nos testes e ainda executa DELETE físico no Hibernate 7.4.5 usado pelo projeto. Exclusões de usuários devem passar por `UserService.deleteAccount`; SQL nativo e operações em lote como `deleteAllInBatch` não executam a cascata nem a revogação de acesso.
-
-A limpeza de tokens expirados de conta e de login ocorre a cada hora no `AccountSecurityService`, por `@Scheduled` gerenciado pelo Spring. O agendador interno de `JdbcOneTimeTokenService` é desativado para evitar uma thread remanescente no encerramento com a versão atual do Spring Security. A expiração é verificada no consumo, independentemente do horário da limpeza.
-
-### 2. Executar o Backend (Spring Boot)
-
-O backend executa na porta `8080` e usa PostgreSQL e Redis. Os testes de integração iniciam PostgreSQL e Redis temporários com Testcontainers e Docker, sem usar os dados locais.
-
-**No Windows (PowerShell ou Command Prompt):**
 ```powershell
+if (-not (Test-Path -LiteralPath .env)) { Copy-Item .env.example .env }
+# Edite .env com os dados locais antes de iniciar.
 .\mvnw.cmd spring-boot:run
 ```
 
-**No Linux / macOS:**
+No Linux ou macOS:
+
 ```bash
-chmod +x mvnw
-./mvnw spring-boot:run
+test -e .env || cp .env.example .env
+# Edite .env com os dados locais antes de iniciar.
+bash mvnw spring-boot:run
 ```
 
-Configure as variáveis do backend no ambiente ou em `.env` (arquivo ignorado pelo Git), usando `.env.example` como referência. Para um banco PostgreSQL local, configure `DB_URL`, `DB_USERNAME` e `DB_PASSWORD`.
+O backend sobe em [localhost:8080](http://localhost:8080) com perfil `dev` por padrão.
 
-O backend usa PostgreSQL em execução normal e nos testes de integração específicos desse banco. Esses testes requerem Docker em execução; sem Docker, são ignorados. Os testes isolados do fluxo de login executam os filtros reais do Spring Security e o serviço JDBC nativo com H2 em memória e um cliente Redis simulado, sem Docker. Os testes de cache, rate limit, sessões e ciclo da conta usam Redis real em containers temporários. Os testes de tokens verificam consumo único, emissão concorrente e rollback; os testes completos da conta verificam a integração dessas operações com JPA e PostgreSQL. Testes de controllers carregam apenas a configuração HTTP, sem habilitar persistência ou cache da classe principal. As sessões são armazenadas no Redis; o script `schema-postgresql.sql` continua criando as tabelas de tokens e outras tabelas auxiliares no PostgreSQL.
+### 3. Executar o frontend
 
-Autenticação da aplicação web usa Spring Security com MFA nativo e sessão HTTP armazenada pelo Spring Session Redis (cookie `SESSION` HttpOnly). `POST /auth/login` recebe e-mail e senha como formulário (`formLogin`) e, após validar as credenciais, gera um token de uso único pelo serviço JDBC do Spring e envia o e-mail automaticamente. `POST /auth/code` fica disponível para reenvio durante a autenticação parcial. A conta de destino vem exclusivamente da sessão autenticada por senha. `POST /auth/verify-2fa` recebe o parâmetro de formulário `token` (`oneTimeTokenLogin`), válido por cinco minutos. Somente a combinação dos fatores senha e token para o mesmo usuário libera as rotas protegidas, incluindo `GET /auth/me`. Os POSTs de login, reenvio e confirmação retornam 204 quando processados com sucesso; o frontend consulta `/auth/me` após confirmar o token. `POST /auth/logout` é processado pelo filtro nativo do Spring e invalida a sessão. Um novo envio de senha reinicia os fatores, exigindo nova confirmação por e-mail. As chamadas de escrita consultam `/csrf` para obter um token atualizado, inclusive após login e logout. O backend aceita a origem configurada por `APP_CORS_ALLOWED_ORIGIN` (padrão `http://localhost:5173`). O login exige que o e-mail já tenha sido verificado. As senhas são armazenadas com Argon2. Cadastro, confirmação de e-mail e recuperação de senha continuam como regras da aplicação, com tokens separados dos tokens de login. As alterações de conta e o consumo dos tokens usam uma transação; os e-mails de confirmação e recuperação são enviados somente após o commit. `POST /api/users/resend-verification` recebe JSON com `email` e devolve uma resposta genérica, inclusive para contas inexistentes ou já verificadas. Alterar o e-mail exige nova confirmação e encerra todas as sessões do endereço anterior. Alterar ou recuperar a senha também encerra todas as sessões e invalida os tokens pendentes. Cadastro, recuperação, redefinição e reenvio possuem limite de requisições por IP e endpoint.
-
-O cliente da Brapi é registrado por `@ImportHttpServices` no grupo `brapi`. URL e timeouts usam `spring.http.serviceclient.brapi.*`; o cabeçalho de autorização é aplicado ao grupo, e o circuit breaker continua protegendo as chamadas. Parâmetros HTTP usam Bean Validation, e as respostas de erro seguem `ProblemDetail` pelo tratamento padrão do Spring MVC.
-
-Tokens de confirmação e recuperação são persistidos pelo `AccountSecurityService`, via `JdbcClient` do Spring, na tabela existente `app_one_time_token`. O mesmo serviço concentra a revogação de sessões Redis e a remoção de códigos de login pendentes, sem interfaces intermediárias ou entidade/repositório JPA para tokens. O consumo usa bloqueio pessimista dentro da transação da conta, preservando uso único e rollback. Os tokens de login continuam no serviço JDBC nativo do Spring Security.
-
-Após validar a senha, o e-mail de login inclui **Concluir acesso** e um código para preenchimento manual. O link abre `/entrar/link` na origem configurada em `APP_CORS_ALLOWED_ORIGIN`. O React lê o token do fragmento da URL e o envia por POST com CSRF. O token fica vinculado à sessão que iniciou o login, por isso o link deve ser aberto no mesmo navegador.
-
-Os eventos de e-mail de confirmação e recuperação usam o registro persistente do Spring Modulith (JPA). O registro é gravado na transação da conta e removido após entrega; falhas são reprocessadas pelo próprio `AuthenticationEmailHandler` a cada `ACCOUNT_MAIL_RETRY_DELAY` (padrão `30s`) e publicações pendentes são recuperadas ao reiniciar. Antes de enviar, o listener verifica se o token ainda está ativo: tokens expirados, consumidos ou substituídos são descartados. SMTP pode entregar uma mensagem antes de uma falha no processo ser registrada, portanto um reprocessamento pode produzir uma mensagem duplicada. E-mails de login continuam sendo disparados pelo handler do fluxo de segurança.
-
-O cadastro público retorna `202` com resposta genérica, inclusive para e-mails já cadastrados. O link de confirmação abre um formulário e só ativa a conta após o envio via `POST` com CSRF. Novos tokens de confirmação e recuperação são armazenados como SHA-256 na tabela de validação. `ACCOUNT_EMAIL_COOLDOWN` controla o intervalo mínimo entre solicitações por conta e finalidade, com padrão de 30 segundos. A senha é excluída das revisões de auditoria e a inicialização PostgreSQL remove a coluna de hashes históricos da tabela de revisões. As sessões Redis são revogadas após o commit da alteração de conta.
-
-As propriedades de limite de requisições, URLs e intervalo de reenvio usam `@ConfigurationProperties` com validação na inicialização. Configurações inválidas interrompem a inicialização em vez de falhar apenas durante uma requisição.
-
-Os tipos `@ConfigurationProperties` são registrados pelo `@ConfigurationPropertiesScan` da aplicação. URL e timeouts da Brapi usam diretamente `spring.http.serviceclient.brapi.*`, com as variáveis `BRAPI_BASE_URL`, `BRAPI_CONNECT_TIMEOUT` e `BRAPI_READ_TIMEOUT`. As restrições TEACHER/ADMIN para criar, alterar e excluir cursos e aulas ficam nos serviços com `@PreAuthorize`; as verificações de propriedade continuam nos serviços. Erros de validação HTTP usam o `ProblemDetail` padrão do Spring MVC, sem selecionar manualmente a primeira mensagem de campo.
-
-Para executar localmente com as opções de desenvolvimento:
-
-```powershell
-$env:SPRING_PROFILES_ACTIVE = "dev"
-./mvnw.cmd spring-boot:run
-```
-
-Em produção, ative o perfil `prod` e forneça `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `REDIS_HOST`, `REDIS_PASSWORD` e `APP_PUBLIC_BASE_URL`. Use a origem pública HTTPS sem caminho e configure `APP_CORS_ALLOWED_ORIGIN` quando a origem da SPA for diferente. O perfil `prod` habilita cookies `Secure`, usa TLS no Redis por padrão, exige STARTTLS no SMTP e desativa Swagger e `/v3/api-docs`. Se houver proxy, aceite cabeçalhos de encaminhamento somente de intermediários confiáveis que sobrescrevam os valores enviados pelo cliente.
-
-As configurações dos perfis `dev`, `prod` e `test` ficam em documentos separados dentro de `src/main/resources/application.properties`.
-
----
-
-### 3. Executar o Frontend (React + Vite)
-
-Em um novo terminal, navegue até o diretório do frontend e instale as dependências:
+Em outro terminal, a partir da raiz:
 
 ```bash
 cd frontend/investirMais
 npm ci
-```
-
-O Vite encaminha `/api`, `/auth` e `/csrf` ao Spring em `http://localhost:8080`. Se o backend estiver em outro endereço, defina `VITE_DEV_API_TARGET` no `.env` do frontend. Configure o token da Brapi no backend.
-
-Inicie a aplicação no modo de desenvolvimento:
-```bash
 npm run dev
 ```
 
-- **Aplicação Web Frontend:** `http://localhost:5173`
+Abra [localhost:5173](http://localhost:5173). O proxy do Vite encaminha `/api`, `/auth` e `/csrf` para o backend. Para testar o acesso, cadastre um aluno, confirme o e-mail e entre com a senha. Abra **Concluir acesso** no mesmo navegador ou use o código manual. Veja opções de build, rotas e contrato no [README do frontend](frontend/investirMais/README.md).
 
-Para configuração de produção e publicação de aulas, consulte o [README do frontend](./frontend/investirMais/README.md).
+## API
 
----
+No perfil `dev`, o Swagger UI fica em [localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html) e a descrição OpenAPI em [localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs). Os endpoints de login, OTT e logout pertencem aos filtros de segurança.
 
-## Materiais Complementares
-[Documentação técnica e diagrama](./docs/diagrama-de-classes.md) · [Notas de privacidade](./docs/lgpd/README.md)
+| Endpoint ou grupo | Responsabilidade |
+| --- | --- |
+| `GET /csrf` | Disponibiliza o token CSRF para operações de escrita. |
+| `POST /auth/login`, `POST /auth/code`, `POST /auth/verify-2fa` | Início por senha, reenvio na sessão parcial e confirmação do OTT. Login e verificação usam parâmetros de formulário. |
+| `GET /auth/me`, `POST /auth/logout` | Identifica o usuário com sessão completa e encerra a sessão. |
+| `/api/users` | Cadastro, verificação de e-mail, reenvio, recuperação e operações da própria conta. |
+| `/api/courses` | Listagem paginada, detalhe, filtro por professor e gestão de cursos. |
+| `/api/lessons` | Aulas por curso, detalhe e operações de gestão. |
+| `GET /api/assets/{ticker}/quote` | Cotação via Brapi, com cache por ticker normalizado. |
+
+### Sessões, dados e operação
+
+- O cookie `SESSION` é `HttpOnly` e usa `SameSite=Lax`. O cliente consulta `/csrf` para preparar escritas, inclusive quando o token é renovado entre etapas da autenticação.
+- O Redis indexa sessões por usuário para revogá-las após alterações de senha ou e-mail e após exclusão de conta. O cache de cotações é independente das sessões. Respostas vazias e exceções não são armazenadas.
+- O limite de autenticação usa Redis por IP e rota e também por conta em `/auth/login`. O padrão é 10 solicitações por janela de um minuto. O limite retorna `429` com `Retry-After`. Se o Redis estiver indisponível, o filtro retorna `503`.
+- Tokens de login usam `one_time_tokens`. Tokens de confirmação e recuperação ficam em `app_one_time_token`, com hash SHA-256 para novas emissões e consumo transacional. O Spring Modulith registra e reprocessa eventos de confirmação e recuperação. O e-mail de login segue o fluxo assíncrono da autenticação.
+- A API exige a senha atual para excluir a própria conta. A exclusão lógica preserva o registro e mantém seu e-mail reservado. As operações do serviço cuidam da cascata e da revogação de acesso.
+
+### Produção
+
+Use o perfil `prod` com PostgreSQL e Redis próprios, credenciais de SMTP e HTTPS. Configure `APP_PUBLIC_BASE_URL` como a origem pública que atende à confirmação de e-mail e `APP_CORS_ALLOWED_ORIGIN` como a origem pública da SPA quando forem diferentes. O perfil ativa cookies `Secure`, requer STARTTLS no SMTP, habilita TLS no Redis por padrão e desativa Swagger e `/v3/api-docs`.
+
+O esquema das entidades usa `ddl-auto=update` e o SQL auxiliar fica em [`schema-postgresql.sql`](src/main/resources/schema-postgresql.sql). As opções de publicação da SPA e do proxy estão no [README do frontend](frontend/investirMais/README.md#publicação).
+
+## Testes e verificações
+
+| Verificação | Comando |
+| --- | --- |
+| Backend no Windows | `.\mvnw.cmd -B verify` na raiz |
+| Backend no Linux ou macOS | `bash mvnw -B verify` na raiz |
+| Build do frontend | `npm ci` e `npm run build` em `frontend/investirMais` |
+| Auditoria de dependências npm | `npm audit --audit-level=high` em `frontend/investirMais` |
+
+A suíte inclui testes do fluxo de login com H2 e Redis simulado, além de testes de integração com PostgreSQL e Redis via Docker. Os testes com Testcontainers configurados com `disabledWithoutDocker` são ignorados quando Docker está indisponível. O [workflow de CI](.github/workflows/checks.yml) executa as verificações em pushes e pull requests.
+
+## Documentação complementar
+
+- [Frontend, rotas e publicação](frontend/investirMais/README.md)
+- [Diagramas e referências ao código](docs/diagrama-de-classes.md)
+- [Auditoria de frontend e segurança](docs/auditoria-frontend-seguranca.md)
+- [Privacidade e dados pessoais](docs/lgpd/README.md)
+- [Licença](LICENSE)
