@@ -11,6 +11,7 @@ import Home, { dashboardLoader, quoteLoader } from "./pages/Home.jsx";
 import Education, { catalogLoader } from "./pages/Education.jsx";
 import Course, { courseLoader } from "./pages/Course.jsx";
 import Admin, { adminLoader } from "./pages/Admin.jsx";
+import Terms from "./pages/Terms.jsx";
 import { catalogAction, courseAction } from "./services/educationData.js";
 
 async function requireSession({ request }) {
@@ -50,6 +51,9 @@ export const appRoutes = [
   { path: "cadastro", Component: SignUp },
   { path: "confirmar-email", Component: VerifyEmail },
   { path: "recuperar-senha", Component: ForgotPassword },
+  { path: "termos", Component: Terms },
+  { path: "termos-de-uso", Component: Terms },
+  { path: "politica-de-privacidade", Component: Terms },
   { path: "*", Component: PageError },
 ];
 
