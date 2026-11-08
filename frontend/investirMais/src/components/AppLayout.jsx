@@ -3,6 +3,7 @@ import { logout } from "../services/authService.js";
 import { apiError } from "../services/api.js";
 import Sidebar from "./Sidebar.jsx";
 import Topbar from "./Topbar.jsx";
+import Footer from "./Footer.jsx";
 import { Notice } from "./PageState.jsx";
 
 export async function signOut() {
@@ -25,13 +26,16 @@ export default function AppLayout() {
     <div className="min-h-dvh lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
       <a href="#conteudo" className="sr-only focus:not-sr-only focus:fixed focus:z-30 focus:bg-brand focus:p-3 focus:text-canvas">Pular para o conteúdo</a>
       <Sidebar logout={signOutForm} user={user} />
-      <div className="min-w-0">
-        <Topbar user={user} />
-        <div className={navigation.state === "loading" ? "h-0.5 animate-pulse bg-brand" : "h-0.5"} aria-hidden="true" />
-        <main id="conteudo" className="mx-auto max-w-6xl space-y-8 px-4 py-6 sm:p-8">
-          {signOutForm.data?.error && <Notice error>{signOutForm.data.error}</Notice>}
-          <Outlet />
-        </main>
+      <div className="flex min-w-0 min-h-dvh flex-col justify-between">
+        <div className="flex-1">
+          <Topbar user={user} />
+          <div className={navigation.state === "loading" ? "h-0.5 animate-pulse bg-brand" : "h-0.5"} aria-hidden="true" />
+          <main id="conteudo" className="mx-auto max-w-6xl space-y-8 px-4 py-6 sm:p-8">
+            {signOutForm.data?.error && <Notice error>{signOutForm.data.error}</Notice>}
+            <Outlet />
+          </main>
+        </div>
+        <Footer />
       </div>
     </div>
   );

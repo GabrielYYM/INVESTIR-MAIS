@@ -110,8 +110,15 @@ export default function Login() {
             <summary className="cursor-pointer text-sm font-medium text-muted hover:text-ink">Usar código manualmente</summary>
             <form onSubmit={verify} className="mt-4 space-y-4" noValidate>
               {errors.root && <Notice error>{errors.root.message}</Notice>}
-              <Field label="Código de verificação" autoComplete="one-time-code" maxLength={64} error={errors.code?.message}
-                {...verification.register("code", { required: "Informe o código recebido.", setValueAs: (value) => value.trim() })} />
+              <Field
+                label="Código de verificação"
+                autoComplete="one-time-code"
+                maxLength={64}
+                placeholder="Insira o código de verificação recebido"
+                hint="Caso prefira, você também pode clicar diretamente no link enviado para o seu e-mail."
+                error={errors.code?.message}
+                {...verification.register("code", { required: "Informe o código recebido.", setValueAs: (value) => value.trim() })}
+              />
               <button className="button-primary w-full" disabled={isSubmitting}>{isSubmitting ? "Confirmando…" : "Confirmar acesso"}</button>
             </form>
           </details>
@@ -135,9 +142,24 @@ export default function Login() {
             </div>
           )}
           {resendStatus && <Notice>{resendStatus}</Notice>}
-          <Field label="E-mail" icon={Mail} type="email" autoComplete="username" error={errors.email?.message} {...credentials.register("email", emailRules)} />
-          <Field label="Senha" icon={Lock} type="password" autoComplete="current-password" error={errors.password?.message}
-            {...credentials.register("password", { required: "Informe sua senha." })} />
+          <Field
+            label="E-mail"
+            icon={Mail}
+            type="email"
+            autoComplete="username"
+            placeholder="seu.email@exemplo.com"
+            error={errors.email?.message}
+            {...credentials.register("email", emailRules)}
+          />
+          <Field
+            label="Senha"
+            icon={Lock}
+            type="password"
+            autoComplete="current-password"
+            placeholder="Digite sua senha de acesso"
+            error={errors.password?.message}
+            {...credentials.register("password", { required: "Informe sua senha." })}
+          />
           <div className="flex items-center justify-between text-xs">
             <button
               type="button"

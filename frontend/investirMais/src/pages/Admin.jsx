@@ -2,7 +2,6 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   BookOpen,
-  CheckCircle2,
   ChevronDown,
   Clock,
   ExternalLink,
@@ -86,8 +85,7 @@ export default function Admin() {
     const admins = users.filter((u) => u.role === "ADMIN").length;
     const teachers = users.filter((u) => u.role === "TEACHER").length;
     const students = users.filter((u) => u.role === "STUDENT").length;
-    const verified = users.filter((u) => u.emailVerified).length;
-    return { total, admins, teachers, students, verified };
+    return { total, admins, teachers, students };
   }, [users]);
 
   const filteredUsers = useMemo(() => {
@@ -122,7 +120,7 @@ export default function Admin() {
             <Users size={18} className="text-brand" />
           </div>
           <p className="mt-2 text-2xl font-bold">{stats.total}</p>
-          <span className="text-xs text-muted">{stats.verified} confirmados</span>
+          <span className="text-xs text-muted">{stats.students} alunos</span>
         </div>
 
         <div className="panel p-5">
@@ -213,7 +211,6 @@ export default function Admin() {
                 <th className="px-4 py-3">Usuário</th>
                 <th className="px-4 py-3">Papel</th>
                 <th className="px-4 py-3">Idade</th>
-                <th className="px-4 py-3">E-mail Confirmado</th>
                 <th className="px-4 py-3">Data de Cadastro</th>
                 <th className="px-4 py-3 text-right">Ações</th>
               </tr>
@@ -221,7 +218,7 @@ export default function Admin() {
             <tbody className="divide-y divide-line">
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-muted">
+                  <td colSpan={5} className="p-8 text-center text-muted">
                     Nenhum usuário encontrado com os filtros selecionados.
                   </td>
                 </tr>
@@ -253,17 +250,6 @@ export default function Admin() {
                       </td>
                       <td className="px-4 py-3 text-muted">
                         {user.age != null ? `${user.age} anos` : "—"}
-                      </td>
-                      <td className="px-4 py-3">
-                        {user.emailVerified ? (
-                          <span className="inline-flex items-center gap-1 text-positive text-xs">
-                            <CheckCircle2 size={14} /> Confirmado
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-amber-400 text-xs">
-                            <Clock size={14} /> Pendente
-                          </span>
-                        )}
                       </td>
                       <td className="px-4 py-3 text-muted">
                         {formatDate(user.createdAt)}
@@ -398,33 +384,6 @@ function RoleChangeDialog({ user, onClose, onSuccess }) {
             Novo Papel
           </label>
 
-          <div className="mt-1.5 grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => setSelectedRole("STUDENT")}
-              disabled={loading}
-              className={`flex items-center justify-center gap-2 rounded-xl border py-2.5 px-3 text-sm font-semibold transition-all ${
-                selectedRole === "STUDENT"
-                  ? "border-sky-500 bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/40"
-                  : "border-line bg-canvas text-muted hover:border-white/20 hover:text-zinc-200"
-              }`}
-            >
-              Aluno
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedRole("TEACHER")}
-              disabled={loading}
-              className={`flex items-center justify-center gap-2 rounded-xl border py-2.5 px-3 text-sm font-semibold transition-all ${
-                selectedRole === "TEACHER"
-                  ? "border-purple-500 bg-purple-500/20 text-purple-400 ring-1 ring-purple-500/40"
-                  : "border-line bg-canvas text-muted hover:border-white/20 hover:text-zinc-200"
-              }`}
-            >
-              Professor
-            </button>
-          </div>
-
           <div className="relative mt-2">
             <select
               id="role-select"
@@ -553,20 +512,15 @@ function AuditHistoryDialog({ user, onClose }) {
             <table className="w-full text-left text-xs sm:text-sm">
               <thead className="border-b border-line bg-raised font-medium text-muted">
                 <tr>
-                  <th className="px-4 py-2.5">Rev #</th>
                   <th className="px-4 py-2.5">Data/Hora</th>
                   <th className="px-4 py-2.5">Operação</th>
                   <th className="px-4 py-2.5">Nome no Snapshot</th>
                   <th className="px-4 py-2.5">Papel no Snapshot</th>
-                  <th className="px-4 py-2.5">Verificado</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
                 {auditList.map((entry) => (
                   <tr key={entry.revisionNumber} className="hover:bg-white/[0.02]">
-                    <td className="px-4 py-2.5 font-mono font-bold text-brand">
-                      #{entry.revisionNumber}
-                    </td>
                     <td className="px-4 py-2.5 text-muted whitespace-nowrap">
                       {formatDate(entry.timestamp)}
                     </td>
@@ -594,13 +548,6 @@ function AuditHistoryDialog({ user, onClose }) {
                       ) : (
                         "—"
                       )}
-                    </td>
-                    <td className="px-4 py-2.5 text-muted">
-                      {entry.user?.emailVerified == null
-                        ? "—"
-                        : entry.user.emailVerified
-                        ? "Sim"
-                        : "Não"}
                     </td>
                   </tr>
                 ))}
