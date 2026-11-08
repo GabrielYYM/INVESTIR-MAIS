@@ -1,0 +1,22 @@
+{
+	admin off
+}
+
+:{$PORT:8080} {
+	root * /srv
+	encode gzip
+
+	# Same-origin proxy to the backend over Railway private networking,
+	# so the SESSION and XSRF-TOKEN cookies stay first-party.
+	@api path /api/* /auth/* /csrf /csrf/*
+	handle @api {
+		reverse_proxy {$BACKEND_URL} {
+			header_up Host {host}
+		}
+	}
+
+	handle {
+		try_files {path} /index.html
+		file_server
+	}
+}
