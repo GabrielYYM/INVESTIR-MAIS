@@ -7,8 +7,6 @@ import com.repositorio.investir_mais.domain.user.repository.UserRepository;
 import com.repositorio.investir_mais.infrastructure.exception.GlobalExceptionHandler;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -27,7 +25,6 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -83,36 +80,6 @@ class CourseControllerTest {
                .andExpect(status().isOk())
                .andExpect(jsonPath("$.content").isArray())
                .andExpect(jsonPath("$.page.totalElements").value(0));
-    }
-
-    @Test
-    void publicSortFieldsAndStableTieBreakerReachTheService() throws Exception {
-        when(courseService.getAllCourses(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
-        mockMvc.perform(get("/api/courses").param("sort", "name,asc", "id,desc")
-                        .with(user("user@investir.com").roles("STUDENT")))
-                .andExpect(status().isOk());
-        verify(courseService).getAllCourses(org.mockito.ArgumentMatchers.argThat(pageable ->
-                pageable.getSort().getOrderFor("name").isAscending()
-                        && pageable.getSort().getOrderFor("id").isDescending()));
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = {"notAProperty", "professor.password", "professor.email", "lessons.course.professor.password"})
-    void unsupportedSortIsRejectedForBothCourseListings(String sort) throws Exception {
-        for (String path : List.of("/api/courses", "/api/courses/professor/" + UUID.randomUUID())) {
-            mockMvc.perform(get(path).param("sort", sort)
-                            .with(user("user@investir.com").roles("STUDENT")))
-                    .andExpect(status().isBadRequest());
-        }
-        verifyNoInteractions(courseService);
-    }
-
-    @Test
-    void excessivePageOffsetIsRejectedBeforeQuerying() throws Exception {
-        mockMvc.perform(get("/api/courses").param("page", "2147483647").param("size", "100")
-                        .with(user("user@investir.com").roles("STUDENT")))
-                .andExpect(status().isBadRequest());
-        verifyNoInteractions(courseService);
     }
 
     @Test

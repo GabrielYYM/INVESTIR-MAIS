@@ -6,6 +6,7 @@ function mediaAddress(value) {
     const url = new URL(value);
     if (["https:", "http:"].includes(url.protocol) && !url.username && !url.password) return url;
   } catch {
+    // A URL is optional when displaying older records.
   }
   return null;
 }

@@ -68,7 +68,7 @@ class CourseServiceTest {
         CourseDTO.Request request = new CourseDTO.Request("Finanças Pessoais", "Descrição do Curso");
         CourseDTO.Response responseDTO = new CourseDTO.Response(courseId, "Finanças Pessoais", "Descrição do Curso", professorId);
 
-        when(userService.findByEmailForUpdate("prof@investir.com")).thenReturn(professor);
+        when(userService.findByEmail("prof@investir.com")).thenReturn(professor);
         when(courseMapper.toEntity(request)).thenReturn(course);
         when(courseRepository.save(course)).thenReturn(course);
         when(courseMapper.toDTO(course)).thenReturn(responseDTO);
@@ -136,7 +136,7 @@ class CourseServiceTest {
     void updateCourse_WhenUserIsNotOwner_ShouldThrowForbidden() {
         CourseDTO.Request request = new CourseDTO.Request("Finanças Avançadas", "Nova Descrição");
         when(userService.findByEmail("outro@investir.com")).thenReturn(outroProfessor);
-        when(courseRepository.findByIdForUpdate(courseId)).thenReturn(Optional.of(course));
+        when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class, 
             () -> courseService.updateCourse(courseId, request, "outro@investir.com"));
@@ -151,7 +151,7 @@ class CourseServiceTest {
         CourseDTO.Response responseDTO = new CourseDTO.Response(courseId, "Finanças Avançadas", "Nova Descrição", professorId);
 
         when(userService.findByEmail("prof@investir.com")).thenReturn(professor);
-        when(courseRepository.findByIdForUpdate(courseId)).thenReturn(Optional.of(course));
+        when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
         when(courseMapper.toDTO(course)).thenReturn(responseDTO);
 
         CourseDTO.Response result = courseService.updateCourse(courseId, request, "prof@investir.com");
@@ -168,7 +168,7 @@ class CourseServiceTest {
         admin.setId(UUID.randomUUID());
         admin.setRole(UserRole.ADMIN);
         when(userService.findByEmail("admin@investir.com")).thenReturn(admin);
-        when(courseRepository.findByIdForUpdate(courseId)).thenReturn(Optional.of(course));
+        when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
         when(courseMapper.toDTO(course)).thenReturn(new CourseDTO.Response(
             courseId, request.name(), request.description(), professorId));
 
@@ -181,7 +181,7 @@ class CourseServiceTest {
     @Test
     void deleteCourse_OnSuccess_ShouldDelete() {
         when(userService.findByEmail("prof@investir.com")).thenReturn(professor);
-        when(courseRepository.findByIdForUpdate(courseId)).thenReturn(Optional.of(course));
+        when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
 
         courseService.deleteCourse(courseId, "prof@investir.com");
 
@@ -191,7 +191,7 @@ class CourseServiceTest {
     @Test
     void deleteCourse_WhenUserIsNotOwner_ShouldThrowForbidden() {
         when(userService.findByEmail("outro@investir.com")).thenReturn(outroProfessor);
-        when(courseRepository.findByIdForUpdate(courseId)).thenReturn(Optional.of(course));
+        when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class, 
             () -> courseService.deleteCourse(courseId, "outro@investir.com"));

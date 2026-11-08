@@ -168,7 +168,7 @@ class RedisInfrastructureIntegrationTest {
     }
 
     private void awaitQuoteCacheEntry() {
-        // A escrita do cache é assíncrona no Spring Data Redis 4.1.
+        // Spring Data Redis 4.1 writes cache entries asynchronously by default.
         await().atMost(Duration.ofSeconds(4)).untilAsserted(() ->
                 assertNotNull(caches.getCache("cotacoes").get("PETR4")));
     }

@@ -46,24 +46,24 @@ public class LessonService {
     @Transactional(readOnly = true)
     public LessonDTO.Response getLessonById(UUID lessonId) {
         return lessonRepository.findById(lessonId)
-                .map(lessonMapper::toDTO)
-                .orElseThrow(() -> {
-                    log.warn("Busca por aula inexistente. ID: {}", lessonId);
-                    return new ResponseStatusException(HttpStatus.NOT_FOUND, "Aula não encontrada.");
-                });
+            .map(lessonMapper::toDTO)
+            .orElseThrow(() -> {
+                log.warn("Busca por aula inexistente. ID: {}", lessonId);
+                return new ResponseStatusException(HttpStatus.NOT_FOUND, "Aula não encontrada.");
+            });
     }
 
     @Transactional(readOnly = true)
     public Page<LessonDTO.Response> getLessonsByCourseId(UUID courseId, Pageable pageable) {
         return lessonRepository.findAllByCourseId(courseId, pageable)
-                .map(lessonMapper::toDTO);
+            .map(lessonMapper::toDTO);
     }
 
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public LessonDTO.Response updateLesson(UUID lessonId, LessonDTO.Request request, String principalName) {
         Lesson lesson = findLessonOwnedBy(lessonId, principalName);
         lessonMapper.updateEntity(request, lesson);
-
+        
         log.info("Aula atualizada com sucesso. ID: {}", lesson.getId());
         return lessonMapper.toDTO(lesson);
     }
@@ -77,15 +77,14 @@ public class LessonService {
 
     public Lesson findLessonOwnedBy(UUID lessonId, String principalName) {
         User professor = userService.findByEmail(principalName);
-        boolean administrator = professor.getRole() == UserRole.ADMIN;
-        Lesson lesson = lessonRepository.findByIdForUpdate(lessonId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        administrator ? HttpStatus.NOT_FOUND : HttpStatus.FORBIDDEN,
-                        administrator ? "Aula não encontrada." : "Aula não encontrada ou sem permissão."));
-        if (!administrator && !lesson.getCourse().getProfessor().getId().equals(professor.getId())) {
-            log.warn("Acesso negado ou aula não encontrada. Aula ID: {}, Usuário: {}", lessonId, professor.getId());
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Aula não encontrada ou sem permissão.");
+        if (professor.getRole() == UserRole.ADMIN) {
+            return lessonRepository.findById(lessonId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Aula não encontrada."));
         }
-        return lesson;
+        return lessonRepository.findByIdAndCourse_Professor_Id(lessonId, professor.getId())
+            .orElseThrow(() -> {
+                log.warn("Acesso negado ou aula não encontrada. Aula ID: {}, Usuário: {}", lessonId, professor.getId());
+                return new ResponseStatusException(HttpStatus.FORBIDDEN, "Aula não encontrada ou sem permissão.");
+            });
     }
 }

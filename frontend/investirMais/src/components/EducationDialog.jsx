@@ -76,12 +76,8 @@ export default function EducationDialog({ kind, item, remove, onClose }) {
                 required: "Informe um título.",
                 minLength: { value: 3, message: "Informe pelo menos 3 caracteres." },
               })} />
-            <Field label="Descrição" multiline rows={4} hint="Até 10.000 caracteres." error={errors.description?.message}
-              {...form.register("description", {
-                setValueAs: (value) => value.trim(),
-                required: "Informe uma descrição.",
-                maxLength: { value: 10000, message: "A descrição deve ter no máximo 10.000 caracteres." },
-              })} />
+            <Field label="Descrição" multiline rows={4} error={errors.description?.message}
+              {...form.register("description", { setValueAs: (value) => value.trim(), required: "Informe uma descrição." })} />
             {lesson && (
               <Field
                 label="URL do vídeo no YouTube"

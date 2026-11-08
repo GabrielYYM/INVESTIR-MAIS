@@ -195,12 +195,9 @@ O esquema das entidades usa `ddl-auto=update` e o SQL auxiliar fica em [`schema-
 | Backend no Windows | `.\mvnw.cmd -B verify` na raiz |
 | Backend no Linux ou macOS | `bash mvnw -B verify` na raiz |
 | Build do frontend | `npm ci` e `npm run build` em `frontend/investirMais` |
-| Testes unitários do frontend | `npm run test:unit` em `frontend/investirMais` |
-| Testes de integração do frontend | `npm run test:integration` em `frontend/investirMais` |
-| Suíte do frontend com cobertura | `npm run test:coverage` em `frontend/investirMais` |
 | Auditoria de dependências npm | `npm audit --audit-level=high` em `frontend/investirMais` |
 
-A suíte do backend inclui testes do fluxo de login com H2 e Redis simulado, além de testes de integração com PostgreSQL e Redis via Docker. Os testes com Testcontainers configurados com `disabledWithoutDocker` são ignorados quando Docker está indisponível. O frontend tem testes unitários e de integração com Vitest e Testing Library, usando MSW para simular a API sem depender dos serviços. Veja a [organização e os critérios de cobertura](frontend/investirMais/README.md#testes). O [workflow de CI](.github/workflows/checks.yml) executa as verificações em pushes e pull requests.
+A suíte inclui testes do fluxo de login com H2 e Redis simulado, além de testes de integração com PostgreSQL e Redis via Docker. Os testes com Testcontainers configurados com `disabledWithoutDocker` são ignorados quando Docker está indisponível. O [workflow de CI](.github/workflows/checks.yml) executa as verificações em pushes e pull requests.
 
 ## Documentação complementar
 

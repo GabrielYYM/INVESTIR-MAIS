@@ -9,7 +9,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Value;
+import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.CacheControl;
@@ -18,28 +18,20 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.HtmlUtils;
-import org.springframework.web.util.UriComponentsBuilder;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
 import java.util.UUID;
 import java.security.Principal;
 import java.sql.SQLException;
-import java.nio.charset.StandardCharsets;
 
 @RestController
 @RequestMapping("/api/users")
+@RequiredArgsConstructor
 @Tag(name = "Usuários", description = "Endpoints para gerenciamento de perfis, cadastros e redefinição de senhas")
 public class UserController {
 
     private final UserService userService;
-    private final String frontendOrigin;
-
-    public UserController(UserService userService,
-            @Value("${app.cors.allowed-origin:http://localhost:5173}") String frontendOrigin) {
-        this.userService = userService;
-        this.frontendOrigin = frontendOrigin;
-    }
 
     @Operation(summary = "Cadastrar novo usuário", description = "Registra um novo usuário no sistema e envia um e-mail com o link de ativação.")
     @ApiResponses({
@@ -93,47 +85,9 @@ public class UserController {
 
     @Operation(summary = "Verificar e-mail", description = "Consome o token após a confirmação do usuário.")
     @PostMapping(value = "/verify-email", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
-    public ResponseEntity<?> verifyEmail(@RequestParam String token,
-            @RequestHeader(value = "Accept", defaultValue = MediaType.APPLICATION_JSON_VALUE) String accept) {
-        boolean browser = MediaType.parseMediaTypes(accept).stream()
-                .anyMatch(type -> !type.isWildcardType() && !type.isWildcardSubtype()
-                        && type.isCompatibleWith(MediaType.TEXT_HTML) && type.getQualityValue() > 0);
-        try {
-            userService.verifyEmail(token);
-        } catch (ResponseStatusException exception) {
-            if (!browser || exception.getStatusCode() != HttpStatus.BAD_REQUEST) throw exception;
-            return emailVerificationResult(HttpStatus.BAD_REQUEST, "Link inválido ou expirado",
-                    "Confira se você recebeu um link mais recente ou solicite uma nova confirmação pelo cadastro.");
-        }
-        if (browser) {
-            return emailVerificationResult(HttpStatus.OK, "E-mail confirmado",
-                    "Sua conta foi ativada. Entre com seu e-mail e senha para continuar.");
-        }
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
-                .body(Map.of("message", "E-mail verificado com sucesso."));
-    }
-
-    private ResponseEntity<String> emailVerificationResult(HttpStatus status, String title, String message) {
-        String loginUrl = UriComponentsBuilder.fromUriString(frontendOrigin)
-                .path("/entrar").build().toUriString();
-        return ResponseEntity.status(status).contentType(new MediaType(MediaType.TEXT_HTML, StandardCharsets.UTF_8))
-                .cacheControl(CacheControl.noStore())
-                .header("Referrer-Policy", "no-referrer")
-                .header("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'; base-uri 'none'")
-                .body("""
-                    <!doctype html>
-                    <html lang="pt-BR">
-                    <meta charset="utf-8">
-                    <meta name="viewport" content="width=device-width, initial-scale=1">
-                    <title>%s · Investir Mais</title>
-                    <main>
-                      <h1>%s</h1>
-                      <p>%s</p>
-                      <a href="%s">Ir para entrar</a>
-                    </main>
-                    </html>
-                    """.formatted(HtmlUtils.htmlEscape(title), HtmlUtils.htmlEscape(title),
-                            HtmlUtils.htmlEscape(message), HtmlUtils.htmlEscape(loginUrl)));
+    public Map<String, String> verifyEmail(@RequestParam String token) {
+        userService.verifyEmail(token);
+        return Map.of("message", "E-mail verificado com sucesso.");
     }
 
     @PostMapping("/resend-verification")

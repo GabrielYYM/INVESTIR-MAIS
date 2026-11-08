@@ -37,7 +37,7 @@ public class UserService {
     @Transactional(readOnly = true)
     public User findByEmail(String email) {
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
     }
 
     @Transactional(readOnly = true)
@@ -62,8 +62,7 @@ public class UserService {
         }
 
         if (userRepository.existsByEmailAndIdNot(dto.email(), user.getId())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Não foi possível atualizar o perfil. Verifique os dados informados.");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Não foi possível atualizar o perfil. Verifique os dados informados.");
         }
 
         user.setName(dto.name());
@@ -85,13 +84,11 @@ public class UserService {
 
     public UserDTO.Response registerUser(UserDTO.Request dto) {
         if (dto.role() != null && dto.role() != UserRole.STUDENT) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "O cadastro público permite apenas o perfil STUDENT.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O cadastro público permite apenas o perfil STUDENT.");
         }
 
         if (userRepository.existsByEmailIncludingDeleted(dto.email())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Não foi possível criar sua conta. Verifique os dados informados.");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Não foi possível criar sua conta. Verifique os dados informados.");
         }
 
         User user = userMapper.toEntity(dto);
@@ -138,15 +135,15 @@ public class UserService {
     }
 
     public void forgotPassword(AuthDTO.ForgotPasswordRequest dto) {
-        userRepository.findByEmailForUpdate(dto.email()).ifPresent(user -> {
-            accountSecurity.requestPasswordResetToken(dto.email()).ifPresent(token -> events.publishEvent(
-                    new AccountEmailRequested(dto.email(), token, AccountEmailRequested.Purpose.PASSWORD_RESET)));
-        });
+        if (userRepository.existsByEmail(dto.email())) {
+            accountSecurity.requestPasswordResetToken(dto.email()).ifPresent(token ->
+                    events.publishEvent(new AccountEmailRequested(dto.email(), token, AccountEmailRequested.Purpose.PASSWORD_RESET)));
+        }
     }
 
     public void resetPassword(AuthDTO.ResetPasswordRequest dto) {
         String email = accountSecurity.consumePasswordResetToken(dto.token())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Token inválido ou expirado."));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Token inválido ou expirado."));
 
         User user = findByEmail(email);
         user.setPassword(passwordEncoder.encode(dto.newPassword()));
@@ -158,15 +155,14 @@ public class UserService {
 
     public void verifyEmail(String tokenValue) {
         String email = accountSecurity.consumeEmailVerificationToken(tokenValue)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Link inválido ou expirado."));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Link inválido ou expirado."));
         User user = findByEmail(email);
         user.setEmailVerified(true);
     }
 
     private void sendVerificationLink(String email) {
         OneTimeToken token = accountSecurity.generateEmailVerificationToken(email);
-        events.publishEvent(
-                new AccountEmailRequested(email, token.getTokenValue(), AccountEmailRequested.Purpose.VERIFY_EMAIL));
+        events.publishEvent(new AccountEmailRequested(email, token.getTokenValue(), AccountEmailRequested.Purpose.VERIFY_EMAIL));
     }
 
     public void resendVerification(String email) {
@@ -176,8 +172,8 @@ public class UserService {
                         AccountEmailRequested.Purpose.VERIFY_EMAIL)));
     }
 
-    public User findByEmailForUpdate(String email) {
+    private User findByEmailForUpdate(String email) {
         return userRepository.findByEmailForUpdate(email)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
     }
 }

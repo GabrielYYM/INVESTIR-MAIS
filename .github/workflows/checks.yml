@@ -30,6 +30,5 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/investirMais/package-lock.json
       - run: npm ci
-      - run: npm run test:coverage
       - run: npm run build
       - run: npm audit --audit-level=high

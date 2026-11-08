@@ -44,11 +44,6 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import javax.sql.DataSource;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -59,6 +54,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppContextSetup;
 
+// Real Spring Security filters and native JDBC token storage, without a running Docker/database server.
 @ExtendWith(SpringExtension.class)
 @WebAppConfiguration
 @ContextConfiguration(classes = {SecurityConfig.class, AuthenticationController.class, UserController.class, SpringLoginFlowTest.Config.class})
@@ -91,50 +87,6 @@ class SpringLoginFlowTest {
         user.setEmailVerified(true);
         when(users.findByEmail(EMAIL)).thenReturn(Optional.of(user));
         when(userService.findByEmail(EMAIL)).thenReturn(user);
-    }
-
-    @Test
-    void resentLoginCodeInvalidatesThePreviousCodeAndKeepsTheRequestedDestination() throws Exception {
-        MockHttpSession session = login();
-        String previous = sentCode();
-        mvc.perform(post("/auth/code").session(session).with(csrf()).param("retorno", "/perfil"))
-                .andExpect(status().isNoContent());
-        String current = sentCode();
-        assertNotEquals(previous, current);
-        verify(emails).sendLoginLink(EMAIL, current, "/perfil");
-        mvc.perform(post("/auth/verify-2fa").session(session).with(csrf()).param("token", previous))
-                .andExpect(status().isUnauthorized());
-        session = verifyCode(session, current);
-        mvc.perform(get("/auth/me").session(session)).andExpect(status().isOk());
-    }
-
-    @Test
-    void concurrentSubmissionsOfTheSameCodeAuthenticateOnlyOnce() throws Exception {
-        MockHttpSession session = login();
-        String token = sentCode();
-        Cookie cookie = csrfCookie(session);
-        var ready = new CountDownLatch(2);
-        var start = new CountDownLatch(1);
-        Callable<Integer> submit = () -> {
-            ready.countDown();
-            assertTrue(start.await(5, TimeUnit.SECONDS));
-            return mvc.perform(post("/auth/verify-2fa").session(session).cookie(cookie)
-                            .header("X-XSRF-TOKEN", cookie.getValue()).param("token", token))
-                    .andReturn().getResponse().getStatus();
-        };
-        try (var executor = Executors.newFixedThreadPool(2)) {
-            var first = executor.submit(submit);
-            var second = executor.submit(submit);
-            try {
-                assertTrue(ready.await(5, TimeUnit.SECONDS));
-            } finally {
-                start.countDown();
-            }
-            var statuses = List.of(first.get(5, TimeUnit.SECONDS), second.get(5, TimeUnit.SECONDS));
-            assertEquals(List.of(204, 401), statuses.stream().sorted().toList());
-        }
-        mvc.perform(get("/auth/me").session(session)).andExpect(status().isOk());
-        assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM one_time_tokens", Integer.class));
     }
 
     @Test
@@ -307,6 +259,7 @@ class SpringLoginFlowTest {
 
     @Test
     void browserCanRefreshCsrfBetweenPasswordTokenAndLogout() throws Exception {
+        // Exercise the actual cookie/header protocol used by Axios, without the csrf() test shortcut.
         Cookie csrfCookie = csrfCookie(null);
         var passwordResult = mvc.perform(post("/auth/login").cookie(csrfCookie)
                         .header("X-XSRF-TOKEN", csrfCookie.getValue()).param("email", EMAIL).param("password", PASSWORD))

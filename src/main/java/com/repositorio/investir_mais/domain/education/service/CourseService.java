@@ -31,10 +31,10 @@ public class CourseService {
 
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public CourseDTO.Response createCourse(CourseDTO.Request request, String principalName) {
-        User professor = userService.findByEmailForUpdate(principalName);
+        User professor = userService.findByEmail(principalName);
         Course course = courseMapper.toEntity(request);
         course.setProfessor(professor);
-
+        
         Course savedCourse = courseRepository.save(course);
         log.info("Novo curso criado com sucesso. ID: {}, Professor ID: {}", savedCourse.getId(), professor.getId());
         return courseMapper.toDTO(savedCourse);
@@ -43,11 +43,11 @@ public class CourseService {
     @Transactional(readOnly = true)
     public CourseDTO.Response getCourseById(UUID courseId) {
         return courseRepository.findById(courseId)
-                .map(courseMapper::toDTO)
-                .orElseThrow(() -> {
-                    log.warn("Busca por curso inexistente. ID: {}", courseId);
-                    return new ResponseStatusException(HttpStatus.NOT_FOUND, "Curso não encontrado.");
-                });
+            .map(courseMapper::toDTO)
+            .orElseThrow(() -> {
+                log.warn("Busca por curso inexistente. ID: {}", courseId);
+                return new ResponseStatusException(HttpStatus.NOT_FOUND, "Curso não encontrado.");
+            });
     }
 
     @Transactional(readOnly = true)
@@ -64,7 +64,7 @@ public class CourseService {
     public CourseDTO.Response updateCourse(UUID courseId, CourseDTO.Request request, String principalName) {
         Course course = findCourseOwnedBy(courseId, principalName);
         courseMapper.updateEntity(request, course);
-
+        
         log.info("Curso atualizado com sucesso. ID: {}", course.getId());
         return courseMapper.toDTO(course);
     }
@@ -76,19 +76,20 @@ public class CourseService {
         log.info("Curso removido com sucesso. ID: {}", courseId);
     }
 
+    @Transactional(readOnly = true)
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public Course findCourseOwnedBy(UUID courseId, String principalName) {
         User professor = userService.findByEmail(principalName);
-        Course course = courseRepository.findByIdForUpdate(courseId)
-                .orElseThrow(() -> {
-                    log.warn("Tentativa de alterar/excluir curso inexistente. ID: {}", courseId);
-                    return new ResponseStatusException(HttpStatus.NOT_FOUND, "Curso não encontrado.");
-                });
+        Course course = courseRepository.findById(courseId)
+            .orElseThrow(() -> {
+                log.warn("Tentativa de alterar/excluir curso inexistente. ID: {}", courseId);
+                return new ResponseStatusException(HttpStatus.NOT_FOUND, "Curso não encontrado.");
+            });
 
         if (professor.getRole() != UserRole.ADMIN
                 && !course.getProfessor().getId().equals(professor.getId())) {
-            log.warn("Acesso negado: Usuário {} tentou modificar o curso {} pertencente ao professor {}",
-                    professor.getId(), courseId, course.getProfessor().getId());
+            log.warn("Acesso negado: Usuário {} tentou modificar o curso {} pertencente ao professor {}", 
+                professor.getId(), courseId, course.getProfessor().getId());
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não tem permissão para alterar este curso.");
         }
         return course;

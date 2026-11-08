@@ -57,12 +57,9 @@ export async function courseLoader({ request, params: { courseId, lessonId } }) 
   return { course, page, lesson: selected ?? page.items[0] };
 }
 
-function mutationError(error, request) {
+function mutationError(error) {
   const status = error.response?.status ?? 500;
-  if (status === 401) {
-    const url = new URL(request.url);
-    return redirect("/entrar?" + new URLSearchParams({ retorno: url.pathname + url.search }));
-  }
+  if (status === 401) return redirect("/entrar");
   return data({ error: apiError(error, "Não foi possível concluir a operação. Tente novamente.") }, { status });
 }
 
@@ -73,7 +70,7 @@ export async function catalogAction({ request }) {
     const course = await createCourse(payload);
     return redirect("/educacao/" + course.id);
   } catch (error) {
-    return mutationError(error, request);
+    return mutationError(error);
   }
 }
 
@@ -106,7 +103,7 @@ export async function courseAction({ request, params: { courseId, lessonId } }) 
     }
     return { ok: true };
   } catch (error) {
-    return mutationError(error, request);
+    return mutationError(error);
   }
 }
 
