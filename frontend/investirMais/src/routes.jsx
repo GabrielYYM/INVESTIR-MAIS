@@ -5,6 +5,7 @@ import { getCurrentUser } from "./services/authService.js";
 import Login, { LoginLink } from "./pages/Login.jsx";
 import SignUp from "./pages/SignUp.jsx";
 import ForgotPassword from "./pages/ForgotPassword.jsx";
+import VerifyEmail from "./pages/VerifyEmail.jsx";
 import Perfil, { profileAction } from "./pages/Perfil.jsx";
 import Home, { dashboardLoader, quoteLoader } from "./pages/Home.jsx";
 import Education, { catalogLoader } from "./pages/Education.jsx";
@@ -45,6 +46,7 @@ export const appRoutes = [
   { path: "entrar", Component: Login },
   { path: "entrar/link", Component: LoginLink },
   { path: "cadastro", Component: SignUp },
+  { path: "confirmar-email", Component: VerifyEmail },
   { path: "recuperar-senha", Component: ForgotPassword },
   { path: "*", Component: PageError },
 ];

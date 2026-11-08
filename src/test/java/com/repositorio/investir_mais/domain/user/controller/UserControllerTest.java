@@ -6,6 +6,7 @@ import com.repositorio.investir_mais.domain.user.DTO.UserDTO;
 import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.repository.UserRepository;
 import com.repositorio.investir_mais.domain.user.service.UserService;
+import com.repositorio.investir_mais.infrastructure.config.WebApplicationProperties;
 import com.repositorio.investir_mais.infrastructure.exception.GlobalExceptionHandler;
 
 import org.junit.jupiter.api.Test;
@@ -54,6 +55,9 @@ class UserControllerTest {
 
     @MockitoBean
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
+
+    @MockitoBean
+    private WebApplicationProperties properties;
 
     @Test
     void registerUser_WithValidData_ShouldReturnGenericAcceptance() throws Exception {

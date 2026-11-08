@@ -18,6 +18,11 @@ export async function resendVerification(email) {
   return data;
 }
 
+export async function verifyEmail(token) {
+  const { data } = await apiClient.post("/api/users/verify-email", new URLSearchParams({ token: token.trim() }));
+  return data;
+}
+
 export async function logout() {
   await apiClient.post("/auth/logout");
 }
