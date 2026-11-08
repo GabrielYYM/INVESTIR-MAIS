@@ -70,12 +70,12 @@ public class AuthenticationEmailHandler {
 
     public void sendEmailVerificationLink(String email, String tokenValue) {
         String link = UriComponentsBuilder
-            .fromUriString(properties.cors().allowedOrigin())
+            .fromUriString(properties.frontendUrl())
             .replacePath("/confirmar-email")
             .replaceQuery(null)
-            .queryParam("token", "{token}")
+            .queryParam("token", tokenValue)
+            .build()
             .encode()
-            .buildAndExpand(tokenValue)
             .toUriString();
 
         sendSimpleEmail(email, "Verifique seu e-mail - Investir Mais", "Acesse o link abaixo para confirmar seu e-mail (expira em 5 minutos):\n" + link);

@@ -57,7 +57,7 @@ public class UserController {
     @Operation(summary = "Redirecionar para confirmação no frontend", description = "Redireciona para a página React de confirmação de e-mail.")
     @GetMapping("/verify-email")
     public ResponseEntity<Void> redirectToFrontendVerification(@RequestParam(required = false) String token) {
-        String destination = properties.cors().allowedOrigin() + "/confirmar-email"
+        String destination = properties.frontendUrl() + "/confirmar-email"
                 + (token != null && !token.isBlank() ? "?token=" + URLEncoder.encode(token, StandardCharsets.UTF_8) : "");
         return ResponseEntity.status(HttpStatus.FOUND)
                 .location(URI.create(destination))
