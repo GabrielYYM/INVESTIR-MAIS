@@ -42,7 +42,7 @@ public class LessonController {
     @ApiResponse(responseCode = "200", description = "Página de aulas retornada com sucesso")
     @GetMapping("/course/{courseId}")
     public Page<LessonDTO.Response> getLessonsByCourse(@PathVariable UUID courseId, @ParameterObject @PageableDefault(size = 20) Pageable pageable) {
-        return lessonService.getLessonsByCourseId(courseId, pageable);
+        return lessonService.getLessonsByCourseId(courseId, EducationPagination.lessons(pageable));
     }
 
     @Operation(summary = "Obter aula por ID", description = "Retorna os detalhes de uma aula específica.")

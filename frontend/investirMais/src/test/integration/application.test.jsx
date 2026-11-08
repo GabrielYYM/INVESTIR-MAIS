@@ -135,6 +135,6 @@ describe("painel e consulta de cotação", () => {
     await user.type(await screen.findByRole("textbox", { name: "Ticker" }), "PETR4");
     await user.click(screen.getByRole("button", { name: "Buscar" }));
     await waitFor(() => expect(router.state.location.pathname).toBe("/entrar"));
-    expect(screen.getByRole("heading", { name: "Bem-vindo de volta" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Bem-vindo de volta" })).toBeInTheDocument();
   });
 });

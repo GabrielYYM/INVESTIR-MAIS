@@ -259,7 +259,7 @@ class UserServiceTest {
     @Test
     void forgotPassword_WhenUserDoesNotExist_ShouldNotSendEmail() {
         AuthDTO.ForgotPasswordRequest dto = new AuthDTO.ForgotPasswordRequest("inexistente@investir.com");
-        when(userRepository.existsByEmail("inexistente@investir.com")).thenReturn(false);
+        when(userRepository.findByEmailForUpdate("inexistente@investir.com")).thenReturn(Optional.empty());
 
         userService.forgotPassword(dto);
 
@@ -271,7 +271,7 @@ class UserServiceTest {
     void forgotPassword_WhenUserExists_ShouldGenerateAndSendPasswordResetToken() {
         AuthDTO.ForgotPasswordRequest dto = new AuthDTO.ForgotPasswordRequest("felipe@investir.com");
 
-        when(userRepository.existsByEmail("felipe@investir.com")).thenReturn(true);
+        when(userRepository.findByEmailForUpdate("felipe@investir.com")).thenReturn(Optional.of(user));
         when(accountSecurity.requestPasswordResetToken("felipe@investir.com")).thenReturn(Optional.of("token-ott"));
 
         userService.forgotPassword(dto);

@@ -86,11 +86,13 @@ public class AccountSecurityService {
             case PASSWORD_RESET -> PASSWORD_RESET;
         };
         return jdbc.sql("""
-            SELECT EXISTS (
-                SELECT 1 FROM app_one_time_token
-                WHERE token_value IN (?, ?) AND username = ? AND purpose = ? AND expires_at > ?
-            )
-            """).params(TokenDigest.sha256(event.token()), event.token(), event.email(), purpose, Timestamp.from(Instant.now()))
+                SELECT EXISTS (
+                    SELECT 1 FROM app_one_time_token
+                    WHERE token_value IN (?, ?) AND username = ? AND purpose = ? AND expires_at > ?
+                )
+                """)
+                .params(TokenDigest.sha256(event.token()), event.token(), event.email(), purpose,
+                        Timestamp.from(Instant.now()))
                 .query(Boolean.class).single();
     }
 
@@ -99,16 +101,17 @@ public class AccountSecurityService {
         Instant now = Instant.now();
         if (!cooldown.isZero() && jdbc.sql("""
                 SELECT EXISTS (SELECT 1 FROM app_one_time_token WHERE username = ? AND purpose = ? AND expires_at > ?)
-                """).params(email, purpose, Timestamp.from(now.plus(TOKEN_TTL).minus(cooldown))).query(Boolean.class).single()) {
+                """).params(email, purpose, Timestamp.from(now.plus(TOKEN_TTL).minus(cooldown))).query(Boolean.class)
+                .single()) {
             return Optional.empty();
         }
         jdbc.sql("DELETE FROM app_one_time_token WHERE username = ? AND purpose = ?").params(email, purpose).update();
         String value = UUID.randomUUID().toString();
         Instant expiresAt = now.plus(TOKEN_TTL);
         jdbc.sql("""
-            INSERT INTO app_one_time_token (token_value, username, expires_at, purpose)
-            VALUES (?, ?, ?, ?)
-            """).params(TokenDigest.sha256(value), email, Timestamp.from(expiresAt), purpose).update();
+                INSERT INTO app_one_time_token (token_value, username, expires_at, purpose)
+                VALUES (?, ?, ?, ?)
+                """).params(TokenDigest.sha256(value), email, Timestamp.from(expiresAt), purpose).update();
         return Optional.of(new DefaultOneTimeToken(value, email, expiresAt));
     }
 
@@ -116,23 +119,23 @@ public class AccountSecurityService {
         if (!TOKEN_FORMAT.matcher(token).matches()) {
             return Optional.empty();
         }
-        // Raw UUIDs from before the migration remain usable until their original expiry.
         String digest = TokenDigest.sha256(token);
         var owner = jdbc.sql("""
-            SELECT username FROM app_one_time_token
-            WHERE token_value IN (?, ?) AND purpose = ?
-            """).params(digest, token, purpose).query(String.class).optional();
+                SELECT username FROM app_one_time_token
+                WHERE token_value IN (?, ?) AND purpose = ?
+                """).params(digest, token, purpose).query(String.class).optional();
         if (owner.isEmpty()) {
             return Optional.empty();
         }
         lockAccount(owner.get());
         var email = jdbc.sql("""
-            SELECT username FROM app_one_time_token
-            WHERE token_value IN (?, ?) AND purpose = ? AND expires_at > ?
-            FOR UPDATE
-            """).params(digest, token, purpose, Timestamp.from(Instant.now())).query(String.class).optional();
+                SELECT username FROM app_one_time_token
+                WHERE token_value IN (?, ?) AND purpose = ? AND expires_at > ?
+                FOR UPDATE
+                """).params(digest, token, purpose, Timestamp.from(Instant.now())).query(String.class).optional();
         if (email.isPresent()) {
-            jdbc.sql("DELETE FROM app_one_time_token WHERE token_value IN (?, ?) AND purpose = ?").params(digest, token, purpose).update();
+            jdbc.sql("DELETE FROM app_one_time_token WHERE token_value IN (?, ?) AND purpose = ?")
+                    .params(digest, token, purpose).update();
         }
         return email;
     }

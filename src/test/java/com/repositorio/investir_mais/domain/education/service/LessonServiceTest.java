@@ -79,7 +79,7 @@ class LessonServiceTest {
     void createLesson_WhenUserIsNotCourseOwner_ShouldThrowForbidden() {
         LessonDTO.Request request = new LessonDTO.Request("Aula 1", "Desc", "url_video", "url_thumb");
         when(userService.findByEmail("outro@investir.com")).thenReturn(outroUser);
-        when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
+        when(courseRepository.findByIdForUpdate(courseId)).thenReturn(Optional.of(course));
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class, 
             () -> lessonService.createLesson(courseId, request, "outro@investir.com"));
@@ -94,7 +94,7 @@ class LessonServiceTest {
         LessonDTO.Response responseDTO = new LessonDTO.Response(lessonId, "Aula 1", "Desc", "url_video", "url_thumb", courseId);
 
         when(userService.findByEmail("prof@investir.com")).thenReturn(professor);
-        when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
+        when(courseRepository.findByIdForUpdate(courseId)).thenReturn(Optional.of(course));
         when(lessonMapper.toEntity(request)).thenReturn(lesson);
         when(lessonRepository.save(lesson)).thenReturn(lesson);
         when(lessonMapper.toDTO(lesson)).thenReturn(responseDTO);
@@ -113,7 +113,7 @@ class LessonServiceTest {
         admin.setId(UUID.randomUUID());
         admin.setRole(UserRole.ADMIN);
         when(userService.findByEmail("admin@investir.com")).thenReturn(admin);
-        when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
+        when(courseRepository.findByIdForUpdate(courseId)).thenReturn(Optional.of(course));
         when(lessonMapper.toEntity(request)).thenReturn(lesson);
         when(lessonRepository.save(lesson)).thenReturn(lesson);
 
@@ -155,7 +155,7 @@ class LessonServiceTest {
         LessonDTO.Response responseDTO = new LessonDTO.Response(lessonId, "Aula 1 Atualizada", "Desc", "url_video", "url_thumb", courseId);
 
         when(userService.findByEmail("prof@investir.com")).thenReturn(professor);
-        when(lessonRepository.findByIdAndCourse_Professor_Id(lessonId, professor.getId())).thenReturn(Optional.of(lesson));
+        when(lessonRepository.findByIdForUpdate(lessonId)).thenReturn(Optional.of(lesson));
         when(lessonMapper.toDTO(lesson)).thenReturn(responseDTO);
 
         LessonDTO.Response result = lessonService.updateLesson(lessonId, request, "prof@investir.com");
@@ -172,7 +172,7 @@ class LessonServiceTest {
         admin.setId(UUID.randomUUID());
         admin.setRole(UserRole.ADMIN);
         when(userService.findByEmail("admin@investir.com")).thenReturn(admin);
-        when(lessonRepository.findById(lessonId)).thenReturn(Optional.of(lesson));
+        when(lessonRepository.findByIdForUpdate(lessonId)).thenReturn(Optional.of(lesson));
         when(lessonMapper.toDTO(lesson)).thenReturn(new LessonDTO.Response(
             lessonId, request.title(), request.description(), request.mediaUrl(), request.thumbnailUrl(), courseId));
 
@@ -185,7 +185,7 @@ class LessonServiceTest {
     @Test
     void deleteLesson_OnSuccess_ShouldDelete() {
         when(userService.findByEmail("prof@investir.com")).thenReturn(professor);
-        when(lessonRepository.findByIdAndCourse_Professor_Id(lessonId, professor.getId())).thenReturn(Optional.of(lesson));
+        when(lessonRepository.findByIdForUpdate(lessonId)).thenReturn(Optional.of(lesson));
 
         lessonService.deleteLesson(lessonId, "prof@investir.com");
 

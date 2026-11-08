@@ -109,6 +109,15 @@ class HttpValidationTest {
                 .andExpect(jsonPath("$.detail").value("A operação conflita com registros relacionados."));
     }
     @ParameterizedTest
+    @ValueSource(strings = {"25.9", "0.5", "120.9", "-0.5"})
+    void fractionalAgesAreNotSilentlyTruncatedDuringRegistration(String age) throws Exception {
+        mvc.perform(post("/api/users/register").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Teste\",\"age\":" + age + ",\"email\":\"test@example.com\",\"password\":\"Senha1234\"}"))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(users);
+    }
+
+    @ParameterizedTest
     @ValueSource(ints = {-1, 121})
     void ageOutsideRangeIsRejectedBeforeRegistration(int age) throws Exception {
         mvc.perform(post("/api/users/register").contentType(MediaType.APPLICATION_JSON)

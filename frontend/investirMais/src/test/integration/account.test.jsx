@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw/http";
 import { describe, expect, it, vi } from "vitest";
 import { renderApp } from "../renderApp.jsx";
@@ -15,6 +15,30 @@ async function fillSignUp(user) {
 }
 
 describe("cadastro", () => {
+  it("recusa senha composta apenas por espaços e preserva espaços em uma senha válida", async () => {
+    const bodies = [];
+    const register = vi.fn(async ({ request }) => {
+      bodies.push(await request.json());
+      return HttpResponse.json({}, { status: 202 });
+    });
+    server.use(http.post(origin + "/api/users/register", register));
+    const { user } = renderApp("/cadastro");
+    await fillSignUp(user);
+    const password = screen.getByLabelText("Senha", { exact: true });
+    const confirmation = screen.getByLabelText("Confirme a senha");
+    fireEvent.change(password, { target: { value: "        " } });
+    fireEvent.change(confirmation, { target: { value: "        " } });
+    await user.click(screen.getByRole("button", { name: "Criar conta" }));
+    expect(await screen.findByText("A senha não pode conter apenas espaços.")).toBeInTheDocument();
+    expect(register).not.toHaveBeenCalled();
+
+    fireEvent.change(password, { target: { value: " senha teste " } });
+    fireEvent.change(confirmation, { target: { value: " senha teste " } });
+    await user.click(screen.getByRole("button", { name: "Criar conta" }));
+    expect(await screen.findByRole("heading", { name: "Confirme seu e-mail" })).toBeInTheDocument();
+    expect(bodies[0].password).toBe(" senha teste ");
+  });
+
   it("valida nome, idade, senha, confirmação e aceite antes de enviar", async () => {
     const register = vi.fn();
     server.use(http.post(origin + "/api/users/register", register));

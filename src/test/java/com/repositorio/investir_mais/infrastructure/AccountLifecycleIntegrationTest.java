@@ -2,6 +2,8 @@ package com.repositorio.investir_mais.infrastructure;
 
 import com.repositorio.investir_mais.domain.education.model.Course;
 import com.repositorio.investir_mais.domain.education.model.Lesson;
+import com.repositorio.investir_mais.domain.education.DTO.CourseDTO;
+import com.repositorio.investir_mais.domain.education.mapper.CourseMapper;
 import com.repositorio.investir_mais.domain.education.repository.CourseRepository;
 import com.repositorio.investir_mais.domain.education.repository.LessonRepository;
 import com.repositorio.investir_mais.domain.education.service.CourseService;
@@ -26,8 +28,10 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.RedisConnectionFailureException;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.mail.MailSendException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -36,6 +40,7 @@ import org.springframework.modulith.events.FailedEventPublications;
 import org.springframework.modulith.events.ResubmissionOptions;
 import org.springframework.modulith.events.core.EventPublicationRegistry;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.concurrent.DelegatingSecurityContextCallable;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.session.FindByIndexNameSessionRepository;
 import org.springframework.test.context.ActiveProfiles;
@@ -84,7 +89,7 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
     private static final String PASSWORD = "SenhaSegura123";
     @Autowired private MockMvc mvc;
     @Autowired private UserService service;
-    @Autowired private AccountSecurityService accountSecurity;
+    @MockitoSpyBean private AccountSecurityService accountSecurity;
     @Autowired private CircuitBreakerFactory<?, ?> circuitBreakerFactory;
     @LocalServerPort private int port;
     @MockitoSpyBean private UserRepository users;
@@ -97,6 +102,7 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
     @Autowired private CourseRepository courses;
     @Autowired private LessonRepository lessons;
     @Autowired private CourseService courseService;
+    @MockitoSpyBean private CourseMapper courseMapper;
 
     @Autowired private StringRedisTemplate redis;
     @MockitoSpyBean private FindByIndexNameSessionRepository<?> sessions;
@@ -105,7 +111,7 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
     @BeforeEach
     void clean() {
         await().atMost(Duration.ofSeconds(5)).until(() -> publications.findIncompletePublications().isEmpty());
-        reset(users, mail, jdbc, sessions);
+        reset(users, mail, jdbc, sessions, courseMapper, accountSecurity);
         when(mail.createMimeMessage()).thenAnswer(invocation -> new jakarta.mail.internet.MimeMessage((jakarta.mail.Session) null));
         sessions.findByPrincipalName(EMAIL).keySet().forEach(sessions::deleteById);
         try (var keys = redis.scan(ScanOptions.scanOptions()
@@ -117,6 +123,109 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
         jdbc.update("DELETE FROM tb_lesson");
         jdbc.update("DELETE FROM tb_course");
         jdbc.update("DELETE FROM tb_user");
+    }
+
+    @Test
+    void passwordRecoveryRevokesAPartialLoginAndItsPendingSecondFactor() throws Exception {
+        createVerifiedUser();
+        Browser pending = new Browser();
+        assertEquals(204, pending.write(post("/auth/login").param("email", EMAIL).param("password", PASSWORD))
+                .getResponse().getStatus());
+        String code = jdbc.queryForObject("SELECT token_value FROM one_time_tokens WHERE username = ?", String.class, EMAIL);
+        Browser recovery = new Browser();
+        assertEquals(200, recovery.write(post("/api/users/forgot-password").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"" + EMAIL + "\"}")).getResponse().getStatus());
+        String token = accountToken("PASSWORD_RESET");
+        assertEquals(200, recovery.write(post("/api/users/reset-password").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"token\":\"" + token + "\",\"newPassword\":\"NovaSenhaLogin123!\"}"))
+                .getResponse().getStatus());
+
+        assertEquals(401, pending.read(get("/auth/me")).getResponse().getStatus());
+        assertEquals(401, pending.write(post("/auth/verify-2fa").param("token", code)).getResponse().getStatus());
+        assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM one_time_tokens WHERE username = ?", Integer.class, EMAIL));
+        assertEquals(401, recovery.write(post("/auth/login").param("email", EMAIL).param("password", PASSWORD))
+                .getResponse().getStatus());
+        assertEquals(204, recovery.write(post("/auth/login").param("email", EMAIL).param("password", "NovaSenhaLogin123!"))
+                .getResponse().getStatus());
+        assertEquals(403, recovery.read(get("/auth/me")).getResponse().getStatus());
+    }
+
+    @Test
+    @WithMockUser(username = EMAIL, authorities = {"ROLE_STUDENT", "FACTOR_PASSWORD", "FACTOR_OTT"})
+    void passwordRecoveryCannotIssueATokenAfterConcurrentAccountDeletion() throws Exception {
+        User owner = createVerifiedUser();
+        var recoveryStarted = new CountDownLatch(1);
+        var resumeRecovery = new CountDownLatch(1);
+        doAnswer(invocation -> {
+            recoveryStarted.countDown();
+            assertTrue(resumeRecovery.await(10, TimeUnit.SECONDS));
+            return invocation.callRealMethod();
+        }).when(accountSecurity).requestPasswordResetToken(EMAIL);
+
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var recovery = executor.submit(new DelegatingSecurityContextCallable<>(() ->
+                    new Browser().write(post("/api/users/forgot-password").contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"email\":\"" + EMAIL + "\"}"))));
+            assertTrue(recoveryStarted.await(5, TimeUnit.SECONDS));
+            var deletion = executor.submit(new DelegatingSecurityContextCallable<>(() ->
+                    new Browser().write(delete("/api/users/{id}", owner.getId()).contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"currentPassword\":\"" + PASSWORD + "\"}"))));
+            boolean waitedForRecovery;
+            try {
+                deletion.get(2, TimeUnit.SECONDS);
+                waitedForRecovery = false;
+            } catch (TimeoutException expected) {
+                waitedForRecovery = true;
+            } finally {
+                resumeRecovery.countDown();
+            }
+            assertEquals(200, recovery.get(5, TimeUnit.SECONDS).getResponse().getStatus());
+            assertEquals(204, deletion.get(5, TimeUnit.SECONDS).getResponse().getStatus());
+            assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM app_one_time_token WHERE username = ?",
+                    Integer.class, EMAIL), "A recuperação não pode recriar tokens de uma conta excluída");
+            assertTrue(waitedForRecovery, "A exclusão deve aguardar a emissão para invalidar o token");
+        }
+    }
+
+    @Test
+    @WithMockUser(username = EMAIL, authorities = {"ROLE_TEACHER", "FACTOR_PASSWORD", "FACTOR_OTT"})
+    void accountDeletionCannotLeaveACourseCreatedByAnInFlightRequest() throws Exception {
+        User owner = createVerifiedUser();
+        owner.setRole(UserRole.TEACHER);
+        users.saveAndFlush(owner);
+        var creationStarted = new CountDownLatch(1);
+        var resumeCreation = new CountDownLatch(1);
+        doAnswer(invocation -> {
+            creationStarted.countDown();
+            assertTrue(resumeCreation.await(10, TimeUnit.SECONDS));
+            return invocation.callRealMethod();
+        }).when(courseMapper).toEntity(any(CourseDTO.Request.class));
+
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var creation = executor.submit(new DelegatingSecurityContextCallable<>(() ->
+                    new Browser().write(post("/api/courses").contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"name\":\"Curso concorrente\",\"description\":\"Descrição\"}"))));
+            assertTrue(creationStarted.await(5, TimeUnit.SECONDS));
+            var deletion = executor.submit(new DelegatingSecurityContextCallable<>(() ->
+                    new Browser().write(delete("/api/users/{id}", owner.getId()).contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"currentPassword\":\"" + PASSWORD + "\"}"))));
+            boolean waitedForCreation;
+            try {
+                deletion.get(2, TimeUnit.SECONDS);
+                waitedForCreation = false;
+            } catch (TimeoutException expected) {
+                waitedForCreation = true;
+            } finally {
+                resumeCreation.countDown();
+            }
+            assertEquals(201, creation.get(5, TimeUnit.SECONDS).getResponse().getStatus());
+            assertEquals(204, deletion.get(5, TimeUnit.SECONDS).getResponse().getStatus());
+            assertEquals(0, jdbc.queryForObject("""
+                    SELECT count(*) FROM tb_course
+                    WHERE professor_id = ? AND deleted_at IS NULL
+                    """, Integer.class, owner.getId()), "A conta excluída não pode manter um curso ativo");
+            assertTrue(waitedForCreation, "A exclusão deve esperar a criação terminar antes de carregar a cascata");
+        }
     }
 
     @Test
@@ -281,6 +390,52 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
     }
 
     @Test
+    void startupSchemaWidensExistingEmailEventsAndLessonFieldsIdempotently() {
+        jdbc.execute("ALTER TABLE event_publication ALTER COLUMN serialized_event TYPE varchar(255)");
+        jdbc.execute("ALTER TABLE tb_lesson ALTER COLUMN description TYPE varchar(255)");
+        jdbc.execute("ALTER TABLE tb_lesson ALTER COLUMN media_url TYPE varchar(255)");
+        jdbc.execute("ALTER TABLE tb_lesson ALTER COLUMN thumbnail_url TYPE varchar(255)");
+        var schema = new ResourceDatabasePopulator(new ClassPathResource("schema-postgresql.sql"));
+        schema.execute(jdbc.getDataSource());
+        schema.execute(jdbc.getDataSource());
+
+        assertEquals("text", jdbc.queryForObject("""
+                SELECT data_type FROM information_schema.columns
+                WHERE table_schema = 'public' AND table_name = 'event_publication'
+                  AND column_name = 'serialized_event'
+                """, String.class));
+        assertEquals(3, jdbc.queryForObject("""
+                SELECT count(*) FROM information_schema.columns
+                WHERE table_schema = 'public' AND table_name = 'tb_lesson' AND data_type = 'text'
+                  AND column_name IN ('description', 'media_url', 'thumbnail_url')
+                """, Integer.class));
+    }
+
+    @Test
+    void registrationAndRecoverySupportMaximumLengthEmail() throws Exception {
+        String email = "a".repeat(64) + "@" + "b".repeat(63) + "." + "c".repeat(63)
+                + "." + "d".repeat(56) + ".test";
+        assertEquals(254, email.length());
+        Browser browser = new Browser();
+
+        assertEquals(202, browser.write(post("/api/users/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Conta\",\"age\":22,\"email\":\"" + email
+                        + "\",\"password\":\"" + PASSWORD + "\"}"))
+                .getResponse().getStatus());
+        assertTrue(users.findByEmail(email).isPresent());
+        verify(mail, timeout(3000)).send(argThat((SimpleMailMessage message) ->
+                email.equals(message.getTo()[0]) && message.getSubject().startsWith("Verifique")));
+
+        assertEquals(200, browser.write(post("/api/users/forgot-password")
+                .contentType(MediaType.APPLICATION_JSON).content("{\"email\":\"" + email + "\"}"))
+                .getResponse().getStatus());
+        verify(mail, timeout(3000)).send(argThat((SimpleMailMessage message) ->
+                email.equals(message.getTo()[0]) && message.getSubject().startsWith("Redefinição")));
+        await().atMost(Duration.ofSeconds(5)).until(() -> publications.findIncompletePublications().isEmpty());
+    }
+
+    @Test
     void registrationResendAndVerificationWorkAfterCommit() throws Exception {
         service.registerUser(new UserDTO.Request("Conta", 22, EMAIL, PASSWORD, UserRole.STUDENT));
         verify(mail, timeout(3000)).send(any(SimpleMailMessage.class));
@@ -299,10 +454,15 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
         assertEquals("strict-origin", form.getHeader("Referrer-Policy"));
         var field = Pattern.compile("name=\"_csrf\" value=\"([^\"]+)\"").matcher(form.getContentAsString());
         assertTrue(field.find());
-        assertEquals(200, mvc.perform(post("/api/users/verify-email").contentType(MediaType.APPLICATION_FORM_URLENCODED)
+        var confirmed = mvc.perform(post("/api/users/verify-email").contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .accept(MediaType.TEXT_HTML)
                 .header("Origin", "http://localhost")
                 .cookie(form.getCookie("XSRF-TOKEN")).param("_csrf", field.group(1)).param("token", second))
-                .andReturn().getResponse().getStatus());
+                .andReturn().getResponse();
+        assertEquals(200, confirmed.getStatus());
+        assertTrue(confirmed.getContentType().startsWith(MediaType.TEXT_HTML_VALUE));
+        assertTrue(confirmed.getContentAsString().contains("E-mail confirmado"));
+        assertTrue(confirmed.getContentAsString().contains("Ir para entrar"));
         assertTrue(users.findByEmail(EMAIL).orElseThrow().isEmailVerified());
     }
 

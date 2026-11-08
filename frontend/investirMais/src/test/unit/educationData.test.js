@@ -141,7 +141,11 @@ describe("ações de cursos e aulas", () => {
   it.each([401, 403, 422, 500])("preserva o tratamento HTTP %i nas mutações", async (status) => {
     client.updateCourse.mockRejectedValue({ response: { status, data: { detail: "Falha da API" } } });
     const response = await run("update-curso");
-    if (status === 401) expect(response.headers.get("Location")).toBe("/entrar");
+    if (status === 401) {
+      const destination = new URL(response.headers.get("Location"), "http://localhost");
+      expect(destination.pathname).toBe("/entrar");
+      expect(destination.searchParams.get("retorno")).toBe(`/educacao/${course.id}/${lesson.id}?pagina=2`);
+    }
     else expect(response).toMatchObject({ data: { error: "Falha da API" }, init: { status } });
   });
 
@@ -149,5 +153,12 @@ describe("ações de cursos e aulas", () => {
     client.createCourse.mockRejectedValue(new Error("offline"));
     const response = await catalogAction({ request: actionRequest({ intent: "create-curso", payload }) });
     expect(response).toMatchObject({ init: { status: 500 }, data: { error: expect.stringContaining("Não foi possível") } });
+  });
+
+  it("preserva a página do catálogo quando a sessão expira ao criar curso", async () => {
+    client.createCourse.mockRejectedValue({ response: { status: 401 } });
+    const response = await catalogAction({ request: actionRequest({ intent: "create-curso", payload }, "/educacao?pagina=2") });
+    expect(new URL(response.headers.get("Location"), "http://localhost").searchParams.get("retorno"))
+      .toBe("/educacao?pagina=2");
   });
 });

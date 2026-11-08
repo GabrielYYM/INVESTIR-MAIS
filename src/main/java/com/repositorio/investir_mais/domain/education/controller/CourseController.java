@@ -42,7 +42,7 @@ public class CourseController {
     @ApiResponse(responseCode = "200", description = "Página de cursos retornada com sucesso")
     @GetMapping
     public Page<CourseDTO.Response> getAllCourses(@ParameterObject @PageableDefault(size = 10, sort = "name") Pageable pageable) {
-        return courseService.getAllCourses(pageable);
+        return courseService.getAllCourses(EducationPagination.courses(pageable));
     }
 
     @Operation(summary = "Obter curso por ID", description = "Retorna os detalhes de um curso específico.")
@@ -59,7 +59,7 @@ public class CourseController {
     @ApiResponse(responseCode = "200", description = "Página de cursos retornada com sucesso")
     @GetMapping("/professor/{professorId}")
     public Page<CourseDTO.Response> getCoursesByProfessor(@PathVariable UUID professorId, @ParameterObject @PageableDefault(size = 10, sort = "name") Pageable pageable) {
-        return courseService.getCoursesByProfessor(professorId, pageable);
+        return courseService.getCoursesByProfessor(professorId, EducationPagination.courses(pageable));
     }
 
     @Operation(summary = "Atualizar curso", description = "Atualiza o nome ou descrição do curso. Exige que o usuário seja o proprietário do curso ou ADMIN.")

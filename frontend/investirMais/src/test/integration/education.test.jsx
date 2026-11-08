@@ -108,6 +108,30 @@ describe("catálogo e aulas", () => {
 });
 
 describe("gestão de cursos", () => {
+  it("volta à mesma aula e página após perder a sessão durante a edição", async () => {
+    asUser(teacher);
+    server.use(
+      http.get(origin + "/api/lessons/course/:id", () => HttpResponse.json(paged([lesson], { number: 1, totalPages: 2, totalElements: 11 }))),
+      http.put(origin + "/api/courses/:id", () => HttpResponse.json({}, { status: 401 })),
+      http.post(origin + "/auth/login", () => new HttpResponse(null, { status: 204 })),
+      http.post(origin + "/auth/verify-2fa", () => new HttpResponse(null, { status: 204 })),
+    );
+    const destination = coursePath + "/" + lesson.id + "?pagina=2";
+    const { user, router } = renderApp(destination);
+    await user.click(await screen.findByRole("button", { name: "Editar curso" }));
+    await user.click(screen.getByRole("button", { name: "Salvar curso" }));
+    await screen.findByRole("heading", { name: "Bem-vindo de volta" });
+    expect(new URLSearchParams(router.state.location.search).get("retorno")).toBe(destination);
+    await user.type(screen.getByLabelText("E-mail"), teacher.email);
+    await user.type(screen.getByLabelText("Senha", { exact: true }), "senha-teste");
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    await user.click(await screen.findByText("Usar código manualmente"));
+    await user.type(screen.getByLabelText("Código de verificação"), "codigo-teste");
+    await user.click(screen.getByRole("button", { name: "Confirmar acesso" }));
+    await screen.findByRole("heading", { name: course.name, level: 1 });
+    expect(router.state.location.pathname + router.state.location.search).toBe(destination);
+  });
+
   it("valida, cria o curso e navega para seu detalhe", async () => {
     asUser(teacher);
     const payloads = [];
@@ -128,7 +152,7 @@ describe("gestão de cursos", () => {
     expect(await screen.findByRole("heading", { name: course.name, level: 1 })).toBeInTheDocument();
     expect(payloads).toEqual([{ name: "Renda fixa", description: "Aprenda sobre investimentos." }]);
     expect(router.state.location.pathname).toBe(coursePath);
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
   it("fecha o formulário ao cancelar e pelo botão de fechar", async () => {
@@ -228,7 +252,7 @@ describe("gestão de aulas", () => {
       mediaUrl: lesson.mediaUrl, thumbnailUrl: lesson.thumbnailUrl,
     }]);
     expect(router.state.location.pathname).toBe(coursePath + "/" + otherLesson.id);
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
   it("preserva mídia de registro antigo ao editar somente o título", async () => {
