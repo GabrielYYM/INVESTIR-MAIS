@@ -184,13 +184,18 @@ public class UserService {
 
     @PreAuthorize("hasRole('ADMIN')")
     public UserDTO.Response updateUserRole(String principalName, UUID userId, UserRole newRole) {
+        if (newRole == UserRole.ADMIN) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não é permitido conceder o perfil de Administrador pelo painel.");
+        }
+
         User targetUser = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
 
-        User admin = findByEmail(principalName);
-        if (targetUser.getId().equals(admin.getId()) && newRole != UserRole.ADMIN) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O administrador não pode remover o próprio perfil de administrador.");
+        if (targetUser.getRole() == UserRole.ADMIN) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não é permitido alterar o papel de um Administrador pelo painel.");
         }
+
+        User admin = findByEmail(principalName);
 
         targetUser.setRole(newRole);
         User saved = userRepository.save(targetUser);

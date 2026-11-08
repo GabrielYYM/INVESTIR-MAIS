@@ -61,6 +61,17 @@ button:enabled {
     @apply w-full rounded-xl border border-line bg-raised px-3.5 py-3 text-sm text-zinc-200 outline-none placeholder:text-zinc-500 focus:border-amber-500/50 focus-visible:outline-offset-0 focus-visible:outline-1;
   }
 
+  select.field {
+    color-scheme: dark;
+    background-color: #1e1c2a;
+    color: #f4f4f5;
+  }
+
+  select option {
+    background-color: #1e1c2a;
+    color: #f4f4f5;
+  }
+
   .eyebrow {
     @apply text-xs font-semibold tracking-wider uppercase text-amber-400;
   }

@@ -96,10 +96,10 @@ public class UserDTO {
         LocalDateTime createdAt
     ) {}
 
-    @Schema(description = "Requisição para alteração do perfil (role) do usuário")
+    @Schema(description = "Requisição para alteração do perfil (role) do usuário pelo administrador")
     public record UpdateRoleRequest(
         @NotNull(message = "O perfil (role) é obrigatório")
-        @Schema(description = "Novo perfil do usuário (ADMIN, TEACHER ou STUDENT)", example = "TEACHER")
+        @Schema(description = "Novo perfil do usuário (apenas TEACHER ou STUDENT)", example = "TEACHER")
         UserRole role
     ) {}
 

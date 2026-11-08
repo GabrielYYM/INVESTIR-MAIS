@@ -326,16 +326,27 @@ class UserServiceTest {
     }
 
     @Test
-    void updateUserRole_WhenAdminTriesToRemoveOwnAdminRole_ShouldThrowBadRequest() {
+    void updateUserRole_WhenNewRoleIsAdmin_ShouldThrowBadRequest() {
+        UUID targetId = user.getId();
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+            () -> userService.updateUserRole("admin@investir.com", targetId, UserRole.ADMIN));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("Não é permitido conceder o perfil de Administrador pelo painel.", ex.getReason());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void updateUserRole_WhenTargetUserIsAdmin_ShouldThrowBadRequest() {
         UUID adminId = user.getId();
         user.setRole(UserRole.ADMIN);
         when(userRepository.findById(adminId)).thenReturn(Optional.of(user));
-        when(userRepository.findByEmail("admin@investir.com")).thenReturn(Optional.of(user));
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
             () -> userService.updateUserRole("admin@investir.com", adminId, UserRole.STUDENT));
 
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("Não é permitido alterar o papel de um Administrador pelo painel.", ex.getReason());
         verify(userRepository, never()).save(any());
     }
 

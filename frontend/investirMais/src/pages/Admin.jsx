@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   BookOpen,
   CheckCircle2,
+  ChevronDown,
   Clock,
   ExternalLink,
   History,
@@ -227,6 +228,7 @@ export default function Admin() {
               ) : (
                 filteredUsers.map((user) => {
                   const isCurrentAdmin = user.id === currentUser.id;
+                  const isUserAdmin = user.role === "ADMIN";
                   return (
                     <tr key={user.id} className="transition-colors hover:bg-white/[0.02]">
                       <td className="px-4 py-3">
@@ -271,11 +273,11 @@ export default function Admin() {
                           <button
                             type="button"
                             onClick={() => setSelectedUserForRole(user)}
-                            disabled={isCurrentAdmin}
+                            disabled={isUserAdmin}
                             title={
-                              isCurrentAdmin
-                                ? "Você não pode alterar o próprio papel"
-                                : "Alterar perfil de acesso"
+                              isUserAdmin
+                                ? "O papel de Administrador não pode ser alterado pelo painel"
+                                : "Alterar perfil de acesso (Aluno / Professor)"
                             }
                             className="button-secondary !min-h-8 !px-2.5 !py-1 text-xs"
                           >
@@ -323,7 +325,9 @@ export default function Admin() {
 function RoleChangeDialog({ user, onClose, onSuccess }) {
   const dialogRef = useRef(null);
   const headingId = useId();
-  const [selectedRole, setSelectedRole] = useState(user.role);
+  const [selectedRole, setSelectedRole] = useState(
+    user.role === "TEACHER" ? "TEACHER" : "STUDENT"
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -355,6 +359,7 @@ function RoleChangeDialog({ user, onClose, onSuccess }) {
     <dialog
       ref={dialogRef}
       aria-labelledby={headingId}
+      style={{ colorScheme: "dark" }}
       className="panel fixed inset-0 m-auto max-h-[calc(100dvh-2rem)] w-[min(30rem,calc(100%-2rem))] overflow-auto p-0 text-ink backdrop:bg-black/65"
       onCancel={(e) => {
         e.preventDefault();
@@ -392,24 +397,55 @@ function RoleChangeDialog({ user, onClose, onSuccess }) {
           <label htmlFor="role-select" className="text-xs font-semibold text-muted">
             Novo Papel
           </label>
-          <select
-            id="role-select"
-            value={selectedRole}
-            onChange={(e) => setSelectedRole(e.target.value)}
-            disabled={loading}
-            className="field mt-1 cursor-pointer"
-          >
-            <option value="STUDENT">Aluno (STUDENT)</option>
-            <option value="TEACHER">Professor (TEACHER)</option>
-            <option value="ADMIN">Administrador (ADMIN)</option>
-          </select>
-        </div>
 
-        <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-xs leading-relaxed text-amber-200">
-          <AlertTriangle size={18} className="shrink-0 text-amber-400 mt-0.5" />
-          <span>
-            Ao alterar o papel, todas as sessões ativas deste usuário no Redis serão automaticamente revogadas, exigindo que ele faça login novamente.
-          </span>
+          <div className="mt-1.5 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedRole("STUDENT")}
+              disabled={loading}
+              className={`flex items-center justify-center gap-2 rounded-xl border py-2.5 px-3 text-sm font-semibold transition-all ${
+                selectedRole === "STUDENT"
+                  ? "border-sky-500 bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/40"
+                  : "border-line bg-canvas text-muted hover:border-white/20 hover:text-zinc-200"
+              }`}
+            >
+              Aluno
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedRole("TEACHER")}
+              disabled={loading}
+              className={`flex items-center justify-center gap-2 rounded-xl border py-2.5 px-3 text-sm font-semibold transition-all ${
+                selectedRole === "TEACHER"
+                  ? "border-purple-500 bg-purple-500/20 text-purple-400 ring-1 ring-purple-500/40"
+                  : "border-line bg-canvas text-muted hover:border-white/20 hover:text-zinc-200"
+              }`}
+            >
+              Professor
+            </button>
+          </div>
+
+          <div className="relative mt-2">
+            <select
+              id="role-select"
+              value={selectedRole}
+              onChange={(e) => setSelectedRole(e.target.value)}
+              disabled={loading}
+              style={{ colorScheme: "dark" }}
+              className="field !bg-[#171522] !text-zinc-100 appearance-none pr-10 cursor-pointer"
+            >
+              <option value="STUDENT" style={{ backgroundColor: "#1e1c2a", color: "#f4f4f5" }}>
+                Aluno
+              </option>
+              <option value="TEACHER" style={{ backgroundColor: "#1e1c2a", color: "#f4f4f5" }}>
+                Professor
+              </option>
+            </select>
+            <ChevronDown
+              size={18}
+              className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-muted"
+            />
+          </div>
         </div>
 
         <div className="flex justify-end gap-2 border-t border-line pt-4">
@@ -471,6 +507,7 @@ function AuditHistoryDialog({ user, onClose }) {
     <dialog
       ref={dialogRef}
       aria-labelledby={headingId}
+      style={{ colorScheme: "dark" }}
       className="panel fixed inset-0 m-auto max-h-[calc(100dvh-2rem)] w-[min(48rem,calc(100%-2rem))] overflow-auto p-0 text-ink backdrop:bg-black/65"
       onCancel={(e) => {
         e.preventDefault();
