@@ -208,7 +208,7 @@ public class UserService {
     @PreAuthorize("hasRole('ADMIN')")
     @Transactional(readOnly = true)
     public List<UserDTO.AuditResponse> getUserAuditHistory(UUID userId) {
-        if (!userRepository.existsById(userId)) {
+        if (!userRepository.existsByIdIncludingDeleted(userId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado.");
         }
         return userRepository.findRevisions(userId).stream()
