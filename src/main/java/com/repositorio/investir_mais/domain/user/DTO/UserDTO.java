@@ -8,6 +8,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -93,5 +94,27 @@ public class UserDTO {
 
         @Schema(description = "Data e hora do cadastro")
         LocalDateTime createdAt
+    ) {}
+
+    @Schema(description = "Requisição para alteração do perfil (role) do usuário")
+    public record UpdateRoleRequest(
+        @NotNull(message = "O perfil (role) é obrigatório")
+        @Schema(description = "Novo perfil do usuário (ADMIN, TEACHER ou STUDENT)", example = "TEACHER")
+        UserRole role
+    ) {}
+
+    @Schema(description = "Registro de auditoria histórica de um usuário")
+    public record AuditResponse(
+        @Schema(description = "Número sequencial da revisão", example = "1")
+        Integer revisionNumber,
+
+        @Schema(description = "Data e hora exata da alteração")
+        Instant timestamp,
+
+        @Schema(description = "Tipo de operação: INSERT, UPDATE ou DELETE", example = "UPDATE")
+        String operation,
+
+        @Schema(description = "Estado do usuário no momento desta revisão")
+        UserDTO.Response user
     ) {}
 }

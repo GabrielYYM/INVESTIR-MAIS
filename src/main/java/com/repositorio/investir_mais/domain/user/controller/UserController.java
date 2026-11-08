@@ -20,6 +20,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.security.Principal;
@@ -142,5 +143,38 @@ public class UserController {
     public Map<String, String> resetPassword(@Valid @RequestBody AuthDTO.ResetPasswordRequest dto) {
         userService.resetPassword(dto);
         return Map.of("message", "Senha redefinida com sucesso!");
+    }
+
+    @Operation(summary = "Listar todos os usuários", description = "Retorna a lista completa de usuários cadastrados no sistema. Exige perfil ADMIN.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso"),
+        @ApiResponse(responseCode = "403", description = "Acesso negado para perfis diferentes de ADMIN")
+    })
+    @GetMapping
+    public List<UserDTO.Response> listAllUsers() {
+        return userService.listAllUsers();
+    }
+
+    @Operation(summary = "Alterar perfil (role) do usuário", description = "Atualiza o perfil de acesso de um usuário para ADMIN, TEACHER ou STUDENT. Exige perfil ADMIN.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Perfil atualizado com sucesso"),
+        @ApiResponse(responseCode = "400", description = "Requisição inválida ou tentativa do admin remover seu próprio perfil"),
+        @ApiResponse(responseCode = "403", description = "Acesso negado para perfis diferentes de ADMIN"),
+        @ApiResponse(responseCode = "404", description = "Usuário não encontrado")
+    })
+    @PatchMapping("/{id}/role")
+    public UserDTO.Response updateUserRole(Principal principal, @PathVariable UUID id, @Valid @RequestBody UserDTO.UpdateRoleRequest dto) {
+        return userService.updateUserRole(principal.getName(), id, dto.role());
+    }
+
+    @Operation(summary = "Consultar histórico de auditoria do usuário", description = "Retorna todas as revisões históricas do usuário registradas pelo Hibernate Envers. Exige perfil ADMIN.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Histórico de auditoria retornado com sucesso"),
+        @ApiResponse(responseCode = "403", description = "Acesso negado para perfis diferentes de ADMIN"),
+        @ApiResponse(responseCode = "404", description = "Usuário não encontrado")
+    })
+    @GetMapping("/{id}/audit")
+    public List<UserDTO.AuditResponse> getUserAuditHistory(@PathVariable UUID id) {
+        return userService.getUserAuditHistory(id);
     }
 }

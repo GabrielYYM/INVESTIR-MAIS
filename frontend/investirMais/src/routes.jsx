@@ -10,6 +10,7 @@ import Perfil, { profileAction } from "./pages/Perfil.jsx";
 import Home, { dashboardLoader, quoteLoader } from "./pages/Home.jsx";
 import Education, { catalogLoader } from "./pages/Education.jsx";
 import Course, { courseLoader } from "./pages/Course.jsx";
+import Admin, { adminLoader } from "./pages/Admin.jsx";
 import { catalogAction, courseAction } from "./services/educationData.js";
 
 async function requireSession({ request }) {
@@ -40,6 +41,7 @@ export const appRoutes = [
       { path: "educacao", Component: Education, loader: catalogLoader, action: catalogAction, ErrorBoundary: PageError },
       { path: "educacao/:courseId/:lessonId?", Component: Course, loader: courseLoader, action: courseAction, ErrorBoundary: PageError },
       { path: "perfil", Component: Perfil, action: profileAction },
+      { path: "admin", Component: Admin, loader: adminLoader, ErrorBoundary: PageError },
       { path: "sair", action: signOut },
     ],
   },

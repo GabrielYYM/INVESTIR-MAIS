@@ -1,4 +1,4 @@
-import { BookOpen, Home, LogOut, User } from "lucide-react";
+import { BookOpen, Home, LogOut, ShieldCheck, User } from "lucide-react";
 import { Link, NavLink } from "react-router";
 
 const links = [
@@ -7,7 +7,12 @@ const links = [
   { to: "/perfil", label: "Meu perfil", icon: User },
 ];
 
-export default function Sidebar({ logout }) {
+export default function Sidebar({ logout, user }) {
+  const navLinks = [
+    ...links,
+    ...(user?.role === "ADMIN" ? [{ to: "/admin", label: "Administração", icon: ShieldCheck }] : []),
+  ];
+
   return (
     <aside className="sticky top-0 z-20 flex flex-col gap-4 border-b border-white/5 bg-canvas px-4 py-3 lg:h-dvh lg:border-r lg:border-b-0 lg:py-6">
       <div className="flex items-center justify-between lg:hidden">
@@ -17,9 +22,9 @@ export default function Sidebar({ logout }) {
         </logout.Form>
       </div>
 
-      <nav aria-label="Menu principal" className="grid grid-cols-3 gap-1 lg:grid-cols-1">
+      <nav aria-label="Menu principal" className={user?.role === "ADMIN" ? "grid grid-cols-4 gap-1 lg:grid-cols-1" : "grid grid-cols-3 gap-1 lg:grid-cols-1"}>
         <p className="mb-2 hidden px-2 text-xs font-medium tracking-wide text-zinc-500 lg:block">MENU</p>
-        {links.map(({ to, label, icon: Icon }) => (
+        {navLinks.map(({ to, label, icon: Icon }) => (
           <NavLink key={to} to={to} end={to === "/"} className={({ isActive }) =>
             "flex items-center justify-center gap-2 rounded-xl px-2 py-2.5 text-xs transition-colors sm:text-sm lg:justify-start lg:gap-3 lg:px-3 " +
             (isActive ? "bg-brand font-semibold text-zinc-900" : "text-muted hover:bg-raised hover:text-zinc-200")

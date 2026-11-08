@@ -20,7 +20,9 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 import static org.hamcrest.Matchers.containsString;
@@ -31,6 +33,8 @@ import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -153,5 +157,59 @@ class UserControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void listAllUsers_ShouldReturnUsersList() throws Exception {
+        UUID id = UUID.randomUUID();
+        UserDTO.Response responseDTO = new UserDTO.Response(
+            id, "Admin", 30, "admin@investir.com", UserRole.ADMIN, true, LocalDateTime.now()
+        );
+        when(userService.listAllUsers()).thenReturn(List.of(responseDTO));
+
+        mockMvc.perform(get("/api/users")
+                .principal(() -> "admin@investir.com"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].email").value("admin@investir.com"));
+
+        verify(userService).listAllUsers();
+    }
+
+    @Test
+    void updateUserRole_WithValidData_ShouldReturnUpdatedUser() throws Exception {
+        UUID id = UUID.randomUUID();
+        UserDTO.UpdateRoleRequest dto = new UserDTO.UpdateRoleRequest(UserRole.TEACHER);
+        UserDTO.Response responseDTO = new UserDTO.Response(
+            id, "Felipe", 25, "felipe@investir.com", UserRole.TEACHER, true, LocalDateTime.now()
+        );
+        when(userService.updateUserRole(eq("admin@investir.com"), eq(id), eq(UserRole.TEACHER))).thenReturn(responseDTO);
+
+        mockMvc.perform(patch("/api/users/{id}/role", id)
+                .principal(() -> "admin@investir.com")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.role").value("TEACHER"));
+
+        verify(userService).updateUserRole("admin@investir.com", id, UserRole.TEACHER);
+    }
+
+    @Test
+    void getUserAuditHistory_ShouldReturnAuditList() throws Exception {
+        UUID id = UUID.randomUUID();
+        UserDTO.Response userSnapshot = new UserDTO.Response(
+            id, "Felipe", 25, "felipe@investir.com", UserRole.STUDENT, true, LocalDateTime.now()
+        );
+        UserDTO.AuditResponse auditDTO = new UserDTO.AuditResponse(1, Instant.now(), "INSERT", userSnapshot);
+        when(userService.getUserAuditHistory(id)).thenReturn(List.of(auditDTO));
+
+        mockMvc.perform(get("/api/users/{id}/audit", id)
+                .principal(() -> "admin@investir.com"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].revisionNumber").value(1))
+                .andExpect(jsonPath("$[0].operation").value("INSERT"));
+
+        verify(userService).getUserAuditHistory(id);
     }
 }

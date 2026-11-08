@@ -24,7 +24,7 @@ export default function AppLayout() {
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
       <a href="#conteudo" className="sr-only focus:not-sr-only focus:fixed focus:z-30 focus:bg-brand focus:p-3 focus:text-canvas">Pular para o conteúdo</a>
-      <Sidebar logout={signOutForm} />
+      <Sidebar logout={signOutForm} user={user} />
       <div className="min-w-0">
         <Topbar user={user} />
         <div className={navigation.state === "loading" ? "h-0.5 animate-pulse bg-brand" : "h-0.5"} aria-hidden="true" />
