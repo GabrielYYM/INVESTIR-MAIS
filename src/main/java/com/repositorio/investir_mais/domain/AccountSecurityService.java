@@ -85,9 +85,9 @@ public class AccountSecurityService {
         return jdbc.sql("""
             SELECT EXISTS (
                 SELECT 1 FROM app_one_time_token
-                WHERE token_value IN (?, ?) AND username = ? AND purpose = ? AND expires_at > ?
+                WHERE token_value = ? AND username = ? AND purpose = ? AND expires_at > ?
             )
-            """).params(DigestUtils.sha256Hex(event.token()), event.token(), event.email(), purpose, Timestamp.from(Instant.now()))
+            """).params(DigestUtils.sha256Hex(event.token()), event.email(), purpose, Timestamp.from(Instant.now()))
                 .query(Boolean.class).single();
     }
 
@@ -113,23 +113,22 @@ public class AccountSecurityService {
         if (!TOKEN_FORMAT.matcher(token).matches()) {
             return Optional.empty();
         }
-        // Raw UUIDs from before the migration remain usable until their original expiry.
         String digest = DigestUtils.sha256Hex(token);
         var owner = jdbc.sql("""
             SELECT username FROM app_one_time_token
-            WHERE token_value IN (?, ?) AND purpose = ?
-            """).params(digest, token, purpose).query(String.class).optional();
+            WHERE token_value = ? AND purpose = ?
+            """).params(digest, purpose).query(String.class).optional();
         if (owner.isEmpty()) {
             return Optional.empty();
         }
         lockAccount(owner.get());
         var email = jdbc.sql("""
             SELECT username FROM app_one_time_token
-            WHERE token_value IN (?, ?) AND purpose = ? AND expires_at > ?
+            WHERE token_value = ? AND purpose = ? AND expires_at > ?
             FOR UPDATE
-            """).params(digest, token, purpose, Timestamp.from(Instant.now())).query(String.class).optional();
+            """).params(digest, purpose, Timestamp.from(Instant.now())).query(String.class).optional();
         if (email.isPresent()) {
-            jdbc.sql("DELETE FROM app_one_time_token WHERE token_value IN (?, ?) AND purpose = ?").params(digest, token, purpose).update();
+            jdbc.sql("DELETE FROM app_one_time_token WHERE token_value = ? AND purpose = ?").params(digest, purpose).update();
         }
         return email;
     }

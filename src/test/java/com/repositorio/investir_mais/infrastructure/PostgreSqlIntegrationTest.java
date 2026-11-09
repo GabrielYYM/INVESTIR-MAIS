@@ -2,6 +2,7 @@ package com.repositorio.investir_mais.infrastructure;
 
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.containers.GenericContainer;
@@ -9,6 +10,7 @@ import org.testcontainers.utility.DockerImageName;
 import org.springframework.test.annotation.DirtiesContext;
 
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+@MockitoBean(types = ResendEmailSender.class)
 public abstract class PostgreSqlIntegrationTest {
 
     @Container
@@ -30,7 +32,6 @@ public abstract class PostgreSqlIntegrationTest {
         registry.add("spring.data.redis.password", () -> "");
         registry.add("spring.data.redis.ssl.enabled", () -> false);
         registry.add("spring.session.data.redis.namespace", () -> "investir-mais:test:session:" + REDIS.getMappedPort(6379));
-        registry.add("spring.cache.redis.key-prefix", () -> "investir-mais:test:cache:" + REDIS.getMappedPort(6379) + ":");
         registry.add("app.security.rate-limit.namespace", () -> "investir-mais:test:rate:" + REDIS.getMappedPort(6379));
     }
 }

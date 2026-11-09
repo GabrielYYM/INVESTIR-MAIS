@@ -17,8 +17,7 @@ public interface UserRepository extends JpaRepository<User, UUID>, RevisionRepos
     Optional<User> findByEmail(String email);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select u from User u where u.email = :email")
-    Optional<User> findByEmailForUpdate(@Param("email") String email);
+    Optional<User> findForUpdateByEmail(String email);
 
 
     boolean existsByEmail(String email);

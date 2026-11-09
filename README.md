@@ -1,6 +1,6 @@
 # Investir Mais
 
-O Investir Mais é uma plataforma de educação financeira com catálogo de cursos e aulas e consulta de cotações. A aplicação reúne uma interface React e uma API Spring Boot. A gestão de carteira faz parte do escopo planejado.
+O Investir Mais é uma plataforma de educação financeira com catálogo de cursos e aulas. A aplicação reúne uma interface React e uma API Spring Boot. A gestão de carteira faz parte do escopo planejado.
 
 [Diagramas](#diagramas) · [Execução local](#execução-local) · [API](#api) · [Testes](#testes-e-verificações) · [Frontend](frontend/investirMais/README.md) · [Privacidade](docs/lgpd/README.md)
 
@@ -9,9 +9,8 @@ O Investir Mais é uma plataforma de educação financeira com catálogo de curs
 | Área | O que está disponível |
 | --- | --- |
 | Conta | Cadastro de aluno, confirmação de e-mail, login em duas etapas e recuperação de senha. A tela de perfil permite alterar o nome com a senha atual. |
-| Painel | Entrada comum aos três perfis, com cursos em destaque e consulta de cotações por ticker. |
+| Painel | Entrada comum aos três perfis, com cursos em destaque e métricas para professores e administradores. |
 | Educação | Catálogo paginado, navegação por curso e aula, reprodução de vídeos do YouTube e ações de gestão conforme o perfil. |
-| Gestão patrimonial | Consulta de cotação sob demanda. Carteira, aportes e projeções estão no escopo planejado. |
 
 | Perfil | Consultar cursos e aulas | Criar cursos | Gerenciar cursos e aulas |
 | --- | --- | --- | --- |
@@ -27,15 +26,15 @@ O cadastro público aceita apenas `STUDENT`. A interface exibe as ações dispon
 | --- | --- |
 | React e React Router | Rotas públicas e protegidas, formulários, painel, catálogo, aula e perfil. |
 | Axios e Orval | Axios centraliza cookies, CSRF e tratamento de falhas. Orval gera o cliente de educação a partir do contrato OpenAPI versionado. |
-| Spring Boot e Spring Security | Endpoints HTTP, validação, autorização, autenticação com senha e OTT e regras de conta, educação e cotações. |
+| Spring Boot e Spring Security | Endpoints HTTP, validação, autorização, autenticação com senha e OTT e regras de conta e educação. |
 | PostgreSQL | Usuários, cursos, aulas, revisões Envers, tokens de uso único e registro de eventos de e-mail. |
-| Redis | Sessões indexadas por usuário, cache de cotação e contadores de tentativas de autenticação. |
-| SMTP | Entrega dos e-mails de confirmação, login e recuperação. |
-| Brapi e YouTube | Brapi fornece cotações. YouTube hospeda os vídeos referenciados pelas aulas. |
+| Redis | Sessões indexadas por usuário e contadores de tentativas de autenticação. |
+| Resend | Entrega dos e-mails de confirmação, login e recuperação. |
+| YouTube | Hospeda os vídeos referenciados pelas aulas. |
 
 | Stack | Versões e referências |
 | --- | --- |
-| Backend | Java 21, Spring Boot 4.1.2, Spring Cloud 2025.1.3, Spring Modulith 2.1.1, MapStruct 1.6.3 e SpringDoc 3.1.1. [Configuração Maven](pom.xml) |
+| Backend | Java 21, Spring Boot 4.1.2, Spring Modulith 2.1.1, MapStruct 1.6.3 e SpringDoc 3.1.1. [Configuração Maven](pom.xml) |
 | Frontend | Node.js 24 na CI, React 19.3.1, React Router 8.5.1, Vite 8.3.5, Tailwind CSS 4.3.4 e Orval 8.46.0. [Dependências travadas](frontend/investirMais/package-lock.json) |
 | Infraestrutura de integração | PostgreSQL 17 e Redis 8 nos testes com Testcontainers. [Configuração da aplicação](src/main/resources/application.properties) |
 
@@ -46,7 +45,7 @@ INVESTIR-MAIS/
 ├── frontend/investirMais/    SPA React e contrato OpenAPI de educação
 ├── src/main/java/com/repositorio/investir_mais/
 │   ├── domain/               Conta, usuários, cursos e aulas
-│   └── infrastructure/       Segurança, e-mail e cotações
+│   └── infrastructure/       Segurança e e-mail
 ├── src/main/resources/       Configuração e SQL de inicialização
 ├── src/test/                 Testes unitários, HTTP e de integração
 ├── .env.example              Modelo de configuração local do backend
@@ -55,15 +54,13 @@ INVESTIR-MAIS/
 
 ## Diagramas
 
-As imagens mostram o comportamento implementado. Clique em cada diagrama para abrir o PNG em tamanho original. A [documentação dos diagramas](docs/diagrama-de-classes.md) relaciona cada visão ao código.
+Os diagramas do domínio e do login podem ser abertos em tamanho original. A [documentação da arquitetura](docs/diagrama-de-classes.md) relaciona cada visão ao código.
 
 ### Fluxo de navegação
 
-- O cadastro público cria uma conta de aluno. O link de confirmação abre um formulário que deve ser enviado para ativar a conta. A recuperação usa um código separado para definir a nova senha.
+- O cadastro público cria uma conta de aluno. Ao confirmar o e-mail original no navegador do cadastro, o usuário entra no painel. Em outro navegador, ou com um link reenviado, a página confirma a conta e oferece o login. A recuperação usa um código separado para definir a nova senha.
 - Uma rota protegida verifica a sessão com `GET /auth/me`. Sem acesso, o React redireciona ao login e guarda a rota solicitada. Após os dois fatores, o navegador abre um destino interno permitido ou o painel.
 - A área autenticada oferece painel, catálogo, curso, aula e perfil. Professor e administrador veem ações de gestão conforme suas permissões. A saída encerra a sessão no backend.
-
-[![Fluxo da entrada na plataforma ao painel, catálogo, aulas, perfil e saída](docs/diagramas/fluxo-de-navegacao.png)](docs/diagramas/fluxo-de-navegacao.png)
 
 ### BPMN do login com senha e OTT
 
@@ -86,9 +83,7 @@ As imagens mostram o comportamento implementado. Clique em cada diagrama para ab
 
 - Na área de conta, `UserController` e `AuthenticationController` expõem operações de usuário e sessão. `UserService` concentra as regras da conta e usa `AccountSecurityService` para tokens de confirmação e recuperação e para revogação de sessões.
 - No catálogo, controllers chamam `CourseService` e `LessonService`. Os serviços aplicam regras de permissão e propriedade, usam repositórios JPA e mapeiam entidades para DTOs com MapStruct.
-- Em cotações, `BrapiQuoteController` chama `AssetQuoteService`, que normaliza o ticker, consulta o cache e usa o cliente HTTP da Brapi. As setas tracejadas representam dependências entre classes.
-
-[![Classes e dependências das áreas de conta, educação e cotações](docs/diagramas/classes-da-aplicacao.png)](docs/diagramas/classes-da-aplicacao.png)
+- O `AuthenticationEmailHandler` envia os e-mails transacionais pela API do Resend.
 
 ## Execução local
 
@@ -96,7 +91,7 @@ As imagens mostram o comportamento implementado. Clique em cada diagrama para ab
 
 - Git, JDK 21 e Node.js 24 com npm. O Maven Wrapper está no repositório.
 - PostgreSQL e Redis em execução. Docker é uma opção para iniciar os serviços locais e é usado pelos testes de integração.
-- SMTP configurado para receber confirmação de cadastro, link de login e código de recuperação. Use uma caixa de e-mail à qual tenha acesso.
+- Resend configurado para enviar confirmação de cadastro, link de login e código de recuperação. Use uma caixa de e-mail à qual tenha acesso.
 
 ### 1. Baixar o projeto e iniciar os serviços
 
@@ -124,11 +119,10 @@ Copie [`.env.example`](.env.example) para `.env` na raiz e substitua os valores 
 | --- | --- |
 | `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | Acesso ao PostgreSQL. |
 | `REDIS_HOST`, `REDIS_PORT` | Padrão `localhost:6379`. Configure usuário, senha e TLS se o Redis exigir. |
-| `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD` | Dados do SMTP. Ajuste `MAIL_AUTH` e `MAIL_STARTTLS` conforme o servidor. |
-| `APP_PUBLIC_BASE_URL` | Base pública dos links de confirmação de e-mail. Padrão `http://localhost:8080`. |
-| `APP_CORS_ALLOWED_ORIGIN` | Origem da SPA e base do link de login. Padrão `http://localhost:5173`. |
-| `BRAPI_TOKEN` | Token da Brapi no backend, quando exigido pelo acesso usado para cotar. |
-| `SESSION_TIMEOUT`, `QUOTE_CACHE_TTL` | Inatividade da sessão e expiração do cache. Padrões `30m` e `1m`. |
+| `RESEND_API_KEY`, `RESEND_FROM` | Chave da API e endereço de remetente de um domínio verificado no Resend. Ambas são obrigatórias no backend. |
+| `APP_PUBLIC_BASE_URL` | Origem pública do backend. Padrão `http://localhost:8080`. |
+| `APP_CORS_ALLOWED_ORIGIN` | Origem da SPA e base dos links de confirmação e login. Padrão `http://localhost:5173`. |
+| `SESSION_TIMEOUT` | Limite de inatividade da sessão. Padrão `30m`. |
 
 No PowerShell:
 
@@ -172,19 +166,20 @@ No perfil `dev`, o Swagger UI fica em [localhost:8080/swagger-ui.html](http://lo
 | `/api/users` | Cadastro, verificação de e-mail, reenvio, recuperação e operações da própria conta. |
 | `/api/courses` | Listagem paginada, detalhe, filtro por professor e gestão de cursos. |
 | `/api/lessons` | Aulas por curso, detalhe e operações de gestão. |
-| `GET /api/assets/{ticker}/quote` | Cotação via Brapi, com cache por ticker normalizado. |
 
 ### Sessões, dados e operação
 
 - O cookie `SESSION` é `HttpOnly` e usa `SameSite=Lax`. O cliente consulta `/csrf` para preparar escritas, inclusive quando o token é renovado entre etapas da autenticação.
-- O Redis indexa sessões por usuário para revogá-las após alterações de senha ou e-mail e após exclusão de conta. O cache de cotações é independente das sessões. Respostas vazias e exceções não são armazenadas.
+- O Redis indexa sessões por usuário para revogá-las após alterações de senha ou e-mail e após exclusão de conta.
 - O limite de autenticação usa Redis por IP e rota e também por conta em `/auth/login`. O padrão é 10 solicitações por janela de um minuto. O limite retorna `429` com `Retry-After`. Se o Redis estiver indisponível, o filtro retorna `503`.
 - Tokens de login usam `one_time_tokens`. Tokens de confirmação e recuperação ficam em `app_one_time_token`, com hash SHA-256 para novas emissões e consumo transacional. O Spring Modulith registra e reprocessa eventos de confirmação e recuperação. O e-mail de login segue o fluxo assíncrono da autenticação.
 - A API exige a senha atual para excluir a própria conta. A exclusão lógica preserva o registro e mantém seu e-mail reservado. As operações do serviço cuidam da cascata e da revogação de acesso.
 
 ### Produção
 
-Use o perfil `prod` com PostgreSQL e Redis próprios, credenciais de SMTP e HTTPS. Configure `APP_PUBLIC_BASE_URL` como a origem pública que atende à confirmação de e-mail e `APP_CORS_ALLOWED_ORIGIN` como a origem pública da SPA quando forem diferentes. O perfil ativa cookies `Secure`, requer STARTTLS no SMTP, habilita TLS no Redis por padrão e desativa Swagger e `/v3/api-docs`.
+Use o perfil `prod` com PostgreSQL, Redis e HTTPS. Configure `RESEND_API_KEY` e `RESEND_FROM` no ambiente do backend. O remetente deve pertencer a um domínio verificado. [Documentação do Resend](https://resend.com/docs/introduction)
+
+Configure `APP_PUBLIC_BASE_URL` como a origem pública do backend e `APP_CORS_ALLOWED_ORIGIN` como a origem pública da SPA quando forem diferentes. O perfil ativa cookies `Secure`, habilita TLS no Redis por padrão e desativa Swagger e `/v3/api-docs`.
 
 O esquema das entidades usa `ddl-auto=update` e o SQL auxiliar fica em [`schema-postgresql.sql`](src/main/resources/schema-postgresql.sql). As opções de publicação da SPA e do proxy estão no [README do frontend](frontend/investirMais/README.md#publicação).
 
@@ -203,6 +198,6 @@ A suíte inclui testes do fluxo de login com H2 e Redis simulado, além de teste
 
 - [Frontend, rotas e publicação](frontend/investirMais/README.md)
 - [Diagramas e referências ao código](docs/diagrama-de-classes.md)
-- [Auditoria de frontend e segurança](docs/auditoria-frontend-seguranca.md)
+- [Auditoria histórica de frontend e segurança](docs/auditoria-frontend-seguranca.md)
 - [Privacidade e dados pessoais](docs/lgpd/README.md)
 - [Licença](LICENSE)

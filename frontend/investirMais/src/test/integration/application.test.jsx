@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw/http";
 import { describe, expect, it, vi } from "vitest";
 import { course, paged } from "../fixtures.js";
@@ -32,7 +32,7 @@ describe("rotas e sessão", () => {
     expect(await screen.findByRole("heading", { name: "Meu perfil" })).toBeInTheDocument();
   });
 
-  it.each(["/nao-existe", "/educacao/identificador-invalido"])("mostra página não encontrada para %s", async (path) => {
+  it.each(["/nao-existe", "/educacao/identificador-invalido", "/cotacao"])("mostra página não encontrada para %s", async (path) => {
     renderApp(path);
     expect(await screen.findByRole("heading", { name: "Página não encontrada" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Tentar novamente" })).not.toBeInTheDocument();
@@ -64,7 +64,7 @@ describe("rotas e sessão", () => {
   });
 });
 
-describe("painel e consulta de cotação", () => {
+describe("painel e catálogo", () => {
   it("exibe os cursos em destaque com limite e ordenação da API", async () => {
     let query;
     server.use(http.get(origin + "/api/courses", ({ request }) => {
@@ -80,61 +80,11 @@ describe("painel e consulta de cotação", () => {
 
   it.each([
     [200, "Ainda não há cursos no catálogo."], [503, "O catálogo está indisponível no momento."],
-  ])("mantém a consulta de cotação com catálogo HTTP %i", async (status, message) => {
+  ])("exibe o estado do catálogo com HTTP %i", async (status, message) => {
     server.use(http.get(origin + "/api/courses", () => HttpResponse.json(paged([]), { status })));
     renderApp();
     expect(await screen.findByText(message)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Consultar cotação" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Catálogo de Cursos" })).toBeInTheDocument();
   });
 
-  it.each([
-    [{ currency: "BRL", regularMarketChangePercent: 1.25, shortName: "Petrobras" }, /R\$\s*35,25/, "+1,25%"],
-    [{ currency: "BRL", regularMarketChangePercent: -2.5, longName: "Petrobras PN" }, /R\$\s*35,25/, "-2,5%"],
-    [{ currency: "inválida", regularMarketChangePercent: null, shortName: "Petrobras" }, /35,25/, null],
-  ])("consulta e formata o preço e a variação %#", async (fields, price, change) => {
-    const quote = vi.fn(({ params }) => {
-      expect(params.ticker).toBe("PETR4");
-      return HttpResponse.json({ results: [{ symbol: "PETR4", regularMarketPrice: 35.25, ...fields }] });
-    });
-    server.use(http.get(origin + "/api/assets/:ticker/quote", quote));
-    const { user } = renderApp();
-    await user.type(await screen.findByRole("textbox", { name: "Ticker" }), "petr4");
-    await user.click(screen.getByRole("button", { name: "Buscar" }));
-    expect(await screen.findByText(price)).toBeInTheDocument();
-    expect(screen.getByText(fields.shortName || fields.longName)).toBeInTheDocument();
-    if (change) expect(screen.getByText(change)).toBeInTheDocument();
-    else expect(screen.queryByText(/%$/)).not.toBeInTheDocument();
-    expect(quote).toHaveBeenCalledOnce();
-  });
-
-  it.each([
-    [404, {}, "Ativo não encontrado."], [503, {}, "A cotação está indisponível"],
-    [200, { results: [] }, "Nenhuma cotação disponível para PETR4."],
-  ])("mostra a falha da consulta HTTP %i sem perder o painel", async (status, body, message) => {
-    server.use(http.get(origin + "/api/assets/:ticker/quote", () => HttpResponse.json(body, { status })));
-    const { user } = renderApp();
-    await user.type(await screen.findByRole("textbox", { name: "Ticker" }), "PETR4");
-    await user.click(screen.getByRole("button", { name: "Buscar" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent(message);
-    expect(screen.getByRole("heading", { name: "Olá, Ana." })).toBeInTheDocument();
-  });
-
-  it("rejeita ticker inválido antes da chamada à API", async () => {
-    const quote = vi.fn();
-    server.use(http.get(origin + "/api/assets/:ticker/quote", quote));
-    const { user } = renderApp();
-    await user.type(await screen.findByRole("textbox", { name: "Ticker" }), "<PETR4>");
-    await user.click(screen.getByRole("button", { name: "Buscar" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Informe um ticker válido.");
-    expect(quote).not.toHaveBeenCalled();
-  });
-
-  it("redireciona ao login se a sessão expirar durante a consulta", async () => {
-    server.use(http.get(origin + "/api/assets/:ticker/quote", () => HttpResponse.json({}, { status: 401 })));
-    const { user, router } = renderApp();
-    await user.type(await screen.findByRole("textbox", { name: "Ticker" }), "PETR4");
-    await user.click(screen.getByRole("button", { name: "Buscar" }));
-    await waitFor(() => expect(router.state.location.pathname).toBe("/entrar"));
-    expect(await screen.findByRole("heading", { name: "Bem-vindo de volta" })).toBeInTheDocument();
-  });
 });

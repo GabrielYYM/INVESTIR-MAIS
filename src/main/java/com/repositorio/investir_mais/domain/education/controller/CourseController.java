@@ -55,6 +55,27 @@ public class CourseController {
         return courseService.getCourseById(courseId);
     }
 
+    @Operation(summary = "Matricular aluno em um curso", description = "Registra a matrícula do usuário autenticado no curso especificado.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "201", description = "Matrícula realizada com sucesso"),
+        @ApiResponse(responseCode = "404", description = "Curso não encontrado")
+    })
+    @PostMapping("/{courseId}/enroll")
+    @ResponseStatus(HttpStatus.CREATED)
+    public CourseDTO.CourseProgressResponse enrollStudent(@PathVariable UUID courseId, Principal principal) {
+        return courseService.enrollStudent(courseId, principal.getName());
+    }
+
+    @Operation(summary = "Consultar progresso do aluno no curso", description = "Retorna o percentual de conclusão e lista de aulas já concluídas pelo aluno atual.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Progresso retornado com sucesso"),
+        @ApiResponse(responseCode = "404", description = "Curso não encontrado")
+    })
+    @GetMapping("/{courseId}/progress")
+    public CourseDTO.CourseProgressResponse getCourseProgress(@PathVariable UUID courseId, Principal principal) {
+        return courseService.getCourseProgress(courseId, principal.getName());
+    }
+
     @Operation(summary = "Listar cursos por professor", description = "Retorna uma lista paginada de cursos criados por um determinado professor.")
     @ApiResponse(responseCode = "200", description = "Página de cursos retornada com sucesso")
     @GetMapping("/professor/{professorId}")

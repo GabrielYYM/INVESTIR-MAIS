@@ -22,7 +22,7 @@ Para usufruir dos recursos interativos, como trilhas educacionais, cursos e acom
 ### 3. Perfis de Acesso e Permissões
 O sistema opera com controle de acesso baseado em papéis (*Role-Based Access Control*), estruturado nos seguintes perfis:
 
-* **Aluno (`STUDENT`):** Acesso ao catálogo de cursos e aulas, acompanhamento do próprio progresso de aprendizado, consulta a cotações de mercado e gestão do próprio perfil.
+* **Aluno (`STUDENT`):** Acesso ao catálogo de cursos e aulas, acompanhamento do próprio progresso de aprendizado e gestão do próprio perfil.
 * **Professor/Educador (`TEACHER`):** Além dos privilégios de aluno, possui permissão para criar, editar, organizar e gerenciar seus próprios cursos, módulos e aulas didáticas na plataforma.
 * **Administrador (`ADMIN`):** Gestão geral de usuários, moderação de conteúdos globais, auditoria do sistema e garantia de integridade da infraestrutura.
 
@@ -92,9 +92,8 @@ O tratamento de dados pessoais de menores de 18 (dezoito) anos na plataforma INV
 A plataforma **não comercializa nem compartilha dados pessoais** com terceiros para fins de marketing. O compartilhamento ocorre exclusivamente nos seguintes limites:
 1. **Operadores de Infraestrutura em Nuvem:** Servidores de banco de dados (PostgreSQL) e de aplicação, sob rígidos deveres de confidencialidade e segurança da informação.
 2. **Provedores de E-mail Transacional:** Serviços utilizados exclusivamente para o envio de mensagens essenciais (confirmação de cadastro, link de verificação e recuperação de senha).
-3. **API de Cotações Financeiras (Brapi):** As consultas de cotações de mercado são realizadas pelo backend informando estritamente os códigos dos ativos (*tickers*), **sem transmissão de qualquer dado de identificação pessoal de usuários**.
-4. **Incorporação de Vídeos do YouTube:** Ao reproduzir videoaulas incorporadas do YouTube cadastradas pelos professores, a conexão de streaming é estabelecida diretamente entre o navegador do usuário e a infraestrutura do Google LLC / YouTube. Essa comunicação é regida pelos termos e políticas de privacidade do Google. O professor/responsável pela aula é terminantemente proibido de vincular vídeos contendo exposição não autorizada de dados pessoais, imagens ou voz de terceiros (em especial de crianças e adolescentes).
-5. **Autoridades Judiciais e Policiais:** Mediante ordem judicial fundamentada ou exigência legal expressa.
+3. **Incorporação de Vídeos do YouTube:** Ao reproduzir videoaulas incorporadas do YouTube cadastradas pelos professores, a conexão de streaming é estabelecida diretamente entre o navegador do usuário e a infraestrutura do Google LLC / YouTube. Essa comunicação é regida pelos termos e políticas de privacidade do Google. O professor/responsável pela aula é terminantemente proibido de vincular vídeos contendo exposição não autorizada de dados pessoais, imagens ou voz de terceiros (em especial de crianças e adolescentes).
+4. **Autoridades Judiciais e Policiais:** Mediante ordem judicial fundamentada ou exigência legal expressa.
 
 ### 5. Medidas de Segurança da Informação (Art. 46 da LGPD)
 A plataforma adota medidas técnicas e administrativas aptas a proteger os dados pessoais contra acessos não autorizados e incidentes de segurança:

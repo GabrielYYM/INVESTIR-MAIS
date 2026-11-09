@@ -1,12 +1,10 @@
 # Diagramas do Investir Mais
 
-Os diagramas descrevem a implementação atual do projeto. As quatro imagens também aparecem no [README principal](../README.md#diagramas).
+Os diagramas de domínio e acesso também aparecem no [README principal](../README.md#diagramas).
 
 | Diagrama | O que mostra |
 | --- | --- |
 | [Classes de domínio](diagramas/classes-de-dominio.png) | Entidades JPA, atributos, multiplicidades e regras de persistência. |
-| [Classes da aplicação](diagramas/classes-da-aplicacao.png) | Controllers, serviços, repositórios, mapeadores e dependências principais do backend. |
-| [Fluxo de navegação](diagramas/fluxo-de-navegacao.png) | Acesso à conta, painel, cotações, catálogo, aulas, perfil e saída. |
 | [BPMN de acesso](diagramas/bpmn-login-ott.png) | Uma tentativa de login com senha e token de uso único (OTT). |
 
 O diagrama de acesso usa BPMN 2.0 para documentar o processo. [Especificação BPMN 2.0.2 da OMG](https://www.omg.org/spec/BPMN/2.0.2/)
@@ -76,4 +74,4 @@ Os três perfis usam o mesmo painel. A interface exibe as ações de acordo com 
 
 O BPMN usa três raias para mostrar as responsabilidades da pessoa usuária, do React e da API Spring. A API valida a senha e o e-mail verificado, registra o desafio na sessão parcial e dispara o envio de um link e um código por e-mail. A pessoa abre o link no navegador em que começou o login ou informa o código na tela. As duas opções chamam `POST /auth/verify-2fa` com proteção CSRF. O Spring consome o token válido, conclui a autenticação e troca o identificador da sessão. [SecurityConfig](../src/main/java/com/repositorio/investir_mais/infrastructure/SecurityConfig.java), [AuthenticationEmailHandler](../src/main/java/com/repositorio/investir_mais/infrastructure/AuthenticationEmailHandler.java), [Login.jsx](../frontend/investirMais/src/pages/Login.jsx)
 
-O recorte termina quando o acesso é concluído ou quando as credenciais ou o OTT são recusados. A etapa de abertura pressupõe que a mensagem chegou. Cadastro, confirmação de e-mail e redefinição de senha aparecem no fluxo de navegação e usam regras próprias.
+O recorte termina quando o acesso é concluído ou quando as credenciais ou o OTT são recusados. A etapa de abertura pressupõe que a mensagem chegou. O [fluxo de navegação](../README.md#fluxo-de-navegação) descreve o primeiro acesso após o cadastro.

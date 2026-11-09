@@ -1,5 +1,6 @@
 package com.repositorio.investir_mais.domain.education.service;
 
+import com.repositorio.investir_mais.domain.education.DTO.CourseDTO;
 import com.repositorio.investir_mais.domain.education.DTO.LessonDTO;
 import com.repositorio.investir_mais.domain.education.mapper.LessonMapper;
 import com.repositorio.investir_mais.domain.education.model.Course;
@@ -73,6 +74,24 @@ public class LessonService {
         Lesson lesson = findLessonOwnedBy(lessonId, principalName);
         lessonRepository.delete(lesson);
         log.info("Aula removida com sucesso. ID: {}", lessonId);
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    public CourseDTO.CourseProgressResponse updateLessonProgress(UUID courseId, UUID lessonId, boolean completed, String studentEmail) {
+        User student = userService.findByEmailForUpdate(studentEmail);
+        Course course = courseService.findCourseOrThrow(courseId);
+        Lesson lesson = lessonRepository.findById(lessonId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Aula não encontrada."));
+
+        if (!lesson.getCourse().getId().equals(courseId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A aula informada não pertence ao curso.");
+        }
+
+        student.enrollIn(course);
+        student.setLessonCompleted(lesson, completed);
+
+        log.info("Progresso da aula {} atualizado para {} pelo aluno {}", lessonId, completed, student.getEmail());
+        return courseService.buildCourseProgress(courseId, student.getId(), true);
     }
 
     public Lesson findLessonOwnedBy(UUID lessonId, String principalName) {

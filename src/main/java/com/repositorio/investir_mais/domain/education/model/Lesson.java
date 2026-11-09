@@ -36,7 +36,6 @@ public class Lesson {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String thumbnailUrl;
 
-    // Hibernate exige EAGER para relações com entidades que usam @SoftDelete.
     @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "course_id", nullable = false)
     private Course course;
