@@ -54,13 +54,19 @@ INVESTIR-MAIS/
 
 ## Diagramas
 
-Os diagramas do domínio e do login podem ser abertos em tamanho original. A [documentação da arquitetura](docs/diagrama-de-classes.md) relaciona cada visão ao código.
+O [arquivo editável do Draw.io](docs/diagramas/investir-mais.drawio) reúne cinco abas com as classes de domínio, as classes da aplicação, a navegação, o BPMN do login e a arquitetura. A [documentação dos diagramas](docs/diagrama-de-classes.md) relaciona cada visão ao código.
+
+### Arquitetura
+
+[![Arquitetura do Investir Mais com React, Spring Boot, PostgreSQL, Redis e Resend](docs/diagramas/arquitetura.png)](docs/diagramas/arquitetura.png)
 
 ### Fluxo de navegação
 
 - O cadastro público cria uma conta de aluno. Ao confirmar o e-mail original no navegador do cadastro, o usuário entra no painel. Em outro navegador, ou com um link reenviado, a página confirma a conta e oferece o login. A recuperação usa um código separado para definir a nova senha.
 - Uma rota protegida verifica a sessão com `GET /auth/me`. Sem acesso, o React redireciona ao login e guarda a rota solicitada. Após os dois fatores, o navegador abre um destino interno permitido ou o painel.
 - A área autenticada oferece painel, catálogo, curso, aula e perfil. Professor e administrador veem ações de gestão conforme suas permissões. A saída encerra a sessão no backend.
+
+[![Fluxo de navegação do cadastro e login à área autenticada](docs/diagramas/fluxo-de-navegacao.png)](docs/diagramas/fluxo-de-navegacao.png)
 
 ### BPMN do login com senha e OTT
 
@@ -75,15 +81,18 @@ Os diagramas do domínio e do login podem ser abertos em tamanho original. A [do
 
 - `User` representa a conta e seu perfil `UserRole`. A senha é persistida como hash Argon2id e fica fora das revisões Envers.
 - Cada `Course` tem um usuário proprietário e pode ter zero ou mais aulas. Cada `Lesson` pertence a exatamente um curso e guarda os endereços de mídia e miniatura.
+- `User` mantém matrículas por curso e progresso por aula como coleções de valores embutíveis.
 - A exclusão é lógica. Excluir um curso propaga a exclusão às aulas. Excluir uma conta pelo serviço também exclui logicamente os cursos e aulas vinculados.
 
-[![Classes User, Course, Lesson e UserRole com atributos e cardinalidades](docs/diagramas/classes-de-dominio.png)](docs/diagramas/classes-de-dominio.png)
+[![Entidades de domínio, perfis, matrículas e progresso com atributos e cardinalidades](docs/diagramas/classes-de-dominio.png)](docs/diagramas/classes-de-dominio.png)
 
 ### Classes da aplicação
 
 - Na área de conta, `UserController` e `AuthenticationController` expõem operações de usuário e sessão. `UserService` concentra as regras da conta e usa `AccountSecurityService` para tokens de confirmação e recuperação e para revogação de sessões.
 - No catálogo, controllers chamam `CourseService` e `LessonService`. Os serviços aplicam regras de permissão e propriedade, usam repositórios JPA e mapeiam entidades para DTOs com MapStruct.
 - O `AuthenticationEmailHandler` envia os e-mails transacionais pela API do Resend.
+
+[![Classes da aplicação para conta, educação e envio de e-mails](docs/diagramas/classes-da-aplicacao.png)](docs/diagramas/classes-da-aplicacao.png)
 
 ## Execução local
 
