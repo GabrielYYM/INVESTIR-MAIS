@@ -44,12 +44,34 @@ export default function ForgotPassword() {
         <>
           <form onSubmit={changePassword} className="space-y-4" noValidate>
             {reset.formState.errors.root && <Notice error>{reset.formState.errors.root.message}</Notice>}
-            <Field label="Código de recuperação" icon={KeyRound} autoComplete="one-time-code" maxLength={64} error={reset.formState.errors.token?.message}
-              {...reset.register("token", { required: "Informe o código recebido.", setValueAs: (value) => value.trim() })} />
-            <Field label="Nova senha" icon={Lock} type="password" autoComplete="new-password" error={reset.formState.errors.password?.message}
-              {...reset.register("password", newPasswordRules)} />
-            <Field label="Confirme a nova senha" icon={Lock} type="password" autoComplete="new-password" error={reset.formState.errors.confirmPassword?.message}
-              {...reset.register("confirmPassword", confirmPasswordRules)} />
+            <Field
+              label="Código de recuperação"
+              icon={KeyRound}
+              autoComplete="one-time-code"
+              maxLength={64}
+              placeholder="Cole ou digite o código recebido por e-mail"
+              error={reset.formState.errors.token?.message}
+              {...reset.register("token", { required: "Informe o código recebido.", setValueAs: (value) => value.trim() })}
+            />
+            <Field
+              label="Nova senha"
+              icon={Lock}
+              type="password"
+              autoComplete="new-password"
+              placeholder="Digite a nova senha (mínimo 8 caracteres)"
+              hint="A senha deve ter no mínimo 8 caracteres."
+              error={reset.formState.errors.password?.message}
+              {...reset.register("password", newPasswordRules)}
+            />
+            <Field
+              label="Confirme a nova senha"
+              icon={Lock}
+              type="password"
+              autoComplete="new-password"
+              placeholder="Repita a nova senha criada"
+              error={reset.formState.errors.confirmPassword?.message}
+              {...reset.register("confirmPassword", confirmPasswordRules)}
+            />
             <button className="button-primary w-full" disabled={reset.formState.isSubmitting || resend.formState.isSubmitting}>Redefinir senha</button>
           </form>
           <form onSubmit={sendCode(resend, () => {})} className="space-y-3">
@@ -61,7 +83,16 @@ export default function ForgotPassword() {
       ) : (
         <form onSubmit={sendCode(request, setEmail)} className="space-y-4" noValidate>
           {request.formState.errors.root && <Notice error>{request.formState.errors.root.message}</Notice>}
-          <Field label="E-mail" icon={Mail} type="email" autoComplete="email" error={request.formState.errors.email?.message} {...request.register("email", emailRules)} />
+          <Field
+            label="E-mail"
+            icon={Mail}
+            type="email"
+            autoComplete="email"
+            placeholder="seu.email@exemplo.com"
+            hint="Enviaremos as instruções de recuperação para este endereço."
+            error={request.formState.errors.email?.message}
+            {...request.register("email", emailRules)}
+          />
           <button className="button-primary w-full" disabled={request.formState.isSubmitting}>Enviar código</button>
         </form>
       ))}

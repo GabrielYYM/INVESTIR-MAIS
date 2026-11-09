@@ -1,13 +1,11 @@
 package com.repositorio.investir_mais.infrastructure;
 
-import com.repositorio.investir_mais.infrastructure.config.BrapiProperties;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.http.client.autoconfigure.imperative.ImperativeHttpClientAutoConfiguration;
 import org.springframework.boot.http.client.autoconfigure.service.HttpServiceClientPropertiesAutoConfiguration;
 import org.springframework.boot.restclient.autoconfigure.RestClientAutoConfiguration;
@@ -62,7 +60,6 @@ class BrapiClientConfigurationTest {
 
     @TestConfiguration
     @EnableResilientMethods
-    @EnableConfigurationProperties(BrapiProperties.class)
     static class BreakerConfig {
         @Bean
         @SuppressWarnings({"unchecked", "rawtypes"})

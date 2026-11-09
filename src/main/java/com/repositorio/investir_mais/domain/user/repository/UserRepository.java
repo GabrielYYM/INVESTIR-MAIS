@@ -26,6 +26,9 @@ public interface UserRepository extends JpaRepository<User, UUID>, RevisionRepos
     @Query(value = "SELECT EXISTS (SELECT 1 FROM tb_user WHERE email = :email)", nativeQuery = true)
     boolean existsByEmailIncludingDeleted(@Param("email") String email);
 
+    @Query(value = "SELECT EXISTS (SELECT 1 FROM tb_user WHERE id = :id)", nativeQuery = true)
+    boolean existsByIdIncludingDeleted(@Param("id") UUID id);
+
     @Query(value = "SELECT EXISTS (SELECT 1 FROM tb_user WHERE email = :email AND id <> :id)", nativeQuery = true)
     boolean existsByEmailAndIdNot(@Param("email") String email, @Param("id") UUID id);
 }
