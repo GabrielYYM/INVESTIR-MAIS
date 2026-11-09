@@ -46,3 +46,13 @@ export async function resetPassword(token, newPassword) {
   const { data } = await apiClient.post("/api/users/reset-password", { token, newPassword });
   return data;
 }
+
+export async function updatePassword(currentPassword, newPassword) {
+  const { data } = await apiClient.put("/api/users/update-password", { currentPassword, newPassword });
+  return data;
+}
+
+export async function deleteAccount(id, currentPassword) {
+  await apiClient.delete(`/api/users/${id}`, { data: { currentPassword } });
+}
+
