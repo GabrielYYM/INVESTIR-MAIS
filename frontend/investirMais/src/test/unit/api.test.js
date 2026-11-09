@@ -33,16 +33,6 @@ describe("cliente HTTP e preparação de CSRF", () => {
     expect(client.defaults.headers.Accept).toBe("application/json");
   });
 
-  it("envia o período informado ao painel e propaga o sinal de cancelamento", async () => {
-    const { getTeacherDashboard } = await import("../../services/teacherService.js");
-    const { signal } = new AbortController();
-    await getTeacherDashboard({ startDate: "2026-10-01", endDate: undefined }, signal);
-
-    const [config] = adapter.mock.calls[0];
-    expect(config.signal).toBe(signal);
-    expect(client.getUri(config)).toMatch(/\/api\/teacher\/dashboard\?startDate=2026-10-01$/);
-  });
-
   it.each(["get", "head", "options", "trace"])("não solicita CSRF em %s", async (method) => {
     await client.request({ method, url: "/resource" });
     expect(adapter).toHaveBeenCalledTimes(1);

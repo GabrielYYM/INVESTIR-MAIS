@@ -9,10 +9,6 @@ export const server = setupServer(
     { headers: { "Set-Cookie": "XSRF-TOKEN=csrf-test-token; Path=/; SameSite=Lax" } },
   )),
   http.get(origin + "/auth/me", () => HttpResponse.json(student)),
-  http.get(origin + "/api/teacher/dashboard", () => new HttpResponse(null, { status: 403 })),
-  http.get(origin + "/api/courses/:courseId/progress", () => HttpResponse.json({
-    enrolled: false, totalLessons: 1, completedLessons: 0, progressPercentage: 0, completedLessonIds: [],
-  })),
   http.get(origin + "/api/courses", () => HttpResponse.json(paged([course]))),
   http.get(origin + "/api/courses/:courseId", () => HttpResponse.json(course)),
   http.get(origin + "/api/lessons/course/:courseId", () => HttpResponse.json(paged([lesson], { size: 10 }))),

@@ -20,4 +20,6 @@ public interface LessonRepository extends JpaRepository<Lesson, UUID> {
     Optional<Lesson> findByIdAndCourse_Professor_Id(UUID lessonId, UUID professorId);
 
     long countByCourseId(UUID courseId);
+
+    long countByCourseProfessorId(UUID professorId);
 }

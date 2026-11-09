@@ -54,20 +54,7 @@ public class TeacherDashboardDTO {
 
         @Schema(description = "Taxa de conclusão do curso (%)", example = "65.0")
         double completionRate
-    ) {
-        public CourseStats(UUID courseId, String courseName, long totalLessons, long enrolledStudents, long lessonsWatched) {
-            this(courseId, courseName, totalLessons, enrolledStudents, lessonsWatched,
-                    completionPercentage(lessonsWatched, totalLessons * enrolledStudents));
-        }
-
-        public static double completionPercentage(long lessonsWatched, long possibleWatches) {
-            if (possibleWatches == 0) {
-                return 0.0;
-            }
-            double rawPercentage = ((double) lessonsWatched / possibleWatches) * 100.0;
-            return Math.min(100.0, Math.round(rawPercentage * 10.0) / 10.0);
-        }
-    }
+    ) {}
 
     @Schema(description = "Requisição para atualizar o progresso de uma aula")
     public record ProgressRequest(

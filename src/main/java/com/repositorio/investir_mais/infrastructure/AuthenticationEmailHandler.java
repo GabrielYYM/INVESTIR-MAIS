@@ -118,7 +118,7 @@ public class AuthenticationEmailHandler {
                     <p>Se preferir, digite este código na tela que já está aberta: <strong>%s</strong></p>
                     <p>O acesso expira em 5 minutos.</p>
                     """.formatted(HtmlUtils.htmlEscape(link), HtmlUtils.htmlEscape(code)));
-        } catch (MessagingException | java.io.UnsupportedEncodingException exception) {
+        } catch (MessagingException | UnsupportedEncodingException exception) {
             throw new MailPreparationException(exception);
         }
         mailSender.send(message);

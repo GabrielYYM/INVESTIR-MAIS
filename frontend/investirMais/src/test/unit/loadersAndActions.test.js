@@ -15,7 +15,7 @@ beforeEach(() => vi.resetAllMocks());
 describe("painel e cotações", () => {
   it("mantém o painel disponível se o catálogo falhar", async () => {
     dashboardCourses.mockRejectedValue(new Error("offline"));
-    expect(await dashboardLoader({ request: loaderRequest("/") })).toEqual({ page: null, teacherStats: null, teacherError: null });
+    expect(await dashboardLoader({ request: loaderRequest("/") })).toEqual({ page: null });
   });
 
   it("redireciona ao login se a sessão do catálogo expirar", async () => {
