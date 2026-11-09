@@ -58,7 +58,18 @@ button:enabled {
   }
 
   .field {
-    @apply w-full rounded-xl border border-line bg-raised px-3.5 py-3 text-sm text-zinc-200 outline-none placeholder:text-zinc-500 focus:border-amber-500/50 focus-visible:outline-offset-0 focus-visible:outline-1;
+    @apply w-full rounded-xl border border-line bg-raised px-3.5 py-3 text-sm text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-amber-500/50 focus-visible:outline-offset-0 focus-visible:outline-1 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  select.field {
+    color-scheme: dark;
+    background-color: #1e1c2a;
+    color: #f4f4f5;
+  }
+
+  select option {
+    background-color: #1e1c2a;
+    color: #f4f4f5;
   }
 
   .eyebrow {

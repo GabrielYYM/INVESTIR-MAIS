@@ -1,7 +1,7 @@
 import { useEffect } from "react";
-import { Lock, Mail, Save, User } from "lucide-react";
+import { Lock, Mail, Save, ShieldCheck, User } from "lucide-react";
 import { useForm } from "react-hook-form";
-import { data, redirect, useFetcher, useRouteLoaderData } from "react-router";
+import { data, Link, redirect, useFetcher, useRouteLoaderData } from "react-router";
 import { Field } from "../components/FormFields.jsx";
 import { Notice } from "../components/PageState.jsx";
 import { roleNames } from "../components/Topbar.jsx";
@@ -60,11 +60,42 @@ export default function Perfil() {
         <h2 className="border-b border-line pb-4 font-semibold">Alterar informações</h2>
         <Field label="Nome completo" icon={User} autoComplete="name" maxLength={100} error={errors.name?.message}
           {...form.register("name", { setValueAs: (value) => value.trim(), required: "Informe seu nome.", minLength: { value: 2, message: "Informe pelo menos 2 caracteres." } })} />
-        <Field label="E-mail" icon={Mail} type="email" value={user.email} readOnly hint="Somente leitura." />
+        <Field label="E-mail" icon={Mail} type="email" value={user.email} disabled readOnly hint="Somente leitura. O e-mail não pode ser alterado." />
         <Field label="Senha atual" icon={Lock} type="password" autoComplete="current-password" error={errors.currentPassword?.message}
           {...form.register("currentPassword", { required: "Informe sua senha atual para confirmar." })} />
         <button className="button-primary" disabled={isSubmitting}><Save size={17} /> {isSubmitting ? "Salvando…" : "Salvar perfil"}</button>
       </form>
+
+      <section className="panel space-y-4 p-6 shadow-xl sm:p-8">
+        <div className="flex items-center gap-2.5 border-b border-line pb-4">
+          <ShieldCheck className="text-brand size-5" />
+          <h2 className="font-semibold text-lg">Privacidade e Seus Dados (LGPD)</h2>
+        </div>
+        <p className="text-sm text-muted leading-relaxed">
+          O Investir Mais trata seus dados em conformidade com a Lei Geral de Proteção de Dados (Lei nº 13.709/2018).
+          Você tem direito a solicitar confirmação de tratamento, acesso, retificação, portabilidade ou eliminação de seus dados pessoais.
+        </p>
+        <div className="rounded-xl border border-line bg-raised/30 p-4 text-xs text-muted space-y-2">
+          <p>
+            <strong className="text-zinc-200">Encarregado pelo Tratamento de Dados Pessoais (DPO):</strong>{" "}
+            <a href="mailto:gabrielyyminato@gmail.com" className="text-brand hover:underline font-medium">
+              gabrielyyminato@gmail.com
+            </a>
+          </p>
+          <p>
+            Para exercer seus direitos de titular ou solicitar exclusão definitiva de dados cadastrais, encaminhe uma requisição ao e-mail do Encarregado indicado acima.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3 pt-1 text-xs">
+          <Link to="/termos-de-uso" className="font-semibold text-brand hover:underline">
+            Termos de Uso
+          </Link>
+          <span className="text-zinc-600">•</span>
+          <Link to="/politica-de-privacidade" className="font-semibold text-brand hover:underline">
+            Política de Privacidade
+          </Link>
+        </div>
+      </section>
     </div>
   );
 }

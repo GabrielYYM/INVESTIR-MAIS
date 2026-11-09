@@ -293,16 +293,12 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
         assertNotEquals(first, second);
         assertEquals(400, browser.write(post("/api/users/verify-email").contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .param("token", first)).getResponse().getStatus());
-        var form = browser.read(get("/api/users/verify-email").param("token", second)).getResponse();
-        assertEquals(200, form.getStatus());
+        var redirect = browser.read(get("/api/users/verify-email").param("token", second)).getResponse();
+        assertEquals(302, redirect.getStatus());
+        assertTrue(redirect.getHeader("Location").contains("/confirmar-email?token=" + second));
         assertFalse(users.findByEmail(EMAIL).orElseThrow().isEmailVerified());
-        assertEquals("strict-origin", form.getHeader("Referrer-Policy"));
-        var field = Pattern.compile("name=\"_csrf\" value=\"([^\"]+)\"").matcher(form.getContentAsString());
-        assertTrue(field.find());
-        assertEquals(200, mvc.perform(post("/api/users/verify-email").contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                .header("Origin", "http://localhost")
-                .cookie(form.getCookie("XSRF-TOKEN")).param("_csrf", field.group(1)).param("token", second))
-                .andReturn().getResponse().getStatus());
+        assertEquals(200, browser.write(post("/api/users/verify-email").contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .param("token", second)).getResponse().getStatus());
         assertTrue(users.findByEmail(EMAIL).orElseThrow().isEmailVerified());
     }
 

@@ -5,7 +5,7 @@ import { Link, useNavigate, useSearchParams } from "react-router";
 import { AuthCard, emailRules, Field } from "../components/FormFields.jsx";
 import { Notice } from "../components/PageState.jsx";
 import { apiError } from "../services/api.js";
-import { login, verify2FA } from "../services/authService.js";
+import { login, resendVerification, verify2FA } from "../services/authService.js";
 
 function returnPath(value) {
   if (!value?.startsWith("/") || !URL.canParse(value, window.location.origin)) return "/";
@@ -52,14 +52,35 @@ export function LoginLink() {
 
 export default function Login() {
   const [email, setEmail] = useState("");
+  const [resendStatus, setResendStatus] = useState("");
+  const [isResending, setIsResending] = useState(false);
   const [search] = useSearchParams();
   const navigate = useNavigate();
   const credentials = useForm();
   const verification = useForm();
   const { errors, isSubmitting } = email ? verification.formState : credentials.formState;
 
+  const handleResend = async () => {
+    const enteredEmail = credentials.getValues("email")?.trim();
+    if (!enteredEmail) {
+      credentials.setError("email", { message: "Informe seu e-mail para receber a confirmação." });
+      return;
+    }
+    setIsResending(true);
+    setResendStatus("");
+    try {
+      const response = await resendVerification(enteredEmail);
+      setResendStatus(response.message || "Se houver uma conta pendente para este e-mail, uma nova confirmação será enviada.");
+    } catch (error) {
+      setResendStatus(apiError(error, "Não foi possível reenviar o link agora. Tente novamente em instantes."));
+    } finally {
+      setIsResending(false);
+    }
+  };
+
   const sendLink = credentials.handleSubmit(async ({ email, password }) => {
     try {
+      setResendStatus("");
       await login(email, password, returnPath(search.get("retorno")));
       credentials.reset({ email, password: "" });
       setEmail(email);
@@ -89,8 +110,15 @@ export default function Login() {
             <summary className="cursor-pointer text-sm font-medium text-muted hover:text-ink">Usar código manualmente</summary>
             <form onSubmit={verify} className="mt-4 space-y-4" noValidate>
               {errors.root && <Notice error>{errors.root.message}</Notice>}
-              <Field label="Código de verificação" autoComplete="one-time-code" maxLength={64} error={errors.code?.message}
-                {...verification.register("code", { required: "Informe o código recebido.", setValueAs: (value) => value.trim() })} />
+              <Field
+                label="Código de verificação"
+                autoComplete="one-time-code"
+                maxLength={64}
+                placeholder="Insira o código de verificação recebido"
+                hint="Caso prefira, você também pode clicar diretamente no link enviado para o seu e-mail."
+                error={errors.code?.message}
+                {...verification.register("code", { required: "Informe o código recebido.", setValueAs: (value) => value.trim() })}
+              />
               <button className="button-primary w-full" disabled={isSubmitting}>{isSubmitting ? "Confirmando…" : "Confirmar acesso"}</button>
             </form>
           </details>
@@ -100,11 +128,49 @@ export default function Login() {
         </div>
       ) : (
         <form key="credentials" onSubmit={sendLink} className="space-y-4" noValidate>
-          {errors.root && <Notice error>{errors.root.message}</Notice>}
-          <Field label="E-mail" icon={Mail} type="email" autoComplete="username" error={errors.email?.message} {...credentials.register("email", emailRules)} />
-          <Field label="Senha" icon={Lock} type="password" autoComplete="current-password" error={errors.password?.message}
-            {...credentials.register("password", { required: "Informe sua senha." })} />
-          <Link to="/recuperar-senha" className="block text-right text-sm text-brand hover:underline">Esqueceu a senha?</Link>
+          {errors.root && (
+            <div className="space-y-2">
+              <Notice error>{errors.root.message}</Notice>
+              <button
+                type="button"
+                onClick={handleResend}
+                disabled={isResending}
+                className="text-xs font-semibold text-brand hover:underline block text-left"
+              >
+                {isResending ? "Reenviando confirmação…" : "Não confirmou seu e-mail? Clique aqui para reenviar"}
+              </button>
+            </div>
+          )}
+          {resendStatus && <Notice>{resendStatus}</Notice>}
+          <Field
+            label="E-mail"
+            icon={Mail}
+            type="email"
+            autoComplete="username"
+            placeholder="seu.email@exemplo.com"
+            error={errors.email?.message}
+            {...credentials.register("email", emailRules)}
+          />
+          <Field
+            label="Senha"
+            icon={Lock}
+            type="password"
+            autoComplete="current-password"
+            placeholder="Digite sua senha de acesso"
+            error={errors.password?.message}
+            {...credentials.register("password", { required: "Informe sua senha." })}
+          />
+          <div className="flex items-center justify-between text-xs">
+            <button
+              type="button"
+              onClick={handleResend}
+              disabled={isResending}
+              className="text-muted hover:text-brand hover:underline"
+            >
+              Reenviar confirmação
+            </button>
+            <Link to="/recuperar-senha" className="text-brand hover:underline">Esqueceu a senha?</Link>
+          </div>
           <button className="button-primary w-full" disabled={isSubmitting}>{isSubmitting ? "Verificando…" : "Continuar"}</button>
           <p className="text-center text-sm text-muted">Ainda sem conta? <Link to="/cadastro" className="font-semibold text-brand hover:underline">Cadastre-se</Link></p>
         </form>

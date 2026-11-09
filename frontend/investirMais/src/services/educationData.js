@@ -1,5 +1,6 @@
 import { data, redirect, replace } from "react-router";
 import { apiError } from "./api.js";
+import { getCourseProgress } from "./teacherService.js";
 import {
   createCourse, createLesson, deleteCourse, deleteLesson, getAllCourses, getCourseById,
   getLessonById, getLessonsByCourse, updateCourse, updateLesson,
@@ -44,17 +45,18 @@ export async function courseLoader({ request, params: { courseId, lessonId } }) 
   const url = new URL(request.url);
   const requested = pageIndex(url);
   const { signal } = request;
-  const [course, result, selected] = await Promise.all([
+  const [course, result, selected, progress] = await Promise.all([
     getCourseById(courseId, { signal }),
     getLessonsByCourse(courseId, { page: requested, size: 10, sort: ["title", "id"] }, { signal }),
     lessonId ? getLessonById(lessonId, { signal }) : null,
+    getCourseProgress(courseId, signal).catch(() => null),
   ]);
 
   if (selected && selected.courseId !== course.id) throw new Response(null, { status: 404 });
 
   const page = readPage(result);
   validatePage(url, requested, page);
-  return { course, page, lesson: selected ?? page.items[0] };
+  return { course, page, lesson: selected ?? page.items[0], progress };
 }
 
 function mutationError(error) {

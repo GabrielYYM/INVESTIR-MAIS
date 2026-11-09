@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Calendar, CheckCircle2, Lock, Mail, ShieldCheck, User } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { Link } from "react-router";
+import TermsModal from "../components/TermsModal.jsx";
 import { AuthCard, confirmPasswordRules, emailRules, Field, newPasswordRules } from "../components/FormFields.jsx";
 import { Notice } from "../components/PageState.jsx";
 import { apiError } from "../services/api.js";
@@ -9,6 +10,7 @@ import { register as createAccount, resendVerification } from "../services/authS
 
 export default function SignUp() {
   const [email, setEmail] = useState("");
+  const [termsModalTab, setTermsModalTab] = useState(null);
   const form = useForm();
   const resend = useForm();
   const { errors, isSubmitting } = form.formState;
@@ -47,23 +49,90 @@ export default function SignUp() {
       ) : (
         <form onSubmit={submit} className="space-y-4" noValidate>
           {errors.root && <Notice error>{errors.root.message}</Notice>}
-          <Field label="Nome completo" icon={User} autoComplete="name" maxLength={100} error={errors.name?.message}
-            {...form.register("name", { setValueAs: (value) => value.trim(), required: "Informe seu nome.", minLength: { value: 2, message: "Informe pelo menos 2 caracteres." } })} />
-          <Field label="Idade" icon={Calendar} type="number" min={0} max={120} error={errors.age?.message}
-            {...form.register("age", { valueAsNumber: true, validate: (value) => (Number.isInteger(value) && value >= 0 && value <= 120) || "Informe uma idade inteira de 0 a 120." })} />
-          <Field label="E-mail" icon={Mail} type="email" autoComplete="email" error={errors.email?.message} {...form.register("email", emailRules)} />
-          <Field label="Senha" icon={Lock} type="password" autoComplete="new-password" error={errors.password?.message} {...form.register("password", newPasswordRules)} />
-          <Field label="Confirme a senha" icon={Lock} type="password" autoComplete="new-password" error={errors.confirmPassword?.message}
-            {...form.register("confirmPassword", confirmPasswordRules)} />
+          <Field
+            label="Nome completo"
+            icon={User}
+            autoComplete="name"
+            maxLength={100}
+            placeholder="Ex: Maria da Silva"
+            error={errors.name?.message}
+            {...form.register("name", {
+              setValueAs: (value) => value.trim(),
+              required: "Informe seu nome.",
+              minLength: { value: 2, message: "Informe pelo menos 2 caracteres." },
+            })}
+          />
+          <Field
+            label="Idade"
+            icon={Calendar}
+            type="number"
+            min={0}
+            max={120}
+            placeholder="Ex: 25"
+            error={errors.age?.message}
+            {...form.register("age", {
+              valueAsNumber: true,
+              validate: (value) =>
+                (Number.isInteger(value) && value >= 0 && value <= 120) ||
+                "Informe uma idade inteira de 0 a 120.",
+            })}
+          />
+          <Field
+            label="E-mail"
+            icon={Mail}
+            type="email"
+            autoComplete="email"
+            placeholder="seu.email@exemplo.com"
+            error={errors.email?.message}
+            {...form.register("email", emailRules)}
+          />
+          <Field
+            label="Senha"
+            icon={Lock}
+            type="password"
+            autoComplete="new-password"
+            placeholder="Crie uma senha (mínimo 8 caracteres)"
+            hint="A senha deve ter no mínimo 8 caracteres."
+            error={errors.password?.message}
+            {...form.register("password", newPasswordRules)}
+          />
+          <Field
+            label="Confirme a senha"
+            icon={Lock}
+            type="password"
+            autoComplete="new-password"
+            placeholder="Repita a senha criada acima"
+            error={errors.confirmPassword?.message}
+            {...form.register("confirmPassword", confirmPasswordRules)}
+          />
           <label className="flex items-start gap-2.5 text-sm text-muted">
             <input type="checkbox" className="mt-0.5 size-4 shrink-0 accent-brand" {...form.register("acceptTerms", { required: "Aceite os termos para continuar." })} />
-            Concordo com os Termos de Uso e a Política de Privacidade do Investir Mais.
+            <span>
+              Concordo com os{" "}
+              <button
+                type="button"
+                onClick={(e) => { e.preventDefault(); setTermsModalTab("termos"); }}
+                className="font-medium text-brand hover:underline cursor-pointer"
+              >
+                Termos de Uso
+              </button>{" "}
+              e a{" "}
+              <button
+                type="button"
+                onClick={(e) => { e.preventDefault(); setTermsModalTab("privacidade"); }}
+                className="font-medium text-brand hover:underline cursor-pointer"
+              >
+                Política de Privacidade
+              </button>{" "}
+              do Investir Mais.
+            </span>
           </label>
           {errors.acceptTerms && <p role="alert" className="text-xs text-negative">{errors.acceptTerms.message}</p>}
           <button className="button-primary w-full" disabled={isSubmitting}>{isSubmitting ? "Criando conta…" : "Criar conta"}</button>
         </form>
       )}
       <Link to="/entrar" className="block text-center text-sm font-semibold text-brand hover:underline">Voltar para entrar</Link>
+      {termsModalTab && <TermsModal initialTab={termsModalTab} onClose={() => setTermsModalTab(null)} />}
     </AuthCard>
   );
 }

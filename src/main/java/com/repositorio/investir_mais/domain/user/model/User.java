@@ -8,7 +8,9 @@ import org.hibernate.validator.constraints.Range;
 
 import lombok.*;
 
-import org.hibernate.annotations.Audited;
+import org.hibernate.envers.Audited;
+import org.hibernate.envers.AuditTable;
+import org.hibernate.envers.NotAudited;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.jdbc.Expectation;
@@ -32,7 +34,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Audited
-@Audited.Table(name = "TB_USER_AUDIT")
+@AuditTable(value = "TB_USER_AUDIT")
 @EntityListeners(AuditingEntityListener.class)
 public class User {
     @Id
@@ -49,7 +51,7 @@ public class User {
     @Column(nullable = false, unique = true)
     private String email;
 
-    @Audited.Excluded
+    @NotAudited
     private String password;
 
     @Enumerated(EnumType.STRING)
@@ -61,6 +63,7 @@ public class User {
     @Setter(AccessLevel.NONE)
     private LocalDateTime deletedAt;
 
+    @NotAudited
     @OneToMany(mappedBy = "professor", cascade = CascadeType.REMOVE)
     private List<Course> courses = new ArrayList<>();
 

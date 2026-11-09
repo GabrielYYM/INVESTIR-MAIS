@@ -8,6 +8,7 @@ import org.springframework.modulith.events.FailedEventPublications;
 import org.springframework.modulith.events.ResubmissionOptions;
 import com.repositorio.investir_mais.infrastructure.config.WebApplicationProperties;
 
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -69,8 +70,9 @@ public class AuthenticationEmailHandler {
 
     public void sendEmailVerificationLink(String email, String tokenValue) {
         String link = UriComponentsBuilder
-            .fromUriString(properties.publicBaseUrl())
-            .path("/api/users/verify-email")
+            .fromUriString(properties.frontendUrl())
+            .replacePath("/confirmar-email")
+            .replaceQuery(null)
             .queryParam("token", tokenValue)
             .build()
             .encode()
@@ -116,7 +118,7 @@ public class AuthenticationEmailHandler {
                     <p>Se preferir, digite este código na tela que já está aberta: <strong>%s</strong></p>
                     <p>O acesso expira em 5 minutos.</p>
                     """.formatted(HtmlUtils.htmlEscape(link), HtmlUtils.htmlEscape(code)));
-        } catch (MessagingException | java.io.UnsupportedEncodingException exception) {
+        } catch (MessagingException | UnsupportedEncodingException exception) {
             throw new MailPreparationException(exception);
         }
         mailSender.send(message);
