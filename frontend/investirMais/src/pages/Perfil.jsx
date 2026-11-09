@@ -2,19 +2,18 @@ import { useEffect, useState } from "react";
 import {
   AlertTriangle,
   ArrowRight,
-  CheckCircle2,
+  ChevronDown,
   KeyRound,
   Lock,
   Mail,
   Save,
   ShieldAlert,
-  ShieldCheck,
   Trash2,
   User,
   X,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
-import { data, Link, redirect, useFetcher, useRouteLoaderData } from "react-router";
+import { Link, redirect, useFetcher, useRouteLoaderData } from "react-router";
 import { Field, newPasswordRules } from "../components/FormFields.jsx";
 import { Notice } from "../components/PageState.jsx";
 import { roleNames } from "../components/Topbar.jsx";
@@ -41,21 +40,20 @@ export async function profileAction({ request }) {
         if ([401, 403].includes(sessionError.response?.status)) return redirect("/entrar?retorno=%2Fperfil");
       }
     }
-    return data({ error: apiError(error, "Não foi possível salvar. Confira a senha atual e tente novamente.") }, { status });
+    return { error: apiError(error, "Não foi possível salvar. Confira a senha atual e tente novamente.") };
   }
 }
 
+//dose diaria de depressão
 export default function Perfil() {
   const user = useRouteLoaderData("app");
-  const fetcher = useFetcher();
 
-  const form = useForm({ defaultValues: { name: user.name, currentPassword: "" } });
-  const { errors } = form.formState;
-  const { reset } = form;
-  const isSubmitting = fetcher.state !== "idle";
-  const updated = fetcher.data?.updated;
+  const [activeTab, setActiveTab] = useState("nome");
 
-  const passwordForm = useForm({ defaultValues: { currentPassword: "", newPassword: "", confirmPassword: "" } });
+  const [nameSuccess, setNameSuccess] = useState("");
+  const [nameError, setNameError] = useState("");
+  const [isUpdatingName, setIsUpdatingName] = useState(false);
+
   const [passwordSuccess, setPasswordSuccess] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
@@ -70,19 +68,36 @@ export default function Perfil() {
   const [deleteError, setDeleteError] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
 
-  useEffect(() => {
-    if (updated && !isSubmitting) reset({ name: updated.name, currentPassword: "" });
-  }, [isSubmitting, reset, updated]);
+  const nameForm = useForm({
+    defaultValues: { name: user.name, currentPassword: "" },
+  });
 
-  const submit = form.handleSubmit((fields) =>
-    fetcher.submit(
-      { ...fields, id: user.id, email: user.email },
-      {
-        method: "post",
-        encType: "application/json",
-      }
-    )
-  );
+  const passwordForm = useForm({
+    defaultValues: { currentPassword: "", newPassword: "", confirmPassword: "" },
+  });
+
+  const toggleTab = (tabName) => {
+    setActiveTab((current) => (current === tabName ? null : tabName));
+  };
+
+  const handleNameSubmit = nameForm.handleSubmit(async (fields) => {
+    setNameSuccess("");
+    setNameError("");
+    setIsUpdatingName(true);
+    try {
+      await updateUserProfile(user.id, {
+        name: fields.name.trim(),
+        email: user.email,
+        currentPassword: fields.currentPassword,
+      });
+      setNameSuccess("Nome atualizado com sucesso!");
+      nameForm.setValue("currentPassword", "");
+    } catch (error) {
+      setNameError(apiError(error, "Não foi possível atualizar o nome. Confira sua senha atual."));
+    } finally {
+      setIsUpdatingName(false);
+    }
+  });
 
   const handlePasswordSubmit = passwordForm.handleSubmit(async (fields) => {
     setPasswordSuccess("");
@@ -93,7 +108,7 @@ export default function Perfil() {
       setPasswordSuccess("Senha atualizada com sucesso!");
       passwordForm.reset();
     } catch (error) {
-      setPasswordError(apiError(error, "Não foi possível atualizar a senha. Confira a senha atual e tente novamente."));
+      setPasswordError(apiError(error, "Não foi possível atualizar a senha. Confira sua senha atual."));
     } finally {
       setIsUpdatingPassword(false);
     }
@@ -104,9 +119,9 @@ export default function Perfil() {
     setIsSendingRecovery(true);
     try {
       await forgotPassword(user.email);
-      setRecoveryStatus(`Enviamos instruções e código de recuperação para ${user.email}.`);
+      setRecoveryStatus(`Enviamos instruções de recuperação para ${user.email}.`);
     } catch (error) {
-      setRecoveryStatus(apiError(error, "Não foi possível solicitar o código de recuperação no momento."));
+      setRecoveryStatus(apiError(error, "Não foi possível enviar o link de recuperação."));
     } finally {
       setIsSendingRecovery(false);
     }
@@ -133,186 +148,230 @@ export default function Perfil() {
       try {
         await logout();
       } catch {
-        // Se a sessão já foi revogada no backend, prossegue
+
       }
       window.location.href = "/entrar?contaExcluida=true";
     } catch (error) {
-      setDeleteError(apiError(error, "Senha incorreta ou não foi possível excluir a conta. Tente novamente."));
+      setDeleteError(apiError(error, "Senha incorreta ou erro ao desativar conta."));
       setIsDeleting(false);
     }
   };
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="mx-auto max-w-4xl space-y-5">
       <header>
         <h1 className="text-2xl font-bold">Meu perfil</h1>
-        <p className="mt-1 text-sm text-muted">Consulte seus dados, gerencie suas credenciais e configurações de segurança.</p>
+        <p className="mt-1 text-sm text-muted">Gerencie suas informações pessoais e credenciais de segurança.</p>
       </header>
 
-      <section className="panel p-6 shadow-xl">
+      <section className="panel p-5 shadow-xl">
         <h2 className="text-lg font-bold break-words">{user.name}</h2>
         <p className="text-sm break-words text-muted">{user.email}</p>
         <p className="mt-2 text-xs font-semibold text-amber-400">{roleNames[user.role]}</p>
       </section>
 
-      {!isSubmitting && updated && <Notice>Perfil atualizado.</Notice>}
-      {!isSubmitting && fetcher.data?.error && <Notice error>{fetcher.data.error}</Notice>}
-      <form onSubmit={submit} className="panel space-y-6 p-6 shadow-xl sm:p-8" noValidate>
-        <h2 className="border-b border-line pb-4 font-semibold text-lg">Alterar informações</h2>
-        <Field
-          label="Nome completo"
-          icon={User}
-          autoComplete="name"
-          maxLength={100}
-          error={errors.name?.message}
-          {...form.register("name", {
-            setValueAs: (value) => value.trim(),
-            required: "Informe seu nome.",
-            minLength: { value: 2, message: "Informe pelo menos 2 caracteres." },
-          })}
-        />
-        <Field label="E-mail" icon={Mail} type="email" value={user.email} disabled readOnly hint="Somente leitura. O e-mail não pode ser alterado diretamente." />
-        <Field
-          label="Senha atual"
-          icon={Lock}
-          type="password"
-          autoComplete="current-password"
-          error={errors.currentPassword?.message}
-          hint="Necessária para confirmar a atualização do seu nome."
-          {...form.register("currentPassword", { required: "Informe sua senha atual para confirmar." })}
-        />
-        <button className="button-primary" disabled={isSubmitting}>
-          <Save size={17} /> {isSubmitting ? "Salvando…" : "Salvar perfil"}
-        </button>
-      </form>
-
-      <section className="panel space-y-6 p-6 shadow-xl sm:p-8">
-        <div className="flex items-center gap-2.5 border-b border-line pb-4">
-          <KeyRound className="text-brand size-5" />
-          <h2 className="font-semibold text-lg">Segurança e Senha</h2>
-        </div>
-
-        {passwordSuccess && <Notice>{passwordSuccess}</Notice>}
-        {passwordError && <Notice error>{passwordError}</Notice>}
-
-        <form onSubmit={handlePasswordSubmit} className="space-y-4" noValidate>
-          <Field
-            label="Senha atual"
-            icon={Lock}
-            type="password"
-            autoComplete="current-password"
-            error={passwordForm.formState.errors.currentPassword?.message}
-            {...passwordForm.register("currentPassword", { required: "Informe a senha atual." })}
-          />
-
-          <Field
-            label="Nova senha"
-            icon={Lock}
-            type="password"
-            autoComplete="new-password"
-            error={passwordForm.formState.errors.newPassword?.message}
-            hint="A senha deve ter no mínimo 8 caracteres."
-            {...passwordForm.register("newPassword", newPasswordRules)}
-          />
-
-          <Field
-            label="Confirme a nova senha"
-            icon={Lock}
-            type="password"
-            autoComplete="new-password"
-            error={passwordForm.formState.errors.confirmPassword?.message}
-            {...passwordForm.register("confirmPassword", {
-              required: "Confirme a nova senha.",
-              validate: (val) => val === passwordForm.getValues("newPassword") || "As senhas não coincidem.",
-            })}
-          />
-
-          <button className="button-primary" disabled={isUpdatingPassword}>
-            <Save size={17} /> {isUpdatingPassword ? "Atualizando senha…" : "Atualizar senha"}
-          </button>
-        </form>
-
-        <div className="rounded-xl border border-line bg-canvas p-4 space-y-3">
-          <div className="flex items-start justify-between gap-3 flex-wrap">
+      <div className="panel overflow-hidden border border-line shadow-xl">
+        <button
+          type="button"
+          onClick={() => toggleTab("nome")}
+          className="flex w-full items-center justify-between p-5 text-left transition-colors hover:bg-white/[0.02]"
+        >
+          <div className="flex items-center gap-3">
+            <div className="grid size-9 place-items-center rounded-lg bg-amber-500/10 text-amber-400">
+              <User size={18} />
+            </div>
             <div>
-              <p className="text-sm font-semibold text-zinc-200">Esqueceu sua senha atual?</p>
-              <p className="text-xs text-muted mt-0.5">
-                Você pode solicitar um link seguro com código de recuperação para o seu e-mail cadastrado ({user.email}).
-              </p>
+              <h2 className="font-semibold text-zinc-100 text-base">Trocar Nome</h2>
+              <p className="text-xs text-muted">Atualize seu nome de exibição na plataforma</p>
             </div>
-            <button
-              type="button"
-              onClick={handleRequestRecoveryEmail}
-              disabled={isSendingRecovery}
-              className="button-secondary text-xs !min-h-8 !px-3"
-            >
-              <Mail size={14} /> {isSendingRecovery ? "Enviando…" : "Enviar link de recuperação"}
-            </button>
           </div>
-          {recoveryStatus && (
-            <div className="pt-2">
-              <Notice>{recoveryStatus}</Notice>
-              <div className="mt-2">
-                <Link to="/recuperar-senha" className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand hover:underline">
-                  Já recebeu o código? Ir para redefinição de senha <ArrowRight size={13} />
-                </Link>
+          <ChevronDown
+            size={18}
+            className={`text-muted transition-transform duration-200 ${activeTab === "nome" ? "rotate-180" : ""}`}
+          />
+        </button>
+
+        {activeTab === "nome" && (
+          <div className="border-t border-line p-5 sm:p-6 space-y-4 animate-in fade-in duration-150">
+            {nameSuccess && <Notice>{nameSuccess}</Notice>}
+            {nameError && <Notice error>{nameError}</Notice>}
+
+            <form onSubmit={handleNameSubmit} className="space-y-4" noValidate>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field
+                  label="Nome completo"
+                  icon={User}
+                  autoComplete="name"
+                  maxLength={100}
+                  error={nameForm.formState.errors.name?.message}
+                  {...nameForm.register("name", {
+                    setValueAs: (value) => value?.trim() ?? "",
+                    required: "Informe seu nome.",
+                    minLength: { value: 2, message: "Mínimo de 2 caracteres." },
+                  })}
+                />
+                <Field
+                  label="E-mail"
+                  icon={Mail}
+                  type="email"
+                  value={user.email}
+                  disabled
+                  readOnly
+                  hint="O e-mail não pode ser alterado."
+                />
               </div>
+
+              <Field
+                label="Senha atual"
+                icon={Lock}
+                type="password"
+                autoComplete="current-password"
+                error={nameForm.formState.errors.currentPassword?.message}
+                hint="Digite sua senha atual para confirmar a troca do nome."
+                {...nameForm.register("currentPassword", { required: "Informe sua senha atual." })}
+              />
+
+              <button className="button-primary" disabled={isUpdatingName}>
+                <Save size={16} /> {isUpdatingName ? "Salvando…" : "Salvar Nome"}
+              </button>
+            </form>
+          </div>
+        )}
+      </div>
+
+      <div className="panel overflow-hidden border border-line shadow-xl">
+        <button
+          type="button"
+          onClick={() => toggleTab("senha")}
+          className="flex w-full items-center justify-between p-5 text-left transition-colors hover:bg-white/[0.02]"
+        >
+          <div className="flex items-center gap-3">
+            <div className="grid size-9 place-items-center rounded-lg bg-sky-500/10 text-sky-400">
+              <KeyRound size={18} />
             </div>
-          )}
-        </div>
-      </section>
+            <div>
+              <h2 className="font-semibold text-zinc-100 text-base">Trocar Senha</h2>
+              <p className="text-xs text-muted">Altere sua senha de acesso e segurança</p>
+            </div>
+          </div>
+          <ChevronDown
+            size={18}
+            className={`text-muted transition-transform duration-200 ${activeTab === "senha" ? "rotate-180" : ""}`}
+          />
+        </button>
 
-      <section className="panel space-y-4 p-6 shadow-xl sm:p-8">
-        <div className="flex items-center gap-2.5 border-b border-line pb-4">
-          <ShieldCheck className="text-brand size-5" />
-          <h2 className="font-semibold text-lg">Privacidade e Seus Dados (LGPD)</h2>
-        </div>
-        <p className="text-sm text-muted leading-relaxed">
-          O Investir Mais trata seus dados em conformidade com a Lei Geral de Proteção de Dados (Lei nº 13.709/2018).
-          Você tem direito a solicitar confirmação de tratamento, acesso, retificação, portabilidade ou eliminação de seus dados pessoais.
-        </p>
-        <div className="rounded-xl border border-line bg-raised/30 p-4 text-xs text-muted space-y-2">
-          <p>
-            <strong className="text-zinc-200">Encarregado pelo Tratamento de Dados Pessoais (DPO):</strong>{" "}
-            <a href="mailto:gabrielyyminato@gmail.com" className="text-brand hover:underline font-medium">
-              gabrielyyminato@gmail.com
-            </a>
-          </p>
-          <p>
-            Para exercer seus direitos de titular ou tirar dúvidas sobre o tratamento de seus dados, contate o Encarregado pelo e-mail acima.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3 pt-1 text-xs">
-          <Link to="/termos-de-uso" className="font-semibold text-brand hover:underline">
-            Termos de Uso
-          </Link>
-          <span className="text-zinc-600">•</span>
-          <Link to="/politica-de-privacidade" className="font-semibold text-brand hover:underline">
-            Política de Privacidade
-          </Link>
-        </div>
-      </section>
+        {activeTab === "senha" && (
+          <div className="border-t border-line p-5 sm:p-6 space-y-4 animate-in fade-in duration-150">
+            {passwordSuccess && <Notice>{passwordSuccess}</Notice>}
+            {passwordError && <Notice error>{passwordError}</Notice>}
 
-      <section className="panel border-red-500/20 bg-red-500/5 p-6 shadow-xl sm:p-8 space-y-4" aria-labelledby="zona-perigo-titulo">
-        <div className="flex items-center gap-2.5 border-b border-red-500/20 pb-4 text-rose-400">
-          <AlertTriangle className="size-5 shrink-0" />
-          <h2 id="zona-perigo-titulo" className="font-bold text-lg">Zona de Perigo — Exclusão de Conta</h2>
-        </div>
-        <p className="text-sm text-zinc-300 leading-relaxed">
-          Ao solicitar a exclusão, sua conta será desativada de forma lógica. 
-          O seu acesso imediato à plataforma será revogado, todas as suas sessões ativas serão encerradas e suas matrículas serão desativadas. 
-          Por motivos de segurança e integridade, esta operação exige <strong>dupla confirmação</strong> e autenticação com sua senha atual.
-        </p>
-        <div>
-          <button
-            type="button"
-            onClick={handleOpenDeleteModal}
-            className="button-danger"
-          >
-            <Trash2 size={16} /> Excluir minha conta
-          </button>
-        </div>
-      </section>
+            <form onSubmit={handlePasswordSubmit} className="space-y-4" noValidate>
+              <Field
+                label="Senha atual"
+                icon={Lock}
+                type="password"
+                autoComplete="current-password"
+                error={passwordForm.formState.errors.currentPassword?.message}
+                {...passwordForm.register("currentPassword", { required: "Informe a senha atual." })}
+              />
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field
+                  label="Nova senha"
+                  icon={Lock}
+                  type="password"
+                  autoComplete="new-password"
+                  error={passwordForm.formState.errors.newPassword?.message}
+                  hint="Mínimo de 8 caracteres."
+                  {...passwordForm.register("newPassword", newPasswordRules)}
+                />
+                <Field
+                  label="Confirme a nova senha"
+                  icon={Lock}
+                  type="password"
+                  autoComplete="new-password"
+                  error={passwordForm.formState.errors.confirmPassword?.message}
+                  {...passwordForm.register("confirmPassword", {
+                    required: "Confirme a nova senha.",
+                    validate: (val) => val === passwordForm.getValues("newPassword") || "As senhas não coincidem.",
+                  })}
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                <button className="button-primary" disabled={isUpdatingPassword}>
+                  <Save size={16} /> {isUpdatingPassword ? "Atualizando…" : "Salvar Nova Senha"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleRequestRecoveryEmail}
+                  disabled={isSendingRecovery}
+                  className="text-xs text-brand hover:underline font-medium inline-flex items-center gap-1.5"
+                >
+                  <Mail size={13} /> {isSendingRecovery ? "Enviando…" : "Esqueceu a senha atual?"}
+                </button>
+              </div>
+
+              {recoveryStatus && (
+                <div className="pt-2">
+                  <Notice>{recoveryStatus}</Notice>
+                  <div className="mt-1">
+                    <Link to="/recuperar-senha" className="inline-flex items-center gap-1 text-xs font-semibold text-brand hover:underline">
+                      Ir para redefinição com código <ArrowRight size={13} />
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </form>
+          </div>
+        )}
+      </div>
+
+      <div className="panel overflow-hidden border border-red-500/30 bg-red-500/5 shadow-xl">
+        <button
+          type="button"
+          onClick={() => toggleTab("exclusao")}
+          className="flex w-full items-center justify-between p-5 text-left transition-colors hover:bg-red-500/10"
+        >
+          <div className="flex items-center gap-3">
+            <div className="grid size-9 place-items-center rounded-lg bg-red-500/20 text-rose-400">
+              <AlertTriangle size={18} />
+            </div>
+            <div>
+              <h2 className="font-semibold text-rose-400 text-base">Exclusão de Conta</h2>
+              <p className="text-xs text-rose-300/70">Desativar sua conta e revogar acessos definitivamente</p>
+            </div>
+          </div>
+          <ChevronDown
+            size={18}
+            className={`text-rose-400 transition-transform duration-200 ${activeTab === "exclusao" ? "rotate-180" : ""}`}
+          />
+        </button>
+
+        {activeTab === "exclusao" && (
+          <div className="border-t border-red-500/20 p-5 sm:p-6 space-y-4 animate-in fade-in duration-150">
+            <p className="text-xs text-zinc-300 leading-relaxed">
+              Ao desativar sua conta, suas sessões ativas serão encerradas e suas matrículas serão desativadas.
+            </p>
+            <div>
+              <button
+                type="button"
+                onClick={handleOpenDeleteModal}
+                className="button-danger text-xs !min-h-9"
+              >
+                <Trash2 size={15} /> Excluir minha conta
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <footer className="pt-2 text-center text-xs text-muted flex items-center justify-center gap-3">
+        <Link to="/termos-de-uso" className="hover:text-brand transition-colors">Termos de Uso</Link>
+        <span>•</span>
+        <Link to="/politica-de-privacidade" className="hover:text-brand transition-colors">Política de Privacidade (LGPD)</Link>
+      </footer>
 
       {showDeleteModal && (
         <div
@@ -344,13 +403,12 @@ export default function Perfil() {
 
             {deleteStep === 1 && (
               <div className="space-y-4">
-                <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-xs text-zinc-300 space-y-2 leading-relaxed">
-                  <p className="font-bold text-rose-300">Atenção às consequências da exclusão:</p>
-                  <ul className="list-disc list-inside space-y-1">
-                    <li>Sua conta será desativada de forma definitiva</li>
-                    <li>Todas as sessões abertas em qualquer dispositivo serão desconectadas na hora.</li>
-                    <li>Seu progresso em cursos, matrículas e certificados serão tornados inacessíveis.</li>
-                    <li>Você não poderá mais utilizar este e-mail para acessar a conta atual.</li>
+                <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-xs text-zinc-300 space-y-1.5 leading-relaxed">
+                  <p className="font-bold text-rose-300">Consequências da exclusão:</p>
+                  <ul className="list-disc list-inside space-y-1 text-zinc-300">
+                    <li>Sua conta será desativada de forma definitiva.</li>
+                    <li>Todas as sessões ativas serão desconectadas imediatamente.</li>
+                    <li>Seu acesso aos cursos e videoaulas será revogado.</li>
                   </ul>
                 </div>
 
@@ -362,7 +420,7 @@ export default function Perfil() {
                     className="mt-0.5 size-4 accent-amber-500"
                   />
                   <span className="text-xs text-zinc-200 select-none">
-                    <strong>1ª Confirmação:</strong> Li com atenção e tenho plena ciência de que minha conta será desativada e todo o meu acesso à plataforma será revogado.
+                    Tenho plena ciência de que minha conta será desativada e meu acesso revogado.
                   </span>
                 </label>
 
@@ -389,7 +447,7 @@ export default function Perfil() {
             {deleteStep === 2 && (
               <form onSubmit={handleConfirmDelete} className="space-y-4">
                 <p className="text-xs text-zinc-300 leading-relaxed">
-                  <strong>2ª Confirmação:</strong> Para garantir que você é realmente o titular da conta e evitar exclusões acidentais ou não autorizadas, digite a sua <strong>senha atual</strong>:
+                  Para confirmar que você é o titular da conta, digite sua <strong>senha atual</strong>:
                 </p>
 
                 <div className="space-y-1.5">
@@ -433,7 +491,7 @@ export default function Perfil() {
                       className="button-danger text-xs disabled:opacity-40"
                     >
                       <Trash2 size={14} />
-                      {isDeleting ? "Excluindo conta…" : "Confirmar e Desativar Conta"}
+                      {isDeleting ? "Excluindo…" : "Confirmar Exclusão"}
                     </button>
                   </div>
                 </div>
