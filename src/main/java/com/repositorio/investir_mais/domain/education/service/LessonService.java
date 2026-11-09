@@ -78,7 +78,7 @@ public class LessonService {
     public Lesson findLessonOwnedBy(UUID lessonId, String principalName) {
         User professor = userService.findByEmail(principalName);
         if (professor.getRole() == UserRole.ADMIN) {
-            return lessonRepository.findById(lessonId)
+            return lessonRepository.findForUpdateById(lessonId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Aula não encontrada."));
         }
         return lessonRepository.findByIdAndCourse_Professor_Id(lessonId, professor.getId())

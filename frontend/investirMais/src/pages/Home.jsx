@@ -2,13 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
   ArrowRight,
-  Award,
   BookOpen,
   Calendar,
-  CheckCircle2,
   ChevronRight,
   Filter,
-  GraduationCap,
   PlayCircle,
   Plus,
   RotateCcw,
@@ -16,12 +13,11 @@ import {
   TrendingDown,
   TrendingUp,
   Users,
-  Video,
 } from "lucide-react";
 import { Link, redirect, useFetcher, useLoaderData, useRouteLoaderData, useSearchParams } from "react-router";
 import { CourseCard } from "../components/EducationParts.jsx";
 import { Notice } from "../components/PageState.jsx";
-import { roleNames } from "../components/Topbar.jsx";
+import { apiError } from "../services/api.js";
 import { dashboardCourses } from "../services/educationData.js";
 import { buscarCotacao } from "../services/quoteService.js";
 import { getTeacherDashboard } from "../services/teacherService.js";
@@ -92,10 +88,15 @@ export async function dashboardLoader({ request }) {
 
     let teacherError = null;
     const [page, teacherStats] = await Promise.all([
-      dashboardCourses(request.signal).catch(() => null),
-      getTeacherDashboard({ startDate, endDate }, request.signal).catch((err) => {
-        const msg = err.response?.data?.message || err.response?.data?.detail;
-        teacherError = msg || "Período inválido ou superior a 6 meses.";
+      dashboardCourses(request.signal).catch((error) => {
+        if (error.response?.status === 401) throw error;
+        return null;
+      }),
+      getTeacherDashboard({ startDate, endDate }, request.signal).catch((error) => {
+        if (error.response?.status === 401) throw error;
+        if (error.response?.status !== 403) {
+          teacherError = apiError(error, "Não foi possível consultar as métricas. Tente novamente.");
+        }
         return null;
       }),
     ]);
@@ -477,7 +478,7 @@ export default function Home() {
 
       {isTeacherOrAdmin && teacherStats ? (
         <TeacherDashboardView stats={teacherStats} firstName={firstName} role={user.role} />
-      ) : !teacherError && (
+      ) : (
         <header className="panel border-white/5 p-6 sm:p-8">
           <h1 className="mb-2 text-3xl font-bold break-words">Olá, {firstName}.</h1>
           <p className="max-w-xl text-muted">Bem-vindo ao <span className="font-semibold text-amber-400">Investir+</span>. Explore cursos sobre finanças e consulte cotações do mercado.</p>

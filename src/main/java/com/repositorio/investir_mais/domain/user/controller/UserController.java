@@ -3,7 +3,6 @@ package com.repositorio.investir_mais.domain.user.controller;
 import com.repositorio.investir_mais.domain.user.DTO.AuthDTO;
 import com.repositorio.investir_mais.domain.user.DTO.UserDTO;
 import com.repositorio.investir_mais.domain.user.service.UserService;
-import com.repositorio.investir_mais.infrastructure.config.WebApplicationProperties;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -13,13 +12,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.net.URI;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -33,7 +28,6 @@ import java.sql.SQLException;
 public class UserController {
 
     private final UserService userService;
-    private final WebApplicationProperties properties;
 
     @Operation(summary = "Cadastrar novo usuário", description = "Registra um novo usuário no sistema e envia um e-mail com o link de ativação.")
     @ApiResponses({
@@ -53,16 +47,6 @@ public class UserController {
             }
         }
         return Map.of("message", "Se o cadastro puder ser realizado, um link de confirmação será enviado.");
-    }
-
-    @Operation(summary = "Redirecionar para confirmação no frontend", description = "Redireciona para a página React de confirmação de e-mail.")
-    @GetMapping("/verify-email")
-    public ResponseEntity<Void> redirectToFrontendVerification(@RequestParam(required = false) String token) {
-        String destination = properties.frontendUrl() + "/confirmar-email"
-                + (token != null && !token.isBlank() ? "?token=" + URLEncoder.encode(token, StandardCharsets.UTF_8) : "");
-        return ResponseEntity.status(HttpStatus.FOUND)
-                .location(URI.create(destination))
-                .build();
     }
 
     @Operation(summary = "Verificar e-mail", description = "Consome o token após a confirmação do usuário.")

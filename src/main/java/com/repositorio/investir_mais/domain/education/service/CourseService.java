@@ -76,11 +76,10 @@ public class CourseService {
         log.info("Curso removido com sucesso. ID: {}", courseId);
     }
 
-    @Transactional(readOnly = true)
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public Course findCourseOwnedBy(UUID courseId, String principalName) {
         User professor = userService.findByEmail(principalName);
-        Course course = courseRepository.findById(courseId)
+        Course course = courseRepository.findForUpdateById(courseId)
             .orElseThrow(() -> {
                 log.warn("Tentativa de alterar/excluir curso inexistente. ID: {}", courseId);
                 return new ResponseStatusException(HttpStatus.NOT_FOUND, "Curso não encontrado.");

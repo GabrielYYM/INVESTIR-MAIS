@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
 
-import com.repositorio.investir_mais.domain.TokenDigest;
 import com.repositorio.investir_mais.infrastructure.config.AuthenticationRateLimitProperties;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -13,6 +12,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -64,7 +64,7 @@ public class SecurityFilter extends OncePerRequestFilter {
             if (Long.valueOf(0).equals(retryAfter) && "/auth/login".equals(path)) {
                 String email = request.getParameter("email");
                 if (email != null && !email.isBlank() && email.length() <= 320) {
-                    String account = TokenDigest.sha256(email.strip().toLowerCase(Locale.ROOT));
+                    String account = DigestUtils.sha256Hex(email.strip().toLowerCase(Locale.ROOT));
                     retryAfter = consume(properties.namespace() + ":account:" + account + ":" + path);
                 }
             }
