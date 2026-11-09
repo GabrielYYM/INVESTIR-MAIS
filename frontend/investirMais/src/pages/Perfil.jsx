@@ -49,24 +49,20 @@ export default function Perfil() {
   const user = useRouteLoaderData("app");
   const fetcher = useFetcher();
 
-  // Formulário de dados básicos (Nome)
   const form = useForm({ defaultValues: { name: user.name, currentPassword: "" } });
   const { errors } = form.formState;
   const { reset } = form;
   const isSubmitting = fetcher.state !== "idle";
   const updated = fetcher.data?.updated;
 
-  // Formulário de alteração de senha
   const passwordForm = useForm({ defaultValues: { currentPassword: "", newPassword: "", confirmPassword: "" } });
   const [passwordSuccess, setPasswordSuccess] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
-  // Recuperação de senha por e-mail a partir do perfil
   const [recoveryStatus, setRecoveryStatus] = useState("");
   const [isSendingRecovery, setIsSendingRecovery] = useState(false);
 
-  // Modal de exclusão de conta (Soft Delete com 2 confirmações)
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteStep, setDeleteStep] = useState(1);
   const [firstConsent, setFirstConsent] = useState(false);
@@ -153,14 +149,12 @@ export default function Perfil() {
         <p className="mt-1 text-sm text-muted">Consulte seus dados, gerencie suas credenciais e configurações de segurança.</p>
       </header>
 
-      {/* Cartão de Identidade */}
       <section className="panel p-6 shadow-xl">
         <h2 className="text-lg font-bold break-words">{user.name}</h2>
         <p className="text-sm break-words text-muted">{user.email}</p>
         <p className="mt-2 text-xs font-semibold text-amber-400">{roleNames[user.role]}</p>
       </section>
 
-      {/* 1. Formulário de Informações Básicas (Nome) */}
       {!isSubmitting && updated && <Notice>Perfil atualizado.</Notice>}
       {!isSubmitting && fetcher.data?.error && <Notice error>{fetcher.data.error}</Notice>}
       <form onSubmit={submit} className="panel space-y-6 p-6 shadow-xl sm:p-8" noValidate>
@@ -192,7 +186,6 @@ export default function Perfil() {
         </button>
       </form>
 
-      {/* 2. Seção de Segurança: Edição e Recuperação de Senha */}
       <section className="panel space-y-6 p-6 shadow-xl sm:p-8">
         <div className="flex items-center gap-2.5 border-b border-line pb-4">
           <KeyRound className="text-brand size-5" />
@@ -239,7 +232,6 @@ export default function Perfil() {
           </button>
         </form>
 
-        {/* Recuperação de Senha por e-mail */}
         <div className="rounded-xl border border-line bg-canvas p-4 space-y-3">
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div>
@@ -270,7 +262,6 @@ export default function Perfil() {
         </div>
       </section>
 
-      {/* 3. Privacidade e LGPD */}
       <section className="panel space-y-4 p-6 shadow-xl sm:p-8">
         <div className="flex items-center gap-2.5 border-b border-line pb-4">
           <ShieldCheck className="text-brand size-5" />
@@ -302,14 +293,13 @@ export default function Perfil() {
         </div>
       </section>
 
-      {/* 4. Zona de Perigo: Exclusão de Conta (Soft Delete) */}
       <section className="panel border-red-500/20 bg-red-500/5 p-6 shadow-xl sm:p-8 space-y-4" aria-labelledby="zona-perigo-titulo">
         <div className="flex items-center gap-2.5 border-b border-red-500/20 pb-4 text-rose-400">
           <AlertTriangle className="size-5 shrink-0" />
           <h2 id="zona-perigo-titulo" className="font-bold text-lg">Zona de Perigo — Exclusão de Conta</h2>
         </div>
         <p className="text-sm text-zinc-300 leading-relaxed">
-          Ao solicitar a exclusão, sua conta será desativada de forma lógica (<span className="font-mono text-xs bg-red-500/20 px-1 py-0.5 rounded text-rose-300">soft delete</span>). 
+          Ao solicitar a exclusão, sua conta será desativada de forma lógica. 
           O seu acesso imediato à plataforma será revogado, todas as suas sessões ativas serão encerradas e suas matrículas serão desativadas. 
           Por motivos de segurança e integridade, esta operação exige <strong>dupla confirmação</strong> e autenticação com sua senha atual.
         </p>
@@ -324,7 +314,6 @@ export default function Perfil() {
         </div>
       </section>
 
-      {/* Modal de Dupla Confirmação para Exclusão da Conta */}
       {showDeleteModal && (
         <div
           role="dialog"
@@ -353,13 +342,12 @@ export default function Perfil() {
 
             {deleteError && <Notice error>{deleteError}</Notice>}
 
-            {/* ETAPA 1: Consentimento e Ciência */}
             {deleteStep === 1 && (
               <div className="space-y-4">
                 <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-xs text-zinc-300 space-y-2 leading-relaxed">
                   <p className="font-bold text-rose-300">Atenção às consequências da exclusão:</p>
                   <ul className="list-disc list-inside space-y-1">
-                    <li>Sua conta será desativada de forma definitiva pelo processo de <strong>soft delete</strong>.</li>
+                    <li>Sua conta será desativada de forma definitiva</li>
                     <li>Todas as sessões abertas em qualquer dispositivo serão desconectadas na hora.</li>
                     <li>Seu progresso em cursos, matrículas e certificados serão tornados inacessíveis.</li>
                     <li>Você não poderá mais utilizar este e-mail para acessar a conta atual.</li>
@@ -398,7 +386,6 @@ export default function Perfil() {
               </div>
             )}
 
-            {/* ETAPA 2: Validação de Senha do Usuário */}
             {deleteStep === 2 && (
               <form onSubmit={handleConfirmDelete} className="space-y-4">
                 <p className="text-xs text-zinc-300 leading-relaxed">
