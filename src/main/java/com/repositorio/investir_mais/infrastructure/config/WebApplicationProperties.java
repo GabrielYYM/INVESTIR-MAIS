@@ -13,4 +13,8 @@ public record WebApplicationProperties(
         @DefaultValue("http://localhost:8080") @NotBlank @URL String publicBaseUrl,
         @DefaultValue @Valid Cors cors) {
     public record Cors(@DefaultValue("http://localhost:5173") @NotBlank @URL String allowedOrigin) {}
+
+    public String frontendUrl() {
+        return cors.allowedOrigin();
+    }
 }

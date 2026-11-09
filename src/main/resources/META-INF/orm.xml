@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<entity-mappings xmlns="https://jakarta.ee/xml/ns/persistence/orm" version="3.1">
+    <mapped-superclass class="org.springframework.modulith.events.jpa.JpaEventPublication" access="FIELD">
+        <attributes>
+            <basic name="serializedEvent">
+                <column name="serialized_event" nullable="false" column-definition="TEXT"/>
+            </basic>
+        </attributes>
+    </mapped-superclass>
+</entity-mappings>

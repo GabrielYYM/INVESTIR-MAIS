@@ -14,11 +14,13 @@ import org.springframework.modulith.NamedInterface;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.ott.OneTimeToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
 import java.util.UUID;
 
 @NamedInterface("user-service")
@@ -172,7 +174,54 @@ public class UserService {
                         AccountEmailRequested.Purpose.VERIFY_EMAIL)));
     }
 
-    private User findByEmailForUpdate(String email) {
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional(readOnly = true)
+    public List<UserDTO.Response> listAllUsers() {
+        return userRepository.findAll().stream()
+                .map(userMapper::toDTO)
+                .toList();
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    public UserDTO.Response updateUserRole(String principalName, UUID userId, UserRole newRole) {
+        if (newRole == UserRole.ADMIN) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não é permitido conceder o perfil de Administrador pelo painel.");
+        }
+
+        User targetUser = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
+
+        if (targetUser.getRole() == UserRole.ADMIN) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não é permitido alterar o papel de um Administrador pelo painel.");
+        }
+
+        User admin = findByEmail(principalName);
+
+        targetUser.setRole(newRole);
+        User saved = userRepository.save(targetUser);
+
+        accountSecurity.revokeAllSessions(targetUser.getEmail());
+        log.info("Perfil do usuário {} alterado para {} pelo admin {}", targetUser.getId(), newRole, admin.getId());
+        return userMapper.toDTO(saved);
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional(readOnly = true)
+    public List<UserDTO.AuditResponse> getUserAuditHistory(UUID userId) {
+        if (!userRepository.existsByIdIncludingDeleted(userId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado.");
+        }
+        return userRepository.findRevisions(userId).stream()
+                .map(rev -> new UserDTO.AuditResponse(
+                        rev.getRequiredRevisionNumber(),
+                        rev.getRequiredRevisionInstant(),
+                        rev.getMetadata().getRevisionType().name(),
+                        userMapper.toDTO(rev.getEntity())
+                ))
+                .toList();
+    }
+
+    public User findByEmailForUpdate(String email) {
         return userRepository.findByEmailForUpdate(email)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
     }

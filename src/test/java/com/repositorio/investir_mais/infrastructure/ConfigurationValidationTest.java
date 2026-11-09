@@ -17,8 +17,7 @@ class ConfigurationValidationTest {
         runner.run(context -> {
             assertThat(context).hasNotFailed();
             assertThat(context).hasSingleBean(AuthenticationRateLimitProperties.class)
-                    .hasSingleBean(WebApplicationProperties.class)
-                    .hasSingleBean(BrapiProperties.class);
+                    .hasSingleBean(WebApplicationProperties.class);
             assertThat(context.getBean(AuthenticationRateLimitProperties.class).capacity()).isEqualTo(10);
         });
     }

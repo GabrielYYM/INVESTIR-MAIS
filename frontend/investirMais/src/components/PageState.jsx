@@ -1,5 +1,6 @@
 import { AlertCircle, ArrowLeft, LoaderCircle } from "lucide-react";
 import { isRouteErrorResponse, Link, useRevalidator, useRouteError } from "react-router";
+import Footer from "./Footer.jsx";
 
 export function PendingPage() {
   return <div className="grid min-h-dvh place-items-center text-muted"><LoaderCircle className="animate-spin" aria-label="Carregando" /></div>;
@@ -21,16 +22,19 @@ export function PageError() {
   const missing = !error || status === 404;
 
   return (
-    <section className="mx-auto max-w-lg px-5 py-16">
-      <div className="panel space-y-4 p-7">
-        <AlertCircle className="size-7 text-brand" />
-        <h1 className="text-2xl font-bold">{missing ? "Página não encontrada" : "Não foi possível carregar esta página"}</h1>
-        <p className="text-muted">{missing ? "O endereço pode ter mudado ou o conteúdo foi removido." : "Confira sua conexão e tente novamente."}</p>
-        <div className="flex flex-wrap gap-3">
-          <Link to="/" className="button-secondary"><ArrowLeft size={16} /> Voltar ao início</Link>
-          {!missing && <button className="button-primary" disabled={state === "loading"} onClick={() => revalidate()}>Tentar novamente</button>}
+    <div className="flex min-h-dvh flex-col justify-between">
+      <section className="mx-auto max-w-lg px-5 py-16">
+        <div className="panel space-y-4 p-7">
+          <AlertCircle className="size-7 text-brand" />
+          <h1 className="text-2xl font-bold">{missing ? "Página não encontrada" : "Não foi possível carregar esta página"}</h1>
+          <p className="text-muted">{missing ? "O endereço pode ter mudado ou o conteúdo foi removido." : "Confira sua conexão e tente novamente."}</p>
+          <div className="flex flex-wrap gap-3">
+            <Link to="/" className="button-secondary"><ArrowLeft size={16} /> Voltar ao início</Link>
+            {!missing && <button className="button-primary" disabled={state === "loading"} onClick={() => revalidate()}>Tentar novamente</button>}
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+      <Footer />
+    </div>
   );
 }

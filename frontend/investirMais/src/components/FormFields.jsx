@@ -1,20 +1,24 @@
 import { useId, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
+import Footer from "./Footer.jsx";
 
 export function AuthCard({ icon: Icon, title, description, children }) {
   return (
-    <main className="grid min-h-dvh place-items-center px-4 py-8">
-      <section className="panel w-full max-w-md overflow-hidden shadow-2xl">
-        <header className="border-b border-line px-6 pt-8 pb-6 text-center sm:px-8">
-          <span className="mx-auto mb-4 grid size-16 place-items-center rounded-full bg-amber-500/20 text-brand">
-            <Icon size={32} />
-          </span>
-          <h1 className="mb-2 text-2xl font-bold">{title}</h1>
-          <p className="text-sm leading-relaxed text-muted">{description}</p>
-        </header>
-        <div className="space-y-5 p-6 sm:p-8">{children}</div>
-      </section>
-    </main>
+    <div className="flex min-h-dvh flex-col justify-between">
+      <main className="grid flex-1 place-items-center px-4 py-8">
+        <section className="panel w-full max-w-md overflow-hidden shadow-2xl">
+          <header className="border-b border-line px-6 pt-8 pb-6 text-center sm:px-8">
+            <span className="mx-auto mb-4 grid size-16 place-items-center rounded-full bg-amber-500/20 text-brand">
+              <Icon size={32} />
+            </span>
+            <h1 className="mb-2 text-2xl font-bold">{title}</h1>
+            <p className="text-sm leading-relaxed text-muted">{description}</p>
+          </header>
+          <div className="space-y-5 p-6 sm:p-8">{children}</div>
+        </section>
+      </main>
+      <Footer />
+    </div>
   );
 }
 
@@ -55,6 +59,7 @@ export function Field({ label, type = "text", icon: Icon, error, multiline = fal
 
 export const emailRules = {
   required: "Informe seu e-mail.",
+  maxLength: { value: 254, message: "O e-mail deve ter no máximo 254 caracteres." },
   pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: "Informe um e-mail válido." },
   setValueAs: (value) => value.trim(),
 };
@@ -62,6 +67,8 @@ export const emailRules = {
 export const newPasswordRules = {
   required: "Informe a senha.",
   minLength: { value: 8, message: "A senha deve ter no mínimo 8 caracteres." },
+  maxLength: { value: 4096, message: "A senha deve ter no máximo 4096 caracteres." },
+  validate: (value) => value.trim().length > 0 || "A senha não pode conter apenas espaços.",
 };
 
 export const confirmPasswordRules = {

@@ -23,6 +23,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -307,5 +308,68 @@ class UserServiceTest {
         verify(accountSecurity).revokeAllSessions("felipe@investir.com");
         verify(accountSecurity).invalidateAll("felipe@investir.com");
         assertTrue(user.isEmailVerified());
+    }
+
+    @Test
+    void listAllUsers_ShouldReturnMappedUsers() {
+        when(userRepository.findAll()).thenReturn(List.of(user));
+        UserDTO.Response response = new UserDTO.Response(
+            user.getId(), user.getName(), user.getAge(), user.getEmail(), user.getRole(), user.isEmailVerified(), LocalDateTime.now()
+        );
+        when(userMapper.toDTO(user)).thenReturn(response);
+
+        List<UserDTO.Response> result = userService.listAllUsers();
+
+        assertEquals(1, result.size());
+        assertEquals(user.getEmail(), result.get(0).email());
+        verify(userRepository).findAll();
+    }
+
+    @Test
+    void updateUserRole_WhenNewRoleIsAdmin_ShouldThrowBadRequest() {
+        UUID targetId = user.getId();
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+            () -> userService.updateUserRole("admin@investir.com", targetId, UserRole.ADMIN));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("Não é permitido conceder o perfil de Administrador pelo painel.", ex.getReason());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void updateUserRole_WhenTargetUserIsAdmin_ShouldThrowBadRequest() {
+        UUID adminId = user.getId();
+        user.setRole(UserRole.ADMIN);
+        when(userRepository.findById(adminId)).thenReturn(Optional.of(user));
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+            () -> userService.updateUserRole("admin@investir.com", adminId, UserRole.STUDENT));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("Não é permitido alterar o papel de um Administrador pelo painel.", ex.getReason());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void updateUserRole_WhenValid_ShouldUpdateRoleAndRevokeSessions() {
+        UUID targetId = user.getId();
+        User admin = new User();
+        admin.setId(UUID.randomUUID());
+        admin.setEmail("admin@investir.com");
+        admin.setRole(UserRole.ADMIN);
+
+        when(userRepository.findById(targetId)).thenReturn(Optional.of(user));
+        when(userRepository.findByEmail("admin@investir.com")).thenReturn(Optional.of(admin));
+        when(userRepository.save(user)).thenReturn(user);
+        UserDTO.Response response = new UserDTO.Response(
+            targetId, user.getName(), user.getAge(), user.getEmail(), UserRole.TEACHER, user.isEmailVerified(), LocalDateTime.now()
+        );
+        when(userMapper.toDTO(user)).thenReturn(response);
+
+        UserDTO.Response result = userService.updateUserRole("admin@investir.com", targetId, UserRole.TEACHER);
+
+        assertEquals(UserRole.TEACHER, user.getRole());
+        verify(userRepository).save(user);
+        verify(accountSecurity).revokeAllSessions(user.getEmail());
     }
 }

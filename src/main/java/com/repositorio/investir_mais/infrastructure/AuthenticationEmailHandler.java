@@ -8,6 +8,7 @@ import org.springframework.modulith.events.FailedEventPublications;
 import org.springframework.modulith.events.ResubmissionOptions;
 import com.repositorio.investir_mais.infrastructure.config.WebApplicationProperties;
 
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -32,6 +33,9 @@ public class AuthenticationEmailHandler {
     private final AccountSecurityService accountSecurity;
     private final FailedEventPublications publications;
     private final Duration retryDelay;
+
+    @Value("${spring.mail.username:}")
+    private String senderEmail;
 
     public AuthenticationEmailHandler(JavaMailSender mailSender, WebApplicationProperties properties,
             AccountSecurityService accountSecurity, FailedEventPublications publications,
@@ -66,8 +70,9 @@ public class AuthenticationEmailHandler {
 
     public void sendEmailVerificationLink(String email, String tokenValue) {
         String link = UriComponentsBuilder
-            .fromUriString(properties.publicBaseUrl())
-            .path("/api/users/verify-email")
+            .fromUriString(properties.frontendUrl())
+            .replacePath("/confirmar-email")
+            .replaceQuery(null)
             .queryParam("token", tokenValue)
             .build()
             .encode()
@@ -102,6 +107,9 @@ public class AuthenticationEmailHandler {
         var message = mailSender.createMimeMessage();
         try {
             var mail = new MimeMessageHelper(message, MimeMessageHelper.MULTIPART_MODE_MIXED, StandardCharsets.UTF_8.name());
+            if (senderEmail != null && !senderEmail.isBlank()) {
+                mail.setFrom(senderEmail, "Investir Mais");
+            }
             mail.setTo(email);
             mail.setSubject("Conclua seu acesso - Investir Mais");
             mail.setText(text, """
@@ -110,7 +118,7 @@ public class AuthenticationEmailHandler {
                     <p>Se preferir, digite este código na tela que já está aberta: <strong>%s</strong></p>
                     <p>O acesso expira em 5 minutos.</p>
                     """.formatted(HtmlUtils.htmlEscape(link), HtmlUtils.htmlEscape(code)));
-        } catch (MessagingException exception) {
+        } catch (MessagingException | UnsupportedEncodingException exception) {
             throw new MailPreparationException(exception);
         }
         mailSender.send(message);
@@ -130,6 +138,9 @@ public class AuthenticationEmailHandler {
 
     private void sendSimpleEmail(String to, String subject, String text) {
         SimpleMailMessage mail = new SimpleMailMessage();
+        if (senderEmail != null && !senderEmail.isBlank()) {
+            mail.setFrom(senderEmail);
+        }
         mail.setTo(to);
         mail.setSubject(subject);
         mail.setText(text);

@@ -8,6 +8,7 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.convert.DurationStyle;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -41,10 +42,6 @@ public class AccountSecurityService {
 
     public OneTimeToken generateEmailVerificationToken(String email) {
         return generate(email, EMAIL_VERIFICATION, Duration.ZERO).orElseThrow();
-    }
-
-    public String generatePasswordResetToken(String email) {
-        return generate(email, PASSWORD_RESET, Duration.ZERO).orElseThrow().getTokenValue();
     }
 
     public Optional<OneTimeToken> requestEmailVerificationToken(String email) {
@@ -90,7 +87,7 @@ public class AccountSecurityService {
                 SELECT 1 FROM app_one_time_token
                 WHERE token_value IN (?, ?) AND username = ? AND purpose = ? AND expires_at > ?
             )
-            """).params(TokenDigest.sha256(event.token()), event.token(), event.email(), purpose, Timestamp.from(Instant.now()))
+            """).params(DigestUtils.sha256Hex(event.token()), event.token(), event.email(), purpose, Timestamp.from(Instant.now()))
                 .query(Boolean.class).single();
     }
 
@@ -108,7 +105,7 @@ public class AccountSecurityService {
         jdbc.sql("""
             INSERT INTO app_one_time_token (token_value, username, expires_at, purpose)
             VALUES (?, ?, ?, ?)
-            """).params(TokenDigest.sha256(value), email, Timestamp.from(expiresAt), purpose).update();
+            """).params(DigestUtils.sha256Hex(value), email, Timestamp.from(expiresAt), purpose).update();
         return Optional.of(new DefaultOneTimeToken(value, email, expiresAt));
     }
 
@@ -117,7 +114,7 @@ public class AccountSecurityService {
             return Optional.empty();
         }
         // Raw UUIDs from before the migration remain usable until their original expiry.
-        String digest = TokenDigest.sha256(token);
+        String digest = DigestUtils.sha256Hex(token);
         var owner = jdbc.sql("""
             SELECT username FROM app_one_time_token
             WHERE token_value IN (?, ?) AND purpose = ?

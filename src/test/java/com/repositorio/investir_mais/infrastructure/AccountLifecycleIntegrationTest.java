@@ -6,7 +6,6 @@ import com.repositorio.investir_mais.domain.education.repository.CourseRepositor
 import com.repositorio.investir_mais.domain.education.repository.LessonRepository;
 import com.repositorio.investir_mais.domain.education.service.CourseService;
 import com.repositorio.investir_mais.domain.AccountSecurityService;
-import com.repositorio.investir_mais.domain.TokenDigest;
 import com.repositorio.investir_mais.domain.user.DTO.AuthDTO;
 import com.repositorio.investir_mais.domain.user.DTO.UserDTO;
 import com.repositorio.investir_mais.domain.user.model.User;
@@ -15,6 +14,7 @@ import com.repositorio.investir_mais.domain.user.repository.UserRepository;
 import com.repositorio.investir_mais.domain.user.service.UserService;
 import com.repositorio.investir_mais.infrastructure.config.AuthenticationRateLimitProperties;
 import jakarta.servlet.http.Cookie;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -143,7 +143,7 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
     @Test
     void concurrentProfileUpdateCannotRestorePasswordFromBeforeReset() throws Exception {
         User account = createVerifiedUser();
-        String token = accountSecurity.generatePasswordResetToken(EMAIL);
+        String token = accountSecurity.requestPasswordResetToken(EMAIL).orElseThrow();
         String newPassword = "SenhaNova123456!";
         var started = new CountDownLatch(1);
         try (var executor = Executors.newSingleThreadExecutor()) {
@@ -293,16 +293,12 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
         assertNotEquals(first, second);
         assertEquals(400, browser.write(post("/api/users/verify-email").contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .param("token", first)).getResponse().getStatus());
-        var form = browser.read(get("/api/users/verify-email").param("token", second)).getResponse();
-        assertEquals(200, form.getStatus());
+        var redirect = browser.read(get("/api/users/verify-email").param("token", second)).getResponse();
+        assertEquals(302, redirect.getStatus());
+        assertTrue(redirect.getHeader("Location").contains("/confirmar-email?token=" + second));
         assertFalse(users.findByEmail(EMAIL).orElseThrow().isEmailVerified());
-        assertEquals("strict-origin", form.getHeader("Referrer-Policy"));
-        var field = Pattern.compile("name=\"_csrf\" value=\"([^\"]+)\"").matcher(form.getContentAsString());
-        assertTrue(field.find());
-        assertEquals(200, mvc.perform(post("/api/users/verify-email").contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                .header("Origin", "http://localhost")
-                .cookie(form.getCookie("XSRF-TOKEN")).param("_csrf", field.group(1)).param("token", second))
-                .andReturn().getResponse().getStatus());
+        assertEquals(200, browser.write(post("/api/users/verify-email").contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .param("token", second)).getResponse().getStatus());
         assertTrue(users.findByEmail(EMAIL).orElseThrow().isEmailVerified());
     }
 
@@ -376,7 +372,7 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
         createVerifiedUser();
         Browser first = authenticatedBrowser();
         Browser second = authenticatedBrowser();
-        String token = accountSecurity.generatePasswordResetToken(EMAIL);
+        String token = accountSecurity.requestPasswordResetToken(EMAIL).orElseThrow();
         if (failDeletion) {
             doThrow(new RedisConnectionFailureException("fixture revocation outage"))
                     .when(sessions).deleteById(anyString());
@@ -449,7 +445,7 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
                 .map(SimpleMailMessage.class::cast)
                 .flatMap(message -> uuid.matcher(message.getText()).results())
                 .map(java.util.regex.MatchResult::group)
-                .filter(token -> TokenDigest.sha256(token).equals(digest))
+                .filter(token -> DigestUtils.sha256Hex(token).equals(digest))
                 .findFirst(), java.util.Optional::isPresent).orElseThrow();
     }
 
