@@ -1,10 +1,10 @@
 package com.repositorio.investir_mais.infrastructure;
 
-import com.repositorio.investir_mais.domain.TokenDigest;
 import com.repositorio.investir_mais.domain.user.repository.UserRepository;
 import com.repositorio.investir_mais.infrastructure.config.AuthenticationRateLimitProperties;
 import com.repositorio.investir_mais.infrastructure.config.WebApplicationProperties;
 import jakarta.servlet.http.HttpServletRequest;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -115,7 +115,7 @@ public class SecurityConfig {
     }
 
     private static String loginTokenDigest(String username, String token) {
-        return TokenDigest.sha256(username + "\0" + token);
+        return DigestUtils.sha256Hex(username + "\0" + token);
     }
 
     private static Authentication convertLoginToken(HttpServletRequest request) {

@@ -1,19 +1,15 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
-  AlertTriangle,
-  BookOpen,
   ChevronDown,
   Clock,
-  ExternalLink,
   History,
   Search,
-  ShieldAlert,
   ShieldCheck,
   UserCheck,
   Users,
   X,
 } from "lucide-react";
-import { Link, redirect, useLoaderData, useRevalidator } from "react-router";
+import { redirect, useLoaderData, useRevalidator } from "react-router";
 import { Notice } from "../components/PageState.jsx";
 import { roleNames } from "../components/Topbar.jsx";
 import { getAllUsers, getUserAudit, updateUserRole } from "../services/adminService.js";

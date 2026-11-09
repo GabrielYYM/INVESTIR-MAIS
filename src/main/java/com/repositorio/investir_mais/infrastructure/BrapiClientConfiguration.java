@@ -1,6 +1,6 @@
 package com.repositorio.investir_mais.infrastructure;
 
-import com.repositorio.investir_mais.infrastructure.config.BrapiProperties;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.client.circuitbreaker.CircuitBreakerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,10 +17,11 @@ import org.springframework.web.service.registry.ImportHttpServices;
 @ImportHttpServices(group = "brapi", types = AssetQuoteClient.class)
 public class BrapiClientConfiguration {
     @Bean
-    RestClientHttpServiceGroupConfigurer brapiAuthorization(BrapiProperties properties) {
+    RestClientHttpServiceGroupConfigurer brapiAuthorization(@Value("${brapi.token:}") String token) {
+        String authorization = token.isBlank() || token.startsWith("Bearer ") ? token : "Bearer " + token;
         return groups -> groups.forEachClient((group, builder) -> {
-            if (group.name().equals("brapi") && !properties.authorization().isBlank()) {
-                builder.defaultHeader(HttpHeaders.AUTHORIZATION, properties.authorization());
+            if (group.name().equals("brapi") && !authorization.isBlank()) {
+                builder.defaultHeader(HttpHeaders.AUTHORIZATION, authorization);
             }
         });
     }

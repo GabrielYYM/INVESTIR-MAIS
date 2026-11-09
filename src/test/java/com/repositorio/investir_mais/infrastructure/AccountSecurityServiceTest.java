@@ -2,6 +2,7 @@ package com.repositorio.investir_mais.infrastructure;
 
 import com.repositorio.investir_mais.domain.AccountEmailRequested;
 import com.repositorio.investir_mais.domain.AccountSecurityService;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,7 +55,7 @@ class AccountSecurityServiceTest {
 
     @Test
     void tokensAreSingleUseAndSeparatedByPurpose() {
-        String token = service.generatePasswordResetToken(EMAIL);
+        String token = service.requestPasswordResetToken(EMAIL).orElseThrow();
         assertTrue(service.consumeEmailVerificationToken(token).isEmpty());
         assertEquals(Optional.of(EMAIL), service.consumePasswordResetToken(token));
         assertTrue(service.consumePasswordResetToken(token).isEmpty());
@@ -62,13 +63,13 @@ class AccountSecurityServiceTest {
 
     @Test
     void expiredTokensAreRejectedAndResendInvalidatesOnlyTheSamePurpose() {
-        String reset = service.generatePasswordResetToken(EMAIL);
+        String reset = service.requestPasswordResetToken(EMAIL).orElseThrow();
         String first = service.generateEmailVerificationToken(EMAIL).getTokenValue();
         String second = service.generateEmailVerificationToken(EMAIL).getTokenValue();
         assertTrue(service.consumeEmailVerificationToken(first).isEmpty());
         assertTrue(service.consumePasswordResetToken(reset).isPresent());
         jdbc.update("UPDATE app_one_time_token SET expires_at = ? WHERE token_value = ?",
-                Timestamp.from(Instant.now().minusSeconds(10)), com.repositorio.investir_mais.domain.TokenDigest.sha256(second));
+                Timestamp.from(Instant.now().minusSeconds(10)), DigestUtils.sha256Hex(second));
         assertTrue(service.consumeEmailVerificationToken(second).isEmpty());
         assertFalse(service.isTokenActive(new AccountEmailRequested(EMAIL, second, AccountEmailRequested.Purpose.VERIFY_EMAIL)));
     }
@@ -85,7 +86,7 @@ class AccountSecurityServiceTest {
 
     @Test
     void emailDeliveryRequiresAnActiveTokenForTheRightRecipientAndPurpose() {
-        String token = service.generatePasswordResetToken(EMAIL);
+        String token = service.requestPasswordResetToken(EMAIL).orElseThrow();
         assertTrue(service.isTokenActive(new AccountEmailRequested(EMAIL, token, AccountEmailRequested.Purpose.PASSWORD_RESET)));
         assertFalse(service.isTokenActive(new AccountEmailRequested("other@investir.com", token, AccountEmailRequested.Purpose.PASSWORD_RESET)));
         assertFalse(service.isTokenActive(new AccountEmailRequested(EMAIL, token, AccountEmailRequested.Purpose.VERIFY_EMAIL)));
@@ -95,7 +96,7 @@ class AccountSecurityServiceTest {
 
     @Test
     void concurrentConsumptionOnlySucceedsOnce() throws Exception {
-        String token = service.generatePasswordResetToken(EMAIL);
+        String token = service.requestPasswordResetToken(EMAIL).orElseThrow();
         var start = new CountDownLatch(1);
         Callable<Optional<String>> consume = () -> { start.await(); return service.consumePasswordResetToken(token); };
         try (var executor = Executors.newFixedThreadPool(2)) {
@@ -111,20 +112,26 @@ class AccountSecurityServiceTest {
     void concurrentIssuanceLeavesOneTokenPerPurpose() throws Exception {
         var start = new CountDownLatch(1);
         try (var executor = Executors.newFixedThreadPool(8)) {
-            var futures = new ArrayList<Future<String>>();
+            var futures = new ArrayList<Future<Optional<String>>>();
             for (int index = 0; index < 8; index++) futures.add(executor.submit(() -> {
                 start.await();
-                return service.generatePasswordResetToken(EMAIL);
+                return service.requestPasswordResetToken(EMAIL);
             }));
             start.countDown();
-            for (var future : futures) future.get(10, TimeUnit.SECONDS);
+            long issuedTokens = 0;
+            for (var future : futures) {
+                if (future.get(10, TimeUnit.SECONDS).isPresent()) {
+                    issuedTokens++;
+                }
+            }
+            assertEquals(1, issuedTokens);
         }
         assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM app_one_time_token WHERE username = ? AND purpose = 'PASSWORD_RESET'", Integer.class, EMAIL));
     }
 
     @Test
     void rollbackRestoresConsumedTokenAndDiscardsNewTokens() {
-        String token = service.generatePasswordResetToken(EMAIL);
+        String token = service.requestPasswordResetToken(EMAIL).orElseThrow();
         var transaction = new TransactionTemplate(transactionManager);
         transaction.executeWithoutResult(status -> {
             assertTrue(service.consumePasswordResetToken(token).isPresent());
@@ -168,7 +175,7 @@ class AccountSecurityServiceTest {
     }
 
     private void assertFailedRevocationPreservesResetToken() {
-        String token = service.generatePasswordResetToken(EMAIL);
+        String token = service.requestPasswordResetToken(EMAIL).orElseThrow();
         assertThrows(RedisConnectionFailureException.class, () ->
                 new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
                     assertEquals(Optional.of(EMAIL), service.consumePasswordResetToken(token));
@@ -179,12 +186,12 @@ class AccountSecurityServiceTest {
 
     @Test
     void cleanupRemovesExpiredTokensWithoutRemovingValidOnes() {
-        String valid = service.generatePasswordResetToken(EMAIL);
+        String valid = service.requestPasswordResetToken(EMAIL).orElseThrow();
         jdbc.update("INSERT INTO app_one_time_token VALUES (?, ?, ?, ?)", "expired", EMAIL,
                 Timestamp.from(Instant.now().minusSeconds(10)), "EMAIL_VERIFICATION");
         jdbc.update("INSERT INTO one_time_tokens VALUES (?, ?, ?)", "login-expired", EMAIL, Timestamp.from(Instant.now().minusSeconds(10)));
         service.cleanupExpiredTokens();
-        String digest = com.repositorio.investir_mais.domain.TokenDigest.sha256(valid);
+        String digest = DigestUtils.sha256Hex(valid);
         assertEquals(List.of(digest), jdbc.queryForList("SELECT token_value FROM app_one_time_token", String.class));
         assertTrue(service.consumePasswordResetToken(digest).isEmpty());
         assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM one_time_tokens", Integer.class));

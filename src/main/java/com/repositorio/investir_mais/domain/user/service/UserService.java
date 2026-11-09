@@ -221,7 +221,7 @@ public class UserService {
                 .toList();
     }
 
-    private User findByEmailForUpdate(String email) {
+    public User findByEmailForUpdate(String email) {
         return userRepository.findByEmailForUpdate(email)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
     }

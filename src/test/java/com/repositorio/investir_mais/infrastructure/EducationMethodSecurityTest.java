@@ -129,8 +129,8 @@ class EducationMethodSecurityTest {
         lesson.setId(LESSON_ID);
         lesson.setCourse(course);
         when(users.findByEmail(EMAIL)).thenReturn(user);
-        when(courseRepository.findById(COURSE_ID)).thenReturn(Optional.of(course));
-        when(lessonRepository.findById(LESSON_ID)).thenReturn(Optional.of(lesson));
+        when(courseRepository.findForUpdateById(COURSE_ID)).thenReturn(Optional.of(course));
+        when(lessonRepository.findForUpdateById(LESSON_ID)).thenReturn(Optional.of(lesson));
         when(lessonRepository.findByIdAndCourse_Professor_Id(LESSON_ID, user.getId()))
                 .thenReturn(owner ? Optional.of(lesson) : Optional.empty());
         when(courseMapper.toEntity(COURSE)).thenReturn(course);

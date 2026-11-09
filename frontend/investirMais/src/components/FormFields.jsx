@@ -59,6 +59,7 @@ export function Field({ label, type = "text", icon: Icon, error, multiline = fal
 
 export const emailRules = {
   required: "Informe seu e-mail.",
+  maxLength: { value: 254, message: "O e-mail deve ter no máximo 254 caracteres." },
   pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: "Informe um e-mail válido." },
   setValueAs: (value) => value.trim(),
 };
@@ -66,6 +67,8 @@ export const emailRules = {
 export const newPasswordRules = {
   required: "Informe a senha.",
   minLength: { value: 8, message: "A senha deve ter no mínimo 8 caracteres." },
+  maxLength: { value: 4096, message: "A senha deve ter no máximo 4096 caracteres." },
+  validate: (value) => value.trim().length > 0 || "A senha não pode conter apenas espaços.",
 };
 
 export const confirmPasswordRules = {

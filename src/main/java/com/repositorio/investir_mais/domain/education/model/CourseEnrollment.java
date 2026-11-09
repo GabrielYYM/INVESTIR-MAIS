@@ -3,6 +3,8 @@ package com.repositorio.investir_mais.domain.education.model;
 import com.repositorio.investir_mais.domain.user.model.User;
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -11,6 +13,7 @@ import java.util.UUID;
 @Table(name = "TB_COURSE_ENROLLMENT", uniqueConstraints = {
     @UniqueConstraint(name = "uk_enrollment_student_course", columnNames = {"student_id", "course_id"})
 })
+@EntityListeners(AuditingEntityListener.class)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -30,14 +33,8 @@ public class CourseEnrollment {
     @JoinColumn(name = "course_id", nullable = false)
     private Course course;
 
-    @Column(name = "enrolled_at", nullable = false)
+    @CreatedDate
+    @Column(name = "enrolled_at", nullable = false, updatable = false)
     private LocalDateTime enrolledAt;
-
-    @PrePersist
-    public void prePersist() {
-        if (enrolledAt == null) {
-            enrolledAt = LocalDateTime.now();
-        }
-    }
 }
 
