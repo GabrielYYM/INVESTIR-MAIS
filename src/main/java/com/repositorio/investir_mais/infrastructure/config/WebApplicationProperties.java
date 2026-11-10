@@ -19,7 +19,6 @@ public record WebApplicationProperties(
         @DefaultValue @Valid Security security) {
     public record Cors(@DefaultValue("http://localhost:5173") @NotBlank @URL String allowedOrigin) {}
 
-<<<<<<< HEAD
     public record Security(@DefaultValue @Valid RateLimit rateLimit) {}
 
     public record RateLimit(
@@ -27,8 +26,6 @@ public record WebApplicationProperties(
             @DefaultValue("1m") @DurationMin(millis = 1) Duration refillPeriod,
             @DefaultValue("investir-mais:rate-limit") @NotBlank String namespace) {}
 
-=======
->>>>>>> origin/dev
     public String frontendUrl() {
         return cors.allowedOrigin();
     }

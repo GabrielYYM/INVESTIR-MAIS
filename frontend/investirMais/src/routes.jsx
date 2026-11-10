@@ -7,11 +7,7 @@ import SignUp from "./pages/SignUp.jsx";
 import ForgotPassword from "./pages/ForgotPassword.jsx";
 import VerifyEmail from "./pages/VerifyEmail.jsx";
 import Perfil, { profileAction } from "./pages/Perfil.jsx";
-<<<<<<< HEAD
 import Home, { dashboardLoader } from "./pages/Home.jsx";
-=======
-import Home, { dashboardLoader, quoteLoader } from "./pages/Home.jsx";
->>>>>>> origin/dev
 import Education, { catalogLoader } from "./pages/Education.jsx";
 import Course, { courseLoader } from "./pages/Course.jsx";
 import Admin, { adminLoader } from "./pages/Admin.jsx";
@@ -42,10 +38,6 @@ export const appRoutes = [
     ErrorBoundary: PageError,
     children: [
       { index: true, Component: Home, loader: dashboardLoader, ErrorBoundary: PageError },
-<<<<<<< HEAD
-=======
-      { path: "cotacao", loader: quoteLoader },
->>>>>>> origin/dev
       { path: "educacao", Component: Education, loader: catalogLoader, action: catalogAction, ErrorBoundary: PageError },
       { path: "educacao/:courseId/:lessonId?", Component: Course, loader: courseLoader, action: courseAction, ErrorBoundary: PageError },
       { path: "perfil", Component: Perfil, action: profileAction },

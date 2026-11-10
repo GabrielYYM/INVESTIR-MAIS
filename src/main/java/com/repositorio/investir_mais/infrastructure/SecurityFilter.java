@@ -4,11 +4,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
 
-<<<<<<< HEAD
 import com.repositorio.investir_mais.infrastructure.config.WebApplicationProperties.RateLimit;
-=======
-import com.repositorio.investir_mais.infrastructure.config.AuthenticationRateLimitProperties;
->>>>>>> origin/dev
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

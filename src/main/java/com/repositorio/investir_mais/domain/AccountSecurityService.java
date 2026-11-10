@@ -87,11 +87,7 @@ public class AccountSecurityService {
                 SELECT 1 FROM app_one_time_token
                 WHERE token_value = ? AND username = ? AND purpose = ? AND expires_at > ?
             )
-<<<<<<< HEAD
             """).params(DigestUtils.sha256Hex(event.token()), event.email(), purpose, Timestamp.from(Instant.now()))
-=======
-            """).params(DigestUtils.sha256Hex(event.token()), event.token(), event.email(), purpose, Timestamp.from(Instant.now()))
->>>>>>> origin/dev
                 .query(Boolean.class).single();
     }
 
@@ -117,10 +113,6 @@ public class AccountSecurityService {
         if (!TOKEN_FORMAT.matcher(token).matches()) {
             return Optional.empty();
         }
-<<<<<<< HEAD
-=======
-        // Raw UUIDs from before the migration remain usable until their original expiry.
->>>>>>> origin/dev
         String digest = DigestUtils.sha256Hex(token);
         var owner = jdbc.sql("""
             SELECT username FROM app_one_time_token

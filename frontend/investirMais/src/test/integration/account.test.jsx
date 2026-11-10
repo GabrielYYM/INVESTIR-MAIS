@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
-=======
-import { fireEvent, screen, waitFor } from "@testing-library/react";
->>>>>>> origin/dev
 import { http, HttpResponse } from "msw/http";
 import { describe, expect, it, vi } from "vitest";
 import { renderApp } from "../renderApp.jsx";
@@ -178,42 +174,26 @@ describe("edição do perfil", () => {
       }),
     );
     const { user } = renderApp("/perfil");
-<<<<<<< HEAD
     const profileForm = within((await screen.findByRole("heading", { name: "Alterar informações" })).closest("form"));
-=======
-    await screen.findByRole("heading", { name: "Meu perfil" });
->>>>>>> origin/dev
     expect(screen.getByLabelText("E-mail")).toHaveAttribute("readonly");
     await user.click(screen.getByRole("button", { name: "Salvar perfil" }));
     expect(await screen.findByText("Informe sua senha atual para confirmar.")).toBeInTheDocument();
     expect(updates).toHaveLength(0);
     await user.clear(screen.getByLabelText("Nome completo"));
     await user.type(screen.getByLabelText("Nome completo"), "  Ana Atualizada  ");
-<<<<<<< HEAD
     await user.type(profileForm.getByLabelText("Senha atual"), "senha-teste");
     await user.click(screen.getByRole("button", { name: "Salvar perfil" }));
     expect(await screen.findByRole("status")).toHaveTextContent("Perfil atualizado.");
     expect(screen.getByRole("heading", { name: "Ana Atualizada" })).toBeInTheDocument();
     await waitFor(() => expect(profileForm.getByLabelText("Senha atual")).toHaveValue(""));
-=======
-    await user.type(screen.getByLabelText("Senha atual"), "senha-teste");
-    await user.click(screen.getByRole("button", { name: "Salvar perfil" }));
-    expect(await screen.findByRole("status")).toHaveTextContent("Perfil atualizado.");
-    expect(screen.getByRole("heading", { name: "Ana Atualizada" })).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByLabelText("Senha atual")).toHaveValue(""));
->>>>>>> origin/dev
     expect(updates).toEqual([{ name: "Ana Atualizada", email: student.email, currentPassword: "senha-teste" }]);
   });
 
   it("permanece no perfil se a senha atual for recusada com sessão válida", async () => {
     server.use(http.put(origin + "/api/users/:id", () => HttpResponse.json({ detail: "Senha atual incorreta." }, { status: 401 })));
     const { user, router } = renderApp("/perfil");
-<<<<<<< HEAD
     const profileForm = within((await screen.findByRole("heading", { name: "Alterar informações" })).closest("form"));
     await user.type(profileForm.getByLabelText("Senha atual"), "errada");
-=======
-    await user.type(await screen.findByLabelText("Senha atual"), "errada");
->>>>>>> origin/dev
     await user.click(screen.getByRole("button", { name: "Salvar perfil" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Senha atual incorreta.");
     expect(router.state.location.pathname).toBe("/perfil");

@@ -1,10 +1,6 @@
 package com.repositorio.investir_mais.domain.education.repository;
 
-<<<<<<< HEAD
 import com.repositorio.investir_mais.domain.education.DTO.CourseDTO.CourseStats;
-=======
-import com.repositorio.investir_mais.domain.education.DTO.TeacherDashboardDTO.CourseStats;
->>>>>>> origin/dev
 import com.repositorio.investir_mais.domain.education.model.Course;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
@@ -13,19 +9,14 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 
-<<<<<<< HEAD
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-=======
-import java.util.List;
->>>>>>> origin/dev
 import java.util.UUID;
 
 public interface CourseRepository extends JpaRepository<Course, UUID> {
     Page<Course> findAllByProfessorId(UUID professorId, Pageable pageable);
 
-<<<<<<< HEAD
 
     @Query(value = """
             with visible_courses as (
@@ -70,9 +61,4 @@ public interface CourseRepository extends JpaRepository<Course, UUID> {
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<Course> findForUpdateById(UUID courseId);
-=======
-    List<Course> findAllByProfessorId(UUID professorId);
-
-    long countByProfessorId(UUID professorId);
->>>>>>> origin/dev
 }

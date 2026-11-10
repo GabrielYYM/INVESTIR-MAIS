@@ -6,10 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
-<<<<<<< HEAD
 import org.springframework.data.jpa.repository.Query;
-=======
->>>>>>> origin/dev
 
 import java.util.List;
 import java.util.Optional;
@@ -26,7 +23,6 @@ public interface LessonRepository extends JpaRepository<Lesson, UUID> {
 
     long countByCourseId(UUID courseId);
 
-<<<<<<< HEAD
     @Query(value = """
             select l.id
             from tb_lesson_progress p
@@ -35,7 +31,4 @@ public interface LessonRepository extends JpaRepository<Lesson, UUID> {
               and l.deleted_at is null and p.completed = true
             """, nativeQuery = true)
     List<UUID> findCompletedLessonIds(UUID studentId, UUID courseId);
-=======
-    long countByCourseProfessorId(UUID professorId);
->>>>>>> origin/dev
 }

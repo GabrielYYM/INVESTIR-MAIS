@@ -6,16 +6,12 @@ import com.repositorio.investir_mais.domain.user.DTO.AuthDTO;
 import com.repositorio.investir_mais.domain.user.DTO.UserDTO;
 import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.service.UserService;
-import com.repositorio.investir_mais.infrastructure.config.WebApplicationProperties;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-<<<<<<< HEAD
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-=======
->>>>>>> origin/dev
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -23,7 +19,6 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-<<<<<<< HEAD
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.FactorGrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -34,15 +29,6 @@ import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
-=======
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
-
-import java.net.URI;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
->>>>>>> origin/dev
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -58,13 +44,9 @@ public class UserController {
     private static final String PENDING_REGISTRATION_TOKEN = UserController.class.getName() + ".pendingRegistrationToken";
 
     private final UserService userService;
-<<<<<<< HEAD
     private final CourseService courseService;
     private final CsrfTokenRepository csrfTokens;
     private final HttpSessionSecurityContextRepository securityContexts = new HttpSessionSecurityContextRepository();
-=======
-    private final WebApplicationProperties properties;
->>>>>>> origin/dev
 
     @Operation(summary = "Cadastrar novo usuário", description = "Registra um novo usuário no sistema e envia um e-mail com o link de ativação.")
     @ApiResponses({
@@ -89,19 +71,6 @@ public class UserController {
         return Map.of("message", "Se o cadastro puder ser realizado, um link de confirmação será enviado.");
     }
 
-<<<<<<< HEAD
-=======
-    @Operation(summary = "Redirecionar para confirmação no frontend", description = "Redireciona para a página React de confirmação de e-mail.")
-    @GetMapping("/verify-email")
-    public ResponseEntity<Void> redirectToFrontendVerification(@RequestParam(required = false) String token) {
-        String destination = properties.frontendUrl() + "/confirmar-email"
-                + (token != null && !token.isBlank() ? "?token=" + URLEncoder.encode(token, StandardCharsets.UTF_8) : "");
-        return ResponseEntity.status(HttpStatus.FOUND)
-                .location(URI.create(destination))
-                .build();
-    }
-
->>>>>>> origin/dev
     @Operation(summary = "Verificar e-mail", description = "Consome o token após a confirmação do usuário.")
     @PostMapping(value = "/users/verify-email", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
     public Map<String, Object> verifyEmail(@RequestParam String token, HttpServletRequest request, HttpServletResponse response) {
@@ -212,11 +181,7 @@ public class UserController {
         @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso"),
         @ApiResponse(responseCode = "403", description = "Acesso negado para perfis diferentes de ADMIN")
     })
-<<<<<<< HEAD
     @GetMapping("/users")
-=======
-    @GetMapping
->>>>>>> origin/dev
     public List<UserDTO.Response> listAllUsers() {
         return userService.listAllUsers();
     }
@@ -228,11 +193,7 @@ public class UserController {
         @ApiResponse(responseCode = "403", description = "Acesso negado para perfis diferentes de ADMIN"),
         @ApiResponse(responseCode = "404", description = "Usuário não encontrado")
     })
-<<<<<<< HEAD
     @PatchMapping("/users/{id}/role")
-=======
-    @PatchMapping("/{id}/role")
->>>>>>> origin/dev
     public UserDTO.Response updateUserRole(Principal principal, @PathVariable UUID id, @Valid @RequestBody UserDTO.UpdateRoleRequest dto) {
         return userService.updateUserRole(principal.getName(), id, dto.role());
     }
@@ -243,7 +204,6 @@ public class UserController {
         @ApiResponse(responseCode = "403", description = "Acesso negado para perfis diferentes de ADMIN"),
         @ApiResponse(responseCode = "404", description = "Usuário não encontrado")
     })
-<<<<<<< HEAD
     @GetMapping("/users/{id}/audit")
     public List<UserDTO.AuditResponse> getUserAuditHistory(@PathVariable UUID id) {
         return userService.getUserAuditHistory(id);
@@ -265,10 +225,4 @@ public class UserController {
             Principal principal) {
         return courseService.getTeacherDashboard(principal.getName(), startDate, endDate);
     }
-=======
-    @GetMapping("/{id}/audit")
-    public List<UserDTO.AuditResponse> getUserAuditHistory(@PathVariable UUID id) {
-        return userService.getUserAuditHistory(id);
-    }
->>>>>>> origin/dev
 }

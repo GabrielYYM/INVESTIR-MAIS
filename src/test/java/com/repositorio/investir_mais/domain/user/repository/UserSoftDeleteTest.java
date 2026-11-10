@@ -63,14 +63,11 @@ class UserSoftDeleteTest {
     void deletingAccountPreservesUserButBlocksLookupsLoginAndAccountTokens() {
         User deleted = createUser("deleted@investir.com", UserRole.STUDENT);
         User active = createUser("active@investir.com", UserRole.STUDENT);
-<<<<<<< HEAD
         Course course = createCourse(active);
         Lesson lesson = createLesson(course);
         deleted.enrollIn(course);
         deleted.setLessonCompleted(lesson, true);
         entityManager.flush();
-=======
->>>>>>> origin/dev
         String resetToken = security.requestPasswordResetToken(deleted.getEmail()).orElseThrow();
         String verificationToken = security.generateEmailVerificationToken(deleted.getEmail()).getTokenValue();
         jdbc.update("INSERT INTO one_time_tokens (token_value, username, expires_at) VALUES (?, ?, ?)",

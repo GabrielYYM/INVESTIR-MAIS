@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import { useEffect, useState } from "react";
 import {
   AlertTriangle,
@@ -17,13 +16,6 @@ import {
 import { useForm } from "react-hook-form";
 import { data, Link, redirect, useFetcher, useRouteLoaderData } from "react-router";
 import { Field, newPasswordRules } from "../components/FormFields.jsx";
-=======
-import { useEffect } from "react";
-import { Lock, Mail, Save, ShieldCheck, User } from "lucide-react";
-import { useForm } from "react-hook-form";
-import { data, Link, redirect, useFetcher, useRouteLoaderData } from "react-router";
-import { Field } from "../components/FormFields.jsx";
->>>>>>> origin/dev
 import { Notice } from "../components/PageState.jsx";
 import { roleNames } from "../components/Topbar.jsx";
 import { apiError } from "../services/api.js";
@@ -166,7 +158,6 @@ export default function Perfil() {
       {!isSubmitting && updated && <Notice>Perfil atualizado.</Notice>}
       {!isSubmitting && fetcher.data?.error && <Notice error>{fetcher.data.error}</Notice>}
       <form onSubmit={submit} className="panel space-y-6 p-6 shadow-xl sm:p-8" noValidate>
-<<<<<<< HEAD
         <h2 className="border-b border-line pb-4 font-semibold text-lg">Alterar informações</h2>
         <Field
           label="Nome completo"
@@ -271,17 +262,6 @@ export default function Perfil() {
         </div>
       </section>
 
-=======
-        <h2 className="border-b border-line pb-4 font-semibold">Alterar informações</h2>
-        <Field label="Nome completo" icon={User} autoComplete="name" maxLength={100} error={errors.name?.message}
-          {...form.register("name", { setValueAs: (value) => value.trim(), required: "Informe seu nome.", minLength: { value: 2, message: "Informe pelo menos 2 caracteres." } })} />
-        <Field label="E-mail" icon={Mail} type="email" value={user.email} disabled readOnly hint="Somente leitura. O e-mail não pode ser alterado." />
-        <Field label="Senha atual" icon={Lock} type="password" autoComplete="current-password" error={errors.currentPassword?.message}
-          {...form.register("currentPassword", { required: "Informe sua senha atual para confirmar." })} />
-        <button className="button-primary" disabled={isSubmitting}><Save size={17} /> {isSubmitting ? "Salvando…" : "Salvar perfil"}</button>
-      </form>
-
->>>>>>> origin/dev
       <section className="panel space-y-4 p-6 shadow-xl sm:p-8">
         <div className="flex items-center gap-2.5 border-b border-line pb-4">
           <ShieldCheck className="text-brand size-5" />
@@ -299,11 +279,7 @@ export default function Perfil() {
             </a>
           </p>
           <p>
-<<<<<<< HEAD
             Para exercer seus direitos de titular ou tirar dúvidas sobre o tratamento de seus dados, contate o Encarregado pelo e-mail acima.
-=======
-            Para exercer seus direitos de titular ou solicitar exclusão definitiva de dados cadastrais, encaminhe uma requisição ao e-mail do Encarregado indicado acima.
->>>>>>> origin/dev
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3 pt-1 text-xs">
@@ -316,7 +292,6 @@ export default function Perfil() {
           </Link>
         </div>
       </section>
-<<<<<<< HEAD
 
       <section className="panel border-red-500/20 bg-red-500/5 p-6 shadow-xl sm:p-8 space-y-4" aria-labelledby="zona-perigo-titulo">
         <div className="flex items-center gap-2.5 border-b border-red-500/20 pb-4 text-rose-400">
@@ -467,8 +442,6 @@ export default function Perfil() {
           </div>
         </div>
       )}
-=======
->>>>>>> origin/dev
     </div>
   );
 }
