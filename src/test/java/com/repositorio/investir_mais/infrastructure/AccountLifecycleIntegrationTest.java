@@ -270,7 +270,13 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
         assertNotEquals(first, second);
         assertEquals(400, browser.write(post("/api/users/verify-email").contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .param("token", first)).getResponse().getStatus());
+<<<<<<< HEAD
         assertEquals(401, browser.read(get("/api/users/verify-email").param("token", second)).getResponse().getStatus());
+=======
+        var redirect = browser.read(get("/api/users/verify-email").param("token", second)).getResponse();
+        assertEquals(302, redirect.getStatus());
+        assertTrue(redirect.getHeader("Location").contains("/confirmar-email?token=" + second));
+>>>>>>> origin/dev
         assertFalse(users.findByEmail(EMAIL).orElseThrow().isEmailVerified());
         assertEquals(200, browser.write(post("/api/users/verify-email").contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .param("token", second)).getResponse().getStatus());

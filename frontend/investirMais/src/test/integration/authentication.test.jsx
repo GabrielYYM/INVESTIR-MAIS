@@ -11,6 +11,7 @@ async function fillCredentials(user) {
   await user.click(screen.getByRole("button", { name: "Continuar" }));
 }
 
+<<<<<<< HEAD
 describe("confirmação do cadastro", () => {
   it.each([
     [true, "Olá, Ana.", "/"],
@@ -29,6 +30,8 @@ describe("confirmação do cadastro", () => {
   });
 });
 
+=======
+>>>>>>> origin/dev
 describe("login com senha e código", () => {
   it("valida campos obrigatórios sem enviar credenciais", async () => {
     const request = vi.fn(() => new HttpResponse(null, { status: 204 }));

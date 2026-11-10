@@ -20,11 +20,17 @@ class ConfigurationValidationTest {
     @Test void defaultsAreBoundAndValid() {
         runner.run(context -> {
             assertThat(context).hasNotFailed();
+<<<<<<< HEAD
             assertThat(context).hasSingleBean(WebApplicationProperties.class);
             var rateLimit = context.getBean(WebApplicationProperties.class).security().rateLimit();
             assertThat(rateLimit.capacity()).isEqualTo(10);
             assertThat(rateLimit.refillPeriod()).isEqualTo(Duration.ofMinutes(1));
             assertThat(rateLimit.namespace()).isEqualTo("investir-mais:rate-limit");
+=======
+            assertThat(context).hasSingleBean(AuthenticationRateLimitProperties.class)
+                    .hasSingleBean(WebApplicationProperties.class);
+            assertThat(context.getBean(AuthenticationRateLimitProperties.class).capacity()).isEqualTo(10);
+>>>>>>> origin/dev
         });
     }
 

@@ -1,12 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+<<<<<<< HEAD
 import { dashboardLoader } from "../../pages/Home.jsx";
 import { profileAction } from "../../pages/Perfil.jsx";
 import { signOut } from "../../components/AppLayout.jsx";
 import { dashboardCourses } from "../../services/educationData.js";
+=======
+import { dashboardLoader, quoteLoader } from "../../pages/Home.jsx";
+import { profileAction } from "../../pages/Perfil.jsx";
+import { signOut } from "../../components/AppLayout.jsx";
+import { dashboardCourses } from "../../services/educationData.js";
+import { buscarCotacao } from "../../services/quoteService.js";
+>>>>>>> origin/dev
 import { getCurrentUser, logout, updateUserProfile } from "../../services/authService.js";
 import { actionRequest, loaderRequest, student } from "../fixtures.js";
 
 vi.mock("../../services/educationData.js");
+<<<<<<< HEAD
 vi.mock("../../services/authService.js");
 beforeEach(() => vi.resetAllMocks());
 
@@ -14,6 +23,16 @@ describe("painel", () => {
   it("mantém o painel disponível se o catálogo falhar", async () => {
     dashboardCourses.mockRejectedValue(new Error("offline"));
     expect(await dashboardLoader({ request: loaderRequest("/") })).toEqual({ page: null, teacherStats: null, teacherError: null });
+=======
+vi.mock("../../services/quoteService.js");
+vi.mock("../../services/authService.js");
+beforeEach(() => vi.resetAllMocks());
+
+describe("painel e cotações", () => {
+  it("mantém o painel disponível se o catálogo falhar", async () => {
+    dashboardCourses.mockRejectedValue(new Error("offline"));
+    expect(await dashboardLoader({ request: loaderRequest("/") })).toEqual({ page: null });
+>>>>>>> origin/dev
   });
 
   it("redireciona ao login se a sessão do catálogo expirar", async () => {
@@ -21,6 +40,36 @@ describe("painel", () => {
     await expect(dashboardLoader({ request: loaderRequest("/") })).rejects.toMatchObject({ status: 302 });
   });
 
+<<<<<<< HEAD
+=======
+  it.each(["", "?ticker=", "?ticker=%20", "?ticker=PETR4%2F", "?ticker=ABCDEFGHIJKLMNOPQ"])("recusa ticker inválido %s sem chamada HTTP", async (query) => {
+    expect(await quoteLoader({ request: loaderRequest("/cotacao" + query) })).toEqual({ error: "Informe um ticker válido." });
+    expect(buscarCotacao).not.toHaveBeenCalled();
+  });
+
+  it("normaliza ticker e propaga sinal de cancelamento", async () => {
+    const quote = { symbol: "PETR4", regularMarketPrice: 35.25 };
+    buscarCotacao.mockResolvedValue({ results: [quote] });
+    const request = loaderRequest("/cotacao?ticker=%20petr4%20");
+    expect(await quoteLoader({ request })).toEqual({ quote });
+    expect(buscarCotacao).toHaveBeenCalledWith("PETR4", request.signal);
+  });
+
+  it.each([{}, { results: [] }, { results: [{ regularMarketPrice: "35" }] }, { results: [{ regularMarketPrice: NaN }] }])("trata cotação ausente ou preço não numérico %#", async (response) => {
+    buscarCotacao.mockResolvedValue(response);
+    expect(await quoteLoader({ request: loaderRequest("/cotacao?ticker=PETR4") })).toEqual({ error: "Nenhuma cotação disponível para PETR4." });
+  });
+
+  it.each([[404, "Ativo não encontrado. Confira o ticker informado."], [503, "A cotação está indisponível no momento. Tente novamente."], [undefined, "A cotação está indisponível no momento. Tente novamente."]])("traduz falha de cotação %s", async (status, error) => {
+    buscarCotacao.mockRejectedValue({ response: { status } });
+    expect(await quoteLoader({ request: loaderRequest("/cotacao?ticker=PETR4") })).toEqual({ error });
+  });
+
+  it("redireciona se a sessão da consulta expirou", async () => {
+    buscarCotacao.mockRejectedValue({ response: { status: 401 } });
+    await expect(quoteLoader({ request: loaderRequest("/cotacao?ticker=PETR4") })).rejects.toMatchObject({ status: 302 });
+  });
+>>>>>>> origin/dev
 });
 
 describe("ação do perfil", () => {

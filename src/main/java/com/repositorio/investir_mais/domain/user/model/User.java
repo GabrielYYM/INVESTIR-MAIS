@@ -9,8 +9,14 @@ import org.hibernate.validator.constraints.Range;
 
 import lombok.*;
 
+<<<<<<< HEAD
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
+=======
+import org.hibernate.envers.Audited;
+import org.hibernate.envers.AuditTable;
+import org.hibernate.envers.NotAudited;
+>>>>>>> origin/dev
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.envers.Audited;

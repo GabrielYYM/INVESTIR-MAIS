@@ -14,7 +14,11 @@ export const termsData = {
       },
       {
         heading: "2. Aviso de Isenção de Responsabilidade (Disclaimer Financeiro)",
+<<<<<<< HEAD
         content: "Todas as informações e conteúdos educacionais têm caráter ESTRITAMENTE PEDAGÓGICO. A plataforma não realiza recomendações de investimento, consultoria financeira, jurídica ou contábil. Quaisquer decisões financeiras reais são de inteira responsabilidade do usuário.",
+=======
+        content: "Todas as informações, cotações de ativos, gráficos, simuladores e conteúdos educacionais têm caráter ESTRITAMENTE PEDAGÓGICO. A plataforma não realiza recomendações de investimento, consultoria financeira, jurídica ou contábil. Quaisquer decisões financeiras reais são de inteira responsabilidade do usuário.",
+>>>>>>> origin/dev
       },
       {
         heading: "3. Cadastro, Credenciais e Menores de Idade",
@@ -22,7 +26,11 @@ export const termsData = {
       },
       {
         heading: "4. Perfis de Acesso e Permissões",
+<<<<<<< HEAD
         content: "A plataforma opera com controle de perfis: Aluno (STUDENT), com acesso a cursos; Professor/Educador (TEACHER), habilitado a criar e gerenciar conteúdos didáticos; e Administrador (ADMIN), responsável pela governança geral do sistema.",
+=======
+        content: "A plataforma opera com controle de perfis: Aluno (STUDENT), com acesso a cursos e cotações; Professor/Educador (TEACHER), habilitado a criar e gerenciar conteúdos didáticos; e Administrador (ADMIN), responsável pela governança geral do sistema.",
+>>>>>>> origin/dev
       },
       {
         heading: "5. Propriedade Intelectual e Vídeos do YouTube",
@@ -58,7 +66,11 @@ export const termsData = {
       },
       {
         heading: "4. Compartilhamento Restrito e Vídeos Incorporados",
+<<<<<<< HEAD
         content: "Não vendemos nem compartilhamos dados com terceiros para marketing. O provedor de e-mail transacional recebe o endereço do destinatário e o conteúdo necessário para entregar mensagens de confirmação, login e recuperação de senha. A reprodução de videoaulas do YouTube conecta diretamente o navegador à infraestrutura do Google/YouTube, sujeitando-se às suas políticas de privacidade.",
+=======
+        content: "Não vendemos nem compartilhamos dados com terceiros para marketing. As consultas de cotações de mercado via API Brapi são anonimizadas (apenas tickers, sem dados do usuário). A reprodução de videoaulas do YouTube conecta diretamente o navegador à infraestrutura do Google/YouTube, sujeitando-se às suas políticas de privacidade.",
+>>>>>>> origin/dev
       },
       {
         heading: "5. Medidas de Segurança da Informação",

@@ -8,6 +8,22 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.modulith.events.FailedEventPublications;
 import org.springframework.modulith.events.ResubmissionOptions;
+<<<<<<< HEAD
+=======
+import com.repositorio.investir_mais.infrastructure.config.WebApplicationProperties;
+
+import java.io.UnsupportedEncodingException;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.convert.DurationStyle;
+import org.springframework.mail.MailPreparationException;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
+>>>>>>> origin/dev
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -59,11 +75,22 @@ public class AuthenticationEmailHandler {
     }
 
     public void sendEmailVerificationLink(String email, String tokenValue) {
+<<<<<<< HEAD
         String link = frontendLink("/confirmar-email")
                 .queryParam("token", tokenValue)
                 .build()
                 .encode()
                 .toUriString();
+=======
+        String link = UriComponentsBuilder
+            .fromUriString(properties.frontendUrl())
+            .replacePath("/confirmar-email")
+            .replaceQuery(null)
+            .queryParam("token", tokenValue)
+            .build()
+            .encode()
+            .toUriString();
+>>>>>>> origin/dev
 
         String text = "Acesse o link abaixo para confirmar seu e-mail (expira em 5 minutos):\n" + link;
         String html = """
@@ -96,6 +123,7 @@ public class AuthenticationEmailHandler {
                 Se preferir, digite este código na tela que já está aberta: %s
                 O acesso expira em 5 minutos.
                 """.formatted(link, code);
+<<<<<<< HEAD
         String html = """
                 <p>Abra o link no mesmo navegador em que você digitou a senha.</p>
                 <p><a href="%s">Concluir acesso</a></p>
@@ -107,6 +135,26 @@ public class AuthenticationEmailHandler {
 
     private UriComponentsBuilder frontendLink(String path) {
         return UriComponentsBuilder.fromUriString(properties.frontendUrl()).replacePath(path).replaceQuery(null);
+=======
+        var message = mailSender.createMimeMessage();
+        try {
+            var mail = new MimeMessageHelper(message, MimeMessageHelper.MULTIPART_MODE_MIXED, StandardCharsets.UTF_8.name());
+            if (senderEmail != null && !senderEmail.isBlank()) {
+                mail.setFrom(senderEmail, "Investir Mais");
+            }
+            mail.setTo(email);
+            mail.setSubject("Conclua seu acesso - Investir Mais");
+            mail.setText(text, """
+                    <p>Abra o link no mesmo navegador em que você digitou a senha.</p>
+                    <p><a href="%s">Concluir acesso</a></p>
+                    <p>Se preferir, digite este código na tela que já está aberta: <strong>%s</strong></p>
+                    <p>O acesso expira em 5 minutos.</p>
+                    """.formatted(HtmlUtils.htmlEscape(link), HtmlUtils.htmlEscape(code)));
+        } catch (MessagingException | UnsupportedEncodingException exception) {
+            throw new MailPreparationException(exception);
+        }
+        mailSender.send(message);
+>>>>>>> origin/dev
     }
 
     private static String safeReturnPath(String value) {
