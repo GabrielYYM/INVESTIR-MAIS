@@ -1,12 +1,12 @@
 package com.repositorio.investir_mais.domain.user.controller;
 
 import tools.jackson.databind.ObjectMapper;
+import com.repositorio.investir_mais.domain.education.service.CourseService;
 import com.repositorio.investir_mais.domain.user.DTO.AuthDTO;
 import com.repositorio.investir_mais.domain.user.DTO.UserDTO;
 import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.repository.UserRepository;
 import com.repositorio.investir_mais.domain.user.service.UserService;
-import com.repositorio.investir_mais.infrastructure.config.WebApplicationProperties;
 import com.repositorio.investir_mais.infrastructure.exception.GlobalExceptionHandler;
 
 import org.junit.jupiter.api.Test;
@@ -15,6 +15,8 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.ott.DefaultOneTimeToken;
+import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -53,6 +55,10 @@ class UserControllerTest {
 
     @MockitoBean
     private UserService userService;
+    @MockitoBean
+    private CourseService courseService;
+    @MockitoBean
+    private CsrfTokenRepository csrfTokens;
 
     @MockitoBean
     private UserRepository userRepository;
@@ -60,17 +66,11 @@ class UserControllerTest {
     @MockitoBean
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 
-    @MockitoBean
-    private WebApplicationProperties properties;
-
     @Test
     void registerUser_WithValidData_ShouldReturnGenericAcceptance() throws Exception {
         UserDTO.Request requestDTO = new UserDTO.Request("Felipe", 22, "felipe@investir.com", "senha12345", UserRole.STUDENT);
-        UserDTO.Response responseDTO = new UserDTO.Response(
-            UUID.randomUUID(), "Felipe", 22, "felipe@investir.com", UserRole.STUDENT, false, LocalDateTime.now()
-        );
-
-        when(userService.registerUser(any(UserDTO.Request.class))).thenReturn(responseDTO);
+        when(userService.registerUser(any(UserDTO.Request.class)))
+                .thenReturn(new DefaultOneTimeToken("registration-token", requestDTO.email(), Instant.now().plusSeconds(300)));
 
         mockMvc.perform(post("/api/users/register")
                 .with(csrf())
@@ -78,7 +78,8 @@ class UserControllerTest {
                 .content(objectMapper.writeValueAsString(requestDTO)))
                 .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.message").isString())
-                .andExpect(jsonPath("$.email").doesNotExist());
+                .andExpect(jsonPath("$.email").doesNotExist())
+                .andExpect(jsonPath("$.token").doesNotExist());
     }
 
     @Test

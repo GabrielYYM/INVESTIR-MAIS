@@ -141,6 +141,9 @@ export default function Login() {
               </button>
             </div>
           )}
+          {search.get("contaExcluida") === "true" && (
+            <Notice>Sua conta foi desativada e excluída com sucesso.</Notice>
+          )}
           {resendStatus && <Notice>{resendStatus}</Notice>}
           <Field
             label="E-mail"

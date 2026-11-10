@@ -62,6 +62,16 @@ class AccountSecurityServiceTest {
     }
 
     @Test
+    void unhashedAccountTokensAreNoLongerAccepted() {
+        String token = UUID.randomUUID().toString();
+        jdbc.update("INSERT INTO app_one_time_token VALUES (?, ?, ?, ?)", token, EMAIL,
+                Timestamp.from(Instant.now().plusSeconds(300)), "EMAIL_VERIFICATION");
+
+        assertTrue(service.consumeEmailVerificationToken(token).isEmpty());
+        assertFalse(service.isTokenActive(new AccountEmailRequested(EMAIL, token, AccountEmailRequested.Purpose.VERIFY_EMAIL)));
+    }
+
+    @Test
     void expiredTokensAreRejectedAndResendInvalidatesOnlyTheSamePurpose() {
         String reset = service.requestPasswordResetToken(EMAIL).orElseThrow();
         String first = service.generateEmailVerificationToken(EMAIL).getTokenValue();

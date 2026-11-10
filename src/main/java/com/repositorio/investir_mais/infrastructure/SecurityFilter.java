@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
 
-import com.repositorio.investir_mais.infrastructure.config.AuthenticationRateLimitProperties;
+import com.repositorio.investir_mais.infrastructure.config.WebApplicationProperties.RateLimit;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -47,7 +47,7 @@ public class SecurityFilter extends OncePerRequestFilter {
         new LimitedRoute("/api/users/reset-password"),
         new LimitedRoute("/api/users/resend-verification"));
     private final StringRedisTemplate redis;
-    private final AuthenticationRateLimitProperties properties;
+    private final RateLimit properties;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain) throws ServletException, IOException {

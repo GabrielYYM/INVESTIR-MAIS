@@ -2,28 +2,20 @@ import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
   ArrowRight,
-  Award,
   BookOpen,
   Calendar,
-  CheckCircle2,
   ChevronRight,
   Filter,
-  GraduationCap,
   PlayCircle,
   Plus,
   RotateCcw,
-  Search,
-  TrendingDown,
   TrendingUp,
   Users,
-  Video,
 } from "lucide-react";
-import { Link, redirect, useFetcher, useLoaderData, useRouteLoaderData, useSearchParams } from "react-router";
+import { Link, redirect, useLoaderData, useRouteLoaderData, useSearchParams } from "react-router";
 import { CourseCard } from "../components/EducationParts.jsx";
-import { Notice } from "../components/PageState.jsx";
 import { apiError } from "../services/api.js";
 import { dashboardCourses } from "../services/educationData.js";
-import { buscarCotacao } from "../services/quoteService.js";
 import { getTeacherDashboard } from "../services/teacherService.js";
 
 function formatDateBr(isoStr) {
@@ -92,10 +84,15 @@ export async function dashboardLoader({ request }) {
 
     let teacherError = null;
     const [page, teacherStats] = await Promise.all([
-      dashboardCourses(request.signal).catch(() => null),
-      getTeacherDashboard({ startDate, endDate }, request.signal).catch((err) => {
-        const msg = err.response?.data?.message || err.response?.data?.detail;
-        teacherError = msg || "Período inválido ou superior a 6 meses.";
+      dashboardCourses(request.signal).catch((error) => {
+        if (error.response?.status === 401) throw error;
+        return null;
+      }),
+      getTeacherDashboard({ startDate, endDate }, request.signal).catch((error) => {
+        if (error.response?.status === 401) throw error;
+        if (error.response?.status !== 403) {
+          teacherError = apiError(error, "Não foi possível consultar as métricas. Tente novamente.");
+        }
         return null;
       }),
     ]);
@@ -104,65 +101,6 @@ export async function dashboardLoader({ request }) {
     if (error.response?.status === 401) throw redirect("/entrar");
     return { page: null, teacherStats: null, teacherError: null };
   }
-}
-
-export async function quoteLoader({ request }) {
-  const ticker = new URL(request.url).searchParams.get("ticker")?.trim().toUpperCase();
-  if (!ticker || !/^[A-Z0-9.-]{1,16}$/.test(ticker)) return { error: "Informe um ticker válido." };
-
-  try {
-    const data = await buscarCotacao(ticker, request.signal);
-    const quote = data.results?.[0];
-    if (!quote || !Number.isFinite(quote.regularMarketPrice)) return { error: "Nenhuma cotação disponível para " + ticker + "." };
-    return { quote };
-  } catch (error) {
-    if (error.response?.status === 401) throw redirect("/entrar");
-    return {
-      error: error.response?.status === 404
-        ? "Ativo não encontrado. Confira o ticker informado."
-        : "A cotação está indisponível no momento. Tente novamente.",
-    };
-  }
-}
-
-function MarketQuote() {
-  const lookup = useFetcher();
-  const loading = lookup.state !== "idle";
-  const quote = lookup.data?.quote;
-  const change = quote?.regularMarketChangePercent;
-  const hasChange = Number.isFinite(change);
-  const ChangeIcon = change < 0 ? TrendingDown : TrendingUp;
-  const currency = /^[A-Z]{3}$/.test(quote?.currency) ? quote.currency : undefined;
-  const priceFormat = new Intl.NumberFormat("pt-BR", currency ? { style: "currency", currency } : { maximumFractionDigits: 2 });
-
-  return (
-    <section className="panel space-y-4 p-5 sm:p-6" aria-labelledby="cotacoes-titulo">
-      <div>
-        <p className="eyebrow">Mercado</p>
-        <h2 id="cotacoes-titulo" className="mt-1 text-xl font-bold">Consultar cotação</h2>
-        <p className="mt-1 text-sm text-muted">Pesquise pelo código do ativo.</p>
-      </div>
-      <lookup.Form method="get" action="/cotacao" className="flex flex-wrap gap-2">
-        <label htmlFor="ticker" className="sr-only">Ticker</label>
-        <input id="ticker" name="ticker" required maxLength={16} autoComplete="off" placeholder="Ex.: PETR4" className="field min-w-32 flex-1 uppercase placeholder:normal-case" />
-        <button className="button-primary" disabled={loading}><Search size={16} /> {loading ? "Buscando…" : "Buscar"}</button>
-      </lookup.Form>
-      {!loading && lookup.data?.error && <Notice error>{lookup.data.error}</Notice>}
-      {!loading && quote && (
-        <div className="rounded-xl border border-line bg-canvas p-4" aria-live="polite">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <div>
-              <p className="font-bold">{quote.symbol}</p>
-              <p className="text-xs text-muted">{quote.shortName || quote.longName}</p>
-            </div>
-            {hasChange && <span className={"inline-flex items-center gap-1 text-xs font-semibold " + (change < 0 ? "text-negative" : "text-positive")}><ChangeIcon size={15} /> {change.toLocaleString("pt-BR", { signDisplay: "exceptZero", maximumFractionDigits: 2 })}%</span>}
-          </div>
-          <p className="mt-3 text-2xl font-bold tabular-nums">{priceFormat.format(quote.regularMarketPrice)}</p>
-        </div>
-      )}
-      <p className="text-xs text-muted">Dados da Brapi. As cotações podem ter atraso.</p>
-    </section>
-  );
 }
 
 function TeacherDashboardView({ stats, firstName, role }) {
@@ -477,31 +415,28 @@ export default function Home() {
 
       {isTeacherOrAdmin && teacherStats ? (
         <TeacherDashboardView stats={teacherStats} firstName={firstName} role={user.role} />
-      ) : !teacherError && (
+      ) : (
         <header className="panel border-white/5 p-6 sm:p-8">
           <h1 className="mb-2 text-3xl font-bold break-words">Olá, {firstName}.</h1>
-          <p className="max-w-xl text-muted">Bem-vindo ao <span className="font-semibold text-amber-400">Investir+</span>. Explore cursos sobre finanças e consulte cotações do mercado.</p>
+          <p className="max-w-xl text-muted">Bem-vindo ao <span className="font-semibold text-amber-400">Investir+</span>. Explore o catálogo de cursos sobre finanças.</p>
           <Link to="/educacao" className="button-primary mt-5">Explorar cursos <ArrowRight size={17} /></Link>
         </header>
       )}
 
-      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.5fr)]">
-        <MarketQuote />
-        <section className="space-y-4" aria-labelledby="educacao-titulo">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <p className="eyebrow">Educação</p>
-              <h2 id="educacao-titulo" className="mt-1 text-2xl font-bold tracking-tight">Catálogo de Cursos</h2>
-            </div>
-            <Link to="/educacao" className="button-secondary">Ver catálogo <ArrowRight size={16} /></Link>
+      <section className="space-y-4" aria-labelledby="educacao-titulo">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="eyebrow">Educação</p>
+            <h2 id="educacao-titulo" className="mt-1 text-2xl font-bold tracking-tight">Catálogo de Cursos</h2>
           </div>
-          {page?.items.length ? (
-            <div className="grid gap-3 sm:grid-cols-3">{page.items.map((course) => <CourseCard key={course.id} course={course} />)}</div>
-          ) : (
-            <p className="panel p-5 text-sm text-muted">{page ? "Ainda não há cursos no catálogo." : "O catálogo está indisponível no momento."}</p>
-          )}
-        </section>
-      </div>
+          <Link to="/educacao" className="button-secondary">Ver catálogo <ArrowRight size={16} /></Link>
+        </div>
+        {page?.items.length ? (
+          <div className="grid gap-3 sm:grid-cols-3">{page.items.map((course) => <CourseCard key={course.id} course={course} />)}</div>
+        ) : (
+          <p className="panel p-5 text-sm text-muted">{page ? "Ainda não há cursos no catálogo." : "O catálogo está indisponível no momento."}</p>
+        )}
+      </section>
     </>
   );
 }

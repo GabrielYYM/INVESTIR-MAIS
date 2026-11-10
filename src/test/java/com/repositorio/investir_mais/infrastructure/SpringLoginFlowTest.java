@@ -1,5 +1,6 @@
 package com.repositorio.investir_mais.infrastructure;
 
+import com.repositorio.investir_mais.domain.education.service.CourseService;
 import com.repositorio.investir_mais.domain.user.mapper.UserMapper;
 import com.repositorio.investir_mais.domain.user.controller.UserController;
 import com.repositorio.investir_mais.domain.user.DTO.UserDTO;
@@ -7,7 +8,6 @@ import com.repositorio.investir_mais.domain.user.model.User;
 import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.repository.UserRepository;
 import com.repositorio.investir_mais.domain.user.service.UserService;
-import com.repositorio.investir_mais.infrastructure.config.AuthenticationRateLimitProperties;
 import com.repositorio.investir_mais.infrastructure.config.WebApplicationProperties;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
@@ -336,13 +336,14 @@ class SpringLoginFlowTest {
 
     @Configuration
     @EnableWebMvc
-    @EnableConfigurationProperties({AuthenticationRateLimitProperties.class, WebApplicationProperties.class})
+    @EnableConfigurationProperties(WebApplicationProperties.class)
     static class Config {
         @Bean UserMapper userMapper() {
             return Mappers.getMapper(UserMapper.class);
         }
         @Bean UserRepository users() { return mock(UserRepository.class); }
         @Bean UserService userService() { return mock(UserService.class); }
+        @Bean CourseService courseService() { return mock(CourseService.class); }
         @Bean AuthenticationEmailHandler emails() { return mock(AuthenticationEmailHandler.class); }
         @Bean StringRedisTemplate rateLimits() { return mock(StringRedisTemplate.class); }
         @Bean ProtectedEndpoints protectedEndpoints() { return new ProtectedEndpoints(); }

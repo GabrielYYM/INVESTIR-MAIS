@@ -12,7 +12,7 @@ import com.repositorio.investir_mais.domain.user.model.User;
 import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.repository.UserRepository;
 import com.repositorio.investir_mais.domain.user.service.UserService;
-import com.repositorio.investir_mais.infrastructure.config.AuthenticationRateLimitProperties;
+import com.repositorio.investir_mais.infrastructure.config.WebApplicationProperties;
 import jakarta.servlet.http.Cookie;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,7 +20,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.cloud.client.circuitbreaker.CircuitBreakerFactory;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.redis.core.ScanOptions;
@@ -28,9 +27,6 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.RedisConnectionFailureException;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.mail.MailSendException;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.modulith.events.EventPublication;
 import org.springframework.modulith.events.FailedEventPublications;
 import org.springframework.modulith.events.ResubmissionOptions;
@@ -39,16 +35,14 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.session.FindByIndexNameSessionRepository;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.service.registry.HttpServiceProxyRegistry;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.sql.Timestamp;
@@ -71,6 +65,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {"app.security.rate-limit.capacity=3", "app.mail.retry-delay=1s", "app.security.email-cooldown=0s",
@@ -85,12 +80,11 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
     @Autowired private MockMvc mvc;
     @Autowired private UserService service;
     @Autowired private AccountSecurityService accountSecurity;
-    @Autowired private CircuitBreakerFactory<?, ?> circuitBreakerFactory;
     @LocalServerPort private int port;
     @MockitoSpyBean private UserRepository users;
     @MockitoSpyBean private PasswordEncoder encoder;
     @MockitoSpyBean private JdbcTemplate jdbc;
-    @MockitoBean private JavaMailSender mail;
+    @Autowired private ResendEmailSender mail;
     @Autowired private FailedEventPublications failedPublications;
     @Autowired private EventPublicationRegistry publications;
     @Autowired private PlatformTransactionManager transactionManager;
@@ -100,16 +94,15 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
 
     @Autowired private StringRedisTemplate redis;
     @MockitoSpyBean private FindByIndexNameSessionRepository<?> sessions;
-    @Autowired private AuthenticationRateLimitProperties rateLimitProperties;
+    @Autowired private WebApplicationProperties webProperties;
 
     @BeforeEach
     void clean() {
         await().atMost(Duration.ofSeconds(5)).until(() -> publications.findIncompletePublications().isEmpty());
         reset(users, mail, jdbc, sessions);
-        when(mail.createMimeMessage()).thenAnswer(invocation -> new jakarta.mail.internet.MimeMessage((jakarta.mail.Session) null));
         sessions.findByPrincipalName(EMAIL).keySet().forEach(sessions::deleteById);
         try (var keys = redis.scan(ScanOptions.scanOptions()
-                .match(rateLimitProperties.namespace() + ":*").count(100).build())) {
+                .match(webProperties.security().rateLimit().namespace() + ":*").count(100).build())) {
             keys.forEachRemaining(redis::delete);
         }
         jdbc.update("DELETE FROM one_time_tokens");
@@ -187,40 +180,23 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
     }
 
     @Test
-    void invalidBrapiTickersDoNotOpenTheSharedCircuit() {
-        var registry = mock(HttpServiceProxyRegistry.class);
-        when(registry.getClient("brapi", AssetQuoteClient.class)).thenReturn(ticker -> {
-            if (!ticker.equals("PETR4")) {
-                throw HttpClientErrorException.create(org.springframework.http.HttpStatus.NOT_FOUND,
-                        "Not found", org.springframework.http.HttpHeaders.EMPTY, new byte[0], null);
-            }
-            return "ok";
-        });
-        var client = new BrapiClientConfiguration().resilientAssetQuoteClient(registry, circuitBreakerFactory);
-        for (int i = 0; i < 6; i++) {
-            String ticker = "INVALID" + i;
-            assertEquals(404, assertThrows(ResponseStatusException.class, () -> client.getQuote(ticker)).getStatusCode().value());
-        }
-        assertEquals("ok", client.getQuote("PETR4"));
-    }
-
-    @Test
     void failedEmailIsPersistedAndCanBeDeliveredByNativeResubmission() {
-        doThrow(new MailSendException("simulated SMTP failure")).when(mail).send(any(SimpleMailMessage.class));
+        doThrow(new RestClientException("simulated Resend failure"))
+                .when(mail).send(eq(EMAIL), anyString(), anyString(), anyString(), anyString());
         service.registerUser(new UserDTO.Request("Conta", 22, EMAIL, PASSWORD, UserRole.STUDENT));
         awaitFailedPublication();
         reset(mail);
         failedPublications.resubmit(ResubmissionOptions.defaults());
-        verify(mail, timeout(3000)).send(any(SimpleMailMessage.class));
+        verify(mail, timeout(3000)).send(eq(EMAIL), anyString(), anyString(), anyString(), anyString());
         await().atMost(Duration.ofSeconds(5)).until(() -> publications.findIncompletePublications().isEmpty());
     }
 
     @Test
     void failedEmailIsDeliveredByTheManagedRetryScheduler() {
-        doThrow(new MailSendException("temporary SMTP failure")).doNothing()
-                .when(mail).send(any(SimpleMailMessage.class));
+        doThrow(new RestClientException("temporary Resend failure")).doNothing()
+                .when(mail).send(eq(EMAIL), anyString(), anyString(), anyString(), anyString());
         service.registerUser(new UserDTO.Request("Conta", 22, EMAIL, PASSWORD, UserRole.STUDENT));
-        verify(mail, timeout(5000).times(2)).send(any(SimpleMailMessage.class));
+        verify(mail, timeout(5000).times(2)).send(eq(EMAIL), anyString(), anyString(), anyString(), anyString());
         await().atMost(Duration.ofSeconds(5)).until(() -> publications.findIncompletePublications().isEmpty());
     }
 
@@ -253,7 +229,8 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
 
     @Test
     void persistedEmailWithExpiredTokenIsDiscardedOnRetry() {
-        doThrow(new MailSendException("simulated SMTP failure")).when(mail).send(any(SimpleMailMessage.class));
+        doThrow(new RestClientException("simulated Resend failure"))
+                .when(mail).send(eq(EMAIL), anyString(), anyString(), anyString(), anyString());
         service.registerUser(new UserDTO.Request("Conta", 22, EMAIL, PASSWORD, UserRole.STUDENT));
         awaitFailedPublication();
         jdbc.update("UPDATE app_one_time_token SET expires_at = ?", Timestamp.from(Instant.now().minusSeconds(60)));
@@ -283,7 +260,7 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
     @Test
     void registrationResendAndVerificationWorkAfterCommit() throws Exception {
         service.registerUser(new UserDTO.Request("Conta", 22, EMAIL, PASSWORD, UserRole.STUDENT));
-        verify(mail, timeout(3000)).send(any(SimpleMailMessage.class));
+        verify(mail, timeout(3000)).send(eq(EMAIL), anyString(), anyString(), anyString(), anyString());
         assertFalse(users.findByEmail(EMAIL).orElseThrow().isEmailVerified());
         String first = accountToken("EMAIL_VERIFICATION");
         Browser browser = new Browser();
@@ -293,13 +270,51 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
         assertNotEquals(first, second);
         assertEquals(400, browser.write(post("/api/users/verify-email").contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .param("token", first)).getResponse().getStatus());
-        var redirect = browser.read(get("/api/users/verify-email").param("token", second)).getResponse();
-        assertEquals(302, redirect.getStatus());
-        assertTrue(redirect.getHeader("Location").contains("/confirmar-email?token=" + second));
+        assertEquals(401, browser.read(get("/api/users/verify-email").param("token", second)).getResponse().getStatus());
         assertFalse(users.findByEmail(EMAIL).orElseThrow().isEmailVerified());
         assertEquals(200, browser.write(post("/api/users/verify-email").contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .param("token", second)).getResponse().getStatus());
         assertTrue(users.findByEmail(EMAIL).orElseThrow().isEmailVerified());
+    }
+
+    @Test
+    void confirmationInRegistrationBrowserSignsInAndRotatesSession() throws Exception {
+        Browser browser = new Browser();
+        browser.register();
+        String pendingSession = browser.session.getValue();
+        String token = accountToken("EMAIL_VERIFICATION");
+        assertEquals(401, browser.read(get("/auth/me")).getResponse().getStatus());
+
+        MvcResult confirmation = browser.confirmEmail(token);
+
+        assertEquals(200, confirmation.getResponse().getStatus());
+        jsonPath("$.signedIn").value(true).match(confirmation);
+        assertNotEquals(pendingSession, browser.session.getValue());
+        assertEquals(401, mvc.perform(get("/auth/me").cookie(new Cookie("SESSION", pendingSession)))
+                .andReturn().getResponse().getStatus());
+        jsonPath("$.email").value(EMAIL).match(browser.read(get("/auth/me")));
+        assertEquals(400, browser.confirmEmail(token).getResponse().getStatus());
+        verify(mail, times(1)).send(eq(EMAIL), anyString(), anyString(), anyString(), anyString());
+        assertEquals(204, browser.write(post("/auth/logout")).getResponse().getStatus());
+        assertEquals(401, browser.read(get("/auth/me")).getResponse().getStatus());
+    }
+
+    @Test
+    void confirmationInAnotherBrowserVerifiesEmailWithoutSigningInEitherBrowser() throws Exception {
+        Browser registration = new Browser();
+        registration.register();
+        String token = accountToken("EMAIL_VERIFICATION");
+        Browser other = new Browser();
+        other.register();
+
+        MvcResult confirmation = other.confirmEmail(token);
+
+        assertEquals(200, confirmation.getResponse().getStatus());
+        jsonPath("$.signedIn").value(false).match(confirmation);
+        assertTrue(users.findByEmail(EMAIL).orElseThrow().isEmailVerified());
+        assertEquals(401, other.read(get("/auth/me")).getResponse().getStatus());
+        assertEquals(401, registration.read(get("/auth/me")).getResponse().getStatus());
+        assertEquals(400, registration.confirmEmail(token).getResponse().getStatus());
     }
 
     @Test
@@ -440,10 +455,7 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
         Pattern uuid = Pattern.compile("[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}");
         return await().atMost(Duration.ofSeconds(5)).until(() -> mockingDetails(mail).getInvocations().stream()
                 .filter(invocation -> invocation.getMethod().getName().equals("send"))
-                .map(invocation -> invocation.getArgument(0))
-                .filter(SimpleMailMessage.class::isInstance)
-                .map(SimpleMailMessage.class::cast)
-                .flatMap(message -> uuid.matcher(message.getText()).results())
+                .flatMap(invocation -> uuid.matcher(invocation.<String>getArgument(2)).results())
                 .map(java.util.regex.MatchResult::group)
                 .filter(token -> DigestUtils.sha256Hex(token).equals(digest))
                 .findFirst(), java.util.Optional::isPresent).orElseThrow();
@@ -463,6 +475,20 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
 
     private class Browser {
         private Cookie session;
+
+        void register() throws Exception {
+            var request = new UserDTO.Request("Conta", 22, EMAIL, PASSWORD, UserRole.STUDENT);
+            MvcResult registration = write(post("/api/users/register").contentType(MediaType.APPLICATION_JSON)
+                    .content(new tools.jackson.databind.ObjectMapper().writeValueAsString(request)));
+            assertEquals(202, registration.getResponse().getStatus());
+            assertNotNull(session);
+        }
+
+        MvcResult confirmEmail(String token) throws Exception {
+            return write(post("/api/users/verify-email").contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .param("token", token));
+        }
+
         MvcResult read(MockHttpServletRequestBuilder request) throws Exception {
             if (session != null) request.cookie(session);
             MvcResult result = mvc.perform(request).andReturn();

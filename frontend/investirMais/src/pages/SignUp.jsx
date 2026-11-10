@@ -38,7 +38,7 @@ export default function SignUp() {
     <AuthCard
       icon={email ? CheckCircle2 : ShieldCheck}
       title={email ? "Confirme seu e-mail" : "Crie sua conta"}
-      description={email ? "Se o cadastro puder ser realizado, você receberá um link em " + email + ". Confira também a pasta de spam." : "Crie uma conta para explorar os cursos e consultar cotações."}
+      description={email ? "Se o cadastro puder ser realizado, você receberá um link em " + email + ". Confira também a pasta de spam." : "Crie uma conta para explorar os cursos de educação financeira."}
     >
       {email ? (
         <form onSubmit={resendLink} className="space-y-4">

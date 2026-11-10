@@ -1,6 +1,6 @@
 # Investir Mais · Frontend
 
-Aplicação React que consome a API Spring do Investir Mais. Reúne o painel de cotações, o catálogo educacional, o perfil e os fluxos de acesso por e-mail. O [README principal](../../README.md) descreve a arquitetura, a execução do backend e os diagramas.
+Aplicação React que consome a API Spring do Investir Mais. Reúne o painel, o catálogo educacional, o perfil e os fluxos de acesso por e-mail. O [README principal](../../README.md) descreve a arquitetura, a execução do backend e os diagramas.
 
 ## Desenvolvimento local
 
@@ -11,7 +11,7 @@ npm ci
 npm run dev
 ```
 
-Abra [localhost:5173](http://localhost:5173). O proxy do Vite encaminha `/api`, `/auth` e `/csrf` ao Spring. PostgreSQL, Redis, SMTP e a integração com a Brapi são configurados no backend.
+Abra [localhost:5173](http://localhost:5173). O proxy do Vite encaminha `/api`, `/auth` e `/csrf` ao Spring. PostgreSQL, Redis e o provedor de e-mail são configurados no backend.
 
 | Comando | Finalidade |
 | --- | --- |
@@ -29,12 +29,12 @@ Abra [localhost:5173](http://localhost:5173). O proxy do Vite encaminha `/api`, 
 | `/entrar` | Público | Validação da senha e opção de confirmar o OTT manualmente. |
 | `/entrar/link` | Público | Recebe o token do e-mail e conclui o login na sessão correspondente. |
 | `/recuperar-senha` | Público | Solicita o código e define uma nova senha. |
-| `/` | Sessão completa | Painel com cursos em destaque e consulta de cotações. |
+| `/` | Sessão completa | Painel com cursos em destaque e métricas conforme o perfil. |
 | `/educacao` | Sessão completa | Catálogo paginado de cursos e criação de curso para perfis autorizados. |
 | `/educacao/:courseId/:lessonId?` | Sessão completa | Detalhe do curso, lista de aulas e reprodução da aula selecionada. |
 | `/perfil` | Sessão completa | Exibe os dados da conta e permite editar o nome com a senha atual. |
 
-A consulta de cotação usa o loader interno `/cotacao`. A saída é uma ação em `/sair`, que chama `POST /auth/logout`. Essas rotas dão suporte à interface e são acionadas pelo painel e pelo menu.
+A saída é uma ação em `/sair`, que chama `POST /auth/logout`.
 
 O layout autenticado carrega a identidade por `GET /auth/me`. Se o backend responder `401` ou `403`, o React Router envia o usuário ao login com o caminho de retorno. Alunos consultam o catálogo. Professores criam cursos e gerenciam os próprios cursos e aulas. Administradores gerenciam todo o catálogo. As permissões são verificadas também pelo backend.
 
@@ -88,6 +88,6 @@ O player integrado depende das permissões de incorporação do vídeo. Para um 
 
 `npm run build` gera os arquivos estáticos em `dist/`. Em uma hospedagem na mesma origem, encaminhe `/api`, `/auth` e `/csrf` para o Spring. Sirva `index.html` como fallback das rotas da SPA, inclusive quando alguém abre `/entrar/link` ou uma aula diretamente.
 
-Se frontend e API usarem origens distintas dentro do mesmo site, configure `VITE_API_BASE_URL` no build e `APP_CORS_ALLOWED_ORIGIN` no backend com a origem exata da SPA. O navegador aplica as regras de envio do cookie `SameSite=Lax`. Os links de login usam `APP_CORS_ALLOWED_ORIGIN`, e os links de confirmação de e-mail usam `APP_PUBLIC_BASE_URL`.
+Se frontend e API usarem origens distintas dentro do mesmo site, configure `VITE_API_BASE_URL` no build e `APP_CORS_ALLOWED_ORIGIN` no backend com a origem exata da SPA. O navegador aplica as regras de envio do cookie `SameSite=Lax`. Os links de login e confirmação de e-mail usam `APP_CORS_ALLOWED_ORIGIN`.
 
-No proxy ou CDN, use HTTPS e configure HSTS, `X-Content-Type-Options: nosniff` e `Referrer-Policy: strict-origin-when-cross-origin`. Para uma CSP da SPA, uma base é `default-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; frame-src https://www.youtube-nocookie.com`. Inclua em `connect-src` a origem da API quando estiver em outro host. Teste a política em modo de relatório antes de aplicá-la. Limite os corpos de requisições na borda e exclua o parâmetro `token` dos logs de acesso de `/api/users/verify-email`.
+No proxy ou CDN, use HTTPS e configure HSTS, `X-Content-Type-Options: nosniff` e `Referrer-Policy: strict-origin-when-cross-origin`. Para uma CSP da SPA, uma base é `default-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; frame-src https://www.youtube-nocookie.com`. Inclua em `connect-src` a origem da API quando estiver em outro host. Teste a política em modo de relatório antes de aplicá-la. Limite os corpos de requisições na borda e exclua o parâmetro `token` dos logs de acesso de `/confirmar-email`.

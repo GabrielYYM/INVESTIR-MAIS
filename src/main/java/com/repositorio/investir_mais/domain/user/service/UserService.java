@@ -84,7 +84,7 @@ public class UserService {
         return userMapper.toDTO(user);
     }
 
-    public UserDTO.Response registerUser(UserDTO.Request dto) {
+    public OneTimeToken registerUser(UserDTO.Request dto) {
         if (dto.role() != null && dto.role() != UserRole.STUDENT) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O cadastro público permite apenas o perfil STUDENT.");
         }
@@ -101,9 +101,7 @@ public class UserService {
         User savedUser = userRepository.save(user);
         log.info("Novo usuário registrado com sucesso. ID: {}, Role: {}", savedUser.getId(), savedUser.getRole());
 
-        sendVerificationLink(savedUser.getEmail());
-
-        return userMapper.toDTO(savedUser);
+        return sendVerificationLink(savedUser.getEmail());
     }
 
     public void deleteAccount(String principalName, UUID requestedId, UserDTO.DeleteAccountRequest dto) {
@@ -155,16 +153,18 @@ public class UserService {
         log.info("Senha redefinida e e-mail ativado com sucesso para o usuário: {}", user.getId());
     }
 
-    public void verifyEmail(String tokenValue) {
+    public UserDTO.Response verifyEmail(String tokenValue) {
         String email = accountSecurity.consumeEmailVerificationToken(tokenValue)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Link inválido ou expirado."));
         User user = findByEmail(email);
         user.setEmailVerified(true);
+        return userMapper.toDTO(user);
     }
 
-    private void sendVerificationLink(String email) {
+    private OneTimeToken sendVerificationLink(String email) {
         OneTimeToken token = accountSecurity.generateEmailVerificationToken(email);
         events.publishEvent(new AccountEmailRequested(email, token.getTokenValue(), AccountEmailRequested.Purpose.VERIFY_EMAIL));
+        return token;
     }
 
     public void resendVerification(String email) {
@@ -221,8 +221,8 @@ public class UserService {
                 .toList();
     }
 
-    private User findByEmailForUpdate(String email) {
-        return userRepository.findByEmailForUpdate(email)
+    public User findByEmailForUpdate(String email) {
+        return userRepository.findForUpdateByEmail(email)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
     }
 }

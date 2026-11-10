@@ -63,6 +63,11 @@ class UserSoftDeleteTest {
     void deletingAccountPreservesUserButBlocksLookupsLoginAndAccountTokens() {
         User deleted = createUser("deleted@investir.com", UserRole.STUDENT);
         User active = createUser("active@investir.com", UserRole.STUDENT);
+        Course course = createCourse(active);
+        Lesson lesson = createLesson(course);
+        deleted.enrollIn(course);
+        deleted.setLessonCompleted(lesson, true);
+        entityManager.flush();
         String resetToken = security.requestPasswordResetToken(deleted.getEmail()).orElseThrow();
         String verificationToken = security.generateEmailVerificationToken(deleted.getEmail()).getTokenValue();
         jdbc.update("INSERT INTO one_time_tokens (token_value, username, expires_at) VALUES (?, ?, ?)",
@@ -77,6 +82,10 @@ class UserSoftDeleteTest {
         assertNotNull(jdbc.queryForObject("SELECT deleted_at FROM tb_user WHERE id = ?", Timestamp.class, deleted.getId()));
         assertEquals(deleted.getEmail(), jdbc.queryForObject("SELECT email FROM tb_user WHERE id = ?", String.class, deleted.getId()));
         assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM tb_user", Integer.class));
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM tb_course_enrollment WHERE student_id = ?",
+                Integer.class, deleted.getId()));
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM tb_lesson_progress WHERE student_id = ?",
+                Integer.class, deleted.getId()));
         assertTrue(users.findById(deleted.getId()).isEmpty());
         assertTrue(users.findByEmail(deleted.getEmail()).isEmpty());
         assertFalse(users.existsById(deleted.getId()));

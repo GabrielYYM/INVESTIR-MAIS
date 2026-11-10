@@ -1,22 +1,13 @@
 package com.repositorio.investir_mais.infrastructure;
 
-import com.repositorio.investir_mais.infrastructure.config.AuthenticationRateLimitProperties;
-import org.junit.jupiter.api.BeforeEach;
+import com.repositorio.investir_mais.infrastructure.config.WebApplicationProperties.RateLimit;
 import org.junit.jupiter.api.Test;
-import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
-import org.springframework.boot.cache.autoconfigure.CacheAutoConfiguration;
 import org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cache.CacheManager;
-import org.springframework.cache.annotation.EnableCaching;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.RedisConnectionFailureException;
-import org.springframework.data.redis.cache.RedisCacheManager;
-import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -48,9 +39,6 @@ class RedisInfrastructureIntegrationTest {
             .withExposedPorts(6379);
     private static final String PREFIX = "investir-mais:test:" + UUID.randomUUID() + ":";
     @Autowired StringRedisTemplate redis;
-    @Autowired CacheManager caches;
-    @Autowired AssetQuoteService quotes;
-    @Autowired AssetQuoteClient upstream;
 
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry properties) {
@@ -59,60 +47,6 @@ class RedisInfrastructureIntegrationTest {
         properties.add("spring.data.redis.username", () -> "");
         properties.add("spring.data.redis.password", () -> "");
         properties.add("spring.data.redis.ssl.enabled", () -> false);
-        properties.add("spring.cache.type", () -> "redis");
-        properties.add("spring.cache.cache-names", () -> "cotacoes");
-        properties.add("spring.cache.redis.time-to-live", () -> "1s");
-        properties.add("spring.cache.redis.cache-null-values", () -> false);
-        properties.add("spring.cache.redis.key-prefix", () -> PREFIX);
-    }
-
-    @BeforeEach
-    void clean() {
-        reset(upstream);
-        try (var keys = redis.scan(ScanOptions.scanOptions().match(PREFIX + "*").count(100).build())) {
-            keys.forEachRemaining(redis::delete);
-        }
-    }
-
-    @Test
-    void quotesNormalizeTheTickerAndReuseTheRedisCache() {
-        assertInstanceOf(RedisCacheManager.class, caches);
-        assertTrue(AopUtils.isAopProxy(quotes), "Spring must intercept quote calls for caching");
-        when(upstream.getQuote("PETR4")).thenReturn("{\"price\":10}");
-        String first = quotes.getQuote("petr4");
-        assertEquals("{\"price\":10}", first);
-        awaitQuoteCacheEntry();
-        assertEquals(first, quotes.getQuote("PETR4"));
-        verify(upstream).getQuote("PETR4");
-        assertNotNull(caches.getCache("cotacoes").get("PETR4"));
-        Long ttl = redis.getExpire(PREFIX + "cotacoes::PETR4", TimeUnit.MILLISECONDS);
-        assertNotNull(ttl);
-        assertTrue(ttl > 0 && ttl <= 1000);
-    }
-
-    @Test
-    void expiredQuoteIsFetchedAgain() {
-        when(upstream.getQuote("PETR4")).thenReturn("first", "updated");
-        assertEquals("first", quotes.getQuote("PETR4"));
-        awaitQuoteCacheEntry();
-        await().atMost(Duration.ofSeconds(4)).until(() -> !Boolean.TRUE.equals(redis.hasKey(PREFIX + "cotacoes::PETR4")));
-        assertEquals("updated", quotes.getQuote("PETR4"));
-        verify(upstream, times(2)).getQuote("PETR4");
-    }
-
-    @Test
-    void emptyResponsesAndUpstreamFailuresAreNotCached() {
-        when(upstream.getQuote("EMPTY")).thenReturn(" ");
-        when(upstream.getQuote("NULL")).thenReturn(null);
-        when(upstream.getQuote("ERROR")).thenThrow(new IllegalStateException("upstream failed"));
-        for (int index = 0; index < 2; index++) {
-            assertEquals(" ", quotes.getQuote("EMPTY"));
-            assertNull(quotes.getQuote("NULL"));
-            assertThrows(IllegalStateException.class, () -> quotes.getQuote("ERROR"));
-        }
-        verify(upstream, times(2)).getQuote("EMPTY");
-        verify(upstream, times(2)).getQuote("NULL");
-        verify(upstream, times(2)).getQuote("ERROR");
     }
 
     @Test
@@ -159,7 +93,7 @@ class RedisInfrastructureIntegrationTest {
         var unavailable = mock(StringRedisTemplate.class);
         when(unavailable.execute(any(RedisScript.class), anyList(), anyString(), anyString()))
                 .thenThrow(new RedisConnectionFailureException("simulated failure"));
-        var filter = new SecurityFilter(unavailable, new AuthenticationRateLimitProperties(10, Duration.ofMinutes(1), PREFIX));
+        var filter = new SecurityFilter(unavailable, new RateLimit(10, Duration.ofMinutes(1), PREFIX));
         var response = request(filter, "POST", "/auth/login", "127.0.0.1");
         assertEquals(503, response.getStatus());
         assertEquals("1", response.getHeader("Retry-After"));
@@ -167,14 +101,8 @@ class RedisInfrastructureIntegrationTest {
         verify(unavailable).execute(any(RedisScript.class), anyList(), anyString(), anyString());
     }
 
-    private void awaitQuoteCacheEntry() {
-        // Spring Data Redis 4.1 writes cache entries asynchronously by default.
-        await().atMost(Duration.ofSeconds(4)).untilAsserted(() ->
-                assertNotNull(caches.getCache("cotacoes").get("PETR4")));
-    }
-
     private SecurityFilter filter(int capacity, Duration period) {
-        return new SecurityFilter(redis, new AuthenticationRateLimitProperties(capacity, period, PREFIX + "rate"));
+        return new SecurityFilter(redis, new RateLimit(capacity, period, PREFIX + UUID.randomUUID()));
     }
 
     private MockHttpServletResponse request(SecurityFilter filter, String method, String endpoint, String ip) throws Exception {
@@ -186,10 +114,6 @@ class RedisInfrastructureIntegrationTest {
     }
 
     @Configuration(proxyBeanMethods = false)
-    @EnableCaching
-    @Import(AssetQuoteService.class)
-    @ImportAutoConfiguration({DataRedisAutoConfiguration.class, CacheAutoConfiguration.class})
-    static class Config {
-        @Bean AssetQuoteClient upstream() { return mock(AssetQuoteClient.class); }
-    }
+    @ImportAutoConfiguration(DataRedisAutoConfiguration.class)
+    static class Config {}
 }

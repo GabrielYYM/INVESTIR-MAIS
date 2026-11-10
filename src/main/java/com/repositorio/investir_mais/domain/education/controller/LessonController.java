@@ -1,5 +1,6 @@
 package com.repositorio.investir_mais.domain.education.controller;
 
+import com.repositorio.investir_mais.domain.education.DTO.CourseDTO;
 import com.repositorio.investir_mais.domain.education.DTO.LessonDTO;
 import com.repositorio.investir_mais.domain.education.service.LessonService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -64,6 +65,20 @@ public class LessonController {
     @PutMapping("/{lessonId}")
     public LessonDTO.Response updateLesson(@PathVariable UUID lessonId, @Valid @RequestBody LessonDTO.Request dto, Principal principal) {
         return lessonService.updateLesson(lessonId, dto, principal.getName());
+    }
+
+    @Operation(summary = "Atualizar progresso de uma aula", description = "Marca uma videoaula como assistida/concluída ou pendente.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Progresso atualizado"),
+        @ApiResponse(responseCode = "404", description = "Curso ou aula não encontrada")
+    })
+    @PostMapping("/{courseId}/{lessonId}/progress")
+    public CourseDTO.CourseProgressResponse updateLessonProgress(
+            @PathVariable UUID courseId,
+            @PathVariable UUID lessonId,
+            @RequestBody LessonDTO.ProgressRequest request,
+            Principal principal) {
+        return lessonService.updateLessonProgress(courseId, lessonId, request.completed(), principal.getName());
     }
 
     @Operation(summary = "Excluir aula", description = "Exclui logicamente a aula, preservando o registro no banco. Exige que o usuário seja proprietário do curso associado ou ADMIN.")

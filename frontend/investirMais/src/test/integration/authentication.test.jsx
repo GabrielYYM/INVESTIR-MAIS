@@ -11,6 +11,24 @@ async function fillCredentials(user) {
   await user.click(screen.getByRole("button", { name: "Continuar" }));
 }
 
+describe("confirmação do cadastro", () => {
+  it.each([
+    [true, "Olá, Ana.", "/"],
+    [false, "E-mail confirmado!", "/confirmar-email"],
+  ])("respeita a sessão retornada pelo servidor (%s)", async (signedIn, heading, path) => {
+    const confirm = vi.fn(() => HttpResponse.json({ signedIn }));
+    server.use(http.post(origin + "/api/users/verify-email", confirm));
+    const { user, router } = renderApp("/confirmar-email?token=token-teste");
+    expect(confirm).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Confirmar e-mail" }));
+
+    expect(await screen.findByRole("heading", { name: heading })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe(path);
+    if (!signedIn) expect(screen.getByRole("link", { name: "Ir para o login" })).toBeInTheDocument();
+  });
+});
+
 describe("login com senha e código", () => {
   it("valida campos obrigatórios sem enviar credenciais", async () => {
     const request = vi.fn(() => new HttpResponse(null, { status: 204 }));
