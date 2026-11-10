@@ -1,6 +1,7 @@
 package com.repositorio.investir_mais.infrastructure;
 
 import com.repositorio.investir_mais.domain.education.controller.LessonController;
+import com.repositorio.investir_mais.domain.education.service.CourseService;
 import com.repositorio.investir_mais.domain.education.service.LessonService;
 import com.repositorio.investir_mais.domain.user.controller.UserController;
 import com.repositorio.investir_mais.domain.user.service.UserService;
@@ -16,6 +17,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.security.authentication.ott.DefaultOneTimeToken;
+import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.sql.SQLException;
@@ -27,27 +30,15 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@ContextConfiguration(classes = {BrapiQuoteController.class, AssetQuoteService.class, UserController.class, LessonController.class, GlobalExceptionHandler.class})
-@WebMvcTest({BrapiQuoteController.class, UserController.class, LessonController.class})
+@ContextConfiguration(classes = {UserController.class, LessonController.class, GlobalExceptionHandler.class})
+@WebMvcTest({UserController.class, LessonController.class})
 @AutoConfigureMockMvc(addFilters = false)
 class HttpValidationTest {
     @Autowired MockMvc mvc;
-    @MockitoBean AssetQuoteClient quotes;
     @MockitoBean LessonService lessons;
     @MockitoBean UserService users;
-
-    @Test void invalidTickerIsRejectedBeforeCallingBrapi() throws Exception {
-        mvc.perform(get("/api/assets/INVALID_TICKER/quote"))
-                .andExpect(status().isBadRequest()).andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
-        verifyNoInteractions(quotes);
-    }
-
-    @Test void validTickerIsNormalizedByTheRealService() throws Exception {
-        when(quotes.getQuote("PETR4")).thenReturn("{}");
-        mvc.perform(get("/api/assets/petr4/quote"))
-                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"));
-        verify(quotes).getQuote("PETR4");
-    }
+    @MockitoBean CourseService courses;
+    @MockitoBean CsrfTokenRepository csrfTokens;
 
     @Test void malformedJsonAndInvalidUuidKeepTheirNativeBadRequestStatus() throws Exception {
         mvc.perform(post("/api/users/register").contentType(MediaType.APPLICATION_JSON).content("{"))
@@ -94,8 +85,10 @@ class HttpValidationTest {
     }
 
     @Test void unknownIntegrityFailureRemainsInternalServerError() throws Exception {
-        when(quotes.getQuote("PETR4")).thenThrow(new DataIntegrityViolationException("private details"));
-        mvc.perform(get("/api/assets/PETR4/quote"))
+        var lessonId = UUID.randomUUID();
+        doThrow(new DataIntegrityViolationException("private details"))
+                .when(lessons).deleteLesson(lessonId, "user@investir.com");
+        mvc.perform(delete("/api/lessons/{lessonId}", lessonId).principal(() -> "user@investir.com"))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.detail").value("Ocorreu um erro interno no servidor."));
     }
@@ -103,8 +96,10 @@ class HttpValidationTest {
         var violation = new ConstraintViolationException("private SQL details",
                 new SQLException("foreign key", "23503"),
                 ConstraintViolationException.ConstraintKind.FOREIGN_KEY, "private_constraint");
-        when(quotes.getQuote("PETR4")).thenThrow(new DataIntegrityViolationException("private details", violation));
-        mvc.perform(get("/api/assets/PETR4/quote"))
+        var lessonId = UUID.randomUUID();
+        doThrow(new DataIntegrityViolationException("private details", violation))
+                .when(lessons).deleteLesson(lessonId, "user@investir.com");
+        mvc.perform(delete("/api/lessons/{lessonId}", lessonId).principal(() -> "user@investir.com"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.detail").value("A operação conflita com registros relacionados."));
     }
@@ -120,6 +115,8 @@ class HttpValidationTest {
     @ParameterizedTest
     @ValueSource(ints = {0, 120})
     void boundaryAgesAreAccepted(int age) throws Exception {
+        when(users.registerUser(any())).thenReturn(new DefaultOneTimeToken(
+                "registration-token", "test@example.com", java.time.Instant.now().plusSeconds(300)));
         mvc.perform(post("/api/users/register").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\":\"Teste\",\"age\":" + age + ",\"email\":\"test@example.com\",\"password\":\"Senha1234\"}"))
                 .andExpect(status().isAccepted());

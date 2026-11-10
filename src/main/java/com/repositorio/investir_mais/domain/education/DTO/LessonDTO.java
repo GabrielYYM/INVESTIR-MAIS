@@ -53,4 +53,10 @@ public class LessonDTO {
         @Schema(description = "ID do curso ao qual esta aula pertence", example = "b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e")
         UUID courseId
     ) {}
+
+    @Schema(description = "Requisição para atualizar o progresso de uma aula")
+    public record ProgressRequest(
+        @Schema(description = "Se a aula foi concluída ou não", example = "true")
+        boolean completed
+    ) {}
 }

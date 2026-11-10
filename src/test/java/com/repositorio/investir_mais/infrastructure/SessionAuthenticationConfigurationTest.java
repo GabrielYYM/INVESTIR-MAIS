@@ -4,10 +4,7 @@ import com.repositorio.investir_mais.domain.user.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cache.CacheManager;
 import org.springframework.context.ApplicationContext;
-import org.springframework.data.redis.cache.RedisCacheManager;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -34,14 +31,10 @@ class SessionAuthenticationConfigurationTest extends PostgreSqlIntegrationTest {
     @MockitoBean
     private UserRepository userRepository;
 
-    @MockitoBean
-    private JavaMailSender mailSender;
-
     @Test
     void oauthAuthorizationServerBeansAreNotConfigured() {
         assertFalse(applicationContext.containsBean("registeredClientRepository"));
         assertFalse(applicationContext.containsBean("authorizationService"));
-        assertInstanceOf(RedisCacheManager.class, applicationContext.getBean(CacheManager.class));
         assertInstanceOf(RedisIndexedSessionRepository.class, applicationContext.getBean(SessionRepository.class));
     }
 

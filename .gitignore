@@ -81,3 +81,8 @@ build/
 !src/test/resources/account-security-schema.sql
 *.p12
 *.jks
+
+### Draw.io ###
+*.drawio
+*.drawio.*
+

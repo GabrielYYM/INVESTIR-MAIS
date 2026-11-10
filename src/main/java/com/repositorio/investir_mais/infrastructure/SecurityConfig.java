@@ -1,7 +1,6 @@
 package com.repositorio.investir_mais.infrastructure;
 
 import com.repositorio.investir_mais.domain.user.repository.UserRepository;
-import com.repositorio.investir_mais.infrastructure.config.AuthenticationRateLimitProperties;
 import com.repositorio.investir_mais.infrastructure.config.WebApplicationProperties;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -10,6 +9,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -160,9 +160,9 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http, StringRedisTemplate redis, CookieCsrfTokenRepository csrfRepository, AuthenticationSuccessHandler passwordLoginSuccess, AuthenticationRateLimitProperties rateLimitProperties) throws Exception {
+    public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http, StringRedisTemplate redis, CookieCsrfTokenRepository csrfRepository, AuthenticationSuccessHandler passwordLoginSuccess, WebApplicationProperties properties) throws Exception {
         http.cors(Customizer.withDefaults())
-            .addFilterBefore(new SecurityFilter(redis, rateLimitProperties), GenerateOneTimeTokenFilter.class)
+            .addFilterBefore(new SecurityFilter(redis, properties.security().rateLimit()), GenerateOneTimeTokenFilter.class)
             .requestCache(AbstractHttpConfigurer::disable)
             .csrf(csrf -> csrf.spa().csrfTokenRepository(csrfRepository))
             .exceptionHandling(exceptions -> exceptions
@@ -196,12 +196,12 @@ public class SecurityConfig {
                     .deleteCookies("SESSION")
                     .logoutSuccessHandler(new HttpStatusReturningLogoutSuccessHandler(HttpStatus.NO_CONTENT)))
                 .authorizeHttpRequests(auth -> auth
+                    .requestMatchers(HttpMethod.POST, "/api/users/verify-email").permitAll()
                     .requestMatchers(
                         "/auth/login",
                         "/auth/verify-2fa",
                         "/csrf",
                         "/api/users/register",
-                        "/api/users/verify-email",
                         "/api/users/resend-verification",
                         "/api/users/forgot-password",
                         "/api/users/reset-password",

@@ -6,7 +6,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -21,5 +23,12 @@ public interface LessonRepository extends JpaRepository<Lesson, UUID> {
 
     long countByCourseId(UUID courseId);
 
-    long countByCourseProfessorId(UUID professorId);
+    @Query(value = """
+            select l.id
+            from tb_lesson_progress p
+            join tb_lesson l on l.id = p.lesson_id
+            where p.student_id = :studentId and l.course_id = :courseId
+              and l.deleted_at is null and p.completed = true
+            """, nativeQuery = true)
+    List<UUID> findCompletedLessonIds(UUID studentId, UUID courseId);
 }

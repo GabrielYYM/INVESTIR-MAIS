@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { CheckCircle2, MailCheck, ShieldAlert } from "lucide-react";
-import { Link, useSearchParams } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { AuthCard } from "../components/FormFields.jsx";
 import { Notice } from "../components/PageState.jsx";
 import { apiError } from "../services/api.js";
 import { resendVerification, verifyEmail } from "../services/authService.js";
 
 export default function VerifyEmail() {
+  const navigate = useNavigate();
   const [search] = useSearchParams();
   const token = search.get("token")?.trim() || "";
   const [status, setStatus] = useState("idle");
@@ -24,8 +25,12 @@ export default function VerifyEmail() {
     setStatus("loading");
     setErrorMessage("");
     try {
-      await verifyEmail(token);
-      setStatus("success");
+      const { signedIn } = await verifyEmail(token);
+      if (signedIn) {
+        await navigate("/", { replace: true });
+      } else {
+        setStatus("success");
+      }
     } catch (error) {
       setStatus("error");
       setErrorMessage(apiError(error, "O link de confirmação é inválido ou expirou."));

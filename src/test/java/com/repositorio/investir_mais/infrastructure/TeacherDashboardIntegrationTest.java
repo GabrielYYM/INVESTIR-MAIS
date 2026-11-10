@@ -1,15 +1,14 @@
 package com.repositorio.investir_mais.infrastructure;
 
-import com.repositorio.investir_mais.domain.education.DTO.TeacherDashboardDTO.CourseStats;
-import com.repositorio.investir_mais.domain.education.DTO.TeacherDashboardDTO.Summary;
+import com.repositorio.investir_mais.domain.education.DTO.CourseDTO.CourseStats;
+import com.repositorio.investir_mais.domain.education.DTO.CourseDTO.Summary;
+import com.repositorio.investir_mais.domain.education.controller.CourseController;
+import com.repositorio.investir_mais.domain.education.controller.LessonController;
 import com.repositorio.investir_mais.domain.education.model.Course;
-import com.repositorio.investir_mais.domain.education.model.CourseEnrollment;
 import com.repositorio.investir_mais.domain.education.model.Lesson;
-import com.repositorio.investir_mais.domain.education.model.LessonProgress;
-import com.repositorio.investir_mais.domain.education.repository.CourseEnrollmentRepository;
 import com.repositorio.investir_mais.domain.education.repository.CourseRepository;
-import com.repositorio.investir_mais.domain.education.repository.LessonProgressRepository;
 import com.repositorio.investir_mais.domain.education.repository.LessonRepository;
+import com.repositorio.investir_mais.domain.user.controller.UserController;
 import com.repositorio.investir_mais.domain.user.model.User;
 import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.repository.UserRepository;
@@ -32,6 +31,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -44,6 +44,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.handler;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -60,8 +61,6 @@ class TeacherDashboardIntegrationTest extends PostgreSqlIntegrationTest {
     @Autowired private UserRepository users;
     @Autowired private CourseRepository courses;
     @Autowired private LessonRepository lessons;
-    @Autowired private CourseEnrollmentRepository enrollments;
-    @Autowired private LessonProgressRepository progress;
 
     @Test
     void dashboardCountsByCourseAndPeriodWithoutDuplicatingRows() throws Exception {
@@ -85,6 +84,7 @@ class TeacherDashboardIntegrationTest extends PostgreSqlIntegrationTest {
         var withinPeriod = today.atStartOfDay();
         var beforeEnrollment = LocalDateTime.now().minusSeconds(1);
         mvc.perform(post("/api/courses/{courseId}/enroll", main.getId()).with(as(firstStudent)).with(csrf()))
+                .andExpect(handler().handlerType(CourseController.class))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.enrolled").value(true));
         entityManager.flush();
@@ -93,8 +93,7 @@ class TeacherDashboardIntegrationTest extends PostgreSqlIntegrationTest {
         assertFalse(enrolledAt.isBefore(beforeEnrollment));
         assertFalse(enrolledAt.isAfter(LocalDateTime.now().plusSeconds(1)));
         enroll(secondStudent, main);
-        var oldEnrollment = enroll(thirdStudent, main);
-        assertEquals(1, jdbc.update("UPDATE tb_course_enrollment SET enrolled_at = ? WHERE id = ?", old, oldEnrollment.getId()));
+        enroll(thirdStudent, main, old);
         enroll(firstStudent, second);
         enroll(thirdStudent, other);
 
@@ -109,6 +108,7 @@ class TeacherDashboardIntegrationTest extends PostgreSqlIntegrationTest {
         lessons.deleteById(removedLesson.getId());
         lessons.flush();
         mvc.perform(get("/api/courses/{courseId}/progress", main.getId()).with(as(firstStudent)))
+                .andExpect(handler().handlerType(CourseController.class))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.completedLessonIds.length()").value(2));
 
@@ -132,6 +132,23 @@ class TeacherDashboardIntegrationTest extends PostgreSqlIntegrationTest {
                 .andExpect(jsonPath("$.totalLessonsWatched").value(3))
                 .andExpect(jsonPath("$.averageCompletionRate").value(50.0));
         dashboard(firstStudent, today).andExpect(status().isForbidden());
+
+        UUID originalProgressId = jdbc.queryForObject(
+                "SELECT id FROM tb_lesson_progress WHERE student_id = ? AND lesson_id = ?",
+                UUID.class, firstStudent.getId(), firstLesson.getId());
+        setCompleted(firstStudent, main, firstLesson, false)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.completedLessons").value(1));
+        setCompleted(firstStudent, main, firstLesson, true)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.completedLessons").value(2));
+        entityManager.flush();
+        assertEquals(withinPeriod, jdbc.queryForObject(
+                "SELECT completed_at FROM tb_lesson_progress WHERE id = ?",
+                LocalDateTime.class, originalProgressId));
+        assertEquals(1, jdbc.queryForObject(
+                "SELECT count(*) FROM tb_lesson_progress WHERE student_id = ? AND lesson_id = ?",
+                Integer.class, firstStudent.getId(), removedLesson.getId()));
     }
 
     @Test
@@ -146,9 +163,7 @@ class TeacherDashboardIntegrationTest extends PostgreSqlIntegrationTest {
         Callable<Void> completeLesson = () -> {
             ready.countDown();
             assertTrue(start.await(5, TimeUnit.SECONDS));
-            mvc.perform(post("/api/lessons/{courseId}/{lessonId}/progress", course.getId(), lesson.getId())
-                            .with(as(student)).with(csrf()).contentType(MediaType.APPLICATION_JSON)
-                            .content("{\"completed\":true}"))
+            setCompleted(student, course, lesson, true)
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.enrolled").value(true))
                     .andExpect(jsonPath("$.completedLessonIds[0]").value(lesson.getId().toString()));
@@ -182,7 +197,15 @@ class TeacherDashboardIntegrationTest extends PostgreSqlIntegrationTest {
 
     private ResultActions dashboard(User viewer, LocalDate today) throws Exception {
         return mvc.perform(get("/api/teacher/dashboard").with(as(viewer))
-                .param("startDate", today.minusDays(1).toString()).param("endDate", today.plusDays(1).toString()));
+                .param("startDate", today.minusDays(1).toString()).param("endDate", today.plusDays(1).toString()))
+                .andExpect(handler().handlerType(UserController.class));
+    }
+
+    private ResultActions setCompleted(User student, Course course, Lesson lesson, boolean completed) throws Exception {
+        return mvc.perform(post("/api/lessons/{courseId}/{lessonId}/progress", course.getId(), lesson.getId())
+                .with(as(student)).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"completed\":" + completed + "}"))
+                .andExpect(handler().handlerType(LessonController.class));
     }
 
     private RequestPostProcessor as(User account) {
@@ -219,11 +242,17 @@ class TeacherDashboardIntegrationTest extends PostgreSqlIntegrationTest {
         return lessons.saveAndFlush(lesson);
     }
 
-    private CourseEnrollment enroll(User student, Course course) {
-        return enrollments.saveAndFlush(CourseEnrollment.builder().student(student).course(course).build());
+    private void enroll(User student, Course course) {
+        enroll(student, course, LocalDateTime.now());
+    }
+
+    private void enroll(User student, Course course, LocalDateTime enrolledAt) {
+        jdbc.update("INSERT INTO tb_course_enrollment (id, student_id, course_id, enrolled_at) VALUES (?, ?, ?, ?)",
+                UUID.randomUUID(), student.getId(), course.getId(), enrolledAt);
     }
 
     private void watch(User student, Lesson lesson, boolean completed, LocalDateTime date) {
-        progress.save(LessonProgress.builder().student(student).lesson(lesson).completed(completed).completedAt(date).build());
+        jdbc.update("INSERT INTO tb_lesson_progress (id, student_id, lesson_id, completed, completed_at) VALUES (?, ?, ?, ?, ?)",
+                UUID.randomUUID(), student.getId(), lesson.getId(), completed, date);
     }
 }

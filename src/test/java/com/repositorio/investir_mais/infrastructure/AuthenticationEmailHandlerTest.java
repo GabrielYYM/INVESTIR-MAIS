@@ -1,32 +1,37 @@
 package com.repositorio.investir_mais.infrastructure;
 
-import com.repositorio.investir_mais.infrastructure.config.WebApplicationProperties;
 import com.repositorio.investir_mais.domain.AccountSecurityService;
-import jakarta.mail.Multipart;
-import jakarta.mail.Session;
-import jakarta.mail.internet.MimeMessage;
-import org.springframework.modulith.events.FailedEventPublications;
+import com.repositorio.investir_mais.infrastructure.config.WebApplicationProperties;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.modulith.events.FailedEventPublications;
+import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 
-import java.net.URI;
+import java.time.Duration;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.headerDoesNotExist;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 @ExtendWith(MockitoExtension.class)
 class AuthenticationEmailHandlerTest {
-
-    @Mock
-    private JavaMailSender mailSender;
+    private static final String EMAILS_URL = "https://api.resend.com/emails";
+    private static final String RECIPIENT = "aluno@example.test";
 
     @Mock
     private AccountSecurityService accountSecurity;
@@ -34,46 +39,69 @@ class AuthenticationEmailHandlerTest {
     @Mock
     private FailedEventPublications publications;
 
+    private MockRestServiceServer server;
     private AuthenticationEmailHandler handler;
 
     @BeforeEach
     void setUp() {
-        handler = new AuthenticationEmailHandler(mailSender, new WebApplicationProperties("http://localhost:8080", new WebApplicationProperties.Cors("http://localhost:5173")), accountSecurity, publications, "30s");
+        var rateLimit = new WebApplicationProperties.RateLimit(10, Duration.ofMinutes(1), "investir-mais:rate-limit");
+        var properties = new WebApplicationProperties("http://localhost:8080",
+                new WebApplicationProperties.Cors("http://localhost:5173"), new WebApplicationProperties.Security(rateLimit));
+        var builder = RestClient.builder();
+        server = MockRestServiceServer.bindTo(builder).build();
+        var resend = new ResendEmailSender(builder, "test-key", "Investir Mais <conta@example.test>");
+        handler = new AuthenticationEmailHandler(resend, properties, accountSecurity, publications, Duration.ofSeconds(30));
     }
 
     @Test
-    void loginEmailContainsMagicLinkWithTokenInFragmentAndFallbackCode() throws Exception {
-        var message = new MimeMessage((Session) null);
-        when(mailSender.createMimeMessage()).thenReturn(message);
-        handler.sendLoginLink("dev@investir.com", "123456", "/educacao?pagina=2");
-        verify(mailSender).send(message);
-        message.saveChanges();
+    void sendsConfirmationLinkWithConfiguredSender() {
+        String link = "http://localhost:5173/confirmar-email?token=verify-token";
+        server.expect(requestTo(EMAILS_URL))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header("Authorization", "Bearer test-key"))
+                .andExpect(header("Idempotency-Key", "verify-email/" + DigestUtils.sha256Hex("verify-token")))
+                .andExpect(jsonPath("$.from").value("Investir Mais <conta@example.test>"))
+                .andExpect(jsonPath("$.to[0]").value(RECIPIENT))
+                .andExpect(jsonPath("$.text").value(containsString(link)))
+                .andExpect(jsonPath("$.html").value(containsString("href=\"" + link + "\">Confirmar e-mail</a>")))
+                .andRespond(withSuccess());
 
-        assertEquals("dev@investir.com", message.getAllRecipients()[0].toString());
-        assertEquals("Conclua seu acesso - Investir Mais", message.getSubject());
-        var body = (Multipart) message.getContent();
-        var alternatives = (Multipart) body.getBodyPart(0).getContent();
-        String text = (String) alternatives.getBodyPart(0).getContent();
-        String html = (String) alternatives.getBodyPart(1).getContent();
-        URI link = text.lines().filter(line -> line.startsWith("http")).findFirst().map(URI::create).orElseThrow();
-        assertEquals("localhost:5173", link.getAuthority());
-        assertEquals("/entrar/link", link.getPath());
-        assertEquals("retorno=/educacao?pagina=2", link.getQuery());
-        assertEquals("ott=123456", link.getFragment());
-        assertTrue(text.contains("tela que já está aberta: 123456"));
-        assertTrue(text.contains("5 minutos"));
-        assertTrue(html.contains("href=\"" + link + "\">Concluir acesso</a>"));
+        handler.sendEmailVerificationLink(RECIPIENT, "verify-token");
+
+        server.verify();
     }
 
     @Test
-    void sendPasswordResetEmail_ShouldSendPurposeSpecificCode() {
-        handler.sendPasswordResetEmail("dev@investir.com", "reset-code");
+    void loginEmailContainsLinkWithTokenInFragmentAndFallbackCode() {
+        String link = "http://localhost:5173/entrar/link?retorno=%2Feducacao%3Fpagina%3D2#ott=123456";
+        server.expect(requestTo(EMAILS_URL))
+                .andExpect(headerDoesNotExist("Idempotency-Key"))
+                .andExpect(jsonPath("$.to[0]").value(RECIPIENT))
+                .andExpect(jsonPath("$.subject").value("Conclua seu acesso - Investir Mais"))
+                .andExpect(jsonPath("$.text").value(containsString(link)))
+                .andExpect(jsonPath("$.text").value(containsString("tela que já está aberta: 123456")))
+                .andExpect(jsonPath("$.text").value(containsString("5 minutos")))
+                .andExpect(jsonPath("$.html").value(containsString("href=\"" + link + "\">Concluir acesso</a>")))
+                .andRespond(withSuccess());
 
-        ArgumentCaptor<SimpleMailMessage> captor = ArgumentCaptor.forClass(SimpleMailMessage.class);
-        verify(mailSender).send(captor.capture());
-        SimpleMailMessage message = captor.getValue();
-        assertEquals("Redefinição de senha - Investir Mais", message.getSubject());
-        assertTrue(message.getText().contains("reset-code"));
-        assertTrue(message.getText().contains("redefinir a senha"));
+        handler.sendLoginLink(RECIPIENT, "123456", "/educacao?pagina=2");
+
+        server.verify();
+    }
+
+    @Test
+    void passwordResetUsesPurposeSpecificCodeAndSanitizesProviderFailure() {
+        server.expect(requestTo(EMAILS_URL))
+                .andExpect(header("Idempotency-Key", "password-reset/" + DigestUtils.sha256Hex("reset-token")))
+                .andExpect(jsonPath("$.subject").value("Redefinição de senha - Investir Mais"))
+                .andExpect(jsonPath("$.text").value(containsString("redefinir a senha é: reset-token")))
+                .andExpect(jsonPath("$.html").doesNotHaveJsonPath())
+                .andRespond(withStatus(HttpStatus.TOO_MANY_REQUESTS).body("private provider details"));
+
+        var failure = assertThrows(RestClientException.class,
+                () -> handler.sendPasswordResetEmail(RECIPIENT, "reset-token"));
+
+        assertEquals("Resend retornou HTTP 429", failure.getMessage());
+        server.verify();
     }
 }
