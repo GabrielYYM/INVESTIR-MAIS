@@ -36,6 +36,8 @@ Quando a pessoa confirma o link original no navegador do cadastro, a aplicação
 
 Os três perfis usam o mesmo painel. A interface exibe as ações de acordo com o perfil e a propriedade, e o backend aplica as mesmas verificações nas operações de escrita. [Ações do catálogo](../frontend/investirMais/src/services/educationData.js), [CourseService](../src/main/java/com/repositorio/investir_mais/domain/education/service/CourseService.java), [LessonService](../src/main/java/com/repositorio/investir_mais/domain/education/service/LessonService.java)
 
+Nas alterações de cursos e aulas, `@PreAuthorize` restringe os perfis e `@PostAuthorize` nos repositórios verifica a propriedade usando o usuário autenticado. As consultas carregam a entidade com bloqueio pessimista dentro da transação do serviço; a autorização ocorre antes de qualquer alteração ou exclusão. As operações usam a identidade da sessão, sem receber o e-mail do usuário como argumento de permissão.
+
 ## Processo de acesso com OTT
 
 O BPMN usa três raias para mostrar as responsabilidades da pessoa usuária, do React e da API Spring. A API valida a senha e o e-mail verificado, registra o desafio na sessão parcial e dispara o envio de um link e um código por e-mail. A pessoa abre o link no navegador em que começou o login ou informa o código na tela. As duas opções chamam `POST /auth/verify-2fa` com proteção CSRF. O Spring consome o token válido, conclui a autenticação e troca o identificador da sessão. [SecurityConfig](../src/main/java/com/repositorio/investir_mais/infrastructure/SecurityConfig.java), [AuthenticationEmailHandler](../src/main/java/com/repositorio/investir_mais/infrastructure/AuthenticationEmailHandler.java), [Login.jsx](../frontend/investirMais/src/pages/Login.jsx)
@@ -49,3 +51,12 @@ O frontend React chama a API Spring Boot. O PostgreSQL armazena os dados do dom�
 O proxy Caddy no Railway é a implantação de referência descrita na [PR #45](https://github.com/GabrielYYM/INVESTIR-MAIS/pull/45).
 
 Os ícones de tecnologia estão incorporados ao arquivo editável. [Simple Icons](https://github.com/simple-icons/simple-icons), [Devicon](https://github.com/devicons/devicon)
+
+
+### Leituras e autorização da própria conta
+
+As consultas de detalhes e listagens de cursos e aulas retornam diretamente os records `CourseDTO.Response` e `LessonDTO.Response` por projeções do Spring Data JPA. A listagem de usuários e a consulta do próprio perfil usam `UserDTO.Response` como projeção, sem carregar a entidade com a senha para essas leituras. Os records existentes continuam sendo o contrato de resposta da API.
+
+O `UserService` obtém a identidade da sessão para consultar ou alterar o perfil, excluir a conta, alterar a senha e registrar quem alterou um perfil de acesso. Os métodos `findOwnResponse` e `findOwnForUpdate` do `UserRepository` usam `@PreAuthorize` para conferir a identidade e `@PostAuthorize` para conferir o ID solicitado. A consulta de alteração mantém o bloqueio pessimista até o término da transação do serviço.
+
+Os mappers permanecem para cadastro, respostas de alterações e conversão das revisões históricas do Envers. Os controllers continuam recebendo IDs: a conversão automática por `DomainClassConverter` não substitui as consultas protegidas com bloqueio utilizadas nas alterações. As regras de senha, confirmação de e-mail, restrição de perfis, invalidação de tokens e revogação de sessões permanecem nos respectivos serviços.

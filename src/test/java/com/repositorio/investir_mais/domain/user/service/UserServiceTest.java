@@ -10,6 +10,10 @@ import com.repositorio.investir_mais.domain.AccountEmailRequested;
 import org.springframework.context.ApplicationEventPublisher;
 import com.repositorio.investir_mais.domain.AccountSecurityService;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -58,6 +62,13 @@ class UserServiceTest {
         user.setPassword("encoded_password");
         user.setRole(UserRole.STUDENT);
         user.setEmailVerified(false);
+        SecurityContextHolder.getContext().setAuthentication(
+                UsernamePasswordAuthenticationToken.authenticated(user.getEmail(), null, List.of()));
+    }
+
+    @AfterEach
+    void clearAuthentication() {
+        SecurityContextHolder.clearContext();
     }
 
     @Test
@@ -116,12 +127,12 @@ class UserServiceTest {
     @Test
     void updateProfile_WhenEmailBelongsToAnotherUser_ShouldRejectBeforeChangingProfile() {
         var dto = new UserDTO.UpdateProfileRequest("Outro nome", "other@investir.com", 30, "correct-password");
-        when(userRepository.findForUpdateByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(userRepository.findOwnForUpdate(user.getEmail(), user.getId())).thenReturn(Optional.of(user));
         when(userRepository.existsByEmailAndIdNot(dto.email(), user.getId())).thenReturn(true);
         when(passwordEncoder.matches("correct-password", "encoded_password")).thenReturn(true);
 
         var exception = assertThrows(ResponseStatusException.class,
-            () -> userService.updateProfile(user.getEmail(), user.getId(), dto));
+            () -> userService.updateProfile(user.getId(), dto));
 
         assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
         assertEquals("felipe@investir.com", user.getEmail());
@@ -132,11 +143,11 @@ class UserServiceTest {
     @Test
     void updateProfile_WhenConfirmationPasswordIsWrong_ShouldNotChangeAccount() {
         var dto = new UserDTO.UpdateProfileRequest("Outro nome", "other@investir.com", 30, "wrong-password");
-        when(userRepository.findForUpdateByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(userRepository.findOwnForUpdate(user.getEmail(), user.getId())).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("wrong-password", "encoded_password")).thenReturn(false);
 
         var exception = assertThrows(ResponseStatusException.class,
-                () -> userService.updateProfile(user.getEmail(), user.getId(), dto));
+                () -> userService.updateProfile(user.getId(), dto));
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.getStatusCode());
         assertEquals("felipe@investir.com", user.getEmail());
@@ -162,10 +173,10 @@ class UserServiceTest {
 
     @Test
     void deleteAccount_WhenUserOwnsAccount_ShouldDeleteAndRevokeAccess() {
-        when(userRepository.findForUpdateByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(userRepository.findOwnForUpdate(user.getEmail(), user.getId())).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("current-password", user.getPassword())).thenReturn(true);
 
-        userService.deleteAccount(user.getEmail(), user.getId(), new UserDTO.DeleteAccountRequest("current-password"));
+        userService.deleteAccount(user.getId(), new UserDTO.DeleteAccountRequest("current-password"));
 
         var deletion = inOrder(userRepository, accountSecurity);
         deletion.verify(userRepository).delete(user);
@@ -177,10 +188,9 @@ class UserServiceTest {
 
     @Test
     void deleteAccount_WhenPasswordIsWrong_ShouldLeaveAccountAndAccessUntouched() {
-        when(userRepository.findForUpdateByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(userRepository.findOwnForUpdate(user.getEmail(), user.getId())).thenReturn(Optional.of(user));
 
-        var failure = assertThrows(ResponseStatusException.class, () -> userService.deleteAccount(
-                user.getEmail(), user.getId(), new UserDTO.DeleteAccountRequest("wrong-password")));
+        var failure = assertThrows(ResponseStatusException.class, () -> userService.deleteAccount(user.getId(), new UserDTO.DeleteAccountRequest("wrong-password")));
 
         assertEquals(HttpStatus.UNAUTHORIZED, failure.getStatusCode());
         verify(userRepository, never()).delete(any());
@@ -189,12 +199,11 @@ class UserServiceTest {
 
     @Test
     void deleteAccount_WhenIdBelongsToAnotherUser_ShouldNotDeleteOrCheckPassword() {
-        when(userRepository.findForUpdateByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(userRepository.findOwnForUpdate(eq(user.getEmail()), any(UUID.class)))
+                .thenThrow(new AccessDeniedException("Acesso negado."));
 
-        var failure = assertThrows(ResponseStatusException.class, () -> userService.deleteAccount(
-                user.getEmail(), UUID.randomUUID(), new UserDTO.DeleteAccountRequest("current-password")));
+        var failure = assertThrows(AccessDeniedException.class, () -> userService.deleteAccount(UUID.randomUUID(), new UserDTO.DeleteAccountRequest("current-password")));
 
-        assertEquals(HttpStatus.FORBIDDEN, failure.getStatusCode());
         verify(userRepository, never()).delete(any());
         verifyNoInteractions(passwordEncoder, accountSecurity, events);
     }
@@ -206,7 +215,7 @@ class UserServiceTest {
         when(passwordEncoder.matches("senhaIncorreta", "encoded_password")).thenReturn(false);
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class, 
-            () -> userService.updatePassword(user.getEmail(), dto));
+            () -> userService.updatePassword(dto));
 
         assertEquals(HttpStatus.UNAUTHORIZED, ex.getStatusCode());
     }
@@ -218,7 +227,7 @@ class UserServiceTest {
         when(passwordEncoder.matches("encoded_password", "encoded_password")).thenReturn(true);
         when(passwordEncoder.encode("novaSenha123")).thenReturn("new_encoded_password");
 
-        userService.updatePassword(user.getEmail(), dto);
+        userService.updatePassword(dto);
 
         assertEquals("new_encoded_password", user.getPassword());
         verify(accountSecurity).revokeAllSessions("felipe@investir.com");
@@ -236,11 +245,11 @@ class UserServiceTest {
         OneTimeToken ott = new DefaultOneTimeToken(
             "verification-token", "novo@investir.com", Instant.now().plusSeconds(300));
 
-        when(userRepository.findForUpdateByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(userRepository.findOwnForUpdate(user.getEmail(), user.getId())).thenReturn(Optional.of(user));
         when(accountSecurity.generateEmailVerificationToken(anyString())).thenReturn(ott);
         when(userMapper.toDTO(user)).thenReturn(response);
 
-        UserDTO.Response result = userService.updateProfile(user.getEmail(), userId, dto);
+        UserDTO.Response result = userService.updateProfile(userId, dto);
 
         assertFalse(user.isEmailVerified());
         assertEquals("novo@investir.com", result.email());
@@ -303,25 +312,24 @@ class UserServiceTest {
     }
 
     @Test
-    void listAllUsers_ShouldReturnMappedUsers() {
-        when(userRepository.findAll()).thenReturn(List.of(user));
+    void listAllUsers_ShouldReturnProjectedUsers() {
         UserDTO.Response response = new UserDTO.Response(
             user.getId(), user.getName(), user.getAge(), user.getEmail(), user.getRole(), user.isEmailVerified(), LocalDateTime.now()
         );
-        when(userMapper.toDTO(user)).thenReturn(response);
+        when(userRepository.findAllProjectedBy()).thenReturn(List.of(response));
 
         List<UserDTO.Response> result = userService.listAllUsers();
 
         assertEquals(1, result.size());
         assertEquals(user.getEmail(), result.get(0).email());
-        verify(userRepository).findAll();
+        verify(userRepository).findAllProjectedBy();
     }
 
     @Test
     void updateUserRole_WhenNewRoleIsAdmin_ShouldThrowBadRequest() {
         UUID targetId = user.getId();
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
-            () -> userService.updateUserRole("admin@investir.com", targetId, UserRole.ADMIN));
+            () -> userService.updateUserRole(targetId, UserRole.ADMIN));
 
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
         assertEquals("Não é permitido conceder o perfil de Administrador pelo painel.", ex.getReason());
@@ -335,7 +343,7 @@ class UserServiceTest {
         when(userRepository.findById(adminId)).thenReturn(Optional.of(user));
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
-            () -> userService.updateUserRole("admin@investir.com", adminId, UserRole.STUDENT));
+            () -> userService.updateUserRole(adminId, UserRole.STUDENT));
 
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
         assertEquals("Não é permitido alterar o papel de um Administrador pelo painel.", ex.getReason());
@@ -351,14 +359,13 @@ class UserServiceTest {
         admin.setRole(UserRole.ADMIN);
 
         when(userRepository.findById(targetId)).thenReturn(Optional.of(user));
-        when(userRepository.findByEmail("admin@investir.com")).thenReturn(Optional.of(admin));
         when(userRepository.save(user)).thenReturn(user);
         UserDTO.Response response = new UserDTO.Response(
             targetId, user.getName(), user.getAge(), user.getEmail(), UserRole.TEACHER, user.isEmailVerified(), LocalDateTime.now()
         );
         when(userMapper.toDTO(user)).thenReturn(response);
 
-        UserDTO.Response result = userService.updateUserRole("admin@investir.com", targetId, UserRole.TEACHER);
+        UserDTO.Response result = userService.updateUserRole(targetId, UserRole.TEACHER);
 
         assertEquals(UserRole.TEACHER, user.getRole());
         verify(userRepository).save(user);

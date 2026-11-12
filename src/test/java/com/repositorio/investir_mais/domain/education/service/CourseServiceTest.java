@@ -5,7 +5,6 @@ import com.repositorio.investir_mais.domain.education.mapper.CourseMapper;
 import com.repositorio.investir_mais.domain.education.model.Course;
 import com.repositorio.investir_mais.domain.education.repository.CourseRepository;
 import com.repositorio.investir_mais.domain.user.model.User;
-import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -42,7 +41,6 @@ class CourseServiceTest {
     private CourseService courseService;
 
     private User professor;
-    private User outroProfessor;
     private Course course;
     private UUID courseId;
     private UUID professorId;
@@ -52,9 +50,6 @@ class CourseServiceTest {
         professorId = UUID.randomUUID();
         professor = new User();
         professor.setId(professorId);
-
-        outroProfessor = new User();
-        outroProfessor.setId(UUID.randomUUID());
 
         courseId = UUID.randomUUID();
         course = new Course();
@@ -83,8 +78,7 @@ class CourseServiceTest {
     @Test
     void getCourseById_WhenCourseExists_ShouldReturnDTO() {
         CourseDTO.Response responseDTO = new CourseDTO.Response(courseId, "Finanças Pessoais", "Descrição do Curso", professorId);
-        when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
-        when(courseMapper.toDTO(course)).thenReturn(responseDTO);
+        when(courseRepository.findResponseById(courseId)).thenReturn(Optional.of(responseDTO));
 
         CourseDTO.Response result = courseService.getCourseById(courseId);
 
@@ -94,7 +88,7 @@ class CourseServiceTest {
 
     @Test
     void getCourseById_WhenCourseDoesNotExist_ShouldThrowNotFound() {
-        when(courseRepository.findById(courseId)).thenReturn(Optional.empty());
+        when(courseRepository.findResponseById(courseId)).thenReturn(Optional.empty());
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class, 
             () -> courseService.getCourseById(courseId));
@@ -105,11 +99,11 @@ class CourseServiceTest {
     @Test
     void getAllCourses_ShouldReturnPage() {
         Pageable pageable = PageRequest.of(0, 10);
-        Page<Course> page = new PageImpl<>(List.of(course));
         CourseDTO.Response responseDTO = new CourseDTO.Response(courseId, "Finanças Pessoais", "Descrição do Curso", professorId);
 
-        when(courseRepository.findAll(pageable)).thenReturn(page);
-        when(courseMapper.toDTO(course)).thenReturn(responseDTO);
+        Page<CourseDTO.Response> page = new PageImpl<>(List.of(responseDTO));
+
+        when(courseRepository.findAllResponses(pageable)).thenReturn(page);
 
         Page<CourseDTO.Response> result = courseService.getAllCourses(pageable);
 
@@ -120,11 +114,11 @@ class CourseServiceTest {
     @Test
     void getCoursesByProfessor_ShouldReturnPage() {
         Pageable pageable = PageRequest.of(0, 10);
-        Page<Course> page = new PageImpl<>(List.of(course));
         CourseDTO.Response responseDTO = new CourseDTO.Response(courseId, "Finanças Pessoais", "Descrição do Curso", professorId);
 
-        when(courseRepository.findAllByProfessorId(professorId, pageable)).thenReturn(page);
-        when(courseMapper.toDTO(course)).thenReturn(responseDTO);
+        Page<CourseDTO.Response> page = new PageImpl<>(List.of(responseDTO));
+
+        when(courseRepository.findResponsesByProfessorId(professorId, pageable)).thenReturn(page);
 
         Page<CourseDTO.Response> result = courseService.getCoursesByProfessor(professorId, pageable);
 
@@ -133,28 +127,14 @@ class CourseServiceTest {
     }
 
     @Test
-    void updateCourse_WhenUserIsNotOwner_ShouldThrowForbidden() {
-        CourseDTO.Request request = new CourseDTO.Request("Finanças Avançadas", "Nova Descrição");
-        when(userService.findByEmail("outro@investir.com")).thenReturn(outroProfessor);
-        when(courseRepository.findForUpdateById(courseId)).thenReturn(Optional.of(course));
-
-        ResponseStatusException ex = assertThrows(ResponseStatusException.class, 
-            () -> courseService.updateCourse(courseId, request, "outro@investir.com"));
-
-        assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
-        verify(courseRepository, never()).save(any());
-    }
-
-    @Test
     void updateCourse_OnSuccess_ShouldUpdateAndSave() {
         CourseDTO.Request request = new CourseDTO.Request("Finanças Avançadas", "Nova Descrição");
         CourseDTO.Response responseDTO = new CourseDTO.Response(courseId, "Finanças Avançadas", "Nova Descrição", professorId);
 
-        when(userService.findByEmail("prof@investir.com")).thenReturn(professor);
         when(courseRepository.findForUpdateById(courseId)).thenReturn(Optional.of(course));
         when(courseMapper.toDTO(course)).thenReturn(responseDTO);
 
-        CourseDTO.Response result = courseService.updateCourse(courseId, request, "prof@investir.com");
+        CourseDTO.Response result = courseService.updateCourse(courseId, request);
 
         assertNotNull(result);
         verify(courseMapper).updateEntity(request, course);
@@ -162,41 +142,12 @@ class CourseServiceTest {
     }
 
     @Test
-    void updateCourse_WhenUserIsAdmin_ShouldAllowUpdatingAnotherProfessorsCourse() {
-        CourseDTO.Request request = new CourseDTO.Request("Finanças Avançadas", "Nova Descrição");
-        User admin = new User();
-        admin.setId(UUID.randomUUID());
-        admin.setRole(UserRole.ADMIN);
-        when(userService.findByEmail("admin@investir.com")).thenReturn(admin);
-        when(courseRepository.findForUpdateById(courseId)).thenReturn(Optional.of(course));
-        when(courseMapper.toDTO(course)).thenReturn(new CourseDTO.Response(
-            courseId, request.name(), request.description(), professorId));
-
-        CourseDTO.Response result = courseService.updateCourse(courseId, request, "admin@investir.com");
-
-        assertEquals("Finanças Avançadas", result.name());
-        verify(courseMapper).updateEntity(request, course);
-    }
-
-    @Test
     void deleteCourse_OnSuccess_ShouldDelete() {
-        when(userService.findByEmail("prof@investir.com")).thenReturn(professor);
         when(courseRepository.findForUpdateById(courseId)).thenReturn(Optional.of(course));
 
-        courseService.deleteCourse(courseId, "prof@investir.com");
+        courseService.deleteCourse(courseId);
 
         verify(courseRepository).delete(course);
     }
 
-    @Test
-    void deleteCourse_WhenUserIsNotOwner_ShouldThrowForbidden() {
-        when(userService.findByEmail("outro@investir.com")).thenReturn(outroProfessor);
-        when(courseRepository.findForUpdateById(courseId)).thenReturn(Optional.of(course));
-
-        ResponseStatusException ex = assertThrows(ResponseStatusException.class, 
-            () -> courseService.deleteCourse(courseId, "outro@investir.com"));
-
-        assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
-        verify(courseRepository, never()).delete(any());
-    }
 }

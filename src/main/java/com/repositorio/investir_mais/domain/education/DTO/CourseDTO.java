@@ -11,12 +11,10 @@ import java.util.UUID;
 public class CourseDTO {
     @Schema(name = "CourseRequest", description = "Dados para criação ou atualização de um curso")
     public record Request(
-        @Schema(description = "Nome do curso", example = "Introdução aos Investimentos")
         @NotBlank(message = "O nome é obrigatório") 
         @Size(min = 3, max = 100, message = "O nome deve ter entre 3 e 100 caracteres")
         String name,
 
-        @Schema(description = "Descrição detalhada sobre o conteúdo do curso", example = "Aprenda os conceitos básicos de renda fixa e variável.")
         @NotBlank(message = "A descrição é obrigatória") 
         @Size(max = 10000)
         String description
@@ -24,16 +22,12 @@ public class CourseDTO {
 
     @Schema(name = "CourseResponse", description = "Resposta com dados do curso")
     public record Response(
-        @Schema(description = "Identificador único do curso (UUID)", example = "b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e")
         UUID id,
 
-        @Schema(description = "Nome do curso", example = "Introdução aos Investimentos")
         String name,
 
-        @Schema(description = "Descrição do curso", example = "Aprenda os conceitos básicos de renda fixa e variável.")
         String description,
 
-        @Schema(description = "ID do professor responsável pelo curso", example = "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d")
         UUID professorId
     ) {}
 
@@ -45,10 +39,8 @@ public class CourseDTO {
         @Schema(description = "Data final do período de consulta (ISO-8601)", example = "2026-11-08")
         LocalDate endDate,
 
-        @Schema(description = "Total de cursos criados pelo professor", example = "4")
         long totalCourses,
 
-        @Schema(description = "Total de videoaulas publicadas", example = "24")
         long totalLessons,
 
         @Schema(description = "Total de alunos distintos matriculados no período", example = "85")
@@ -66,11 +58,8 @@ public class CourseDTO {
 
     @Schema(description = "Métricas de engajamento de um curso")
     public record CourseStats(
-        @Schema(description = "ID do curso")
         UUID courseId,
-        @Schema(description = "Nome do curso")
         String courseName,
-        @Schema(description = "Total de aulas neste curso")
         long totalLessons,
         @Schema(description = "Alunos matriculados no curso")
         long enrolledStudents,

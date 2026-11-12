@@ -26,6 +26,7 @@ import org.springframework.data.envers.repository.config.EnableEnversRepositorie
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.session.FindByIndexNameSessionRepository;
 import org.springframework.session.MapSession;
@@ -60,6 +61,7 @@ class UserSoftDeleteTest {
     @MockitoBean private FindByIndexNameSessionRepository<MapSession> sessions;
 
     @Test
+    @WithMockUser(username = "deleted@investir.com")
     void deletingAccountPreservesUserButBlocksLookupsLoginAndAccountTokens() {
         User deleted = createUser("deleted@investir.com", UserRole.STUDENT);
         User active = createUser("active@investir.com", UserRole.STUDENT);
@@ -76,7 +78,7 @@ class UserSoftDeleteTest {
         when(sessions.findByPrincipalName(deleted.getEmail())).thenReturn(Map.of(session.getId(), session));
         entityManager.clear();
 
-        service.deleteAccount(deleted.getEmail(), deleted.getId(), new UserDTO.DeleteAccountRequest(PASSWORD));
+        service.deleteAccount(deleted.getId(), new UserDTO.DeleteAccountRequest(PASSWORD));
         flushAndClear();
 
         assertNotNull(jdbc.queryForObject("SELECT deleted_at FROM tb_user WHERE id = ?", Timestamp.class, deleted.getId()));
@@ -114,6 +116,7 @@ class UserSoftDeleteTest {
     }
 
     @Test
+    @WithMockUser(username = "deleted-teacher@investir.com")
     void deletingTeacherSoftDeletesTheirCoursesAndLessonsAndPreservesOtherTeachers() {
         User teacher = createUser("deleted-teacher@investir.com", UserRole.TEACHER);
         Course deletedCourse = createCourse(teacher);
@@ -123,7 +126,7 @@ class UserSoftDeleteTest {
         Lesson activeLesson = createLesson(activeCourse);
         flushAndClear();
 
-        service.deleteAccount(teacher.getEmail(), teacher.getId(), new UserDTO.DeleteAccountRequest(PASSWORD));
+        service.deleteAccount(teacher.getId(), new UserDTO.DeleteAccountRequest(PASSWORD));
         flushAndClear();
 
         assertNotNull(jdbc.queryForObject("SELECT deleted_at FROM tb_course WHERE id = ?", Timestamp.class, deletedCourse.getId()));
@@ -142,10 +145,11 @@ class UserSoftDeleteTest {
 
     @Test
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    @WithMockUser(username = "audit@investir.com")
     void committedDeletionPreservesTheUserAndRecordsTheAuditEntry() {
         User user = createUser("audit@investir.com", UserRole.STUDENT);
         try {
-            service.deleteAccount(user.getEmail(), user.getId(), new UserDTO.DeleteAccountRequest(PASSWORD));
+            service.deleteAccount(user.getId(), new UserDTO.DeleteAccountRequest(PASSWORD));
 
             assertNotNull(jdbc.queryForObject("SELECT deleted_at FROM tb_user WHERE id = ?", Timestamp.class, user.getId()));
             assertFalse(users.existsById(user.getId()));
@@ -158,6 +162,7 @@ class UserSoftDeleteTest {
     }
 
     @Test
+    @WithMockUser(username = "teacher@investir.com")
     void deletingTeacherPreservesPreviouslyDeletedCourseAndLessonTimestamps() {
         User teacher = createUser("teacher@investir.com", UserRole.TEACHER);
         Course deletedCourse = createCourse(teacher);
@@ -169,7 +174,7 @@ class UserSoftDeleteTest {
         jdbc.update("UPDATE tb_course SET deleted_at = ? WHERE id = ?", previousDeletion, deletedCourse.getId());
         jdbc.update("UPDATE tb_lesson SET deleted_at = ? WHERE id = ?", previousDeletion, deletedLesson.getId());
 
-        service.deleteAccount(teacher.getEmail(), teacher.getId(), new UserDTO.DeleteAccountRequest(PASSWORD));
+        service.deleteAccount(teacher.getId(), new UserDTO.DeleteAccountRequest(PASSWORD));
         flushAndClear();
 
         assertEquals(previousDeletion, jdbc.queryForObject("SELECT deleted_at FROM tb_course WHERE id = ?", Timestamp.class, deletedCourse.getId()));

@@ -33,6 +33,7 @@ import org.springframework.modulith.events.ResubmissionOptions;
 import org.springframework.modulith.events.core.EventPublicationRegistry;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.concurrent.DelegatingSecurityContextCallable;
 import org.springframework.session.FindByIndexNameSessionRepository;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
@@ -134,6 +135,7 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
     }
 
     @Test
+    @WithMockUser(username = EMAIL, authorities = {"ROLE_STUDENT", "FACTOR_PASSWORD", "FACTOR_OTT"})
     void concurrentProfileUpdateCannotRestorePasswordFromBeforeReset() throws Exception {
         User account = createVerifiedUser();
         String token = accountSecurity.requestPasswordResetToken(EMAIL).orElseThrow();
@@ -142,11 +144,11 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
         try (var executor = Executors.newSingleThreadExecutor()) {
             var result = new TransactionTemplate(transactionManager).execute(status -> {
                 service.resetPassword(new AuthDTO.ResetPasswordRequest(token, newPassword));
-                var update = executor.submit(() -> {
+                var update = executor.submit(new DelegatingSecurityContextCallable<>(() -> {
                     started.countDown();
-                    return assertThrows(ResponseStatusException.class, () -> service.updateProfile(EMAIL, account.getId(),
+                    return assertThrows(ResponseStatusException.class, () -> service.updateProfile(account.getId(),
                             new UserDTO.UpdateProfileRequest("Novo Nome", EMAIL, null, PASSWORD)));
-                });
+                }));
                 assertDoesNotThrow(() -> assertTrue(started.await(5, TimeUnit.SECONDS)));
                 assertThrows(TimeoutException.class, () -> update.get(500, TimeUnit.MILLISECONDS));
                 return update;
@@ -219,7 +221,7 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
         lesson = lessons.saveAndFlush(lesson);
         assertEquals(1000, lessons.findById(lesson.getId()).orElseThrow().getDescription().length());
 
-        courseService.deleteCourse(course.getId(), EMAIL);
+        courseService.deleteCourse(course.getId());
 
         assertFalse(courses.existsById(course.getId()));
         assertFalse(lessons.existsById(lesson.getId()));

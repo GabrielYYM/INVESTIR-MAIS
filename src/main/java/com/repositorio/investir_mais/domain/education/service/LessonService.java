@@ -7,7 +7,6 @@ import com.repositorio.investir_mais.domain.education.model.Course;
 import com.repositorio.investir_mais.domain.education.model.Lesson;
 import com.repositorio.investir_mais.domain.education.repository.LessonRepository;
 import com.repositorio.investir_mais.domain.user.model.User;
-import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,8 +32,8 @@ public class LessonService {
     private final UserService userService;
 
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
-    public LessonDTO.Response createLesson(UUID courseId, LessonDTO.Request request, String principalName) {
-        Course course = courseService.findCourseOwnedBy(courseId, principalName);
+    public LessonDTO.Response createLesson(UUID courseId, LessonDTO.Request request) {
+        Course course = courseService.findCourseForUpdateOrThrow(courseId);
 
         Lesson lesson = lessonMapper.toEntity(request);
         lesson.setCourse(course);
@@ -46,8 +45,7 @@ public class LessonService {
 
     @Transactional(readOnly = true)
     public LessonDTO.Response getLessonById(UUID lessonId) {
-        return lessonRepository.findById(lessonId)
-            .map(lessonMapper::toDTO)
+        return lessonRepository.findResponseById(lessonId)
             .orElseThrow(() -> {
                 log.warn("Busca por aula inexistente. ID: {}", lessonId);
                 return new ResponseStatusException(HttpStatus.NOT_FOUND, "Aula não encontrada.");
@@ -56,13 +54,12 @@ public class LessonService {
 
     @Transactional(readOnly = true)
     public Page<LessonDTO.Response> getLessonsByCourseId(UUID courseId, Pageable pageable) {
-        return lessonRepository.findAllByCourseId(courseId, pageable)
-            .map(lessonMapper::toDTO);
+        return lessonRepository.findResponsesByCourseId(courseId, pageable);
     }
 
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
-    public LessonDTO.Response updateLesson(UUID lessonId, LessonDTO.Request request, String principalName) {
-        Lesson lesson = findLessonOwnedBy(lessonId, principalName);
+    public LessonDTO.Response updateLesson(UUID lessonId, LessonDTO.Request request) {
+        Lesson lesson = findLessonForUpdateOrThrow(lessonId);
         lessonMapper.updateEntity(request, lesson);
         
         log.info("Aula atualizada com sucesso. ID: {}", lesson.getId());
@@ -70,8 +67,8 @@ public class LessonService {
     }
 
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
-    public void deleteLesson(UUID lessonId, String principalName) {
-        Lesson lesson = findLessonOwnedBy(lessonId, principalName);
+    public void deleteLesson(UUID lessonId) {
+        Lesson lesson = findLessonForUpdateOrThrow(lessonId);
         lessonRepository.delete(lesson);
         log.info("Aula removida com sucesso. ID: {}", lessonId);
     }
@@ -94,16 +91,8 @@ public class LessonService {
         return courseService.buildCourseProgress(courseId, student.getId(), true);
     }
 
-    public Lesson findLessonOwnedBy(UUID lessonId, String principalName) {
-        User professor = userService.findByEmail(principalName);
-        if (professor.getRole() == UserRole.ADMIN) {
-            return lessonRepository.findForUpdateById(lessonId)
+    private Lesson findLessonForUpdateOrThrow(UUID lessonId) {
+        return lessonRepository.findForUpdateById(lessonId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Aula não encontrada."));
-        }
-        return lessonRepository.findByIdAndCourse_Professor_Id(lessonId, professor.getId())
-            .orElseThrow(() -> {
-                log.warn("Acesso negado ou aula não encontrada. Aula ID: {}, Usuário: {}", lessonId, professor.getId());
-                return new ResponseStatusException(HttpStatus.FORBIDDEN, "Aula não encontrada ou sem permissão.");
-            });
     }
 }

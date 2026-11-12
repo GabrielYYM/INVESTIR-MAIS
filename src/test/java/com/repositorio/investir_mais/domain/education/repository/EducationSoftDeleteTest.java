@@ -16,6 +16,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.envers.repository.config.EnableEnversRepositories;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 
@@ -64,7 +67,6 @@ class EducationSoftDeleteTest {
         assertNull(deletedAt("tb_course", course.getId()));
         assertTrue(lessons.findById(deleted.getId()).isEmpty());
         assertFalse(lessons.existsById(deleted.getId()));
-        assertTrue(lessons.findByIdAndCourse_Professor_Id(deleted.getId(), professor.getId()).isEmpty());
         assertEquals(1, lessons.count());
         assertEquals(1, lessons.findAll(FIRST_PAGE).getTotalElements());
         var page = lessons.findAllByCourseId(course.getId(), FIRST_PAGE);
@@ -105,7 +107,6 @@ class EducationSoftDeleteTest {
         assertEquals(active.getId(), page.getContent().getFirst().getId());
         assertTrue(lessons.findById(first.getId()).isEmpty());
         assertFalse(lessons.existsById(second.getId()));
-        assertTrue(lessons.findByIdAndCourse_Professor_Id(first.getId(), professor.getId()).isEmpty());
         assertEquals(0, lessons.findAllByCourseId(deleted.getId(), FIRST_PAGE).getTotalElements());
         assertEquals(1, lessons.count());
         assertTrue(lessons.findById(activeLesson.getId()).isPresent());
@@ -151,6 +152,40 @@ class EducationSoftDeleteTest {
         assertNull(deletedAt("tb_lesson", lessonId));
     }
 
+    @Test
+    @WithMockUser(username = "teacher@investir.com", roles = "TEACHER")
+    void ownerCanLoadLockedCourseAndLessonThroughJpaProxy() {
+        Course course = createCourse("Curso do proprietário");
+        Lesson lesson = createLesson(course, "Aula do proprietário");
+        flushAndClear();
+
+        assertEquals(course.getId(), courses.findForUpdateById(course.getId()).orElseThrow().getId());
+        entityManager.clear();
+        assertEquals(lesson.getId(), lessons.findForUpdateById(lesson.getId()).orElseThrow().getId());
+    }
+
+    @Test
+    @WithMockUser(username = "other@investir.com", roles = "TEACHER")
+    void otherTeacherCannotLoadLockedCourseOrLessonThroughJpaProxy() {
+        Course course = createCourse("Curso protegido");
+        Lesson lesson = createLesson(course, "Aula protegida");
+        flushAndClear();
+
+        assertThrows(AccessDeniedException.class, () -> courses.findForUpdateById(course.getId()));
+        assertThrows(AccessDeniedException.class, () -> lessons.findForUpdateById(lesson.getId()));
+    }
+
+    @Test
+    @WithMockUser(username = "admin@investir.com", roles = "ADMIN")
+    void administratorCanLoadAnotherTeachersLockedResourcesThroughJpaProxy() {
+        Course course = createCourse("Curso de outro professor");
+        Lesson lesson = createLesson(course, "Aula de outro professor");
+        flushAndClear();
+
+        assertTrue(courses.findForUpdateById(course.getId()).isPresent());
+        assertTrue(lessons.findForUpdateById(lesson.getId()).isPresent());
+    }
+
     private Course createCourse(String name) {
         Course course = new Course();
         course.setName(name);
@@ -179,6 +214,7 @@ class EducationSoftDeleteTest {
     }
 
     @Configuration(proxyBeanMethods = false)
+    @EnableMethodSecurity
     @EnableJpaAuditing
     @EntityScan(basePackageClasses = {Course.class, User.class})
     @EnableEnversRepositories(basePackageClasses = {CourseRepository.class, UserRepository.class})

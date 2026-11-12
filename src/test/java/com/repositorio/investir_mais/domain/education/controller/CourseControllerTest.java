@@ -101,7 +101,7 @@ class CourseControllerTest {
         CourseDTO.Request requestDTO = new CourseDTO.Request("Curso Atualizado", "Nova Descrição");
         CourseDTO.Response responseDTO = new CourseDTO.Response(courseId, "Curso Atualizado", "Nova Descrição", UUID.randomUUID());
 
-        when(courseService.updateCourse(eq(courseId), any(CourseDTO.Request.class), eq("prof@investir.com"))).thenReturn(responseDTO);
+        when(courseService.updateCourse(eq(courseId), any(CourseDTO.Request.class))).thenReturn(responseDTO);
 
         mockMvc.perform(put("/api/courses/{courseId}", courseId)
                 .with(user("prof@investir.com").roles("TEACHER"))
@@ -121,6 +121,6 @@ class CourseControllerTest {
                 .with(csrf()))
                .andExpect(status().isNoContent());
 
-        verify(courseService).deleteCourse(courseId, "prof@investir.com");
+        verify(courseService).deleteCourse(courseId);
     }
 }

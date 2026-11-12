@@ -122,7 +122,7 @@ class SpringLoginFlowTest {
         mvc.perform(delete("/api/users/{id}", user.getId()).session(session).with(csrf())
                         .contentType("application/json").content("{\"currentPassword\":\"" + PASSWORD + "\"}"))
                 .andExpect(status().isNoContent());
-        verify(userService).deleteAccount(EMAIL, user.getId(), new UserDTO.DeleteAccountRequest(PASSWORD));
+        verify(userService).deleteAccount(user.getId(), new UserDTO.DeleteAccountRequest(PASSWORD));
     }
 
     @Test

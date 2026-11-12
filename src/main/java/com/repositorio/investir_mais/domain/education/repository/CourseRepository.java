@@ -1,8 +1,11 @@
 package com.repositorio.investir_mais.domain.education.repository;
 
+import com.repositorio.investir_mais.domain.education.DTO.CourseDTO;
 import com.repositorio.investir_mais.domain.education.DTO.CourseDTO.CourseStats;
 import com.repositorio.investir_mais.domain.education.model.Course;
 import jakarta.persistence.LockModeType;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -16,6 +19,16 @@ import java.util.UUID;
 
 public interface CourseRepository extends JpaRepository<Course, UUID> {
     Page<Course> findAllByProfessorId(UUID professorId, Pageable pageable);
+
+    @Query("select c.id, c.name, c.description, c.professor.id from Course c where c.id = :courseId")
+    Optional<CourseDTO.Response> findResponseById(UUID courseId);
+
+    @Query("select c.id, c.name, c.description, c.professor.id from Course c")
+    Page<CourseDTO.Response> findAllResponses(Pageable pageable);
+
+    @Query("select c.id, c.name, c.description, c.professor.id from Course c where c.professor.id = :professorId")
+    Page<CourseDTO.Response> findResponsesByProfessorId(UUID professorId, Pageable pageable);
+
 
 
     @Query(value = """
@@ -59,6 +72,9 @@ public interface CourseRepository extends JpaRepository<Course, UUID> {
             """, nativeQuery = true)
     long countDashboardStudents(UUID professorId, boolean allCourses, LocalDateTime start, LocalDateTime end);
 
+    // Authorize the locked resource before returning it to the transactional service.
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
+    @PostAuthorize("returnObject.isEmpty() or hasRole('ADMIN') or returnObject.get().professor.email == authentication.name")
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<Course> findForUpdateById(UUID courseId);
 }

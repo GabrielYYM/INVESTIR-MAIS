@@ -93,7 +93,7 @@ class UserControllerTest {
                 .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isNoContent());
 
-        verify(userService).deleteAccount("felipe@investir.com", id, dto);
+        verify(userService).deleteAccount(id, dto);
     }
 
     @Test
@@ -118,7 +118,7 @@ class UserControllerTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.message").value("Senha atualizada com sucesso!"));
 
-        verify(userService).updatePassword(eq("felipe@investir.com"), any(AuthDTO.UpdatePasswordRequest.class));
+        verify(userService).updatePassword(any(AuthDTO.UpdatePasswordRequest.class));
     }
 
     @Test
@@ -183,7 +183,7 @@ class UserControllerTest {
         UserDTO.Response responseDTO = new UserDTO.Response(
             id, "Felipe", 25, "felipe@investir.com", UserRole.TEACHER, true, LocalDateTime.now()
         );
-        when(userService.updateUserRole(eq("admin@investir.com"), eq(id), eq(UserRole.TEACHER))).thenReturn(responseDTO);
+        when(userService.updateUserRole(eq(id), eq(UserRole.TEACHER))).thenReturn(responseDTO);
 
         mockMvc.perform(patch("/api/users/{id}/role", id)
                 .principal(() -> "admin@investir.com")
@@ -193,7 +193,7 @@ class UserControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.role").value("TEACHER"));
 
-        verify(userService).updateUserRole("admin@investir.com", id, UserRole.TEACHER);
+        verify(userService).updateUserRole(id, UserRole.TEACHER);
     }
 
     @Test

@@ -48,8 +48,7 @@ public class CourseService {
 
     @Transactional(readOnly = true)
     public CourseDTO.Response getCourseById(UUID courseId) {
-        return courseRepository.findById(courseId)
-            .map(courseMapper::toDTO)
+        return courseRepository.findResponseById(courseId)
             .orElseThrow(() -> {
                 log.warn("Busca por curso inexistente. ID: {}", courseId);
                 return new ResponseStatusException(HttpStatus.NOT_FOUND, "Curso não encontrado.");
@@ -58,12 +57,12 @@ public class CourseService {
 
     @Transactional(readOnly = true)
     public Page<CourseDTO.Response> getAllCourses(Pageable pageable) {
-        return courseRepository.findAll(pageable).map(courseMapper::toDTO);
+        return courseRepository.findAllResponses(pageable);
     }
 
     @Transactional(readOnly = true)
     public Page<CourseDTO.Response> getCoursesByProfessor(UUID professorId, Pageable pageable) {
-        return courseRepository.findAllByProfessorId(professorId, pageable).map(courseMapper::toDTO);
+        return courseRepository.findResponsesByProfessorId(professorId, pageable);
     }
 
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
@@ -136,8 +135,8 @@ public class CourseService {
     }
 
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
-    public CourseDTO.Response updateCourse(UUID courseId, CourseDTO.Request request, String principalName) {
-        Course course = findCourseOwnedBy(courseId, principalName);
+    public CourseDTO.Response updateCourse(UUID courseId, CourseDTO.Request request) {
+        Course course = findCourseForUpdateOrThrow(courseId);
         courseMapper.updateEntity(request, course);
         
         log.info("Curso atualizado com sucesso. ID: {}", course.getId());
@@ -145,28 +144,15 @@ public class CourseService {
     }
 
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
-    public void deleteCourse(UUID courseId, String principalName) {
-        Course course = findCourseOwnedBy(courseId, principalName);
+    public void deleteCourse(UUID courseId) {
+        Course course = findCourseForUpdateOrThrow(courseId);
         courseRepository.delete(course);
         log.info("Curso removido com sucesso. ID: {}", courseId);
     }
 
-    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
-    public Course findCourseOwnedBy(UUID courseId, String principalName) {
-        User professor = userService.findByEmail(principalName);
-        Course course = courseRepository.findForUpdateById(courseId)
-            .orElseThrow(() -> {
-                log.warn("Tentativa de alterar/excluir curso inexistente. ID: {}", courseId);
-                return new ResponseStatusException(HttpStatus.NOT_FOUND, "Curso não encontrado.");
-            });
-
-        if (professor.getRole() != UserRole.ADMIN
-                && !course.getProfessor().getId().equals(professor.getId())) {
-            log.warn("Acesso negado: Usuário {} tentou modificar o curso {} pertencente ao professor {}", 
-                professor.getId(), courseId, course.getProfessor().getId());
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não tem permissão para alterar este curso.");
-        }
-        return course;
+    Course findCourseForUpdateOrThrow(UUID courseId) {
+        return courseRepository.findForUpdateById(courseId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Curso não encontrado."));
     }
 
     CourseDTO.CourseProgressResponse buildCourseProgress(UUID courseId, UUID studentId, boolean enrolled) {

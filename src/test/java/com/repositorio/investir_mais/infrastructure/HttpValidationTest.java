@@ -87,7 +87,7 @@ class HttpValidationTest {
     @Test void unknownIntegrityFailureRemainsInternalServerError() throws Exception {
         var lessonId = UUID.randomUUID();
         doThrow(new DataIntegrityViolationException("private details"))
-                .when(lessons).deleteLesson(lessonId, "user@investir.com");
+                .when(lessons).deleteLesson(lessonId);
         mvc.perform(delete("/api/lessons/{lessonId}", lessonId).principal(() -> "user@investir.com"))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.detail").value("Ocorreu um erro interno no servidor."));
@@ -98,7 +98,7 @@ class HttpValidationTest {
                 ConstraintViolationException.ConstraintKind.FOREIGN_KEY, "private_constraint");
         var lessonId = UUID.randomUUID();
         doThrow(new DataIntegrityViolationException("private details", violation))
-                .when(lessons).deleteLesson(lessonId, "user@investir.com");
+                .when(lessons).deleteLesson(lessonId);
         mvc.perform(delete("/api/lessons/{lessonId}", lessonId).principal(() -> "user@investir.com"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.detail").value("A operação conflita com registros relacionados."));

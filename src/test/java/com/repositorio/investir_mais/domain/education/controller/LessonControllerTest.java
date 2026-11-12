@@ -60,7 +60,7 @@ class LessonControllerTest {
         LessonDTO.Request requestDTO = new LessonDTO.Request("Aula 1", "Descrição", "https://media.example.com/video.mp4", "https://media.example.com/thumb.jpg");
         LessonDTO.Response responseDTO = new LessonDTO.Response(lessonId, "Aula 1", "Descrição", "https://media.example.com/video.mp4", "https://media.example.com/thumb.jpg", courseId);
 
-        when(lessonService.createLesson(eq(courseId), any(LessonDTO.Request.class), eq("prof@investir.com"))).thenReturn(responseDTO);
+        when(lessonService.createLesson(eq(courseId), any(LessonDTO.Request.class))).thenReturn(responseDTO);
 
         mockMvc.perform(post("/api/lessons/course/{courseId}", courseId)
                 .with(user("prof@investir.com").roles("TEACHER"))
@@ -100,7 +100,7 @@ class LessonControllerTest {
         LessonDTO.Request requestDTO = new LessonDTO.Request("Aula Alterada", "Descrição", "https://media.example.com/video.mp4", "https://media.example.com/thumb.jpg");
         LessonDTO.Response responseDTO = new LessonDTO.Response(lessonId, "Aula Alterada", "Descrição", "https://media.example.com/video.mp4", "https://media.example.com/thumb.jpg", UUID.randomUUID());
 
-        when(lessonService.updateLesson(eq(lessonId), any(LessonDTO.Request.class), eq("prof@investir.com"))).thenReturn(responseDTO);
+        when(lessonService.updateLesson(eq(lessonId), any(LessonDTO.Request.class))).thenReturn(responseDTO);
 
         mockMvc.perform(put("/api/lessons/{lessonId}", lessonId)
                 .with(user("prof@investir.com").roles("TEACHER"))
@@ -120,6 +120,6 @@ class LessonControllerTest {
                 .with(csrf()))
                .andExpect(status().isNoContent());
 
-        verify(lessonService).deleteLesson(lessonId, "prof@investir.com");
+        verify(lessonService).deleteLesson(lessonId);
     }
 }

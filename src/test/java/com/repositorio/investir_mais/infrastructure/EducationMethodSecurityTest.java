@@ -26,6 +26,7 @@ import org.springframework.security.authentication.AuthenticationCredentialsNotF
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
+import org.springframework.test.util.AopTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Optional;
@@ -53,6 +54,8 @@ class EducationMethodSecurityTest {
 
     @BeforeEach
     void resetDependencies() {
+        courseRepository = AopTestUtils.getUltimateTargetObject(courseRepository);
+        lessonRepository = AopTestUtils.getUltimateTargetObject(lessonRepository);
         reset(courseRepository, lessonRepository, courseMapper, lessonMapper, users);
     }
 
@@ -77,7 +80,8 @@ class EducationMethodSecurityTest {
     void teacherCanWriteOwnResourcesThroughSpringProxy(String operation) {
         prepareResources(UserRole.TEACHER, true);
         assertDoesNotThrow(write(operation));
-        verify(users).findByEmail(EMAIL);
+        if (operation.equals("createCourse")) verify(users).findByEmail(EMAIL);
+        else verifyNoInteractions(users);
     }
 
     @ParameterizedTest
@@ -86,7 +90,8 @@ class EducationMethodSecurityTest {
     void administratorCanWriteOtherTeachersResources(String operation) {
         prepareResources(UserRole.ADMIN, false);
         assertDoesNotThrow(write(operation));
-        verify(users).findByEmail(EMAIL);
+        if (operation.equals("createCourse")) verify(users).findByEmail(EMAIL);
+        else verifyNoInteractions(users);
     }
 
     @ParameterizedTest
@@ -94,8 +99,7 @@ class EducationMethodSecurityTest {
     @WithMockUser(username = EMAIL, roles = "TEACHER")
     void teacherStillCannotWriteOtherTeachersResources(String operation) {
         prepareResources(UserRole.TEACHER, false);
-        var failure = assertThrows(ResponseStatusException.class, write(operation));
-        assertEquals(403, failure.getStatusCode().value());
+        assertThrows(AccessDeniedException.class, write(operation));
         verify(courseRepository, never()).save(any());
         verify(courseRepository, never()).delete(any());
         verify(lessonRepository, never()).save(any());
@@ -103,14 +107,40 @@ class EducationMethodSecurityTest {
         verifyNoInteractions(courseMapper, lessonMapper);
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"updateCourse", "deleteCourse", "createLesson"})
+    @WithMockUser(username = EMAIL, roles = "TEACHER")
+    void missingCourseStillReturnsNotFound(String operation) {
+        var failure = assertThrows(ResponseStatusException.class, write(operation));
+        assertEquals(404, failure.getStatusCode().value());
+        verifyNoInteractions(courseMapper, lessonMapper);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"updateLesson", "deleteLesson"})
+    @WithMockUser(username = EMAIL, roles = "TEACHER")
+    void missingLessonStillReturnsForbiddenForTeacher(String operation) {
+        assertThrows(AccessDeniedException.class, write(operation));
+        verifyNoInteractions(courseMapper, lessonMapper);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"updateCourse", "deleteCourse", "createLesson", "updateLesson", "deleteLesson"})
+    @WithMockUser(username = EMAIL, roles = "ADMIN")
+    void missingResourceStillReturnsNotFoundForAdmin(String operation) {
+        var failure = assertThrows(ResponseStatusException.class, write(operation));
+        assertEquals(404, failure.getStatusCode().value());
+        verifyNoInteractions(courseMapper, lessonMapper);
+    }
+
     private Executable write(String operation) {
         return switch (operation) {
             case "createCourse" -> () -> courses.createCourse(COURSE, EMAIL);
-            case "updateCourse" -> () -> courses.updateCourse(COURSE_ID, COURSE, EMAIL);
-            case "deleteCourse" -> () -> courses.deleteCourse(COURSE_ID, EMAIL);
-            case "createLesson" -> () -> lessons.createLesson(COURSE_ID, LESSON, EMAIL);
-            case "updateLesson" -> () -> lessons.updateLesson(LESSON_ID, LESSON, EMAIL);
-            case "deleteLesson" -> () -> lessons.deleteLesson(LESSON_ID, EMAIL);
+            case "updateCourse" -> () -> courses.updateCourse(COURSE_ID, COURSE);
+            case "deleteCourse" -> () -> courses.deleteCourse(COURSE_ID);
+            case "createLesson" -> () -> lessons.createLesson(COURSE_ID, LESSON);
+            case "updateLesson" -> () -> lessons.updateLesson(LESSON_ID, LESSON);
+            case "deleteLesson" -> () -> lessons.deleteLesson(LESSON_ID);
             default -> throw new IllegalArgumentException(operation);
         };
     }
@@ -131,8 +161,7 @@ class EducationMethodSecurityTest {
         when(users.findByEmail(EMAIL)).thenReturn(user);
         when(courseRepository.findForUpdateById(COURSE_ID)).thenReturn(Optional.of(course));
         when(lessonRepository.findForUpdateById(LESSON_ID)).thenReturn(Optional.of(lesson));
-        when(lessonRepository.findByIdAndCourse_Professor_Id(LESSON_ID, user.getId()))
-                .thenReturn(owner ? Optional.of(lesson) : Optional.empty());
+
         when(courseMapper.toEntity(COURSE)).thenReturn(course);
         when(lessonMapper.toEntity(LESSON)).thenReturn(lesson);
         when(courseRepository.save(any(Course.class))).thenReturn(course);

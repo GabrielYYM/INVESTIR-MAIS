@@ -9,7 +9,6 @@ public class AuthDTO {
 
     @Schema(description = "Dados para solicitação de recuperação de senha")
     public record ForgotPasswordRequest(
-        @Schema(description = "E-mail do usuário que deseja redefinir a senha", example = "usuario@gmail.com")
         @NotBlank(message = "O e-mail é obrigatório.")
         @Email(message = "E-mail inválido")
         @Size(max = 254)
@@ -23,7 +22,6 @@ public class AuthDTO {
         @Size(max = 64)
         String token,
 
-        @Schema(description = "Nova senha de acesso", example = "NovaSenha123")
         @NotBlank(message = "A nova senha é obrigatória.")
         @Size(min = 8, max = 4096, message = "A senha deve ter entre 8 e 4096 caracteres.")
         String newPassword
@@ -31,12 +29,10 @@ public class AuthDTO {
 
     @Schema(description = "Dados para atualização de senha de usuário autenticado")
     public record UpdatePasswordRequest(
-        @Schema(description = "Senha atual do usuário", example = "SenhaAntiga123")
         @NotBlank(message = "A senha atual é obrigatória.")
         @Size(max = 4096)
         String currentPassword,
 
-        @Schema(description = "Nova senha desejada", example = "NovaSenhaSegura123")
         @NotBlank(message = "A nova senha é obrigatória.")
         @Size(min = 8, max = 4096, message = "A senha deve ter entre 8 e 4096 caracteres.")
         String newPassword

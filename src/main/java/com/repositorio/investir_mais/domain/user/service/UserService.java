@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.authentication.ott.OneTimeToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -42,22 +43,16 @@ public class UserService {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
     }
 
+    @PreAuthorize("isAuthenticated()")
     @Transactional(readOnly = true)
-    public UserDTO.Response getProfile(String principalName, UUID requestedId) {
-        User user = findByEmail(principalName);
-        if (!user.getId().equals(requestedId)) {
-            log.warn("Acesso negado: Usuário {} tentou acessar o perfil {}", user.getId(), requestedId);
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não pode acessar este perfil.");
-        }
-        return userMapper.toDTO(user);
+    public UserDTO.Response getProfile(UUID requestedId) {
+        return userRepository.findOwnResponse(currentEmail(), requestedId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
     }
 
-    public UserDTO.Response updateProfile(String principalName, UUID requestedId, UserDTO.UpdateProfileRequest dto) {
-        User user = findByEmailForUpdate(principalName);
-        if (!user.getId().equals(requestedId)) {
-            log.warn("Acesso negado: Usuário {} tentou alterar o perfil {}", user.getId(), requestedId);
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não pode alterar este perfil.");
-        }
+    @PreAuthorize("isAuthenticated()")
+    public UserDTO.Response updateProfile(UUID requestedId, UserDTO.UpdateProfileRequest dto) {
+        User user = findOwnForUpdate(requestedId);
 
         if (!passwordEncoder.matches(dto.currentPassword(), user.getPassword())) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Senha atual inválida.");
@@ -104,11 +99,9 @@ public class UserService {
         return sendVerificationLink(savedUser.getEmail());
     }
 
-    public void deleteAccount(String principalName, UUID requestedId, UserDTO.DeleteAccountRequest dto) {
-        User user = findByEmailForUpdate(principalName);
-        if (!user.getId().equals(requestedId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não pode excluir outra conta.");
-        }
+    @PreAuthorize("isAuthenticated()")
+    public void deleteAccount(UUID requestedId, UserDTO.DeleteAccountRequest dto) {
+        User user = findOwnForUpdate(requestedId);
         if (!passwordEncoder.matches(dto.currentPassword(), user.getPassword())) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Senha atual inválida.");
         }
@@ -120,8 +113,9 @@ public class UserService {
         log.info("Conta excluída logicamente com sucesso. Usuário ID: {}", user.getId());
     }
 
-    public void updatePassword(String email, AuthDTO.UpdatePasswordRequest dto) {
-        User user = findByEmailForUpdate(email);
+    @PreAuthorize("isAuthenticated()")
+    public void updatePassword(AuthDTO.UpdatePasswordRequest dto) {
+        User user = findByEmailForUpdate(currentEmail());
 
         if (!passwordEncoder.matches(dto.currentPassword(), user.getPassword())) {
             log.warn("Falha ao atualizar senha para o usuário {}: Senha atual incorreta", user.getId());
@@ -177,13 +171,11 @@ public class UserService {
     @PreAuthorize("hasRole('ADMIN')")
     @Transactional(readOnly = true)
     public List<UserDTO.Response> listAllUsers() {
-        return userRepository.findAll().stream()
-                .map(userMapper::toDTO)
-                .toList();
+        return userRepository.findAllProjectedBy();
     }
 
     @PreAuthorize("hasRole('ADMIN')")
-    public UserDTO.Response updateUserRole(String principalName, UUID userId, UserRole newRole) {
+    public UserDTO.Response updateUserRole(UUID userId, UserRole newRole) {
         if (newRole == UserRole.ADMIN) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não é permitido conceder o perfil de Administrador pelo painel.");
         }
@@ -195,13 +187,11 @@ public class UserService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não é permitido alterar o papel de um Administrador pelo painel.");
         }
 
-        User admin = findByEmail(principalName);
-
         targetUser.setRole(newRole);
         User saved = userRepository.save(targetUser);
 
         accountSecurity.revokeAllSessions(targetUser.getEmail());
-        log.info("Perfil do usuário {} alterado para {} pelo admin {}", targetUser.getId(), newRole, admin.getId());
+        log.info("Perfil do usuário {} alterado para {} pelo admin {}", targetUser.getId(), newRole, currentEmail());
         return userMapper.toDTO(saved);
     }
 
@@ -219,6 +209,15 @@ public class UserService {
                         userMapper.toDTO(rev.getEntity())
                 ))
                 .toList();
+    }
+
+    private String currentEmail() {
+        return SecurityContextHolder.getContext().getAuthentication().getName();
+    }
+
+    private User findOwnForUpdate(UUID requestedId) {
+        return userRepository.findOwnForUpdate(currentEmail(), requestedId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
     }
 
     public User findByEmailForUpdate(String email) {
