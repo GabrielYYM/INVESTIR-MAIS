@@ -42,8 +42,8 @@ public class LessonController {
     @Operation(summary = "Listar aulas de um curso", description = "Retorna uma lista paginada com todas as aulas de um determinado curso.")
     @ApiResponse(responseCode = "200", description = "Página de aulas retornada com sucesso")
     @GetMapping("/course/{courseId}")
-    public Page<LessonDTO.Response> getLessonsByCourse(@PathVariable UUID courseId, @ParameterObject @PageableDefault(size = 20) Pageable pageable) {
-        return lessonService.getLessonsByCourseId(courseId, pageable);
+    public Page<LessonDTO.Response> getLessonsByCourse(@PathVariable UUID courseId, @ParameterObject @PageableDefault(size = 20, sort = "position") Pageable pageable, Principal principal) {
+        return lessonService.getLessonsForStudent(courseId, pageable, principal.getName());
     }
 
     @Operation(summary = "Obter aula por ID", description = "Retorna os detalhes de uma aula específica.")
@@ -52,8 +52,8 @@ public class LessonController {
         @ApiResponse(responseCode = "404", description = "Aula não encontrada")
     })
     @GetMapping("/{lessonId}")
-    public LessonDTO.Response getLessonById(@PathVariable UUID lessonId) {
-        return lessonService.getLessonById(lessonId);
+    public LessonDTO.Response getLessonById(@PathVariable UUID lessonId, Principal principal) {
+        return lessonService.getLessonForStudent(lessonId, principal.getName());
     }
 
     @Operation(summary = "Atualizar aula", description = "Atualiza os dados de uma aula. Exige que o usuário seja proprietário do curso associado ou ADMIN.")

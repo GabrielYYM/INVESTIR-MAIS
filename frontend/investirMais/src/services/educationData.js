@@ -1,9 +1,12 @@
 import { data, redirect, replace } from "react-router";
 import { apiError } from "./api.js";
+import { getCurrentUser } from "./authService.js";
 import { getCourseProgress } from "./teacherService.js";
 import {
   createCourse, createLesson, deleteCourse, deleteLesson, getAllCourses, getCourseById,
   getLessonById, getLessonsByCourse, updateCourse, updateLesson,
+  create as createQuestion, update as updateQuestion, _delete as deleteQuestion,
+  list as getQuestions, manage as getTeacherQuestions, answer as answerQuestion, enrollStudent,
 } from "../generated/education.ts";
 
 const uuid = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
@@ -45,18 +48,40 @@ export async function courseLoader({ request, params: { courseId, lessonId } }) 
   const url = new URL(request.url);
   const requested = pageIndex(url);
   const { signal } = request;
-  const [course, result, selected, progress] = await Promise.all([
+  let progressError = null;
+  const [course, result, selected, progress, user] = await Promise.all([
     getCourseById(courseId, { signal }),
-    getLessonsByCourse(courseId, { page: requested, size: 10, sort: ["title", "id"] }, { signal }),
-    lessonId ? getLessonById(lessonId, { signal }) : null,
-    getCourseProgress(courseId, signal).catch(() => null),
+    getLessonsByCourse(courseId, { page: requested, size: 10, sort: ["position", "id"] }, { signal }),
+    lessonId ? getLessonById(lessonId, { signal }).catch((error) => {
+      if (error.response?.status === 409) return { id: lessonId, courseId, title: "Aula bloqueada", locked: true };
+      throw error;
+    }) : null,
+    getCourseProgress(courseId, signal).catch((error) => {
+      if (signal.aborted || error.response?.status === 401) throw error;
+      progressError = "Não foi possível carregar seu progresso. Tente novamente.";
+      return null;
+    }),
+    getCurrentUser(signal),
   ]);
 
   if (selected && selected.courseId !== course.id) throw new Response(null, { status: 404 });
 
   const page = readPage(result);
   validatePage(url, requested, page);
-  return { course, page, lesson: selected ?? page.items[0], progress };
+  const canManage = canManageEducation(user, course);
+  let questions = [];
+  let questionsError = null;
+  if (canManage || (progress?.enrolled && progress.totalQuestions > 0)) {
+    try {
+      questions = await (canManage ? getTeacherQuestions : getQuestions)(courseId, { signal });
+    } catch (error) {
+      if (signal.aborted || error.response?.status === 401) throw error;
+      questionsError = apiError(error, "Não foi possível carregar as perguntas. Tente novamente.");
+    }
+  }
+  const currentLesson = selected?.locked ? { ...(page.items.find((item) => item.id === selected.id) ?? selected), locked: true } : selected;
+  return { course, page, lesson: currentLesson ?? page.items.find((item) => !item.locked) ?? page.items[0], progress,
+    questions, questionsError, progressError, needsEnrollment: !canManage && progress?.totalQuestions > 0 && !progress.enrolled };
 }
 
 function mutationError(error, request) {
@@ -102,6 +127,20 @@ export async function courseAction({ request, params: { courseId, lessonId } }) 
       case "delete-aula":
         await deleteLesson(id);
         if (id === lessonId) return replace(pageHref(coursePath, pageIndex(new URL(request.url))));
+        break;
+      case "create-question":
+        await createQuestion(courseId, payload);
+        break;
+      case "update-question":
+        await updateQuestion(courseId, id, payload);
+        break;
+      case "delete-question":
+        await deleteQuestion(courseId, id);
+        break;
+      case "answer-question":
+        return await answerQuestion(courseId, id, payload);
+      case "enroll-course":
+        await enrollStudent(courseId);
         break;
       default:
         return data({ error: "Operação inválida." }, { status: 400 });

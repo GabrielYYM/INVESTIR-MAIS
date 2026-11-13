@@ -51,8 +51,14 @@ public class LessonDTO {
         String thumbnailUrl,
 
         @Schema(description = "ID do curso ao qual esta aula pertence", example = "b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e")
-        UUID courseId
-    ) {}
+        UUID courseId,
+        int position,
+        boolean locked
+    ) {
+        public Response(UUID id, String title, String description, String mediaUrl, String thumbnailUrl, UUID courseId) {
+            this(id, title, description, mediaUrl, thumbnailUrl, courseId, 0, false);
+        }
+    }
 
     @Schema(description = "Requisição para atualizar o progresso de uma aula")
     public record ProgressRequest(

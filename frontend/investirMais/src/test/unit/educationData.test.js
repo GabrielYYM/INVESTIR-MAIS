@@ -65,7 +65,7 @@ describe("loaders e paginação", () => {
     const request = loaderRequest("/educacao/" + course.id);
     expect(await courseLoader({ request, params: { courseId: course.id } })).toMatchObject({ course, lesson });
     expect(client.getCourseById).toHaveBeenCalledWith(course.id, { signal: request.signal });
-    expect(client.getLessonsByCourse).toHaveBeenCalledWith(course.id, { page: 0, size: 10, sort: ["title", "id"] }, { signal: request.signal });
+    expect(client.getLessonsByCourse).toHaveBeenCalledWith(course.id, { page: 0, size: 10, sort: ["position", "id"] }, { signal: request.signal });
     expect(client.getLessonById).not.toHaveBeenCalled();
   });
 

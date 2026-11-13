@@ -8,6 +8,9 @@
     "name" : "Cursos",
     "description" : "Endpoints para gerenciamento do catálogo de cursos"
   }, {
+    "name" : "Perguntas",
+    "description" : "CRUD de perguntas e aprovação do aluno"
+  }, {
     "name" : "Aulas",
     "description" : "Endpoints para gerenciamento de aulas associadas a cursos"
   } ],
@@ -256,6 +259,136 @@
         }
       }
     },
+    "/api/courses/{courseId}/questions/{questionId}" : {
+      "put" : {
+        "tags" : [ "Perguntas" ],
+        "summary" : "Editar pergunta e invalidar suas aprovações anteriores",
+        "operationId" : "update",
+        "parameters" : [ {
+          "name" : "courseId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "questionId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/QuestionRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TeacherQuestion"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "Perguntas" ],
+        "summary" : "Excluir logicamente pergunta",
+        "operationId" : "delete",
+        "parameters" : [ {
+          "name" : "courseId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "questionId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        }
+      }
+    },
+    "/api/lessons/{courseId}/{lessonId}/progress" : {
+      "post" : {
+        "tags" : [ "Aulas" ],
+        "summary" : "Atualizar progresso de uma aula",
+        "description" : "Marca uma videoaula como assistida/concluída ou pendente.",
+        "operationId" : "updateLessonProgress",
+        "parameters" : [ {
+          "name" : "courseId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "lessonId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ProgressRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Progresso atualizado",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CourseProgressResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Curso ou aula não encontrada",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CourseProgressResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/lessons/course/{courseId}" : {
       "get" : {
         "tags" : [ "Aulas" ],
@@ -297,6 +430,7 @@
           "required" : false,
           "schema" : {
             "type" : "array",
+            "default" : [ "position,ASC" ],
             "items" : {
               "type" : "string"
             }
@@ -474,6 +608,228 @@
         }
       }
     },
+    "/api/courses/{courseId}/questions" : {
+      "get" : {
+        "tags" : [ "Perguntas" ],
+        "summary" : "Listar perguntas sem gabarito e informar os bloqueios de progressão",
+        "operationId" : "list",
+        "parameters" : [ {
+          "name" : "courseId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/StudentQuestion"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "Perguntas" ],
+        "summary" : "Criar pergunta imediatamente disponível, sem rascunho",
+        "operationId" : "create",
+        "parameters" : [ {
+          "name" : "courseId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/QuestionRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TeacherQuestion"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/courses/{courseId}/questions/{questionId}/answers" : {
+      "post" : {
+        "tags" : [ "Perguntas" ],
+        "summary" : "Validar resposta e guardar somente que o aluno passou",
+        "operationId" : "answer",
+        "parameters" : [ {
+          "name" : "courseId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "questionId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AnswerRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AnswerResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/courses/{courseId}/enroll" : {
+      "post" : {
+        "tags" : [ "Cursos" ],
+        "summary" : "Matricular aluno em um curso",
+        "description" : "Registra a matrícula do usuário autenticado no curso especificado.",
+        "operationId" : "enrollStudent",
+        "parameters" : [ {
+          "name" : "courseId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "201" : {
+            "description" : "Matrícula realizada com sucesso",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CourseProgressResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Curso não encontrado",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CourseProgressResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/courses/{courseId}/questions/manage" : {
+      "get" : {
+        "tags" : [ "Perguntas" ],
+        "summary" : "Listar perguntas com gabarito para professor responsável ou ADMIN",
+        "operationId" : "manage",
+        "parameters" : [ {
+          "name" : "courseId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/TeacherQuestion"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/courses/{courseId}/progress" : {
+      "get" : {
+        "tags" : [ "Cursos" ],
+        "summary" : "Consultar progresso do aluno no curso",
+        "description" : "Retorna o percentual de conclusão e lista de aulas já concluídas pelo aluno atual.",
+        "operationId" : "getCourseProgress",
+        "parameters" : [ {
+          "name" : "courseId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Progresso retornado com sucesso",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CourseProgressResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Curso não encontrado",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CourseProgressResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/courses/professor/{professorId}" : {
       "get" : {
         "tags" : [ "Cursos" ],
@@ -608,6 +964,13 @@
             "format" : "uuid",
             "description" : "ID do curso ao qual esta aula pertence",
             "example" : "b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e"
+          },
+          "position" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "locked" : {
+            "type" : "boolean"
           }
         }
       },
@@ -628,9 +991,56 @@
             "example" : "Aprenda os conceitos básicos de renda fixa e variável.",
             "maxLength" : 10000,
             "minLength" : 0
+          },
+          "questions" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/QuestionRequest"
+            },
+            "maxItems" : 100,
+            "minItems" : 0
           }
         },
         "required" : [ "description", "name" ]
+      },
+      "QuestionRequest" : {
+        "type" : "object",
+        "properties" : {
+          "prompt" : {
+            "type" : "string",
+            "maxLength" : 5000,
+            "minLength" : 0
+          },
+          "afterLesson" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 10000,
+            "minimum" : 0
+          },
+          "position" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 10000,
+            "minimum" : 0
+          },
+          "options" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "maxLength" : 2000,
+              "minLength" : 0
+            },
+            "maxItems" : 6,
+            "minItems" : 2
+          },
+          "correctOptionIndex" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 5,
+            "minimum" : 0
+          }
+        },
+        "required" : [ "correctOptionIndex", "options", "prompt" ]
       },
       "CourseResponse" : {
         "type" : "object",
@@ -660,6 +1070,111 @@
           }
         }
       },
+      "TeacherQuestion" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "prompt" : {
+            "type" : "string"
+          },
+          "afterLesson" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "position" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "options" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "correctOptionIndex" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "ProgressRequest" : {
+        "type" : "object",
+        "description" : "Requisição para atualizar o progresso de uma aula",
+        "properties" : {
+          "completed" : {
+            "type" : "boolean",
+            "description" : "Se a aula foi concluída ou não",
+            "example" : true
+          }
+        }
+      },
+      "CourseProgressResponse" : {
+        "type" : "object",
+        "description" : "Status de progresso de um curso para o aluno atual",
+        "properties" : {
+          "courseId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "enrolled" : {
+            "type" : "boolean"
+          },
+          "totalLessons" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "completedLessons" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "progressPercentage" : {
+            "type" : "number",
+            "format" : "double"
+          },
+          "completedLessonIds" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "format" : "uuid"
+            }
+          },
+          "totalQuestions" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "passedQuestions" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }
+      },
+      "AnswerRequest" : {
+        "type" : "object",
+        "properties" : {
+          "optionIndex" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 5,
+            "minimum" : 0
+          }
+        },
+        "required" : [ "optionIndex" ]
+      },
+      "AnswerResponse" : {
+        "type" : "object",
+        "properties" : {
+          "questionId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "passed" : {
+            "type" : "boolean"
+          }
+        }
+      },
       "PageMetadata" : {
         "type" : "object",
         "properties" : {
@@ -679,7 +1194,8 @@
             "type" : "integer",
             "format" : "int64"
           }
-        }
+        },
+        "required" : [ "number", "size", "totalElements", "totalPages" ]
       },
       "PagedModelLessonResponse" : {
         "type" : "object",
@@ -693,7 +1209,8 @@
           "page" : {
             "$ref" : "#/components/schemas/PageMetadata"
           }
-        }
+        },
+        "required" : [ "content", "page" ]
       },
       "PagedModelCourseResponse" : {
         "type" : "object",
@@ -706,6 +1223,39 @@
           },
           "page" : {
             "$ref" : "#/components/schemas/PageMetadata"
+          }
+        },
+        "required" : [ "content", "page" ]
+      },
+      "StudentQuestion" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "prompt" : {
+            "type" : "string"
+          },
+          "afterLesson" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "position" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "locked" : {
+            "type" : "boolean"
+          },
+          "passed" : {
+            "type" : "boolean"
+          },
+          "options" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
           }
         }
       }

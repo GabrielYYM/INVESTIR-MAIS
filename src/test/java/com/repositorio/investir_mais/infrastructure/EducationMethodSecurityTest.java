@@ -148,5 +148,8 @@ class EducationMethodSecurityTest {
         @Bean CourseMapper courseMapper() { return mock(CourseMapper.class); }
         @Bean LessonMapper lessonMapper() { return mock(LessonMapper.class); }
         @Bean UserService users() { return mock(UserService.class); }
+        @Bean com.repositorio.investir_mais.domain.education.service.QuestionService questions() {
+            return mock(com.repositorio.investir_mais.domain.education.service.QuestionService.class);
+        }
     }
 }

@@ -31,6 +31,7 @@ public class LessonService {
     private final CourseService courseService;
     private final LessonMapper lessonMapper;
     private final UserService userService;
+    private final QuestionService questionService;
 
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public LessonDTO.Response createLesson(UUID courseId, LessonDTO.Request request, String principalName) {
@@ -38,6 +39,7 @@ public class LessonService {
 
         Lesson lesson = lessonMapper.toEntity(request);
         lesson.setCourse(course);
+        lesson.setPosition(Math.max(1, lessonRepository.nextPosition(courseId)));
 
         Lesson savedLesson = lessonRepository.save(lesson);
         log.info("Nova aula cadastrada com sucesso. Aula ID: {}, Curso ID: {}", savedLesson.getId(), courseId);
@@ -45,19 +47,23 @@ public class LessonService {
     }
 
     @Transactional(readOnly = true)
-    public LessonDTO.Response getLessonById(UUID lessonId) {
-        return lessonRepository.findById(lessonId)
-            .map(lessonMapper::toDTO)
-            .orElseThrow(() -> {
-                log.warn("Busca por aula inexistente. ID: {}", lessonId);
-                return new ResponseStatusException(HttpStatus.NOT_FOUND, "Aula não encontrada.");
-            });
+    public LessonDTO.Response getLessonForStudent(UUID lessonId, String email) {
+        Lesson lesson = lessonRepository.findById(lessonId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Aula não encontrada."));
+        if (!questionService.canPreview(lesson, email)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Acerte as perguntas e conclua o conteúdo anterior para avançar.");
+        }
+        return lessonMapper.toDTO(lesson);
     }
 
     @Transactional(readOnly = true)
-    public Page<LessonDTO.Response> getLessonsByCourseId(UUID courseId, Pageable pageable) {
-        return lessonRepository.findAllByCourseId(courseId, pageable)
-            .map(lessonMapper::toDTO);
+    public Page<LessonDTO.Response> getLessonsForStudent(UUID courseId, Pageable pageable, String email) {
+        return lessonRepository.findAllByCourseId(courseId, pageable).map(lesson -> {
+            if (questionService.canPreview(lesson, email)) return lessonMapper.toDTO(lesson);
+            // Keep the curriculum visible, withholding the content and media of locked lessons.
+            return new LessonDTO.Response(lesson.getId(), lesson.getTitle(), null, null, null,
+                    courseId, lesson.getPosition(), true);
+        });
     }
 
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
@@ -72,6 +78,7 @@ public class LessonService {
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public void deleteLesson(UUID lessonId, String principalName) {
         Lesson lesson = findLessonOwnedBy(lessonId, principalName);
+        questionService.assertCanDeleteLesson(lesson);
         lessonRepository.delete(lesson);
         log.info("Aula removida com sucesso. ID: {}", lessonId);
     }
@@ -87,6 +94,13 @@ public class LessonService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A aula informada não pertence ao curso.");
         }
 
+        // Serialize progression with question changes and content deletion.
+        courseService.findCourseForProgressUpdate(courseId);
+        lessonRepository.findForUpdateById(lessonId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Aula não encontrada."));
+        if (completed) {
+            questionService.assertCanAccessLesson(lesson, student);
+        }
         student.enrollIn(course);
         student.setLessonCompleted(lesson, completed);
 

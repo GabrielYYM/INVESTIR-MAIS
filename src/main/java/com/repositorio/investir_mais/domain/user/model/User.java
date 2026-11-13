@@ -28,6 +28,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.Set;
+import java.util.HashSet;
 
 @NamedInterface("user-model")
 @Entity
@@ -89,6 +91,20 @@ public class User {
     @MapKeyJoinColumn(name = "lesson_id", nullable = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
     private Map<Lesson, Completion> lessonProgress = new HashMap<>();
+
+    @NotAudited
+    @Getter(AccessLevel.NONE)
+    @Setter(AccessLevel.NONE)
+    @ElementCollection
+    @CollectionTable(name = "TB_QUESTION_PASS", joinColumns = @JoinColumn(name = "student_id"),
+            uniqueConstraints = @UniqueConstraint(columnNames = {"student_id", "question_id"}))
+    @Column(name = "question_id", nullable = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    private Set<UUID> passedQuestionIds = new HashSet<>();
+
+    public Set<UUID> getPassedQuestionIds() { return Set.copyOf(passedQuestionIds); }
+
+    public void passQuestion(UUID questionId) { passedQuestionIds.add(questionId); }
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)

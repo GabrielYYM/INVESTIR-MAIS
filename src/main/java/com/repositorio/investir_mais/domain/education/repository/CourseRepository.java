@@ -31,6 +31,7 @@ public interface CourseRepository extends JpaRepository<Course, UUID> {
             ), enrollment_counts as (
                 select e.course_id, count(*) as total
                 from tb_course_enrollment e join visible_courses c on c.id = e.course_id
+                join tb_user u on u.id = e.student_id and u.deleted_at is null
                 where e.enrolled_at between :start and :end
                 group by e.course_id
             ), completion_counts as (
@@ -38,7 +39,14 @@ public interface CourseRepository extends JpaRepository<Course, UUID> {
                 from tb_lesson_progress p
                 join tb_lesson l on l.id = p.lesson_id
                 join visible_courses c on c.id = l.course_id
+                join tb_user u on u.id = p.student_id and u.deleted_at is null
                 where l.deleted_at is null and p.completed = true and p.completed_at between :start and :end
+                  and not exists (
+                      select 1 from tb_question q
+                      where q.course_id = l.course_id and q.deleted_at is null and q.after_lesson < l.position
+                        and not exists (select 1 from tb_question_pass a
+                                        where a.question_id = q.id and a.student_id = p.student_id)
+                  )
                 group by l.course_id
             )
             select c.id as "courseId", c.name as "courseName", coalesce(l.total, 0) as "totalLessons",
@@ -54,8 +62,10 @@ public interface CourseRepository extends JpaRepository<Course, UUID> {
             select count(distinct e.student_id)
             from tb_course_enrollment e
             join tb_course c on c.id = e.course_id
+            join tb_user u on u.id = e.student_id and u.deleted_at is null
             where e.enrolled_at between :start and :end
-              and (:allCourses = true or (c.deleted_at is null and c.professor_id = :professorId))
+              and c.deleted_at is null
+              and (:allCourses = true or c.professor_id = :professorId)
             """, nativeQuery = true)
     long countDashboardStudents(UUID professorId, boolean allCourses, LocalDateTime start, LocalDateTime end);
 

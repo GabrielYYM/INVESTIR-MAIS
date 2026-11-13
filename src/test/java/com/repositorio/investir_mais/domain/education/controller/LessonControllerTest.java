@@ -74,7 +74,7 @@ class LessonControllerTest {
     @Test
     void getLessonsByCourse_ShouldReturnOk() throws Exception {
         UUID courseId = UUID.randomUUID();
-        when(lessonService.getLessonsByCourseId(eq(courseId), any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
+        when(lessonService.getLessonsForStudent(eq(courseId), any(Pageable.class), eq("user@investir.com"))).thenReturn(new PageImpl<>(List.of()));
 
         mockMvc.perform(get("/api/lessons/course/{courseId}", courseId)
                 .with(user("user@investir.com").roles("STUDENT")))
@@ -86,7 +86,7 @@ class LessonControllerTest {
         UUID lessonId = UUID.randomUUID();
         LessonDTO.Response responseDTO = new LessonDTO.Response(lessonId, "Aula 1", "Descrição", "https://media.example.com/video.mp4", "https://media.example.com/thumb.jpg", UUID.randomUUID());
 
-        when(lessonService.getLessonById(lessonId)).thenReturn(responseDTO);
+        when(lessonService.getLessonForStudent(lessonId, "user@investir.com")).thenReturn(responseDTO);
 
         mockMvc.perform(get("/api/lessons/{lessonId}", lessonId)
                 .with(user("user@investir.com").roles("STUDENT")))

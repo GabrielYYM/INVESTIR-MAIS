@@ -40,6 +40,8 @@ class LessonServiceTest {
     private LessonMapper lessonMapper;
     @Mock
     private UserService userService;
+    @Mock
+    private QuestionService questionService;
 
     private CourseService courseService;
 
@@ -55,7 +57,7 @@ class LessonServiceTest {
     @BeforeEach
     void setUp() {
         courseService = new CourseService(courseRepository, lessonRepository, null, userService);
-        lessonService = new LessonService(lessonRepository, courseService, lessonMapper, userService);
+        lessonService = new LessonService(lessonRepository, courseService, lessonMapper, userService, questionService);
         UUID professorId = UUID.randomUUID();
         professor = new User();
         professor.setId(professorId);
@@ -127,8 +129,9 @@ class LessonServiceTest {
         LessonDTO.Response responseDTO = new LessonDTO.Response(lessonId, "Aula 1", "Desc", "url_video", "url_thumb", courseId);
         when(lessonRepository.findById(lessonId)).thenReturn(Optional.of(lesson));
         when(lessonMapper.toDTO(lesson)).thenReturn(responseDTO);
+        when(questionService.canPreview(lesson, "aluno@investir.com")).thenReturn(true);
 
-        LessonDTO.Response result = lessonService.getLessonById(lessonId);
+        LessonDTO.Response result = lessonService.getLessonForStudent(lessonId, "aluno@investir.com");
 
         assertNotNull(result);
         assertEquals("Aula 1", result.title());
@@ -142,8 +145,9 @@ class LessonServiceTest {
 
         when(lessonRepository.findAllByCourseId(courseId, pageable)).thenReturn(page);
         when(lessonMapper.toDTO(lesson)).thenReturn(responseDTO);
+        when(questionService.canPreview(lesson, "aluno@investir.com")).thenReturn(true);
 
-        Page<LessonDTO.Response> result = lessonService.getLessonsByCourseId(courseId, pageable);
+        Page<LessonDTO.Response> result = lessonService.getLessonsForStudent(courseId, pageable, "aluno@investir.com");
 
         assertNotNull(result);
         assertEquals(1, result.getTotalElements());

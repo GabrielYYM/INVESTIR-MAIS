@@ -40,6 +40,10 @@ public class CourseService {
         User professor = userService.findByEmail(principalName);
         Course course = courseMapper.toEntity(request);
         course.setProfessor(professor);
+        if (request.questions() != null) {
+            request.questions().forEach(q -> course.getQuestions().add(
+                    com.repositorio.investir_mais.domain.education.mapper.QuestionFactory.create(course, q)));
+        }
         
         Course savedCourse = courseRepository.save(course);
         log.info("Novo curso criado com sucesso. ID: {}, Professor ID: {}", savedCourse.getId(), professor.getId());
@@ -137,6 +141,9 @@ public class CourseService {
 
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public CourseDTO.Response updateCourse(UUID courseId, CourseDTO.Request request, String principalName) {
+        if (request.questions() != null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Altere perguntas pelas rotas de questions para preservar respostas existentes.");
+        }
         Course course = findCourseOwnedBy(courseId, principalName);
         courseMapper.updateEntity(request, course);
         
@@ -173,19 +180,28 @@ public class CourseService {
         long totalLessons = lessonRepository.countByCourseId(courseId);
         List<UUID> completedLessonIds = lessonRepository.findCompletedLessonIds(studentId, courseId);
         long completedLessons = completedLessonIds.size();
+        long totalQuestions = lessonRepository.countQuestions(courseId);
+        long passedQuestions = lessonRepository.countPassedQuestions(courseId, studentId);
 
         return new CourseDTO.CourseProgressResponse(
                 courseId,
                 enrolled,
                 totalLessons,
                 completedLessons,
-                CourseDTO.CourseStats.completionPercentage(completedLessons, totalLessons),
-                completedLessonIds
+                CourseDTO.CourseStats.completionPercentage(completedLessons + passedQuestions, totalLessons + totalQuestions),
+                completedLessonIds,
+                totalQuestions,
+                passedQuestions
         );
     }
 
     Course findCourseOrThrow(UUID courseId) {
         return courseRepository.findById(courseId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Curso não encontrado."));
+    }
+
+    Course findCourseForProgressUpdate(UUID courseId) {
+        return courseRepository.findForUpdateById(courseId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Curso não encontrado."));
     }
 }

@@ -5,6 +5,7 @@ import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.repository.history.RevisionRepository;
 import org.springframework.modulith.NamedInterface;
@@ -30,4 +31,8 @@ public interface UserRepository extends JpaRepository<User, UUID>, RevisionRepos
 
     @Query(value = "SELECT EXISTS (SELECT 1 FROM tb_user WHERE email = :email AND id <> :id)", nativeQuery = true)
     boolean existsByEmailAndIdNot(@Param("email") String email, @Param("id") UUID id);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = "DELETE FROM tb_question_pass WHERE question_id = :questionId", nativeQuery = true)
+    void clearQuestionPasses(UUID questionId);
 }

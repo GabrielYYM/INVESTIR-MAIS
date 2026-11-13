@@ -15,6 +15,11 @@ export const server = setupServer(
   })),
   http.get(origin + "/api/courses", () => HttpResponse.json(paged([course]))),
   http.get(origin + "/api/courses/:courseId", () => HttpResponse.json(course)),
+  http.get(origin + "/api/courses/:courseId/questions/manage", () => HttpResponse.json([])),
+  http.get(origin + "/api/courses/:courseId/questions", () => HttpResponse.json([])),
+  http.post(origin + "/api/lessons/:courseId/:lessonId/progress", () => HttpResponse.json({
+    enrolled: true, totalLessons: 1, completedLessons: 1, progressPercentage: 100, completedLessonIds: [lesson.id],
+  })),
   http.get(origin + "/api/lessons/course/:courseId", () => HttpResponse.json(paged([lesson], { size: 10 }))),
   http.get(origin + "/api/lessons/:lessonId", () => HttpResponse.json(lesson)),
 );

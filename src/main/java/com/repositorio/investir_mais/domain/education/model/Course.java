@@ -41,6 +41,10 @@ public class Course {
     @OneToMany(mappedBy = "course", cascade = CascadeType.REMOVE)
     private List<Lesson> lessons = new ArrayList<>();
 
+    @OneToMany(mappedBy = "course", cascade = CascadeType.ALL)
+    @OrderBy("afterLesson ASC, position ASC, id ASC")
+    private List<Question> questions = new ArrayList<>();
+
     @CreatedDate
     @Column(updatable = false)
     private LocalDateTime createdAt;

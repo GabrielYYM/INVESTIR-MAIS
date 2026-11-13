@@ -1,7 +1,11 @@
 import { useMemo, useState } from "react";
-import { ArrowLeft, CheckCircle2, ExternalLink, Pencil, Play, Plus, Trash2, Video } from "lucide-react";
-import { Link, NavLink, useLoaderData, useRouteLoaderData } from "react-router";
+import { ArrowLeft, CheckCircle2, ExternalLink, LockKeyhole, Pencil, Play, Plus, Trash2, Video } from "lucide-react";
+import { Link, NavLink, useFetcher, useLoaderData, useLocation, useNavigate, useRevalidator, useRouteLoaderData } from "react-router";
 import EducationDialog from "../components/EducationDialog.jsx";
+import QuestionDialog from "../components/QuestionDialog.jsx";
+import CourseQuestions from "../components/CourseQuestions.jsx";
+import { Notice } from "../components/PageState.jsx";
+import { apiError } from "../services/api.js";
 import { Pagination } from "../components/EducationParts.jsx";
 import { canManageEducation, pageHref } from "../services/educationData.js";
 import { updateLessonProgress } from "../services/teacherService.js";
@@ -9,7 +13,7 @@ import { externalMediaUrl, youtubeVideo } from "../services/youtube.js";
 
 export { courseLoader } from "../services/educationData.js";
 
-function LessonPlayer({ lesson, isCompleted, onToggleCompleted }) {
+function LessonPlayer({ lesson, isCompleted, onToggleCompleted, busy, trackProgress }) {
   const [showPlayer, setShowPlayer] = useState(false);
   const video = youtubeVideo(lesson.mediaUrl);
   const link = video?.watchUrl ?? externalMediaUrl(lesson.mediaUrl);
@@ -44,7 +48,7 @@ function LessonPlayer({ lesson, isCompleted, onToggleCompleted }) {
       <div className="space-y-3 p-5 sm:p-6">
         <div className="flex items-center justify-between gap-2">
           <p className="eyebrow">Videoaula</p>
-          {isCompleted && (
+          {trackProgress && isCompleted && (
             <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-400">
               <CheckCircle2 size={15} /> Assistida
             </span>
@@ -71,16 +75,17 @@ function LessonPlayer({ lesson, isCompleted, onToggleCompleted }) {
               )}
             </>
           )}
-          <button
+          {trackProgress && <button
             type="button"
+            disabled={busy}
             onClick={() => onToggleCompleted && onToggleCompleted(!isCompleted)}
             className={`button-secondary !px-3 !text-xs sm:!text-sm ${
               isCompleted ? "!border-emerald-500/30 text-emerald-400" : ""
             }`}
           >
             <CheckCircle2 size={16} className={isCompleted ? "text-emerald-400" : "text-muted"} />
-            <span>{isCompleted ? "Aula concluída" : "Marcar como assistida"}</span>
-          </button>
+            <span>{busy ? "Atualizando…" : isCompleted ? "Aula concluída" : "Marcar como assistida"}</span>
+          </button>}
         </div>
         {video && <p className="text-xs leading-relaxed text-muted">Vídeos privados devem ser abertos no YouTube com a conta convidada pelo professor.</p>}
         {!link && <p className="text-sm text-muted">O endereço do vídeo está indisponível.</p>}
@@ -90,11 +95,17 @@ function LessonPlayer({ lesson, isCompleted, onToggleCompleted }) {
 }
 
 export default function Course() {
-  const { course, page, lesson, progress: initialProgress } = useLoaderData();
+  const { course, page, lesson, progress, questions = [], questionsError, progressError, needsEnrollment } = useLoaderData();
   const user = useRouteLoaderData("app");
   const canManage = canManageEducation(user, course);
   const [editor, setEditor] = useState(null);
-  const [progress, setProgress] = useState(initialProgress);
+  const [questionEditor, setQuestionEditor] = useState(null);
+  const [progressBusy, setProgressBusy] = useState(false);
+  const [progressFailure, setProgressFailure] = useState(null);
+  const revalidator = useRevalidator();
+  const enroll = useFetcher();
+  const location = useLocation();
+  const navigate = useNavigate();
   const coursePath = "/educacao/" + course.id;
 
   const completedIds = useMemo(
@@ -103,10 +114,18 @@ export default function Course() {
   );
 
   const handleToggleCompleted = async (lessonId, completed) => {
+    if (progressBusy) return;
+    setProgressBusy(true);
+    setProgressFailure(null);
     try {
-      const updated = await updateLessonProgress(course.id, lessonId, completed);
-      setProgress(updated);
-    } catch {
+      await updateLessonProgress(course.id, lessonId, completed);
+      await revalidator.revalidate();
+    } catch (error) {
+      if (error.response?.status === 401) {
+        navigate("/entrar?" + new URLSearchParams({ retorno: location.pathname + location.search }), { replace: true });
+      } else setProgressFailure(apiError(error, "Não foi possível atualizar o progresso. Tente novamente."));
+    } finally {
+      setProgressBusy(false);
     }
   };
 
@@ -132,18 +151,39 @@ export default function Course() {
       </header>
 
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(18rem,0.62fr)]">
-        {lesson ? (
+        <div className="min-w-0 space-y-5">
+        {(progressFailure || progressError || enroll.data?.error) && <Notice error>{progressFailure || progressError || enroll.data.error}</Notice>}
+        {progressError && <button className="button-secondary" disabled={revalidator.state !== "idle"} onClick={() => revalidator.revalidate()}>Tentar novamente</button>}
+        {lesson?.locked ? <div className="panel space-y-3 p-6">
+          <LockKeyhole size={28} className="text-brand" />
+          <h2 className="text-xl font-bold">Aula bloqueada</h2>
+          <p className="text-sm leading-relaxed text-muted">Conclua o conteúdo anterior e acerte as perguntas para liberar esta aula.</p>
+          {(questions.length > 0 || needsEnrollment) && <a href="#perguntas" className="button-secondary">Ir para as perguntas</a>}
+        </div> : lesson ? (
           <LessonPlayer
             key={lesson.id}
             lesson={lesson}
             isCompleted={isCurrentLessonCompleted}
-            onToggleCompleted={(completed) => handleToggleCompleted(lesson.id, completed)}
+            onToggleCompleted={canManage ? undefined : (completed) => handleToggleCompleted(lesson.id, completed)}
+            busy={progressBusy}
+            trackProgress={!canManage}
           />
         ) : (
           <p className="panel p-6 text-sm text-muted">
             {canManage ? "Adicione uma videoaula para começar." : "Este curso ainda não tem aulas cadastradas."}
           </p>
         )}
+        <CourseQuestions questions={questions} canManage={canManage} error={questionsError}
+          loading={revalidator.state !== "idle" || enroll.state !== "idle"} onRetry={() => revalidator.revalidate()}
+          needsEnrollment={needsEnrollment}
+          onEnroll={() => enroll.submit({ intent: "enroll-course" }, { method: "post", encType: "application/json", action: location.pathname + location.search })}
+          onEdit={(options) => {
+            const afterLesson = lesson?.position ?? 0;
+            const position = questions.filter((q) => q.afterLesson === afterLesson).reduce((max, q) => Math.max(max, q.position), -1) + 1;
+            setQuestionEditor({ afterLesson, position, ...options });
+          }} />
+        {!canManage && progress?.totalQuestions > 0 && progress.progressPercentage === 100 && <Notice>Curso concluído! Você concluiu todas as aulas e perguntas.</Notice>}
+        </div>
         <section className="panel min-w-0 space-y-4 p-4 sm:p-5" aria-labelledby="aulas-titulo">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
@@ -159,7 +199,7 @@ export default function Course() {
             )}
           </div>
 
-          {progress && progress.totalLessons > 0 && (
+          {!canManage && progress && (progress.totalLessons > 0 || progress.totalQuestions > 0) && (
             <div className="space-y-1.5 rounded-xl border border-line bg-canvas p-3">
               <div className="flex items-center justify-between text-xs font-medium">
                 <span className="text-muted">Seu progresso</span>
@@ -167,6 +207,7 @@ export default function Course() {
                   {progress.completedLessons} de {progress.totalLessons} aulas ({progress.progressPercentage}%)
                 </span>
               </div>
+              {progress.totalQuestions > 0 && <p className="text-xs text-muted">{progress.passedQuestions ?? 0} de {progress.totalQuestions} perguntas concluídas</p>}
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
                 <div
                   className="h-full rounded-full bg-emerald-400 transition-all duration-500"
@@ -189,9 +230,13 @@ export default function Course() {
                       (selected ? "border-brand/35 bg-brand/8" : "border-line bg-canvas")
                     }
                   >
-                    <NavLink
+                    {item.locked && !canManage ? <span className="flex min-w-0 flex-1 items-center gap-2 p-2 text-sm text-muted" aria-disabled="true">
+                      <LockKeyhole size={15} className="shrink-0" /><span className="min-w-0 break-words">{item.position > 0 && <span className="mr-1 text-xs">{item.position}.</span>}{item.title}</span>
+                      <span className="sr-only"> (Bloqueada)</span>
+                    </span> : <NavLink
                       end
                       to={pageHref(coursePath + "/" + item.id, page.number)}
+                      aria-label={item.title}
                       aria-current={selected ? "true" : undefined}
                       className="flex min-w-0 flex-1 items-center gap-2 rounded-md p-2 text-sm font-semibold hover:text-brand"
                     >
@@ -199,7 +244,7 @@ export default function Course() {
                         size={15}
                         className={"shrink-0 " + (selected ? "text-brand" : "text-muted")}
                       />
-                      <span className="break-words flex-1">{item.title}</span>
+                      <span className="break-words flex-1">{item.position > 0 && <span className="mr-1 text-xs text-muted">{item.position}.</span>}{item.title}</span>
                       {completed && (
                         <CheckCircle2
                           size={15}
@@ -207,7 +252,7 @@ export default function Course() {
                           title="Aula concluída"
                         />
                       )}
-                    </NavLink>
+                    </NavLink>}
                     {canManage && (
                       <div className="flex shrink-0 gap-1 pr-1">
                         <button
@@ -237,6 +282,7 @@ export default function Course() {
       {editor && canManage && (
         <EducationDialog {...editor} onClose={() => setEditor(null)} />
       )}
+      {questionEditor && canManage && <QuestionDialog {...questionEditor} onClose={() => setQuestionEditor(null)} />}
     </>
   );
 }
