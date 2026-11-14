@@ -6,9 +6,17 @@ export default function PasswordFields({ form, name = "password", creating = fal
   return <>
     <Field label={creating ? "Senha" : "Nova senha"} icon={Lock} type="password" autoComplete="new-password"
       placeholder={creating ? "Crie uma senha (mínimo 8 caracteres)" : "Digite a nova senha (mínimo 8 caracteres)"}
-      hint="A senha deve ter no mínimo 8 caracteres." error={errors[name]?.message} {...form.register(name)} />
+      hint="A senha deve ter no mínimo 8 caracteres." error={errors[name]?.message} {...form.register(name)}
+    />
+
     <Field label={creating ? "Confirme a senha" : "Confirme a nova senha"} icon={Lock} type="password" autoComplete="new-password"
       placeholder={creating ? "Repita a senha criada acima" : "Repita a nova senha criada"}
-      error={errors.confirmPassword?.message} {...form.register("confirmPassword")} />
+      error={errors.confirmPassword?.message} {...form.register("confirmPassword")}
+    />
+
+    <Field label="Senha Atual" icon={Lock} type="password" autoComplete="current-password"
+      placeholder="Digite sua senha"
+      error={errors.currentPassword?.message} {...form.register("currentPassword")}
+    />
   </>;
 }

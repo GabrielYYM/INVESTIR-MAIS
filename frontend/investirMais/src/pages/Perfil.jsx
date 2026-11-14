@@ -90,7 +90,7 @@ export default function Perfil() {
         <h2 className="border-b border-line pb-4 font-semibold text-lg">Alterar informações</h2>
         <Field label="Nome completo" icon={User} autoComplete="name" maxLength={100} error={form.formState.errors.name?.message} {...form.register("name")} />
         <Field label="E-mail" icon={Mail} type="email" value={user.email} disabled readOnly hint="Somente leitura. O e-mail não pode ser alterado diretamente." />
-        <Field label="Senha atual" icon={Lock} type="password" autoComplete="current-password" error={form.formState.errors.currentPassword?.message} hint="Necessária para confirmar a atualização do seu nome." {...form.register("currentPassword")} />
+        <PasswordFields form={form} onlyCurrent hint="Necessária para confirmar a atualização do seu nome." />
         <button className="button-primary" disabled={savingProfile}>
           <Save size={17} /> {savingProfile ? "Salvando…" : "Salvar perfil"}
         </button>
@@ -106,8 +106,6 @@ export default function Perfil() {
         {passwordError && <Notice error>{passwordError}</Notice>}
 
         <form onSubmit={updatePassword} className="space-y-4" noValidate>
-          <Field label="Senha atual" icon={Lock} type="password" autoComplete="current-password" error={passwordForm.formState.errors.currentPassword?.message} {...passwordForm.register("currentPassword")} />
-
           <PasswordFields form={passwordForm} name="newPassword" />
 
           <button className="button-primary" disabled={password.isPending}>
