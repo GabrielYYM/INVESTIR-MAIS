@@ -7,6 +7,7 @@ import { canManageEducation } from "../services/educationData.js";
 import { pageHref } from "../services/searchParams.js";
 import { externalMediaUrl, youtubeVideo } from "../services/youtube.js";
 import { Notice } from "../components/ui/PageState.jsx";
+import PageHeader from "../components/layout/PageHeader.jsx";
 import { Pagination } from "../components/education/EducationParts.jsx";
 import CourseQuestions from "../components/education/CourseQuestions.jsx";
 const EducationDialog = lazy(() => import("../components/education/EducationDialog.jsx"));
@@ -107,27 +108,24 @@ export default function Course() {
   };
   const failure = progressMutation.error ? apiError(progressMutation.error, "Não foi possível atualizar o progresso. Tente novamente.") : progressError || enroll.data?.error;
   return <>
-      <header className="space-y-3">
-        <Link to="/educacao" className="inline-flex items-center gap-2 text-sm font-semibold text-brand hover:underline"><ArrowLeft size={16} /> Voltar ao catálogo</Link>
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="max-w-2xl min-w-0">
-            <p className="eyebrow">Curso</p>
-            <h1 className="mt-2 text-3xl font-bold break-words">{course.name}</h1>
-            <p className="mt-3 text-sm leading-relaxed break-words whitespace-pre-wrap text-muted">{course.description}</p>
-          </div>
-          {canManage && <div className="flex flex-wrap gap-2">
-              <button className="button-secondary" onClick={() => setEditor({
+      <PageHeader
+        panel={false}
+        backLink={<Link to="/educacao" className="inline-flex items-center gap-2 text-sm font-semibold text-brand hover:underline"><ArrowLeft size={16} /> Voltar ao catálogo</Link>}
+        eyebrow="Curso"
+        title={course.name}
+        description={course.description}
+        actions={canManage && <div className="flex flex-wrap gap-2">
+          <button className="button-secondary" onClick={() => setEditor({
             kind: "curso",
             item: course
           })}><Pencil size={15} /> Editar curso</button>
-              <button className="button-danger" onClick={() => setEditor({
+          <button className="button-danger" onClick={() => setEditor({
             kind: "curso",
             item: course,
             remove: true
           })}><Trash2 size={15} /> Excluir curso</button>
-            </div>}
-        </div>
-      </header>
+        </div>}
+      />
 
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(18rem,0.62fr)]">
         <div className="min-w-0 space-y-5">

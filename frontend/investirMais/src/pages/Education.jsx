@@ -2,6 +2,7 @@ import { lazy, Suspense, useState } from "react";
 import { BookOpen, Plus } from "lucide-react";
 import { useLoaderData, useRouteLoaderData } from "react-router";
 import { CourseCard, Pagination } from "../components/education/EducationParts.jsx";
+import PageHeader from "../components/layout/PageHeader.jsx";
 const EducationDialog = lazy(() => import("../components/education/EducationDialog.jsx"));
 import { canManageEducation } from "../services/educationData.js";
 
@@ -15,14 +16,12 @@ export default function Education() {
 
   return (
     <>
-      <header className="panel flex flex-wrap items-end justify-between gap-5 border-white/5 p-6 sm:p-8">
-        <div className="max-w-xl">
-          <p className="eyebrow">Aprendizado</p>
-          <h1 className="mt-2 text-3xl font-bold">Educação financeira</h1>
-          <p className="mt-3 text-sm leading-relaxed text-muted sm:text-base">Explore cursos e videoaulas para entender melhor o mundo dos investimentos.</p>
-        </div>
-        {canCreate && <button className="button-primary" onClick={() => setCreating(true)}><Plus size={18} /> Novo curso</button>}
-      </header>
+      <PageHeader
+        eyebrow="Aprendizado"
+        title="Educação financeira"
+        description="Explore cursos e videoaulas para entender melhor o mundo dos investimentos."
+        actions={canCreate && <button className="button-primary" onClick={() => setCreating(true)}><Plus size={18} /> Novo curso</button>}
+      />
 
       <section className="space-y-4" aria-labelledby="catalogo-titulo">
         <div className="flex flex-wrap items-baseline justify-between gap-2">

@@ -8,6 +8,7 @@ import { useQueryStates } from "nuqs";
 import { getPresets, isoDate, validatePeriod } from "../../services/analysisPeriod.js";
 import { periodParams } from "../../services/searchParams.js";
 import ResourcePagination from "../ui/ResourcePagination.jsx";
+import PageHeader from "../layout/PageHeader.jsx";
 export default function TeacherDashboardView({
   stats,
   firstName,
@@ -39,23 +40,17 @@ export default function TeacherDashboardView({
   });
   const submit = form.handleSubmit(values => validation.valid && setPeriod(values));
   return <div className="space-y-6">
-      <header className="panel flex flex-wrap items-end justify-between gap-5 border-white/5 p-6 sm:p-8">
-        <div className="max-w-xl">
-          <p className="eyebrow">
-            {role === "ADMIN" ? "Painel de Ensino & Gestão (Admin)" : "Painel do Professor"}
-          </p>
-          <h1 className="mt-2 text-3xl font-bold">Olá, {firstName}.</h1>
-          <p className="mt-2 text-sm leading-relaxed text-muted sm:text-base">
-            {role === "ADMIN" ? "Visão global de métricas educacionais da plataforma. Acompanhe visualizações, matrículas e taxas de conclusão." : "Acompanhe em tempo real o engajamento dos seus alunos, aulas assistidas e o desempenho dos seus cursos."}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+      <PageHeader
+        eyebrow={role === "ADMIN" ? "Painel de Ensino & Gestão (Admin)" : "Painel do Professor"}
+        title={`Olá, ${firstName}.`}
+        description={role === "ADMIN" ? "Visão global de métricas educacionais da plataforma. Acompanhe visualizações, matrículas e taxas de conclusão." : "Acompanhe em tempo real o engajamento dos seus alunos, aulas assistidas e o desempenho dos seus cursos."}
+        actions={<div className="flex flex-wrap items-center gap-2">
           <Link to="/educacao" className="button-primary flex items-center gap-2">
             <Plus size={16} />
             <span>Gerenciar Cursos</span>
           </Link>
-        </div>
-      </header>
+        </div>}
+      />
 
       {/* Toolbar de Filtro por Período (Limite máx 6 meses) */}
       <section className="panel space-y-4 p-4 sm:p-5" aria-labelledby="filtro-periodo-titulo">

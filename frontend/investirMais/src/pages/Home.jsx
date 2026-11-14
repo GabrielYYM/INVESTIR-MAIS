@@ -3,6 +3,7 @@ import { AlertCircle, ArrowRight, RotateCcw } from "lucide-react";
 import { Link, redirect, useLoaderData, useRouteLoaderData } from "react-router";
 import { useQueryStates } from "nuqs";
 import { CourseCard } from "../components/education/EducationParts.jsx";
+import PageHeader from "../components/layout/PageHeader.jsx";
 import { apiError } from "../services/api.js";
 import { dashboardCourses } from "../services/educationData.js";
 import { getTeacherDashboard } from "../services/teacherService.js";
@@ -65,11 +66,12 @@ export default function Home() {
       {isTeacherOrAdmin && teacherStats ? (
         <Suspense fallback={<p role="status" className="text-muted">Carregando métricas…</p>}><TeacherDashboardView stats={teacherStats} firstName={firstName} role={user.role} /></Suspense>
       ) : (
-        <header className="panel border-white/5 p-6 sm:p-8">
-          <h1 className="mb-2 text-3xl font-bold break-words">Olá, {firstName}.</h1>
-          <p className="max-w-xl text-muted">Bem-vindo ao <span className="font-semibold text-amber-400">Investir+</span>. Explore o catálogo de cursos sobre finanças.</p>
+        <PageHeader
+          title={`Olá, ${firstName}.`}
+          description={<>Bem-vindo ao <span className="font-semibold text-amber-400">Investir+</span>. Explore o catálogo de cursos sobre finanças.</>}
+        >
           <Link to="/educacao" className="button-primary mt-5">Explorar cursos <ArrowRight size={17} /></Link>
-        </header>
+        </PageHeader>
       )}
 
       <section className="space-y-4" aria-labelledby="educacao-titulo">
