@@ -1,8 +1,8 @@
 import { lazy, Suspense, useState } from "react";
 import { BookOpen, Plus } from "lucide-react";
 import { useLoaderData, useRouteLoaderData } from "react-router";
-import { CourseCard, Pagination } from "../components/EducationParts.jsx";
-const EducationDialog = lazy(() => import("../components/EducationDialog.jsx"));
+import { CourseCard, Pagination } from "../components/education/EducationParts.jsx";
+const EducationDialog = lazy(() => import("../components/education/EducationDialog.jsx"));
 import { canManageEducation } from "../services/educationData.js";
 
 export { catalogLoader } from "../services/educationData.js";

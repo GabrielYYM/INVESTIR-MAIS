@@ -2,9 +2,9 @@ import { CheckCircle2, KeyRound, Mail, ShieldCheck } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { Link } from "react-router";
 import { useForgotPassword, useResetPassword } from "../generated/account.ts";
-import { AuthCard, Field } from "../components/FormFields.jsx";
-import PasswordFields from "../components/PasswordFields.jsx";
-import { Notice } from "../components/PageState.jsx";
+import { AuthCard, Field } from "../components/ui/FormFields.jsx";
+import PasswordFields from "../components/account/PasswordFields.jsx";
+import { Notice } from "../components/ui/PageState.jsx";
 import { accountResolver, emailSchema, resetPasswordSchema } from "../services/accountSchema.js";
 import { apiError } from "../services/api.js";
 export default function ForgotPassword() {

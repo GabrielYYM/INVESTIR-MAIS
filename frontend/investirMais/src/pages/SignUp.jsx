@@ -3,12 +3,12 @@ import { Calendar, CheckCircle2, Mail, ShieldCheck, User } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { Link } from "react-router";
 import { useRegisterUser, useResendVerification } from "../generated/account.ts";
-import { AuthCard, Field } from "../components/FormFields.jsx";
-import PasswordFields from "../components/PasswordFields.jsx";
-import { Notice } from "../components/PageState.jsx";
+import { AuthCard, Field } from "../components/ui/FormFields.jsx";
+import PasswordFields from "../components/account/PasswordFields.jsx";
+import { Notice } from "../components/ui/PageState.jsx";
 import { accountResolver, registrationSchema } from "../services/accountSchema.js";
 import { apiError } from "../services/api.js";
-const TermsModal = lazy(() => import("../components/TermsModal.jsx"));
+const TermsModal = lazy(() => import("../components/account/TermsModal.jsx"));
 export default function SignUp() {
   const [termsModalTab, setTermsModalTab] = useState(null);
   const form = useForm({

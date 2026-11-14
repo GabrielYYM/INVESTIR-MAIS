@@ -3,9 +3,9 @@ import { useEffect, useRef, useState } from "react";
 import { KeyRound, Lock, Mail, ShieldCheck } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate, useSearchParams } from "react-router";
-import { AuthCard, Field } from "../components/FormFields.jsx";
+import { AuthCard, Field } from "../components/ui/FormFields.jsx";
 import { accountResolver, loginSchema } from "../services/accountSchema.js";
-import { Notice } from "../components/PageState.jsx";
+import { Notice } from "../components/ui/PageState.jsx";
 import { apiError } from "../services/api.js";
 import { login, verify2FA } from "../services/authService.js";
 function returnPath(value) {

@@ -6,7 +6,7 @@ import { flushSync } from "react-dom";
 import { afterEach } from "vitest";
 import { appRoutes } from "../routes.jsx";
 import { mockApi } from "./helpers.js";
-import UiProvider from "../components/UiProvider.jsx";
+import UiProvider from "../providers/UiProvider.jsx";
 
 const routers = new Set();
 afterEach(() => {

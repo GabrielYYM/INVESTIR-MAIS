@@ -1,5 +1,5 @@
 import { Button, Stack } from "@mui/material";
-import AppModal from "./AppModal.jsx";
+import AppModal from "../ui/AppModal.jsx";
 import TermsContent from "./TermsContent.jsx";
 export default function TermsModal({ initialTab = "termos", onClose }) {
   return <AppModal title="Políticas e Termos da Plataforma" onClose={onClose} width={800}>

@@ -1,6 +1,6 @@
 import { AlertCircle, ArrowLeft, LoaderCircle } from "lucide-react";
 import { isRouteErrorResponse, Link, useRevalidator, useRouteError } from "react-router";
-import Footer from "./Footer.jsx";
+import Footer from "../layout/Footer.jsx";
 
 export function PendingPage() {
   return <div className="grid min-h-dvh place-items-center text-muted"><LoaderCircle className="animate-spin" aria-label="Carregando" /></div>;

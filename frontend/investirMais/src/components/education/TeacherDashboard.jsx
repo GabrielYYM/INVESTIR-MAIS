@@ -5,9 +5,9 @@ import { DataTable, ListContextProvider, useList } from "react-admin";
 import { useForm } from "react-hook-form";
 import { Link } from "react-router";
 import { useQueryStates } from "nuqs";
-import { getPresets, isoDate, validatePeriod } from "../services/analysisPeriod.js";
-import { periodParams } from "../services/searchParams.js";
-import ResourcePagination from "./ResourcePagination.jsx";
+import { getPresets, isoDate, validatePeriod } from "../../services/analysisPeriod.js";
+import { periodParams } from "../../services/searchParams.js";
+import ResourcePagination from "../ui/ResourcePagination.jsx";
 export default function TeacherDashboardView({
   stats,
   firstName,

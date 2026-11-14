@@ -1,10 +1,10 @@
 import { TextInput } from "react-admin";
 import { useLocation, useNavigate, useParams } from "react-router";
-import { youtubeVideo } from "../services/youtube.js";
-import { educationSchema } from "../services/educationSchema.js";
-import { questionDefaults, questionPayload } from "../services/questionSchema.js";
-import { loadPagination, pageHref } from "../services/searchParams.js";
-import CrudDialog, { DeleteRecordDialog } from "./CrudDialog.jsx";
+import { youtubeVideo } from "../../services/youtube.js";
+import { educationSchema } from "../../services/educationSchema.js";
+import { questionDefaults, questionPayload } from "../../services/questionSchema.js";
+import { loadPagination, pageHref } from "../../services/searchParams.js";
+import CrudDialog, { DeleteRecordDialog } from "../ui/CrudDialog.jsx";
 import { CourseQuestionFields } from "./QuestionFields.jsx";
 
 export default function EducationDialog({ kind, item, remove, onClose }) {

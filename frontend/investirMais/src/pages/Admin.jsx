@@ -6,10 +6,10 @@ import { Navigate, redirect, useLoaderData } from "react-router";
 import { UpdateUserRoleBody } from "../generated/account.zod.ts";
 import { getCurrentUser } from "../services/authService.js";
 import { roleNames } from "../services/dataProvider.js";
-import CrudDialog from "../components/CrudDialog.jsx";
-import AppModal from "../components/AppModal.jsx";
-import ResourcePagination from "../components/ResourcePagination.jsx";
-import { Notice } from "../components/PageState.jsx";
+import CrudDialog from "../components/ui/CrudDialog.jsx";
+import AppModal from "../components/ui/AppModal.jsx";
+import ResourcePagination from "../components/ui/ResourcePagination.jsx";
+import { Notice } from "../components/ui/PageState.jsx";
 
 export async function adminLoader({ request }) {
   try {

@@ -2,13 +2,13 @@ import { lazy, Suspense } from "react";
 import { AlertCircle, ArrowRight, RotateCcw } from "lucide-react";
 import { Link, redirect, useLoaderData, useRouteLoaderData } from "react-router";
 import { useQueryStates } from "nuqs";
-import { CourseCard } from "../components/EducationParts.jsx";
+import { CourseCard } from "../components/education/EducationParts.jsx";
 import { apiError } from "../services/api.js";
 import { dashboardCourses } from "../services/educationData.js";
 import { getTeacherDashboard } from "../services/teacherService.js";
 import { loadPeriod, periodParams } from "../services/searchParams.js";
 
-const TeacherDashboardView = lazy(() => import("../components/TeacherDashboard.jsx"));
+const TeacherDashboardView = lazy(() => import("../components/education/TeacherDashboard.jsx"));
 
 export async function dashboardLoader({ request }) {
   try {

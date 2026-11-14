@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import TermsModal from "../../components/TermsModal.jsx";
+import TermsModal from "../../components/account/TermsModal.jsx";
 import { renderApp } from "../renderApp.jsx";
 
 describe("termos e privacidade", () => {

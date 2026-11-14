@@ -3,14 +3,14 @@ import { AlertTriangle, ArrowRight, KeyRound, Lock, Mail, Save, ShieldCheck, Tra
 import { useForm } from "react-hook-form";
 import { Link, useNavigate, useRevalidator, useRouteLoaderData } from "react-router";
 import { useForgotPassword, useUpdatePassword, useUpdateProfile } from "../generated/account.ts";
-import { Field } from "../components/FormFields.jsx";
-import PasswordFields from "../components/PasswordFields.jsx";
-import { Notice } from "../components/PageState.jsx";
+import { Field } from "../components/ui/FormFields.jsx";
+import PasswordFields from "../components/account/PasswordFields.jsx";
+import { Notice } from "../components/ui/PageState.jsx";
 import { roleNames } from "../services/dataProvider.js";
 import { apiError } from "../services/api.js";
 import { isSessionExpired } from "../services/authService.js";
 import { accountResolver, passwordSchema, profileSchema } from "../services/accountSchema.js";
-const DeleteAccountDialog = lazy(() => import("../components/DeleteAccountDialog.jsx"));
+const DeleteAccountDialog = lazy(() => import("../components/account/DeleteAccountDialog.jsx"));
 export default function Perfil() {
   const user = useRouteLoaderData("app");
   const navigate = useNavigate();

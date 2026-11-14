@@ -6,11 +6,11 @@ import { apiError } from "../services/api.js";
 import { canManageEducation } from "../services/educationData.js";
 import { pageHref } from "../services/searchParams.js";
 import { externalMediaUrl, youtubeVideo } from "../services/youtube.js";
-import { Notice } from "../components/PageState.jsx";
-import { Pagination } from "../components/EducationParts.jsx";
-import CourseQuestions from "../components/CourseQuestions.jsx";
-const EducationDialog = lazy(() => import("../components/EducationDialog.jsx"));
-const QuestionDialog = lazy(() => import("../components/QuestionDialog.jsx"));
+import { Notice } from "../components/ui/PageState.jsx";
+import { Pagination } from "../components/education/EducationParts.jsx";
+import CourseQuestions from "../components/education/CourseQuestions.jsx";
+const EducationDialog = lazy(() => import("../components/education/EducationDialog.jsx"));
+const QuestionDialog = lazy(() => import("../components/education/QuestionDialog.jsx"));
 export { courseLoader } from "../services/educationData.js";
 function LessonPlayer({
   lesson,

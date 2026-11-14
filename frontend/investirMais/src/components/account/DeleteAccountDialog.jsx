@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { ArrowRight, Trash2 } from "lucide-react";
-import AppModal from "./AppModal.jsx";
-import { Field } from "./FormFields.jsx";
-import { Notice } from "./PageState.jsx";
-import { deleteAccount, logout } from "../services/authService.js";
-import { apiError } from "../services/api.js";
+import AppModal from "../ui/AppModal.jsx";
+import { Field } from "../ui/FormFields.jsx";
+import { Notice } from "../ui/PageState.jsx";
+import { deleteAccount, logout } from "../../services/authService.js";
+import { apiError } from "../../services/api.js";
 export default function DeleteAccountDialog({
   user,
   onClose

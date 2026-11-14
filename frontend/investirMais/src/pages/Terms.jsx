@@ -1,7 +1,7 @@
 import { ArrowLeft, Lock } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router";
-import Footer from "../components/Footer.jsx";
-import TermsContent from "../components/TermsContent.jsx";
+import Footer from "../components/layout/Footer.jsx";
+import TermsContent from "../components/account/TermsContent.jsx";
 
 export default function Terms() {
   const location = useLocation();

@@ -1,6 +1,6 @@
 import { ArrowLeft, ArrowRight, BookOpen, ChevronRight } from "lucide-react";
 import { Link, useLocation } from "react-router";
-import { pageHref } from "../services/searchParams.js";
+import { pageHref } from "../../services/searchParams.js";
 
 export function CourseCard({ course }) {
   return (

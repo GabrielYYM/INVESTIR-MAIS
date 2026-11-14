@@ -1,7 +1,7 @@
 import { createBrowserRouter, RouterProvider } from "react-router";
 import { flushSync } from "react-dom";
 import { appRoutes } from "./routes.jsx";
-import UiProvider from "./components/UiProvider.jsx";
+import UiProvider from "./providers/UiProvider.jsx";
 
 const router = createBrowserRouter(appRoutes);
 

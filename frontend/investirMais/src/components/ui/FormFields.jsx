@@ -1,7 +1,7 @@
 import { useId, useState } from "react";
 import { IconButton, InputAdornment, TextField } from "@mui/material";
 import { Eye, EyeOff } from "lucide-react";
-import Footer from "./Footer.jsx";
+import Footer from "../layout/Footer.jsx";
 export function AuthCard({
   icon: Icon,
   title,

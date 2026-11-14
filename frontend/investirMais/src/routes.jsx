@@ -1,7 +1,7 @@
-import ApplicationProviders from "./components/ApplicationProviders.jsx";
+import ApplicationProviders from "./providers/ApplicationProviders.jsx";
 import { redirect } from "react-router";
-import AppLayout, { signOut } from "./components/AppLayout.jsx";
-import { PageError, PendingPage } from "./components/PageState.jsx";
+import AppLayout, { signOut } from "./components/layout/AppLayout.jsx";
+import { PageError, PendingPage } from "./components/ui/PageState.jsx";
 import { getCurrentUser } from "./services/authService.js";
 import Login, { LoginLink } from "./pages/Login.jsx";
 import SignUp from "./pages/SignUp.jsx";

@@ -1,10 +1,10 @@
 import { Outlet, redirect, useFetcher, useLoaderData, useNavigation } from "react-router";
-import { logout } from "../services/authService.js";
-import { apiError } from "../services/api.js";
+import { logout } from "../../services/authService.js";
+import { apiError } from "../../services/api.js";
 import Sidebar from "./Sidebar.jsx";
 import Topbar from "./Topbar.jsx";
 import Footer from "./Footer.jsx";
-import { Notice } from "./PageState.jsx";
+import { Notice } from "../ui/PageState.jsx";
 export async function signOut() {
   try {
     await logout();

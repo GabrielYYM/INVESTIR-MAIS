@@ -1,5 +1,5 @@
 import { Lock } from "lucide-react";
-import { Field } from "./FormFields.jsx";
+import { Field } from "../ui/FormFields.jsx";
 
 export default function PasswordFields({ form, name = "password", creating = false }) {
   const { errors } = form.formState;

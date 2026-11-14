@@ -2,7 +2,7 @@ import { CheckCircle2, CircleHelp, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Radio, RadioGroup } from "@mui/material";
 import { useFetcher, useLocation } from "react-router";
-import { Notice } from "./PageState.jsx";
+import { Notice } from "../ui/PageState.jsx";
 function StudentQuestion({
   question
 }) {

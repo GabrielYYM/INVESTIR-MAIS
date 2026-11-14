@@ -2,9 +2,9 @@ import { CheckCircle2, MailCheck, ShieldAlert } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { useResendVerification, useVerifyEmail } from "../generated/account.ts";
-import { AuthCard, Field } from "../components/FormFields.jsx";
+import { AuthCard, Field } from "../components/ui/FormFields.jsx";
 import { accountResolver, emailSchema } from "../services/accountSchema.js";
-import { Notice } from "../components/PageState.jsx";
+import { Notice } from "../components/ui/PageState.jsx";
 import { apiError } from "../services/api.js";
 export default function VerifyEmail() {
   const navigate = useNavigate();

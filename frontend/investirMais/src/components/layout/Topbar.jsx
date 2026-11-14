@@ -1,7 +1,7 @@
 import { UserRound } from "lucide-react";
 import { Link } from "react-router";
 
-import { roleNames } from "../services/dataProvider.js";
+import { roleNames } from "../../services/dataProvider.js";
 
 export default function Topbar({ user }) {
   return (

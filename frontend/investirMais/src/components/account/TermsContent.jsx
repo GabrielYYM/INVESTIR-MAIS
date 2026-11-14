@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Tab, Tabs } from "@mui/material";
-import { termsData } from "../content/terms.js";
+import { termsData } from "../../content/terms.js";
 export default function TermsContent({ initialTab = "termos", headingLevel = 2 }) {
   const [value, setValue] = useState(initialTab in termsData ? initialTab : "termos");
   const tab = termsData[value];

@@ -1,6 +1,6 @@
 import { lazy, Suspense, useState } from "react";
 import { Link } from "react-router";
-const TermsModal = lazy(() => import("./TermsModal.jsx"));
+const TermsModal = lazy(() => import("../account/TermsModal.jsx"));
 
 export default function Footer({ className = "" }) {
   const [modalTab, setModalTab] = useState(null);

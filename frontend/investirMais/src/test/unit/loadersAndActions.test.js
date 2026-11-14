@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { dashboardLoader } from "../../pages/Home.jsx";
-import { signOut } from "../../components/AppLayout.jsx";
+import { signOut } from "../../components/layout/AppLayout.jsx";
 import { dashboardCourses } from "../../services/educationData.js";
 import { logout } from "../../services/authService.js";
 import { loaderRequest } from "../fixtures.js";

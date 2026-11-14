@@ -1,7 +1,7 @@
 import { Typography } from "@mui/material";
 import { useParams } from "react-router";
-import { questionDefaults, questionPayload, questionSchema } from "../services/questionSchema.js";
-import CrudDialog, { DeleteRecordDialog } from "./CrudDialog.jsx";
+import { questionDefaults, questionPayload, questionSchema } from "../../services/questionSchema.js";
+import CrudDialog, { DeleteRecordDialog } from "../ui/CrudDialog.jsx";
 import QuestionFields from "./QuestionFields.jsx";
 export default function QuestionDialog({ item, remove, afterLesson = 0, position = 0, onClose }) {
   const { courseId } = useParams();
