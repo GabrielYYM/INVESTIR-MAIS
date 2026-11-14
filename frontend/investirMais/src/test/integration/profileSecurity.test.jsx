@@ -9,7 +9,7 @@ async function passwordForm() {
 }
 async function openDeletion(user) {
   await user.click(await screen.findByRole("button", { name: /Excluir minha conta/i }));
-  const dialog = within(screen.getByRole("dialog"));
+  const dialog = within(await screen.findByRole("dialog"));
   expect(dialog.getByRole("button", { name: /Prosseguir para confirmação/ })).toBeDisabled();
   await user.click(dialog.getByRole("checkbox"));
   await user.click(dialog.getByRole("button", { name: /Prosseguir para confirmação/ }));
@@ -81,5 +81,24 @@ describe("segurança do perfil", () => {
     await screen.findByRole("button", { name: "Excluindo conta…" });
     await waitFor(() => expect(logout).toHaveBeenCalledOnce());
     expect(remove).toHaveBeenCalledOnce();
+  });
+
+  it("preserva os espaços da senha e impede fechar ou reenviar durante a exclusão", async () => {
+    let release;
+    const pending = new Promise((resolve) => { release = resolve; });
+    const remove = mockApi("delete", `/api/users/${student.id}`, async () => {
+      await pending; return { detail: "Senha incorreta." };
+    }, { status: 401 });
+    const { user } = renderApp("/perfil"); const dialog = await openDeletion(user);
+    await fillFields(user, { "Senha atual da conta": " senha com espaços " }, dialog);
+    await user.click(dialog.getByRole("button", { name: "Confirmar e Desativar Conta" }));
+    expect(dialog.getByRole("button", { name: "Fechar modal" })).toBeDisabled();
+    expect(dialog.getByRole("button", { name: "Cancelar" })).toBeDisabled();
+    await user.keyboard("{Escape}"); expect(screen.getByRole("dialog")).toBeInTheDocument();
+    await waitFor(() => expect(remove).toHaveBeenCalledOnce());
+    expect(await remove.mock.calls[0][0].request.clone().json()).toEqual({ currentPassword: " senha com espaços " });
+    release();
+    expect(await dialog.findByRole("alert")).toHaveTextContent("Senha incorreta");
+    expect(dialog.getByLabelText("Senha atual da conta")).toHaveValue(" senha com espaços ");
   });
 });

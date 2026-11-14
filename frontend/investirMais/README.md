@@ -16,10 +16,10 @@ Abra [localhost:5173](http://localhost:5173). O proxy do Vite encaminha `/api`, 
 | Comando | Finalidade |
 | --- | --- |
 | `npm ci` | Instala as versões do `package-lock.json`. |
-| `npm run dev` | Gera o cliente de educação e inicia o Vite. |
-| `npm run build` | Gera o cliente de educação e compila o bundle em `dist/`. |
+| `npm run dev` | Gera os clientes da API e inicia o Vite. |
+| `npm run build` | Gera os clientes da API e compila o bundle em `dist/`. |
 | `npm run preview` | Serve localmente o bundle gerado pelo build. |
-| `npm run api:generate` | Regenera apenas o cliente OpenAPI de educação. |
+| `npm run api:generate` | Regenera os clientes OpenAPI de conta e educação. |
 
 ## Testes e cobertura
 
@@ -32,6 +32,8 @@ npm run test:coverage
 ```
 
 O comando de cobertura mostra um resumo no terminal e gera `reports/coverage/index.html`, ignorado pelo Git. Os mínimos são 85% para linhas, instruções e funções e 80% para ramificações.
+
+O Vitest executa até duas suítes em paralelo para reduzir a disputa de recursos entre o jsdom e o Ant Design, especialmente durante a cobertura.
 
 Os testes de integração compartilham três helpers:
 
@@ -78,13 +80,19 @@ A instância Axios compartilhada envia cookies de sessão. Em escritas, consulta
 
 ## Componentes e formulários
 
-O Ant Design fornece os modais compartilhados (`AppModal`), as tabelas, botões e busca da administração. O `UiProvider` define português, tema escuro e a cor âmbar. A administração e os editores são carregados sob demanda.
+O Ant Design fornece os modais compartilhados (`AppModal`), as tabelas e calendários do painel, as abas dos termos, os botões e a busca da administração. O `UiProvider` define português, tema escuro e a cor âmbar. A administração, o painel do professor, os editores, os termos e o modal de exclusão de conta são carregados sob demanda.
 
 Os formulários de cursos e perguntas usam React Hook Form com `useFieldArray`. As validações ficam em `src/services/educationSchema.js` e `questionSchema.js`, integradas pelo resolver Zod. As alternativas são objetos apenas no formulário, para manter identificadores estáveis; o payload continua enviando `options: string[]` e posições a partir de zero.
 
+O perfil usa os estados do React Hook Form para envio, falha e sucesso. A exclusão mantém a confirmação explícita e a senha atual; o modal bloqueia fechamento e reenvio durante a operação. O Day.js cuida das datas do painel, com limite de seis meses de calendário e validação de datas reais, inclusive anos bissextos.
+
+O nuqs centraliza os parâmetros de período e paginação em `src/services/searchParams.js`, compartilhados pelos componentes e loaders. Os filtros do painel usam o adaptador do React Router 8 com `shallow: false` para consultar as métricas ao aplicar o período. React Hook Form mantém as datas em edição até o envio. A navegação preserva os outros parâmetros da URL e o histórico do navegador.
+
+A auditoria usa TanStack Query com o hook `useGetUserAuditHistory`, gerado pelo Orval. O cliente é criado no layout autenticado; consultas sem observadores são descartadas imediatamente, não há tentativas automáticas nem nova consulta ao focar a janela. Fechar o modal cancela a chamada pendente e reabri-lo consulta o histórico atualizado. Os demais loaders e actions continuam sob controle do React Router.
+
 ## Contrato da API de educação
 
-O Orval também gera `src/generated/account.ts` a partir de `account.openapi.json`, cobrindo usuários, sessão atual, auditoria e métricas. Os dois clientes usam a mesma instância Axios, preservando cookies e CSRF. Login, confirmação do segundo fator e logout continuam nos endpoints dos filtros do Spring Security.
+O Orval também gera `src/generated/account.ts` a partir de `account.openapi.json`, cobrindo usuários, sessão atual, auditoria e métricas, com funções Axios e hooks TanStack Query. Os dois clientes usam a mesma instância Axios, preservando cookies e CSRF. Login, confirmação do segundo fator e logout continuam nos endpoints dos filtros do Spring Security.
 
 Para atualizar o contrato de conta/painel com o backend local em execução:
 

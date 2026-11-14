@@ -1,17 +1,14 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import {
   AlertTriangle,
   ArrowRight,
-  CheckCircle2,
   KeyRound,
   Lock,
   Mail,
   Save,
-  ShieldAlert,
   ShieldCheck,
   Trash2,
   User,
-  X,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { data, Link, redirect, useFetcher, useRouteLoaderData } from "react-router";
@@ -20,13 +17,13 @@ import { Notice } from "../components/PageState.jsx";
 import { roleNames } from "../components/Topbar.jsx";
 import { apiError } from "../services/api.js";
 import {
-  deleteAccount,
   forgotPassword,
   getCurrentUser,
-  logout,
   updatePassword,
   updateUserProfile,
 } from "../services/authService.js";
+
+const DeleteAccountDialog = lazy(() => import("../components/DeleteAccountDialog.jsx"));
 
 export async function profileAction({ request }) {
   const { id, name, email, currentPassword } = await request.json();
@@ -56,19 +53,12 @@ export default function Perfil() {
   const updated = fetcher.data?.updated;
 
   const passwordForm = useForm({ defaultValues: { currentPassword: "", newPassword: "", confirmPassword: "" } });
-  const [passwordSuccess, setPasswordSuccess] = useState("");
-  const [passwordError, setPasswordError] = useState("");
-  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
-
-  const [recoveryStatus, setRecoveryStatus] = useState("");
-  const [isSendingRecovery, setIsSendingRecovery] = useState(false);
-
+  const recovery = useForm();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [deleteStep, setDeleteStep] = useState(1);
-  const [firstConsent, setFirstConsent] = useState(false);
-  const [deletePassword, setDeletePassword] = useState("");
-  const [deleteError, setDeleteError] = useState("");
-  const [isDeleting, setIsDeleting] = useState(false);
+  const isUpdatingPassword = passwordForm.formState.isSubmitting;
+  const passwordError = passwordForm.formState.errors.root?.message;
+  const recoveryStatus = recovery.formState.errors.root?.message ||
+    (recovery.formState.isSubmitSuccessful ? `Enviamos instruções e código de recuperação para ${user.email}.` : "");
 
   useEffect(() => {
     if (updated && !isSubmitting) reset({ name: updated.name, currentPassword: "" });
@@ -85,62 +75,18 @@ export default function Perfil() {
   );
 
   const handlePasswordSubmit = passwordForm.handleSubmit(async (fields) => {
-    setPasswordSuccess("");
-    setPasswordError("");
-    setIsUpdatingPassword(true);
     try {
       await updatePassword(fields.currentPassword, fields.newPassword);
-      setPasswordSuccess("Senha atualizada com sucesso!");
       passwordForm.reset();
     } catch (error) {
-      setPasswordError(apiError(error, "Não foi possível atualizar a senha. Confira a senha atual e tente novamente."));
-    } finally {
-      setIsUpdatingPassword(false);
+      passwordForm.setError("root", { message: apiError(error, "Não foi possível atualizar a senha. Confira a senha atual e tente novamente.") });
     }
   });
 
-  const handleRequestRecoveryEmail = async () => {
-    setRecoveryStatus("");
-    setIsSendingRecovery(true);
-    try {
-      await forgotPassword(user.email);
-      setRecoveryStatus(`Enviamos instruções e código de recuperação para ${user.email}.`);
-    } catch (error) {
-      setRecoveryStatus(apiError(error, "Não foi possível solicitar o código de recuperação no momento."));
-    } finally {
-      setIsSendingRecovery(false);
-    }
-  };
-
-  const handleOpenDeleteModal = () => {
-    setShowDeleteModal(true);
-    setDeleteStep(1);
-    setFirstConsent(false);
-    setDeletePassword("");
-    setDeleteError("");
-  };
-
-  const handleConfirmDelete = async (e) => {
-    e.preventDefault();
-    if (!deletePassword.trim()) {
-      setDeleteError("Informe sua senha atual para autorizar a exclusão.");
-      return;
-    }
-    setIsDeleting(true);
-    setDeleteError("");
-    try {
-      await deleteAccount(user.id, deletePassword);
-      try {
-        await logout();
-      } catch {
-        // Se a sessão já foi revogada no backend, prossegue
-      }
-      window.location.href = "/entrar?contaExcluida=true";
-    } catch (error) {
-      setDeleteError(apiError(error, "Senha incorreta ou não foi possível excluir a conta. Tente novamente."));
-      setIsDeleting(false);
-    }
-  };
+  const handleRequestRecoveryEmail = recovery.handleSubmit(async () => {
+    try { await forgotPassword(user.email); }
+    catch (error) { recovery.setError("root", { message: apiError(error, "Não foi possível solicitar o código de recuperação no momento.") }); }
+  });
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -192,7 +138,7 @@ export default function Perfil() {
           <h2 className="font-semibold text-lg">Segurança e Senha</h2>
         </div>
 
-        {passwordSuccess && <Notice>{passwordSuccess}</Notice>}
+        {passwordForm.formState.isSubmitSuccessful && <Notice>Senha atualizada com sucesso!</Notice>}
         {passwordError && <Notice error>{passwordError}</Notice>}
 
         <form onSubmit={handlePasswordSubmit} className="space-y-4" noValidate>
@@ -243,10 +189,10 @@ export default function Perfil() {
             <button
               type="button"
               onClick={handleRequestRecoveryEmail}
-              disabled={isSendingRecovery}
+              disabled={recovery.formState.isSubmitting}
               className="button-secondary text-xs !min-h-8 !px-3"
             >
-              <Mail size={14} /> {isSendingRecovery ? "Enviando…" : "Enviar link de recuperação"}
+              <Mail size={14} /> {recovery.formState.isSubmitting ? "Enviando…" : "Enviar link de recuperação"}
             </button>
           </div>
           {recoveryStatus && (
@@ -306,7 +252,7 @@ export default function Perfil() {
         <div>
           <button
             type="button"
-            onClick={handleOpenDeleteModal}
+            onClick={() => setShowDeleteModal(true)}
             className="button-danger"
           >
             <Trash2 size={16} /> Excluir minha conta
@@ -314,134 +260,8 @@ export default function Perfil() {
         </div>
       </section>
 
-      {showDeleteModal && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="modal-exclusao-titulo"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-200"
-        >
-          <div className="panel w-full max-w-lg border-red-500/30 bg-[#151320] p-6 shadow-2xl space-y-5">
-            <div className="flex items-start justify-between gap-3 border-b border-white/10 pb-4">
-              <div className="flex items-center gap-2.5 text-rose-400">
-                <ShieldAlert size={22} className="shrink-0" />
-                <h3 id="modal-exclusao-titulo" className="font-bold text-lg text-zinc-100">
-                  {deleteStep === 1 ? "Excluir Conta — Confirmação (1 de 2)" : "Excluir Conta — Autenticação (2 de 2)"}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowDeleteModal(false)}
-                className="text-muted hover:text-zinc-100 transition-colors p-1"
-                aria-label="Fechar modal"
-                disabled={isDeleting}
-              >
-                <X size={20} />
-              </button>
-            </div>
+      {showDeleteModal && <Suspense fallback={null}><DeleteAccountDialog user={user} onClose={() => setShowDeleteModal(false)} /></Suspense>}
 
-            {deleteError && <Notice error>{deleteError}</Notice>}
-
-            {deleteStep === 1 && (
-              <div className="space-y-4">
-                <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-xs text-zinc-300 space-y-2 leading-relaxed">
-                  <p className="font-bold text-rose-300">Atenção às consequências da exclusão:</p>
-                  <ul className="list-disc list-inside space-y-1">
-                    <li>Sua conta será desativada de forma definitiva</li>
-                    <li>Todas as sessões abertas em qualquer dispositivo serão desconectadas na hora.</li>
-                    <li>Seu progresso em cursos, matrículas e certificados serão tornados inacessíveis.</li>
-                    <li>Você não poderá mais utilizar este e-mail para acessar a conta atual.</li>
-                  </ul>
-                </div>
-
-                <label className="flex items-start gap-3 p-3 rounded-xl border border-line bg-canvas cursor-pointer hover:border-zinc-500 transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={firstConsent}
-                    onChange={(e) => setFirstConsent(e.target.checked)}
-                    className="mt-0.5 size-4 accent-amber-500"
-                  />
-                  <span className="text-xs text-zinc-200 select-none">
-                    <strong>1ª Confirmação:</strong> Li com atenção e tenho plena ciência de que minha conta será desativada e todo o meu acesso à plataforma será revogado.
-                  </span>
-                </label>
-
-                <div className="flex items-center justify-end gap-3 pt-2 border-t border-white/10">
-                  <button
-                    type="button"
-                    onClick={() => setShowDeleteModal(false)}
-                    className="button-secondary text-xs"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!firstConsent}
-                    onClick={() => setDeleteStep(2)}
-                    className="button-danger text-xs disabled:opacity-40"
-                  >
-                    Prosseguir para confirmação com senha <ArrowRight size={14} />
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {deleteStep === 2 && (
-              <form onSubmit={handleConfirmDelete} className="space-y-4">
-                <p className="text-xs text-zinc-300 leading-relaxed">
-                  <strong>2ª Confirmação:</strong> Para garantir que você é realmente o titular da conta e evitar exclusões acidentais ou não autorizadas, digite a sua <strong>senha atual</strong>:
-                </p>
-
-                <div className="space-y-1.5">
-                  <label htmlFor="deletePasswordInput" className="block text-xs font-medium text-muted">
-                    Senha atual da conta
-                  </label>
-                  <input
-                    id="deletePasswordInput"
-                    type="password"
-                    autoFocus
-                    required
-                    value={deletePassword}
-                    onChange={(e) => setDeletePassword(e.target.value)}
-                    placeholder="Sua senha atual"
-                    className="field text-sm"
-                    autoComplete="current-password"
-                  />
-                </div>
-
-                <div className="flex items-center justify-between gap-3 pt-3 border-t border-white/10">
-                  <button
-                    type="button"
-                    onClick={() => setDeleteStep(1)}
-                    disabled={isDeleting}
-                    className="button-secondary text-xs"
-                  >
-                    Voltar
-                  </button>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowDeleteModal(false)}
-                      disabled={isDeleting}
-                      className="button-secondary text-xs"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={isDeleting || !deletePassword}
-                      className="button-danger text-xs disabled:opacity-40"
-                    >
-                      <Trash2 size={14} />
-                      {isDeleting ? "Excluindo conta…" : "Confirmar e Desativar Conta"}
-                    </button>
-                  </div>
-                </div>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

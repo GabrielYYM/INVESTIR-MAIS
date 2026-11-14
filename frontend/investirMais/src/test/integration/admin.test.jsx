@@ -91,7 +91,7 @@ describe("gestão de usuários", () => {
     const { user } = setup([adminUser, ...students]);
     await screen.findByText(students[0].email);
     expect(screen.queryByText(students[11].email)).not.toBeInTheDocument();
-    await user.click(screen.getByTitle("2", { exact: true }));
+    await user.click(screen.getByRole("button", { name: "Página 2", exact: true }));
     expect(await screen.findByText(students[11].email)).toBeInTheDocument();
     await user.type(screen.getByPlaceholderText("Buscar por nome ou e-mail..."), students[11].email);
     expect(screen.getByText(students[11].email)).toBeInTheDocument();
@@ -100,6 +100,48 @@ describe("gestão de usuários", () => {
 });
 
 describe("histórico de auditoria", () => {
+  it("consulta novamente ao reabrir e separa o histórico de cada usuário", async () => {
+    let name = "Snapshot anterior";
+    const audit = mockApi("get", `/api/users/${student.id}/audit`, () => [
+      { revisionNumber: 1, operation: "UPDATE", user: { ...student, name } },
+    ]);
+    mockApi("get", `/api/users/${teacherUser.id}/audit`, [
+      { revisionNumber: 2, operation: "INSERT", user: { ...teacherUser, name: "Snapshot do professor" } },
+    ]);
+    const { user } = setup();
+    await user.click((await userRow()).getByRole("button", { name: "Auditoria" }));
+    expect(await screen.findByText("Snapshot anterior")).toBeInTheDocument();
+    await user.click(within(screen.getByRole("dialog")).getAllByRole("button", { name: "Fechar" })[0]);
+    name = "Snapshot atualizado";
+    await user.click((await userRow()).getByRole("button", { name: "Auditoria" }));
+    expect(await screen.findByText("Snapshot atualizado")).toBeInTheDocument();
+    expect(audit).toHaveBeenCalledTimes(2);
+    await user.click(within(screen.getByRole("dialog")).getAllByRole("button", { name: "Fechar" })[0]);
+    await user.click((await userRow(teacherUser.email)).getByRole("button", { name: "Auditoria" }));
+    expect(await screen.findByText("Snapshot do professor")).toBeInTheDocument();
+    expect(screen.queryByText("Snapshot atualizado")).not.toBeInTheDocument();
+  });
+
+  it("cancela a consulta pendente ao fechar o histórico", async () => {
+    let signal;
+    let release;
+    const response = new Promise((resolve) => { release = resolve; });
+    const audit = mockApi("get", `/api/users/${student.id}/audit`, ({ request }) => {
+      signal = request.signal;
+      return response;
+    });
+    try {
+      const { user } = setup();
+      await user.click((await userRow()).getByRole("button", { name: "Auditoria" }));
+      await waitFor(() => expect(audit).toHaveBeenCalledOnce());
+      await user.click(within(screen.getByRole("dialog")).getAllByRole("button", { name: "Fechar" })[0]);
+      await waitFor(() => expect(signal.aborted).toBe(true));
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    } finally {
+      release([]);
+    }
+  });
+
   it.each([
     [[], 200, "Nenhum registro de auditoria encontrado"],
     [{ detail: "Auditoria indisponível." }, 503, "Auditoria indisponível."],

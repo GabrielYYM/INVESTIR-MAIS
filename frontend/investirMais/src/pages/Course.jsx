@@ -7,7 +7,8 @@ import CourseQuestions from "../components/CourseQuestions.jsx";
 import { Notice } from "../components/PageState.jsx";
 import { apiError } from "../services/api.js";
 import { Pagination } from "../components/EducationParts.jsx";
-import { canManageEducation, pageHref } from "../services/educationData.js";
+import { canManageEducation } from "../services/educationData.js";
+import { pageHref } from "../services/searchParams.js";
 import { updateLessonProgress } from "../services/teacherService.js";
 import { externalMediaUrl, youtubeVideo } from "../services/youtube.js";
 

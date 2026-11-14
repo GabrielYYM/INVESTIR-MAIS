@@ -10,21 +10,21 @@ describe("termos e privacidade", () => {
     await screen.findByRole("heading", { name: "Termos e Políticas de Privacidade" });
     expect(screen.getByRole("heading", { name: path.includes("privacidade") ? "Política de Privacidade e Proteção de Dados Pessoais" : "Termos e Condições Gerais de Uso", exact: true })).toBeInTheDocument();
     const page = within(screen.getByRole("heading", { name: "Termos e Políticas de Privacidade" }).closest("section"));
-    await user.click(page.getByRole("button", { name: "Política de Privacidade (LGPD)" }));
+    await user.click(page.getByRole("tab", { name: "Política de Privacidade (LGPD)" }));
     expect(page.getByRole("heading", { name: "Política de Privacidade e Proteção de Dados Pessoais", exact: true })).toBeInTheDocument();
-    await user.click(page.getByRole("button", { name: "Termos de Uso" }));
+    await user.click(page.getByRole("tab", { name: "Termos de Uso" }));
     expect(page.getByRole("heading", { name: "Termos e Condições Gerais de Uso" })).toBeInTheDocument();
   });
 
   it.each(["Termos de Uso", "Política de Privacidade"])("abre %s pelo rodapé e fecha por botão ou Escape", async (label) => {
     const { user } = renderApp("/entrar");
     await user.click(screen.getByRole("button", { name: label }));
-    const dialog = within(screen.getByRole("dialog"));
-    await user.click(dialog.getByRole("button", { name: label === "Termos de Uso" ? "Política de Privacidade (LGPD)" : "Termos de Uso" }));
+    const dialog = within(await screen.findByRole("dialog"));
+    await user.click(dialog.getByRole("tab", { name: label === "Termos de Uso" ? "Política de Privacidade (LGPD)" : "Termos de Uso" }));
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     await user.keyboard("{Escape}"); expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: label }));
-    await user.click(within(screen.getByRole("dialog")).getAllByRole("button", { name: "Fechar" })[0]);
+    await user.click(within(await screen.findByRole("dialog")).getAllByRole("button", { name: "Fechar" })[0]);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
@@ -34,13 +34,14 @@ describe("termos e privacidade", () => {
     await user.click(screen.getByRole("heading", { name: "Termos e Condições Gerais de Uso" })); expect(close).not.toHaveBeenCalled();
     rerender(<TermsModal initialTab="privacidade" onClose={close} />);
     expect(screen.getByRole("heading", { name: "Política de Privacidade e Proteção de Dados Pessoais", exact: true })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("dialog")); expect(close).toHaveBeenCalledOnce();
+    const backdrop = screen.getByRole("dialog").closest(".ant-modal-wrap");
+    fireEvent.mouseDown(backdrop); fireEvent.click(backdrop); expect(close).toHaveBeenCalledOnce();
   });
 
   it("volta ao início ao abrir o documento sem uma página anterior", async () => {
     vi.spyOn(window.history, "length", "get").mockReturnValue(1);
     const { user, router } = renderApp("/termos");
-    await user.click(screen.getByRole("button", { name: "Voltar", exact: true }));
+    await user.click(await screen.findByRole("button", { name: "Voltar", exact: true }));
     expect(await screen.findByRole("heading", { name: "Olá, Ana." })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/");
   });

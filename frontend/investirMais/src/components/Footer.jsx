@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { Link } from "react-router";
-import TermsModal from "./TermsModal.jsx";
+const TermsModal = lazy(() => import("./TermsModal.jsx"));
 
 export default function Footer({ className = "" }) {
   const [modalTab, setModalTab] = useState(null);
@@ -34,7 +34,7 @@ export default function Footer({ className = "" }) {
         </div>
       </footer>
 
-      {modalTab && <TermsModal initialTab={modalTab} onClose={() => setModalTab(null)} />}
+      {modalTab && <Suspense fallback={null}><TermsModal initialTab={modalTab} onClose={() => setModalTab(null)} /></Suspense>}
     </>
   );
 }

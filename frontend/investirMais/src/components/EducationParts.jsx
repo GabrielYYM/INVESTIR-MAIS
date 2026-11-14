@@ -1,6 +1,6 @@
 import { ArrowLeft, ArrowRight, BookOpen, ChevronRight } from "lucide-react";
-import { Link } from "react-router";
-import { pageHref } from "../services/educationData.js";
+import { Link, useLocation } from "react-router";
+import { pageHref } from "../services/searchParams.js";
 
 export function CourseCard({ course }) {
   return (
@@ -19,15 +19,17 @@ export function CourseCard({ course }) {
 }
 
 export function Pagination({ page, pathname }) {
+  const { search } = useLocation();
+  const base = pathname + search;
   if (page.totalPages <= 1) return null;
   return (
     <nav className="flex flex-wrap items-center justify-between gap-2" aria-label="Paginação">
       {page.number > 0
-        ? <Link className="button-secondary" to={pageHref(pathname, page.number - 1)}><ArrowLeft size={15} /> Anterior</Link>
+        ? <Link className="button-secondary" to={pageHref(base, page.number - 1)}><ArrowLeft size={15} /> Anterior</Link>
         : <span />}
       <span className="text-xs font-semibold text-muted">Página {page.number + 1} de {page.totalPages}</span>
       {page.number + 1 < page.totalPages
-        ? <Link className="button-secondary" to={pageHref(pathname, page.number + 1)}>Próxima <ArrowRight size={15} /></Link>
+        ? <Link className="button-secondary" to={pageHref(base, page.number + 1)}>Próxima <ArrowRight size={15} /></Link>
         : <span />}
     </nav>
   );

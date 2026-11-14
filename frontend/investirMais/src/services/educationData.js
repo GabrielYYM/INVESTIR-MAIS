@@ -2,6 +2,7 @@ import { data, redirect, replace } from "react-router";
 import { apiError } from "./api.js";
 import { getCurrentUser } from "./authService.js";
 import { getCourseProgress } from "./teacherService.js";
+import { loadPagination, pageHref } from "./searchParams.js";
 import {
   createCourse, createLesson, deleteCourse, deleteLesson, getAllCourses, getCourseById,
   getLessonById, getLessonsByCourse, updateCourse, updateLesson,
@@ -11,22 +12,13 @@ import {
 
 const uuid = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 
-function pageIndex(url) {
-  const page = Number(url.searchParams.get("pagina"));
-  return Number.isSafeInteger(page) && page > 0 && page <= 2147483647 ? page - 1 : 0;
-}
-
 function readPage({ content: items, page: { number, totalPages, totalElements: totalItems } }) {
   return { items, number, totalPages, totalItems };
 }
 
-export function pageHref(pathname, number) {
-  return number === 0 ? pathname : pathname + "?pagina=" + (number + 1);
-}
-
 function validatePage(url, requested, page) {
   if (requested > 0 && requested >= page.totalPages) {
-    throw replace(pageHref(url.pathname, Math.max(0, page.totalPages - 1)));
+    throw replace(pageHref(url.pathname + url.search, Math.max(0, page.totalPages - 1)));
   }
 }
 
@@ -36,7 +28,7 @@ export async function dashboardCourses(signal) {
 
 export async function catalogLoader({ request }) {
   const url = new URL(request.url);
-  const requested = pageIndex(url);
+  const { pagina: requested } = loadPagination(url.searchParams);
   const page = readPage(await getAllCourses({ page: requested, size: 9, sort: ["name", "id"] }, { signal: request.signal }));
   validatePage(url, requested, page);
   return page;
@@ -46,7 +38,7 @@ export async function courseLoader({ request, params: { courseId, lessonId } }) 
   if (!uuid.test(courseId) || (lessonId && !uuid.test(lessonId))) throw new Response(null, { status: 404 });
 
   const url = new URL(request.url);
-  const requested = pageIndex(url);
+  const { pagina: requested } = loadPagination(url.searchParams);
   const { signal } = request;
   let progressError = null;
   const [course, result, selected, progress, user] = await Promise.all([
@@ -126,7 +118,10 @@ export async function courseAction({ request, params: { courseId, lessonId } }) 
         break;
       case "delete-aula":
         await deleteLesson(id);
-        if (id === lessonId) return replace(pageHref(coursePath, pageIndex(new URL(request.url))));
+        if (id === lessonId) {
+          const url = new URL(request.url);
+          return replace(pageHref(coursePath + url.search, loadPagination(url.searchParams).pagina));
+        }
         break;
       case "create-question":
         await createQuestion(courseId, payload);

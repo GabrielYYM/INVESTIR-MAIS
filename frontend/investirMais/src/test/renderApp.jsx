@@ -1,7 +1,7 @@
 import { StrictMode } from "react";
 import { render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { createMemoryRouter } from "react-router";
+import { createBrowserRouter, createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import { afterEach } from "vitest";
 import { appRoutes } from "../routes.jsx";
@@ -14,10 +14,10 @@ afterEach(() => {
   routers.clear();
 });
 
-export function renderApp(path = "/", { strict = false, session } = {}) {
+export function renderApp(path = "/", { strict = false, session, browser = false } = {}) {
   if (session) mockApi("get", "/auth/me", session);
   window.history.replaceState(null, "", path);
-  const router = createMemoryRouter(appRoutes, { initialEntries: [path] });
+  const router = browser ? createBrowserRouter(appRoutes) : createMemoryRouter(appRoutes, { initialEntries: [path] });
   routers.add(router);
   const element = <UiProvider><RouterProvider router={router} /></UiProvider>;
   return {

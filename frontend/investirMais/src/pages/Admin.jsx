@@ -12,7 +12,8 @@ import { useForm } from "react-hook-form";
 import AppModal from "../components/AppModal.jsx";
 import { Notice } from "../components/PageState.jsx";
 import { roleNames } from "../components/Topbar.jsx";
-import { getAllUsers, getUserAudit, updateUserRole } from "../services/adminService.js";
+import { getAllUsers, updateUserRole } from "../services/adminService.js";
+import { useGetUserAuditHistory } from "../generated/account.ts";
 import { apiError } from "../services/api.js";
 import { getCurrentUser } from "../services/authService.js";
 
@@ -264,20 +265,11 @@ function RoleChangeDialog({ user, onClose, onSuccess }) {
 }
 
 function AuditHistoryDialog({ user, onClose }) {
-  const [loading, setLoading] = useState(true);
-  const [auditList, setAuditList] = useState([]);
-  const [error, setError] = useState(null);
-  useEffect(() => {
-    let active = true;
-    getUserAudit(user.id).then((data) => { if (active) setAuditList(data); })
-      .catch((error) => { if (active) setError(apiError(error, "Falha ao carregar o histórico de auditoria.")); })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
-  }, [user.id]);
+  const { data: auditList, isPending, error } = useGetUserAuditHistory(user.id);
   return <AppModal title="Auditoria de Alterações (Hibernate Envers)" onClose={onClose} width={768}>
     <div className="space-y-4 pt-4">
       <p className="text-sm text-muted">Histórico de alterações de {user.name} ({user.email}).</p>
-      {error ? <Notice error>{error}</Notice> : <Table rowKey="revisionNumber" size="small" loading={loading}
+      {error ? <Notice error>{apiError(error, "Falha ao carregar o histórico de auditoria.")}</Notice> : <Table rowKey="revisionNumber" size="small" loading={isPending}
         dataSource={auditList} scroll={{ x: 560 }} pagination={{ pageSize: 10, hideOnSinglePage: true, showSizeChanger: false }}
         locale={{ emptyText: "Nenhum registro de auditoria encontrado" }} columns={[
           { title: "Data/Hora", dataIndex: "timestamp", render: formatDate },

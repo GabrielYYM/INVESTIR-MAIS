@@ -17,7 +17,7 @@ describe("catálogo e aulas", () => {
     else expect(screen.queryByRole("button", { name: "Novo curso" })).not.toBeInTheDocument();
   });
 
-  it("carrega a próxima página do catálogo com os parâmetros do contrato", async () => {
+  it.each(["", "?contexto=ensino"])("carrega a próxima página mantendo os parâmetros do contrato e os filtros %s", async (search) => {
     const pages = [];
     server.use(http.get(origin + "/api/courses", ({ request }) => {
       const query = new URL(request.url).searchParams;
@@ -28,11 +28,13 @@ describe("catálogo e aulas", () => {
       expect(query.has("sort[]")).toBe(false);
       return HttpResponse.json(paged([{ ...course, name: number === 0 ? "Renda fixa" : "Renda variável" }], { number, totalPages: 2, totalElements: 10 }));
     }));
-    const { user, router } = renderApp("/educacao");
+    const { user, router } = renderApp("/educacao" + search);
     await user.click(await screen.findByRole("link", { name: "Próxima" }));
     expect(await screen.findByRole("heading", { name: "Renda variável" })).toBeInTheDocument();
     expect(screen.getByText("Página 2 de 2")).toBeInTheDocument();
-    expect(router.state.location.search).toBe("?pagina=2");
+    const query = new URLSearchParams(router.state.location.search);
+    expect(query.get("pagina")).toBe("2");
+    expect(query.get("contexto")).toBe(search ? "ensino" : null);
     expect(pages).toEqual([0, 1]);
   });
 

@@ -1,24 +1,12 @@
-import { useEffect, useState } from "react";
 import { ArrowLeft, Lock } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router";
 import Footer from "../components/Footer.jsx";
-import { termsData } from "../components/TermsModal.jsx";
+import TermsContent from "../components/TermsContent.jsx";
 
 export default function Terms() {
   const location = useLocation();
   const navigate = useNavigate();
   const isPrivacy = location.pathname.includes("privacidade");
-  const [activeTab, setActiveTab] = useState(isPrivacy ? "privacidade" : "termos");
-
-  useEffect(() => {
-    if (location.pathname.includes("privacidade")) {
-      setActiveTab("privacidade");
-    } else if (location.pathname.includes("termos")) {
-      setActiveTab("termos");
-    }
-  }, [location.pathname]);
-
-  const current = termsData[activeTab] || termsData.termos;
 
   return (
     <div className="flex min-h-dvh flex-col justify-between">
@@ -53,44 +41,8 @@ export default function Terms() {
               </div>
             </div>
 
-            {/* Navigation Tabs */}
-            <div className="mt-6 flex border-b border-line gap-2 overflow-x-auto">
-              {Object.values(termsData).map((tab) => {
-                const Icon = tab.icon;
-                const isActive = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-2 border-b-2 px-3 py-2.5 text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap ${
-                      isActive
-                        ? "border-brand text-brand"
-                        : "border-transparent text-muted hover:text-zinc-200"
-                    }`}
-                  >
-                    <Icon size={16} />
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
           </header>
-
-          <div className="p-6 sm:p-8 space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold text-ink">{current.title}</h2>
-            </div>
-
-            <div className="space-y-6 divide-y divide-white/5">
-              {current.sections.map((section, idx) => (
-                <article key={idx} className={idx > 0 ? "pt-6" : ""}>
-                  <h3 className="text-base font-semibold text-zinc-100 mb-2">{section.heading}</h3>
-                  <p className="text-muted leading-relaxed text-sm">{section.content}</p>
-                </article>
-              ))}
-            </div>
-          </div>
+          <div className="p-6 sm:p-8"><TermsContent key={location.pathname} initialTab={isPrivacy ? "privacidade" : "termos"} /></div>
         </section>
       </div>
 

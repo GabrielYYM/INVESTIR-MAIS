@@ -4,6 +4,8 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   test: {
+    // Keep Ant Design/jsdom suites from competing for resources during coverage.
+    maxWorkers: 2,
     environment: "jsdom",
     environmentOptions: { jsdom: { url: "http://localhost:5173" } },
     env: { VITE_API_BASE_URL: "" },

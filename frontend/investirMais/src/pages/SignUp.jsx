@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { Calendar, CheckCircle2, Lock, Mail, ShieldCheck, User } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { Link } from "react-router";
-import TermsModal from "../components/TermsModal.jsx";
+const TermsModal = lazy(() => import("../components/TermsModal.jsx"));
 import { AuthCard, confirmPasswordRules, emailRules, Field, newPasswordRules } from "../components/FormFields.jsx";
 import { Notice } from "../components/PageState.jsx";
 import { apiError } from "../services/api.js";
@@ -132,7 +132,7 @@ export default function SignUp() {
         </form>
       )}
       <Link to="/entrar" className="block text-center text-sm font-semibold text-brand hover:underline">Voltar para entrar</Link>
-      {termsModalTab && <TermsModal initialTab={termsModalTab} onClose={() => setTermsModalTab(null)} />}
+      {termsModalTab && <Suspense fallback={null}><TermsModal initialTab={termsModalTab} onClose={() => setTermsModalTab(null)} /></Suspense>}
     </AuthCard>
   );
 }

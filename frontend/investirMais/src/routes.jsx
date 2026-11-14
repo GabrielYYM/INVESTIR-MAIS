@@ -10,7 +10,6 @@ import Perfil, { profileAction } from "./pages/Perfil.jsx";
 import Home, { dashboardLoader } from "./pages/Home.jsx";
 import Education, { catalogLoader } from "./pages/Education.jsx";
 import Course, { courseLoader } from "./pages/Course.jsx";
-import Terms from "./pages/Terms.jsx";
 import { catalogAction, courseAction } from "./services/educationData.js";
 
 async function requireSession({ request }) {
@@ -25,6 +24,8 @@ async function requireSession({ request }) {
     throw error;
   }
 }
+
+const termsRoute = async () => ({ Component: (await import("./pages/Terms.jsx")).default });
 
 export const appRoutes = [
   {
@@ -52,9 +53,9 @@ export const appRoutes = [
   { path: "cadastro", Component: SignUp },
   { path: "confirmar-email", Component: VerifyEmail },
   { path: "recuperar-senha", Component: ForgotPassword },
-  { path: "termos", Component: Terms },
-  { path: "termos-de-uso", Component: Terms },
-  { path: "politica-de-privacidade", Component: Terms },
+  { path: "termos", lazy: termsRoute, HydrateFallback: PendingPage },
+  { path: "termos-de-uso", lazy: termsRoute, HydrateFallback: PendingPage },
+  { path: "politica-de-privacidade", lazy: termsRoute, HydrateFallback: PendingPage },
   { path: "*", Component: PageError },
 ];
 

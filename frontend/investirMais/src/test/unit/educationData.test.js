@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as client from "../../generated/education.ts";
-import { canManageEducation, catalogAction, catalogLoader, courseAction, courseLoader, dashboardCourses, pageHref } from "../../services/educationData.js";
+import { canManageEducation, catalogAction, catalogLoader, courseAction, courseLoader, dashboardCourses } from "../../services/educationData.js";
+import { pageHref } from "../../services/searchParams.js";
 import { actionRequest, admin, course, lesson, loaderRequest, paged, student, teacher } from "../fixtures.js";
 
 vi.mock("../../generated/education.ts");
@@ -36,7 +37,7 @@ describe("loaders e paginação", () => {
     expect(client.getAllCourses).toHaveBeenCalledWith({ size: 3, sort: ["name", "id"] }, { signal });
   });
 
-  it.each(["", "?pagina=0", "?pagina=-2", "?pagina=1.5", "?pagina=abc", "?pagina=2147483648", "?pagina=Infinity"])("usa a primeira página para %s", async (query) => {
+  it.each(["", "?pagina=0", "?pagina=-2", "?pagina=1.5", "?pagina=abc", "?pagina=2147483648", "?pagina=Infinity", "?pagina=NaN", "?pagina=2abc"])("usa a primeira página para %s", async (query) => {
     await catalogLoader({ request: loaderRequest("/educacao" + query) });
     expect(client.getAllCourses).toHaveBeenCalledWith(expect.objectContaining({ page: 0, size: 9 }), expect.anything());
   });
@@ -55,6 +56,14 @@ describe("loaders e paginação", () => {
     expect(response.status).toBe(302);
     expect(response.headers.get("Location")).toBe(location);
     expect(response.headers.get("X-Remix-Replace")).toBe("true");
+  });
+
+  it("mantém outros filtros ao corrigir uma página que deixou de existir", async () => {
+    client.getAllCourses.mockResolvedValue(paged([], { totalPages: 2 }));
+    const response = await catalogLoader({ request: loaderRequest("/educacao?pagina=99&contexto=ensino") }).catch((error) => error);
+    const query = new URL(response.headers.get("Location"), "http://localhost").searchParams;
+    expect(query.get("pagina")).toBe("2");
+    expect(query.get("contexto")).toBe("ensino");
   });
 
   it.each([{ courseId: "inválido" }, { courseId: course.id, lessonId: "inválido" }])("recusa identificadores inválidos antes de consultar a API %#", async (params) => {
