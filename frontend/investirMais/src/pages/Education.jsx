@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { BookOpen, Plus } from "lucide-react";
 import { useLoaderData, useRouteLoaderData } from "react-router";
 import { CourseCard, Pagination } from "../components/EducationParts.jsx";
-import EducationDialog from "../components/EducationDialog.jsx";
+const EducationDialog = lazy(() => import("../components/EducationDialog.jsx"));
 import { canManageEducation } from "../services/educationData.js";
 
 export { catalogLoader } from "../services/educationData.js";
@@ -40,7 +40,7 @@ export default function Education() {
         )}
         <Pagination page={page} pathname="/educacao" />
       </section>
-      {creating && canCreate && <EducationDialog kind="curso" onClose={() => setCreating(false)} />}
+      {creating && canCreate && <Suspense fallback={null}><EducationDialog kind="curso" onClose={() => setCreating(false)} /></Suspense>}
     </>
   );
 }

@@ -3,6 +3,15 @@ import { cleanup } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll } from "vitest";
 import { server } from "./server.js";
 
+// Ant Design observes viewport breakpoints; jsdom does not implement matchMedia.
+window.matchMedia ??= (media) => ({
+  media, matches: false, onchange: null,
+  addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent() { return true; },
+});
+globalThis.ResizeObserver ??= class ResizeObserver {
+  observe() {} unobserve() {} disconnect() {}
+};
+
 if (!HTMLDialogElement.prototype.showModal) {
   HTMLDialogElement.prototype.showModal = function () { this.open = true; };
   HTMLDialogElement.prototype.close = function () { this.open = false; };

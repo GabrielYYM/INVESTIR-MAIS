@@ -1,17 +1,6 @@
-import { apiClient } from "./api.js";
+import { getDashboard } from "../generated/account.ts";
+import { getCourseProgress as courseProgress, updateLessonProgress as lessonProgress } from "../generated/education.ts";
 
-export async function getTeacherDashboard(params, signal) {
-  const { data } = await apiClient.get("/api/teacher/dashboard", { params, signal });
-  return data;
-}
-
-export async function updateLessonProgress(courseId, lessonId, completed) {
-  const { data } = await apiClient.post(`/api/lessons/${courseId}/${lessonId}/progress`, { completed });
-  return data;
-}
-
-export async function getCourseProgress(courseId, signal) {
-  const { data } = await apiClient.get(`/api/courses/${courseId}/progress`, { signal });
-  return data;
-}
-
+export const getTeacherDashboard = (params, signal) => getDashboard(params, { signal });
+export const getCourseProgress = (courseId, signal) => courseProgress(courseId, { signal });
+export const updateLessonProgress = (courseId, lessonId, completed) => lessonProgress(courseId, lessonId, { completed });

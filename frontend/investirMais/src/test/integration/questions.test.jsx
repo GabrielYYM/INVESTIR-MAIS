@@ -29,7 +29,7 @@ describe("perguntas para professores", () => {
     );
     const { user } = renderApp(coursePath, { session: teacher });
     await user.click(await screen.findByRole("button", { name: "Nova pergunta" }));
-    const dialog = within(screen.getByRole("dialog", { name: "Nova pergunta" }));
+    const dialog = within(await screen.findByRole("dialog", { name: "Nova pergunta" }));
     await user.click(dialog.getByRole("button", { name: "Salvar pergunta" }));
     expect(dialog.getByRole("alert")).toHaveTextContent("Informe o enunciado");
     expect(payloads).toHaveLength(0);
@@ -78,7 +78,7 @@ describe("perguntas para professores", () => {
     server.use(http.post(origin + "/api/courses", async ({ request }) => { payloads.push(await request.json()); return HttpResponse.json(course, { status: 201 }); }));
     const { user } = renderApp("/educacao", { session: teacher });
     await user.click(await screen.findByRole("button", { name: "Novo curso" }));
-    const dialog = within(screen.getByRole("dialog", { name: "Novo curso" }));
+    const dialog = within(await screen.findByRole("dialog", { name: "Novo curso" }));
     await user.type(dialog.getByLabelText("Nome do curso"), course.name);
     await user.type(dialog.getByLabelText("Descrição"), course.description);
     await user.click(dialog.getByRole("button", { name: "Adicionar pergunta" }));
@@ -104,6 +104,30 @@ describe("perguntas para professores", () => {
     await user.click(dialog.getByRole("button", { name: "Salvar pergunta" }));
     expect(await dialog.findByRole("alert")).toHaveTextContent("Não foi possível salvar");
     expect(dialog.getByLabelText("Enunciado")).toHaveValue(question.prompt);
+  });
+
+  it("preserva os campos da segunda pergunta ao remover a primeira do curso", async () => {
+    const payloads = [];
+    server.use(http.post(origin + "/api/courses", async ({ request }) => {
+      payloads.push(await request.json()); return HttpResponse.json(course, { status: 201 });
+    }));
+    const { user } = renderApp("/educacao", { session: teacher });
+    await user.click(await screen.findByRole("button", { name: "Novo curso" }));
+    const dialog = within(await screen.findByRole("dialog", { name: "Novo curso" }));
+    await fillFields(user, { "Nome do curso": course.name, Descrição: course.description }, dialog);
+    await user.click(dialog.getByRole("button", { name: "Adicionar pergunta" }));
+    await fillQuestion(user, within(dialog.getByRole("group", { name: "Pergunta 1", exact: true })));
+    await user.click(dialog.getByRole("button", { name: "Adicionar pergunta" }));
+    const second = within(dialog.getByRole("group", { name: "Pergunta 2", exact: true }));
+    await fillQuestion(user, second);
+    await fillFields(user, { Enunciado: "Pergunta preservada?" }, second);
+    await user.click(second.getByRole("radio", { name: "Alternativa correta 2" }));
+    await user.click(dialog.getByRole("button", { name: "Remover pergunta 1" }));
+    expect(dialog.getByLabelText("Enunciado")).toHaveValue("Pergunta preservada?");
+    expect(dialog.getByRole("radio", { name: "Alternativa correta 2" })).toBeChecked();
+    await user.click(dialog.getByRole("button", { name: "Salvar curso" }));
+    await screen.findByRole("heading", { name: course.name, level: 1 });
+    expect(payloads[0].questions).toEqual([{ prompt: "Pergunta preservada?", afterLesson: 1, position: 1, options: question.options, correctOptionIndex: 1 }]);
   });
 });
 

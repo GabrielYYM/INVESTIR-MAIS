@@ -112,7 +112,7 @@ describe("gestão de cursos", () => {
     const destination = coursePath + "/" + lesson.id + "?pagina=2";
     const { user, router } = renderApp(destination, { session: teacher });
     await user.click(await screen.findByRole("button", { name: "Editar curso" }));
-    await user.click(screen.getByRole("button", { name: "Salvar curso" }));
+    await user.click(await screen.findByRole("button", { name: "Salvar curso" }));
     await screen.findByRole("heading", { name: "Bem-vindo de volta" });
     expect(new URLSearchParams(router.state.location.search).get("retorno")).toBe(destination);
     await fillFields(user, { "E-mail": teacher.email, Senha: "senha-teste" });
@@ -132,7 +132,7 @@ describe("gestão de cursos", () => {
     }));
     const { user, router } = renderApp("/educacao", { session: teacher });
     await user.click(await screen.findByRole("button", { name: "Novo curso" }));
-    const dialog = within(screen.getByRole("dialog", { name: "Novo curso" }));
+    const dialog = within(await screen.findByRole("dialog", { name: "Novo curso" }));
     await user.click(dialog.getByRole("button", { name: "Salvar curso" }));
     expect(await dialog.findByText("Informe um título.")).toBeInTheDocument();
     expect(dialog.getByText("Informe uma descrição.")).toBeInTheDocument();
@@ -163,7 +163,7 @@ describe("gestão de cursos", () => {
     const { user } = renderApp("/educacao", { session: teacher });
     await user.click(await screen.findByRole("button", { name: "Novo curso" }));
     await fillFields(user, { "Nome do curso": "Curso de teste", Descrição: "Descrição de teste" });
-    await user.click(screen.getByRole("button", { name: "Salvar curso" }));
+    await user.click(await screen.findByRole("button", { name: "Salvar curso" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Sem permissão para criar.");
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByLabelText("Nome do curso")).toHaveValue("Curso de teste");
@@ -184,7 +184,7 @@ describe("gestão de cursos", () => {
     const field = screen.getByLabelText("Nome do curso");
     expect(field).toHaveValue(course.name);
     await fillFields(user, { "Nome do curso": "Renda fixa avançada" });
-    await user.click(screen.getByRole("button", { name: "Salvar curso" }));
+    await user.click(await screen.findByRole("button", { name: "Salvar curso" }));
     expect(await screen.findByRole("heading", { name: "Renda fixa avançada" })).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });

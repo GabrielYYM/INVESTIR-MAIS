@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { adminUser, student, teacherUser } from "../fixtures.js";
 import { mockApi } from "../helpers.js";
@@ -62,7 +62,7 @@ describe("gestão de usuários", () => {
     await user.click(screen.getByRole("button", { name: "Cancelar", exact: true }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     await user.click((await userRow()).getByRole("button", { name: "Alterar Papel" }));
-    fireEvent(screen.getByRole("dialog"), new Event("cancel", { bubbles: true }));
+    await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
@@ -82,6 +82,20 @@ describe("gestão de usuários", () => {
     const request = mockApi("get", "/api/users", []);
     const { router } = renderApp("/admin", { session: student });
     await waitFor(() => expect(router.state.location.pathname).toBe("/")); expect(request).not.toHaveBeenCalled();
+  });
+
+  it("pagina a base de usuários e encontra um aluno fora da primeira página", async () => {
+    const students = Array.from({ length: 12 }, (_, index) => ({
+      ...student, id: `aluno-${index}`, name: `Aluno ${index}`, email: `aluno${index}@example.test`,
+    }));
+    const { user } = setup([adminUser, ...students]);
+    await screen.findByText(students[0].email);
+    expect(screen.queryByText(students[11].email)).not.toBeInTheDocument();
+    await user.click(screen.getByTitle("2", { exact: true }));
+    expect(await screen.findByText(students[11].email)).toBeInTheDocument();
+    await user.type(screen.getByPlaceholderText("Buscar por nome ou e-mail..."), students[11].email);
+    expect(screen.getByText(students[11].email)).toBeInTheDocument();
+    expect(screen.queryByText(students[10].email)).not.toBeInTheDocument();
   });
 });
 

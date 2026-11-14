@@ -76,7 +76,24 @@ A instância Axios compartilhada envia cookies de sessão. Em escritas, consulta
 | [`src/services/youtube.js`](src/services/youtube.js) | Validação e transformação de endereços de vídeo usados pela interface. |
 | [`education.openapi.json`](education.openapi.json) | Contrato OpenAPI de cursos e aulas usado pelo Orval. |
 
+## Componentes e formulários
+
+O Ant Design fornece os modais compartilhados (`AppModal`), as tabelas, botões e busca da administração. O `UiProvider` define português, tema escuro e a cor âmbar. A administração e os editores são carregados sob demanda.
+
+Os formulários de cursos e perguntas usam React Hook Form com `useFieldArray`. As validações ficam em `src/services/educationSchema.js` e `questionSchema.js`, integradas pelo resolver Zod. As alternativas são objetos apenas no formulário, para manter identificadores estáveis; o payload continua enviando `options: string[]` e posições a partir de zero.
+
 ## Contrato da API de educação
+
+O Orval também gera `src/generated/account.ts` a partir de `account.openapi.json`, cobrindo usuários, sessão atual, auditoria e métricas. Os dois clientes usam a mesma instância Axios, preservando cookies e CSRF. Login, confirmação do segundo fator e logout continuam nos endpoints dos filtros do Spring Security.
+
+Para atualizar o contrato de conta/painel com o backend local em execução:
+
+```bash
+npm run api:export
+npm run api:generate
+```
+
+O exportador apenas lê `/v3/api-docs`, remove o endereço do servidor e inclui os schemas utilizados. A origem padrão é `http://localhost:8080`; `API_DOCS_ORIGIN` permite configurar outro ambiente de desenvolvimento. Versione o contrato, e não os clientes gerados.
 
 O Orval gera o cliente de cursos e aulas antes de `npm run dev` e `npm run build`. O cliente usa a mesma instância Axios dos demais fluxos. O código gerado fica fora do Git. Quando os endpoints ou DTOs mudarem, gere novamente o contrato a partir da raiz do repositório, com Docker disponível:
 

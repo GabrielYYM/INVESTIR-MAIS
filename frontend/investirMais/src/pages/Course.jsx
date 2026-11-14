@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { ArrowLeft, CheckCircle2, ExternalLink, LockKeyhole, Pencil, Play, Plus, Trash2, Video } from "lucide-react";
 import { Link, NavLink, useFetcher, useLoaderData, useLocation, useNavigate, useRevalidator, useRouteLoaderData } from "react-router";
-import EducationDialog from "../components/EducationDialog.jsx";
-import QuestionDialog from "../components/QuestionDialog.jsx";
+const EducationDialog = lazy(() => import("../components/EducationDialog.jsx"));
+const QuestionDialog = lazy(() => import("../components/QuestionDialog.jsx"));
 import CourseQuestions from "../components/CourseQuestions.jsx";
 import { Notice } from "../components/PageState.jsx";
 import { apiError } from "../services/api.js";
@@ -280,9 +280,9 @@ export default function Course() {
         </section>
       </div>
       {editor && canManage && (
-        <EducationDialog {...editor} onClose={() => setEditor(null)} />
+        <Suspense fallback={null}><EducationDialog {...editor} onClose={() => setEditor(null)} /></Suspense>
       )}
-      {questionEditor && canManage && <QuestionDialog {...questionEditor} onClose={() => setQuestionEditor(null)} />}
+      {questionEditor && canManage && <Suspense fallback={null}><QuestionDialog {...questionEditor} onClose={() => setQuestionEditor(null)} /></Suspense>}
     </>
   );
 }

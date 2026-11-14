@@ -6,6 +6,7 @@ import { RouterProvider } from "react-router/dom";
 import { afterEach } from "vitest";
 import { appRoutes } from "../routes.jsx";
 import { mockApi } from "./helpers.js";
+import UiProvider from "../components/UiProvider.jsx";
 
 const routers = new Set();
 afterEach(() => {
@@ -18,7 +19,7 @@ export function renderApp(path = "/", { strict = false, session } = {}) {
   window.history.replaceState(null, "", path);
   const router = createMemoryRouter(appRoutes, { initialEntries: [path] });
   routers.add(router);
-  const element = <RouterProvider router={router} />;
+  const element = <UiProvider><RouterProvider router={router} /></UiProvider>;
   return {
     ...render(strict ? <StrictMode>{element}</StrictMode> : element),
     router,

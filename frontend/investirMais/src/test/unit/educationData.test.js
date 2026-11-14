@@ -11,6 +11,7 @@ beforeEach(() => {
   client.getCourseById.mockResolvedValue(course);
   client.getLessonsByCourse.mockResolvedValue(paged([lesson], { size: 10 }));
   client.getLessonById.mockResolvedValue(lesson);
+  client.getCourseProgress.mockResolvedValue({ enrolled: false, totalQuestions: 0 });
 });
 
 describe("permissões da interface de educação", () => {

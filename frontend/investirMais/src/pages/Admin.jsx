@@ -1,15 +1,15 @@
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import {
-  ChevronDown,
-  Clock,
   History,
   Search,
   ShieldCheck,
   UserCheck,
   Users,
-  X,
 } from "lucide-react";
 import { redirect, useLoaderData, useRevalidator } from "react-router";
+import { Button, Input, Table } from "antd";
+import { useForm } from "react-hook-form";
+import AppModal from "../components/AppModal.jsx";
 import { Notice } from "../components/PageState.jsx";
 import { roleNames } from "../components/Topbar.jsx";
 import { getAllUsers, getUserAudit, updateUserRole } from "../services/adminService.js";
@@ -165,16 +165,8 @@ export default function Admin() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <div className="relative min-w-56 flex-1 sm:w-64">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
-              <input
-                type="text"
-                placeholder="Buscar por nome ou e-mail..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="field !py-2 !pl-9 !text-xs"
-              />
-            </div>
+            <Input className="!w-64" prefix={<Search size={16} />} allowClear
+              placeholder="Buscar por nome ou e-mail..." value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} />
 
             <div className="flex items-center gap-1 rounded-xl border border-line bg-canvas p-1 text-xs">
               {[
@@ -200,90 +192,25 @@ export default function Admin() {
           </div>
         </div>
 
-        <div className="overflow-x-auto rounded-xl border border-line">
-          <table className="w-full text-left text-xs sm:text-sm">
-            <thead className="border-b border-line bg-raised font-medium text-muted">
-              <tr>
-                <th className="px-4 py-3">Usuário</th>
-                <th className="px-4 py-3">Papel</th>
-                <th className="px-4 py-3">Idade</th>
-                <th className="px-4 py-3">Data de Cadastro</th>
-                <th className="px-4 py-3 text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {filteredUsers.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="p-8 text-center text-muted">
-                    Nenhum usuário encontrado com os filtros selecionados.
-                  </td>
-                </tr>
-              ) : (
-                filteredUsers.map((user) => {
-                  const isCurrentAdmin = user.id === currentUser.id;
-                  const isUserAdmin = user.role === "ADMIN";
-                  return (
-                    <tr key={user.id} className="transition-colors hover:bg-white/[0.02]">
-                      <td className="px-4 py-3">
-                        <div className="font-semibold text-zinc-100 flex items-center gap-2">
-                          <span>{user.name}</span>
-                          {isCurrentAdmin && (
-                            <span className="rounded bg-brand/20 px-1.5 py-0.5 text-[10px] font-bold text-brand">
-                              Você
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-xs text-muted">{user.email}</div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`inline-block rounded-md px-2 py-0.5 text-xs font-semibold ${
-                            roleBadges[user.role] ?? "bg-zinc-800 text-zinc-300"
-                          }`}
-                        >
-                          {roleNames[user.role] ?? user.role}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-muted">
-                        {user.age != null ? `${user.age} anos` : "—"}
-                      </td>
-                      <td className="px-4 py-3 text-muted">
-                        {formatDate(user.createdAt)}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="inline-flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedUserForRole(user)}
-                            disabled={isUserAdmin}
-                            title={
-                              isUserAdmin
-                                ? "O papel de Administrador não pode ser alterado pelo painel"
-                                : "Alterar perfil de acesso (Aluno / Professor)"
-                            }
-                            className="button-secondary !min-h-8 !px-2.5 !py-1 text-xs"
-                          >
-                            <ShieldCheck size={14} />
-                            <span>Alterar Papel</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setSelectedUserForAudit(user)}
-                            title="Ver histórico de auditoria Envers"
-                            className="button-secondary !min-h-8 !px-2.5 !py-1 text-xs"
-                          >
-                            <History size={14} />
-                            <span>Auditoria</span>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+        <Table rowKey="id" size="small" dataSource={filteredUsers} scroll={{ x: 720 }}
+          pagination={{ pageSize: 10, hideOnSinglePage: true, showSizeChanger: false }}
+          locale={{ emptyText: "Nenhum usuário encontrado com os filtros selecionados." }}
+          columns={[
+            { title: "Usuário", dataIndex: "name", render: (name, user) => <>
+              <div className="flex items-center gap-2 font-semibold"><span>{name}</span>
+                {user.id === currentUser.id && <span className="rounded bg-brand/20 px-1.5 py-0.5 text-xs text-brand">Você</span>}
+              </div><div className="text-xs text-muted">{user.email}</div>
+            </> },
+            { title: "Papel", dataIndex: "role", render: (role) => <RoleBadge role={role} /> },
+            { title: "Idade", dataIndex: "age", render: (age) => age == null ? "—" : `${age} anos` },
+            { title: "Data de Cadastro", dataIndex: "createdAt", render: formatDate },
+            { title: "Ações", align: "right", render: (_, user) => <div className="inline-flex gap-2">
+              <Button size="small" icon={<ShieldCheck size={14} />} disabled={user.role === "ADMIN"}
+                title={user.role === "ADMIN" ? "O papel de Administrador não pode ser alterado pelo painel" : "Alterar perfil de acesso (Aluno / Professor)"}
+                onClick={() => setSelectedUserForRole(user)}>Alterar Papel</Button>
+              <Button size="small" icon={<History size={14} />} onClick={() => setSelectedUserForAudit(user)}>Auditoria</Button>
+            </div> },
+          ]} />
       </section>
 
       {selectedUserForRole && (
@@ -304,261 +231,62 @@ export default function Admin() {
   );
 }
 
+function RoleBadge({ role }) {
+  return <span className={`inline-block rounded-md px-2 py-0.5 text-xs font-semibold ${roleBadges[role] ?? "bg-zinc-800 text-zinc-300"}`}>
+    {roleNames[role] ?? role}
+  </span>;
+}
+
 function RoleChangeDialog({ user, onClose, onSuccess }) {
-  const dialogRef = useRef(null);
-  const headingId = useId();
-  const [selectedRole, setSelectedRole] = useState(
-    user.role === "TEACHER" ? "TEACHER" : "STUDENT"
-  );
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    const el = dialogRef.current;
-    el?.showModal();
-    return () => el?.close();
-  }, []);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (selectedRole === user.role) {
-      onClose();
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      const updated = await updateUserRole(user.id, selectedRole);
-      onSuccess(updated);
-    } catch (err) {
-      setError(apiError(err, "Falha ao alterar o papel do usuário."));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <dialog
-      ref={dialogRef}
-      aria-labelledby={headingId}
-      style={{ colorScheme: "dark" }}
-      className="panel fixed inset-0 m-auto max-h-[calc(100dvh-2rem)] w-[min(30rem,calc(100%-2rem))] overflow-auto p-0 text-ink backdrop:bg-black/65"
-      onCancel={(e) => {
-        e.preventDefault();
-        if (!loading) onClose();
-      }}
-    >
-      <header className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
-        <h2 id={headingId} className="text-lg font-bold flex items-center gap-2">
-          <ShieldCheck size={20} className="text-brand" />
-          Alterar Papel de Acesso
-        </h2>
-        <button
-          type="button"
-          onClick={onClose}
-          disabled={loading}
-          aria-label="Fechar"
-          className="rounded-md p-1.5 text-muted hover:bg-raised hover:text-ink"
-        >
-          <X size={18} />
-        </button>
-      </header>
-
-      <form onSubmit={handleSubmit} className="space-y-4 p-5">
-        {error && <Notice error>{error}</Notice>}
-
-        <div>
-          <label className="text-xs font-semibold text-muted">Usuário</label>
-          <div className="mt-1 rounded-xl border border-line bg-canvas p-3">
-            <p className="font-semibold text-zinc-100">{user.name}</p>
-            <p className="text-xs text-muted">{user.email}</p>
-          </div>
-        </div>
-
-        <div>
-          <label htmlFor="role-select" className="text-xs font-semibold text-muted">
-            Novo Papel
-          </label>
-
-          <div className="relative mt-2">
-            <select
-              id="role-select"
-              value={selectedRole}
-              onChange={(e) => setSelectedRole(e.target.value)}
-              disabled={loading}
-              style={{ colorScheme: "dark" }}
-              className="field !bg-[#171522] !text-zinc-100 appearance-none pr-10 cursor-pointer"
-            >
-              <option value="STUDENT" style={{ backgroundColor: "#1e1c2a", color: "#f4f4f5" }}>
-                Aluno
-              </option>
-              <option value="TEACHER" style={{ backgroundColor: "#1e1c2a", color: "#f4f4f5" }}>
-                Professor
-              </option>
-            </select>
-            <ChevronDown
-              size={18}
-              className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-muted"
-            />
-          </div>
-        </div>
-
-        <div className="flex justify-end gap-2 border-t border-line pt-4">
-          <button
-            type="button"
-            className="button-secondary"
-            disabled={loading}
-            onClick={onClose}
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            className="button-primary"
-            disabled={loading || selectedRole === user.role}
-          >
-            {loading ? "Salvando…" : "Salvar Alteração"}
-          </button>
-        </div>
-      </form>
-    </dialog>
-  );
+  const selectId = useId();
+  const form = useForm({ defaultValues: { role: user.role === "TEACHER" ? "TEACHER" : "STUDENT" } });
+  const { isSubmitting, errors } = form.formState;
+  const submit = form.handleSubmit(async ({ role }) => {
+    try { onSuccess(await updateUserRole(user.id, role)); }
+    catch (error) { form.setError("root", { message: apiError(error, "Falha ao alterar o papel do usuário.") }); }
+  });
+  return <AppModal title="Alterar Papel de Acesso" onClose={onClose} busy={isSubmitting} width={480}>
+    <form onSubmit={submit} className="space-y-4 pt-4">
+      {errors.root && <Notice error>{errors.root.message}</Notice>}
+      <div className="rounded-xl border border-line bg-canvas p-3">
+        <p className="font-semibold">{user.name}</p><p className="text-xs text-muted">{user.email}</p>
+      </div>
+      <label htmlFor={selectId} className="block text-sm text-muted">Novo Papel</label>
+      <select id={selectId} className="field" disabled={isSubmitting} {...form.register("role")}>
+        <option value="STUDENT">Aluno</option><option value="TEACHER">Professor</option>
+      </select>
+      <div className="flex justify-end gap-2 border-t border-line pt-4">
+        <Button disabled={isSubmitting} onClick={onClose}>Cancelar</Button>
+        <Button type="primary" htmlType="submit" loading={isSubmitting} disabled={form.watch("role") === user.role}>Salvar Alteração</Button>
+      </div>
+    </form>
+  </AppModal>;
 }
 
 function AuditHistoryDialog({ user, onClose }) {
-  const dialogRef = useRef(null);
-  const headingId = useId();
   const [loading, setLoading] = useState(true);
   const [auditList, setAuditList] = useState([]);
   const [error, setError] = useState(null);
-
-  useEffect(() => {
-    const el = dialogRef.current;
-    el?.showModal();
-    return () => el?.close();
-  }, []);
-
   useEffect(() => {
     let active = true;
-    async function loadAudit() {
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await getUserAudit(user.id);
-        if (active) setAuditList(data);
-      } catch (err) {
-        if (active) setError(apiError(err, "Falha ao carregar o histórico de auditoria."));
-      } finally {
-        if (active) setLoading(false);
-      }
-    }
-    loadAudit();
-    return () => {
-      active = false;
-    };
+    getUserAudit(user.id).then((data) => { if (active) setAuditList(data); })
+      .catch((error) => { if (active) setError(apiError(error, "Falha ao carregar o histórico de auditoria.")); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
   }, [user.id]);
-
-  return (
-    <dialog
-      ref={dialogRef}
-      aria-labelledby={headingId}
-      style={{ colorScheme: "dark" }}
-      className="panel fixed inset-0 m-auto max-h-[calc(100dvh-2rem)] w-[min(48rem,calc(100%-2rem))] overflow-auto p-0 text-ink backdrop:bg-black/65"
-      onCancel={(e) => {
-        e.preventDefault();
-        onClose();
-      }}
-    >
-      <header className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
-        <div>
-          <h2 id={headingId} className="text-lg font-bold flex items-center gap-2">
-            <History size={20} className="text-brand" />
-            Auditoria de Alterações (Hibernate Envers)
-          </h2>
-          <p className="text-xs text-muted mt-0.5">
-            Histórico de revisões gravado na tabela <code className="text-amber-400">tb_user_audit</code> para {user.name} ({user.email}).
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Fechar"
-          className="rounded-md p-1.5 text-muted hover:bg-raised hover:text-ink"
-        >
-          <X size={18} />
-        </button>
-      </header>
-
-      <div className="space-y-4 p-5">
-        {error && <Notice error>{error}</Notice>}
-
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-12 text-muted gap-2">
-            <Clock className="animate-spin text-brand" size={24} />
-            <span className="text-sm">Carregando revisões de auditoria…</span>
-          </div>
-        ) : auditList.length === 0 ? (
-          <div className="rounded-xl border border-line bg-canvas p-8 text-center text-muted">
-            <History size={32} className="mx-auto mb-2 opacity-40" />
-            <p className="font-semibold text-zinc-300">Nenhum registro de auditoria encontrado</p>
-            <p className="text-xs mt-1">Este usuário ainda não possui revisões registradas no histórico.</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto rounded-xl border border-line">
-            <table className="w-full text-left text-xs sm:text-sm">
-              <thead className="border-b border-line bg-raised font-medium text-muted">
-                <tr>
-                  <th className="px-4 py-2.5">Data/Hora</th>
-                  <th className="px-4 py-2.5">Operação</th>
-                  <th className="px-4 py-2.5">Nome no Snapshot</th>
-                  <th className="px-4 py-2.5">Papel no Snapshot</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line">
-                {auditList.map((entry) => (
-                  <tr key={entry.revisionNumber} className="hover:bg-white/[0.02]">
-                    <td className="px-4 py-2.5 text-muted whitespace-nowrap">
-                      {formatDate(entry.timestamp)}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <span
-                        className={`inline-block rounded px-2 py-0.5 text-[11px] font-semibold ${
-                          operationBadges[entry.operation] ?? "bg-zinc-800 text-zinc-300"
-                        }`}
-                      >
-                        {operationLabels[entry.operation] ?? entry.operation}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5 font-medium text-zinc-200">
-                      {entry.user?.name ?? "—"}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      {entry.user?.role ? (
-                        <span
-                          className={`inline-block rounded px-1.5 py-0.5 text-[11px] font-medium ${
-                            roleBadges[entry.user.role] ?? "bg-zinc-800 text-zinc-300"
-                          }`}
-                        >
-                          {roleNames[entry.user.role] ?? entry.user.role}
-                        </span>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        <div className="flex justify-end border-t border-line pt-4">
-          <button type="button" className="button-secondary" onClick={onClose}>
-            Fechar
-          </button>
-        </div>
-      </div>
-    </dialog>
-  );
+  return <AppModal title="Auditoria de Alterações (Hibernate Envers)" onClose={onClose} width={768}>
+    <div className="space-y-4 pt-4">
+      <p className="text-sm text-muted">Histórico de alterações de {user.name} ({user.email}).</p>
+      {error ? <Notice error>{error}</Notice> : <Table rowKey="revisionNumber" size="small" loading={loading}
+        dataSource={auditList} scroll={{ x: 560 }} pagination={{ pageSize: 10, hideOnSinglePage: true, showSizeChanger: false }}
+        locale={{ emptyText: "Nenhum registro de auditoria encontrado" }} columns={[
+          { title: "Data/Hora", dataIndex: "timestamp", render: formatDate },
+          { title: "Operação", dataIndex: "operation", render: (operation) =>
+            <span className={`rounded px-2 py-0.5 text-xs ${operationBadges[operation] ?? "bg-zinc-800 text-zinc-300"}`}>{operationLabels[operation] ?? operation}</span> },
+          { title: "Nome no Snapshot", render: (_, entry) => entry.user?.name ?? "—" },
+          { title: "Papel no Snapshot", render: (_, entry) => entry.user?.role ? <RoleBadge role={entry.user.role} /> : "—" },
+        ]} />}
+      <div className="flex justify-end border-t border-line pt-4"><Button onClick={onClose}>Fechar</Button></div>
+    </div>
+  </AppModal>;
 }
-

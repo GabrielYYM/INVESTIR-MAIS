@@ -10,7 +10,6 @@ import Perfil, { profileAction } from "./pages/Perfil.jsx";
 import Home, { dashboardLoader } from "./pages/Home.jsx";
 import Education, { catalogLoader } from "./pages/Education.jsx";
 import Course, { courseLoader } from "./pages/Course.jsx";
-import Admin, { adminLoader } from "./pages/Admin.jsx";
 import Terms from "./pages/Terms.jsx";
 import { catalogAction, courseAction } from "./services/educationData.js";
 
@@ -41,7 +40,10 @@ export const appRoutes = [
       { path: "educacao", Component: Education, loader: catalogLoader, action: catalogAction, ErrorBoundary: PageError },
       { path: "educacao/:courseId/:lessonId?", Component: Course, loader: courseLoader, action: courseAction, ErrorBoundary: PageError },
       { path: "perfil", Component: Perfil, action: profileAction },
-      { path: "admin", Component: Admin, loader: adminLoader, ErrorBoundary: PageError },
+      { path: "admin", lazy: async () => {
+        const { default: Component, adminLoader: loader } = await import("./pages/Admin.jsx");
+        return { Component, loader };
+      }, ErrorBoundary: PageError },
       { path: "sair", action: signOut },
     ],
   },

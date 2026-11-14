@@ -1,36 +1,33 @@
-import { useEffect, useId, useRef, useState } from "react";
-import { Plus, Trash2, X } from "lucide-react";
-import { useForm } from "react-hook-form";
+import { useEffect, useRef } from "react";
+import { Plus, Trash2 } from "lucide-react";
+import { useFieldArray, useForm } from "react-hook-form";
 import { useFetcher, useLocation } from "react-router";
 import { Field } from "./FormFields.jsx";
 import { Notice } from "./PageState.jsx";
 import { youtubeVideo } from "../services/youtube.js";
-import QuestionFields, { newQuestion, questionPayload, validateQuestion } from "./QuestionFields.jsx";
+import QuestionFields from "./QuestionFields.jsx";
+import AppModal from "./AppModal.jsx";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { questionDefaults, questionPayload } from "../services/questionSchema.js";
+import { educationSchema } from "../services/educationSchema.js";
 
 export default function EducationDialog({ kind, item, remove, onClose }) {
-  const dialog = useRef(null);
-  const headingId = useId();
   const fetcher = useFetcher();
   const location = useLocation();
   const initialLocation = useRef(location.key);
   const lesson = kind === "aula";
-  const [questions, setQuestions] = useState([]);
-  const [questionErrors, setQuestionErrors] = useState([]);
   const form = useForm({
+    resolver: remove ? undefined : zodResolver(educationSchema(lesson, item?.mediaUrl)),
     defaultValues: {
       title: (lesson ? item?.title : item?.name) ?? "",
       description: item?.description ?? "",
       mediaUrl: item?.mediaUrl ?? "",
+      questions: [],
     },
   });
+  const { fields: questions, append, remove: removeQuestion } = useFieldArray({ control: form.control, name: "questions" });
   const { errors } = form.formState;
   const isSubmitting = fetcher.state !== "idle";
-
-  useEffect(() => {
-    const element = dialog.current;
-    element.showModal();
-    return () => element.close();
-  }, []);
 
   useEffect(() => {
     if (location.key !== initialLocation.current || (!isSubmitting && fetcher.data?.ok)) {
@@ -38,10 +35,7 @@ export default function EducationDialog({ kind, item, remove, onClose }) {
     }
   }, [location.key, isSubmitting, fetcher.data, onClose]);
 
-  const submit = form.handleSubmit(({ title, description, mediaUrl }) => {
-    const errors = questions.map(validateQuestion);
-    setQuestionErrors(errors);
-    if (errors.some(Boolean)) return;
+  const submit = form.handleSubmit(({ title, description, mediaUrl, questions }) => {
     const operation = remove ? "delete" : item ? "update" : "create";
     const video = lesson && !remove ? youtubeVideo(mediaUrl) : null;
     const payload = lesson
@@ -57,19 +51,9 @@ export default function EducationDialog({ kind, item, remove, onClose }) {
   });
 
   return (
-    <dialog
-      ref={dialog}
-      aria-labelledby={headingId}
-      className="panel fixed inset-0 m-auto max-h-[calc(100dvh-2rem)] w-[min(32rem,calc(100%-2rem))] overflow-auto p-0 text-ink backdrop:bg-black/65"
-      onCancel={(event) => { event.preventDefault(); if (!isSubmitting) onClose(); }}
-    >
-      <header className="flex items-center justify-between gap-3 border-b border-line px-5 py-4 sm:px-6">
-        <h2 id={headingId} className="text-xl font-bold">
-          {remove ? "Excluir " + kind : item ? "Editar " + kind : lesson ? "Nova aula" : "Novo curso"}
-        </h2>
-        <button type="button" onClick={onClose} disabled={isSubmitting} aria-label="Fechar" className="rounded-md p-2 text-muted hover:bg-raised hover:text-ink"><X size={18} /></button>
-      </header>
-      <form onSubmit={submit} className="space-y-4 p-5 sm:p-6" noValidate>
+    <AppModal title={remove ? "Excluir " + kind : item ? "Editar " + kind : lesson ? "Nova aula" : "Novo curso"}
+      onClose={onClose} busy={isSubmitting}>
+      <form onSubmit={submit} className="space-y-4 pt-4" noValidate>
         {fetcher.data?.error && <Notice error>{fetcher.data.error}</Notice>}
         {remove ? (
           <p className="text-sm leading-relaxed text-muted">
@@ -78,17 +62,8 @@ export default function EducationDialog({ kind, item, remove, onClose }) {
         ) : (
           <>
             <Field label={lesson ? "Título da aula" : "Nome do curso"} maxLength={100} error={errors.title?.message}
-              {...form.register("title", {
-                setValueAs: (value) => value.trim(),
-                required: "Informe um título.",
-                minLength: { value: 3, message: "Informe pelo menos 3 caracteres." },
-              })} />
-            <Field label="Descrição" multiline rows={4} error={errors.description?.message}
-              {...form.register("description", {
-                setValueAs: (value) => value.trim(),
-                required: "Informe uma descrição.",
-                maxLength: { value: 10000, message: "A descrição deve ter no máximo 10.000 caracteres." },
-              })} />
+              {...form.register("title")} />
+            <Field label="Descrição" multiline rows={4} error={errors.description?.message} {...form.register("description")} />
             {lesson && (
               <Field
                 label="URL do vídeo no YouTube"
@@ -96,22 +71,18 @@ export default function EducationDialog({ kind, item, remove, onClose }) {
                 placeholder="https://www.youtube.com/watch?v=…"
                 hint="Envie o vídeo pelo YouTube Studio e cole o link. Se for privado, convide os alunos pelo YouTube Studio."
                 error={errors.mediaUrl?.message}
-                {...form.register("mediaUrl", {
-                  setValueAs: (value) => value.trim(),
-                  required: "Informe a URL do vídeo.",
-                  validate: (value) => Boolean(youtubeVideo(value) || value === item?.mediaUrl) || "Informe o link de um vídeo do YouTube.",
-                })}
+                {...form.register("mediaUrl")}
               />
             )}
             {!lesson && !item && <section className="space-y-4 border-t border-line pt-4" aria-label="Perguntas do novo curso">
               <div className="space-y-1"><h3 className="font-semibold">Perguntas do curso</h3><p className="text-xs leading-relaxed text-muted">Opcional: adicione agora ou depois de cadastrar as aulas.</p></div>
-              {questions.map((question, index) => <fieldset key={index} className="min-w-0 space-y-3 rounded-xl border border-line bg-canvas p-3" disabled={isSubmitting}>
+              {questions.map((question, index) => <fieldset key={question.id} className="min-w-0 space-y-3 rounded-xl border border-line bg-canvas p-3" disabled={isSubmitting}>
                 <legend className="px-1 text-sm font-semibold">Pergunta {index + 1}</legend>
-                <QuestionFields value={question} error={questionErrors[index]} onChange={(value) => setQuestions((current) => current.map((old, i) => i === index ? value : old))} />
-                <button type="button" className="button-danger" onClick={() => { setQuestions((current) => current.filter((_, i) => i !== index)); setQuestionErrors([]); }}><Trash2 size={15} /> Remover pergunta {index + 1}</button>
+                <QuestionFields form={form} name={`questions.${index}`} />
+                <button type="button" className="button-danger" onClick={() => removeQuestion(index)}><Trash2 size={15} /> Remover pergunta {index + 1}</button>
               </fieldset>)}
               <button type="button" className="button-secondary" disabled={isSubmitting || questions.length >= 100}
-                onClick={() => setQuestions((current) => [...current, newQuestion(0, current.length)])}><Plus size={15} /> Adicionar pergunta</button>
+                onClick={() => append(questionDefaults(undefined, 0, questions.length))}><Plus size={15} /> Adicionar pergunta</button>
             </section>}
           </>
         )}
@@ -122,6 +93,6 @@ export default function EducationDialog({ kind, item, remove, onClose }) {
           </button>
         </div>
       </form>
-    </dialog>
+    </AppModal>
   );
 }

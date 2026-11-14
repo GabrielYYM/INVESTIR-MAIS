@@ -1,0 +1,1061 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "OpenAPI definition",
+    "version": "v0"
+  },
+  "tags": [
+    {
+      "name": "Cursos",
+      "description": "Endpoints para gerenciamento do catálogo de cursos"
+    },
+    {
+      "name": "Perguntas",
+      "description": "CRUD de perguntas e aprovação do aluno"
+    },
+    {
+      "name": "Usuários",
+      "description": "Endpoints para gerenciamento de perfis, cadastros e redefinição de senhas"
+    },
+    {
+      "name": "Aulas",
+      "description": "Endpoints para gerenciamento de aulas associadas a cursos"
+    }
+  ],
+  "paths": {
+    "/api/users/{id}": {
+      "get": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Obter perfil do usuário por ID",
+        "description": "Retorna os detalhes do perfil do usuário autenticado.",
+        "operationId": "getProfile",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Perfil retornado com sucesso",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Acesso negado para perfis de outros usuários",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Usuário não encontrado",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Atualizar dados do perfil",
+        "description": "Atualiza nome, idade ou e-mail do usuário autenticado.",
+        "operationId": "updateProfile",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProfileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Perfil atualizado com sucesso",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Senha atual incorreta",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Acesso negado para atualizar perfis de terceiros",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Novo e-mail informado já está em uso",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Excluir a própria conta",
+        "description": "Exclui logicamente o usuário e seus cursos e aulas, preservando os registros. Exige a senha atual e encerra todas as sessões da conta.",
+        "operationId": "deleteAccount",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteAccountRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Conta excluída logicamente"
+          },
+          "400": {
+            "description": "Senha de confirmação ausente"
+          },
+          "401": {
+            "description": "Senha atual incorreta ou usuário não autenticado"
+          },
+          "403": {
+            "description": "Acesso negado para excluir outra conta"
+          },
+          "404": {
+            "description": "Usuário não encontrado"
+          }
+        }
+      }
+    },
+    "/api/users/update-password": {
+      "put": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Atualizar senha do usuário logado",
+        "description": "Permite alterar a senha mediante confirmação da senha atual.",
+        "operationId": "updatePassword",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Senha atualizada com sucesso",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Senha atual incorreta",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/verify-email": {
+      "post": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Verificar e-mail",
+        "description": "Consome o token após a confirmação do usuário.",
+        "operationId": "verifyEmail",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "token"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/reset-password": {
+      "post": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Redefinir senha via token OTT",
+        "description": "Consome o token de acesso único recebido por e-mail para cadastrar uma nova senha.",
+        "operationId": "resetPassword",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Senha redefinida e e-mail validado com sucesso",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Token inválido ou expirado",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/resend-verification": {
+      "post": {
+        "tags": [
+          "Usuários"
+        ],
+        "operationId": "resendVerification",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/register": {
+      "post": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Cadastrar novo usuário",
+        "description": "Registra um novo usuário no sistema e envia um e-mail com o link de ativação.",
+        "operationId": "registerUser",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Request"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Solicitação recebida",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requisição inválida ou perfil diferente de STUDENT",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/forgot-password": {
+      "post": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Solicitar link de recuperação de senha",
+        "description": "Envia um link/token de acesso único caso o e-mail exista no sistema.",
+        "operationId": "forgotPassword",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Solicitação processada com sucesso",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/{id}/role": {
+      "patch": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Alterar perfil (role) do usuário",
+        "description": "Atualiza o perfil de acesso de um usuário para ADMIN, TEACHER ou STUDENT. Exige perfil ADMIN.",
+        "operationId": "updateUserRole",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRoleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Perfil atualizado com sucesso",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requisição inválida ou tentativa do admin remover seu próprio perfil",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Acesso negado para perfis diferentes de ADMIN",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Usuário não encontrado",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "tags": [
+          "authentication-controller"
+        ],
+        "operationId": "currentUser",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users": {
+      "get": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Listar todos os usuários",
+        "description": "Retorna a lista completa de usuários cadastrados no sistema. Exige perfil ADMIN.",
+        "operationId": "listAllUsers",
+        "responses": {
+          "200": {
+            "description": "Lista retornada com sucesso",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Response"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Acesso negado para perfis diferentes de ADMIN",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Response"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/{id}/audit": {
+      "get": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Consultar histórico de auditoria do usuário",
+        "description": "Retorna todas as revisões históricas do usuário registradas pelo Hibernate Envers. Exige perfil ADMIN.",
+        "operationId": "getUserAuditHistory",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Histórico de auditoria retornado com sucesso",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AuditResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Acesso negado para perfis diferentes de ADMIN",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AuditResponse"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Usuário não encontrado",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AuditResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/teacher/dashboard": {
+      "get": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Obter estatísticas do painel do professor",
+        "description": "Retorna métricas consolidadas sobre cursos, alunos matriculados, videoaulas assistidas e taxas de conclusão no período informado (padrão últimos 6 meses, máximo de 6 meses de intervalo). Exige perfil TEACHER ou ADMIN.",
+        "operationId": "getDashboard",
+        "parameters": [
+          {
+            "name": "startDate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Métricas retornadas com sucesso",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Summary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Período inválido ou superior a 6 meses",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Summary"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Acesso negado",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Summary"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "UpdateProfileRequest": {
+        "type": "object",
+        "description": "Dados para atualização de perfil",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Nome do usuário",
+            "example": "Usuario da Silva",
+            "maxLength": 100,
+            "minLength": 2
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Novo endereço de e-mail",
+            "example": "usuario@gmail.com",
+            "maxLength": 254,
+            "minLength": 0
+          },
+          "age": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Idade do usuário",
+            "example": 23
+          },
+          "currentPassword": {
+            "type": "string",
+            "description": "Senha atual para confirmar a alteração do perfil",
+            "maxLength": 4096,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "currentPassword",
+          "email",
+          "name"
+        ]
+      },
+      "Response": {
+        "type": "object",
+        "description": "Resposta com dados do usuário",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identificador único (UUID)",
+            "example": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d"
+          },
+          "name": {
+            "type": "string",
+            "description": "Nome do usuário",
+            "example": "Usuario da Silva"
+          },
+          "age": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Idade do usuário",
+            "example": 22
+          },
+          "email": {
+            "type": "string",
+            "description": "E-mail cadastrado",
+            "example": "usuario@gmail.com"
+          },
+          "role": {
+            "type": "string",
+            "description": "Perfil de acesso",
+            "enum": [
+              "ADMIN",
+              "TEACHER",
+              "STUDENT"
+            ],
+            "example": "STUDENT"
+          },
+          "emailVerified": {
+            "type": "boolean",
+            "description": "Status de validação do e-mail",
+            "example": false
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Data e hora do cadastro"
+          }
+        }
+      },
+      "UpdatePasswordRequest": {
+        "type": "object",
+        "description": "Dados para atualização de senha de usuário autenticado",
+        "properties": {
+          "currentPassword": {
+            "type": "string",
+            "description": "Senha atual do usuário",
+            "example": "SenhaAntiga123",
+            "maxLength": 4096,
+            "minLength": 0
+          },
+          "newPassword": {
+            "type": "string",
+            "description": "Nova senha desejada",
+            "example": "NovaSenhaSegura123",
+            "maxLength": 4096,
+            "minLength": 8
+          }
+        },
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ]
+      },
+      "ResetPasswordRequest": {
+        "type": "object",
+        "description": "Dados para redefinição de senha com token OTT",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Token de verificação recebido por e-mail",
+            "example": "123456",
+            "maxLength": 64,
+            "minLength": 0
+          },
+          "newPassword": {
+            "type": "string",
+            "description": "Nova senha de acesso",
+            "example": "NovaSenha123",
+            "maxLength": 4096,
+            "minLength": 8
+          }
+        },
+        "required": [
+          "newPassword",
+          "token"
+        ]
+      },
+      "ForgotPasswordRequest": {
+        "type": "object",
+        "description": "Dados para solicitação de recuperação de senha",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "E-mail do usuário que deseja redefinir a senha",
+            "example": "usuario@gmail.com",
+            "maxLength": 254,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "Request": {
+        "type": "object",
+        "description": "Dados para cadastro de um novo usuário",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Nome completo do usuário",
+            "example": "Usuario da Silva",
+            "maxLength": 100,
+            "minLength": 2
+          },
+          "age": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Idade do usuário",
+            "example": 22
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Endereço de e-mail único",
+            "example": "usuario@gmail.com",
+            "maxLength": 254,
+            "minLength": 0
+          },
+          "password": {
+            "type": "string",
+            "description": "Senha de acesso do usuário",
+            "example": "SenhaSegura123",
+            "maxLength": 4096,
+            "minLength": 8
+          },
+          "role": {
+            "type": "string",
+            "description": "Perfil de acesso no sistema. O cadastro público aceita apenas STUDENT.",
+            "enum": [
+              "ADMIN",
+              "TEACHER",
+              "STUDENT"
+            ],
+            "example": "STUDENT"
+          }
+        },
+        "required": [
+          "age",
+          "email",
+          "name",
+          "password"
+        ]
+      },
+      "UpdateRoleRequest": {
+        "type": "object",
+        "description": "Requisição para alteração do perfil (role) do usuário pelo administrador",
+        "properties": {
+          "role": {
+            "type": "string",
+            "description": "Novo perfil do usuário (apenas TEACHER ou STUDENT)",
+            "enum": [
+              "ADMIN",
+              "TEACHER",
+              "STUDENT"
+            ],
+            "example": "TEACHER"
+          }
+        },
+        "required": [
+          "role"
+        ]
+      },
+      "AuditResponse": {
+        "type": "object",
+        "description": "Registro de auditoria histórica de um usuário",
+        "properties": {
+          "revisionNumber": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Número sequencial da revisão",
+            "example": 1
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Data e hora exata da alteração"
+          },
+          "operation": {
+            "type": "string",
+            "description": "Tipo de operação: INSERT, UPDATE ou DELETE",
+            "example": "UPDATE"
+          },
+          "user": {
+            "$ref": "#/components/schemas/Response",
+            "description": "Estado do usuário no momento desta revisão"
+          }
+        }
+      },
+      "CourseStats": {
+        "type": "object",
+        "description": "Métricas de engajamento de um curso",
+        "properties": {
+          "courseId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID do curso"
+          },
+          "courseName": {
+            "type": "string",
+            "description": "Nome do curso"
+          },
+          "totalLessons": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total de aulas neste curso"
+          },
+          "enrolledStudents": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Alunos matriculados no curso"
+          },
+          "lessonsWatched": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Aulas concluídas/assistidas pelos alunos"
+          },
+          "completionRate": {
+            "type": "number",
+            "format": "double",
+            "description": "Taxa de conclusão do curso (%)",
+            "example": 65
+          }
+        }
+      },
+      "Summary": {
+        "type": "object",
+        "description": "Estatísticas gerais consolidadas do professor no período",
+        "properties": {
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Data inicial do período de consulta (ISO-8601)",
+            "example": "2026-05-08"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Data final do período de consulta (ISO-8601)",
+            "example": "2026-11-08"
+          },
+          "totalCourses": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total de cursos criados pelo professor",
+            "example": 4
+          },
+          "totalLessons": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total de videoaulas publicadas",
+            "example": 24
+          },
+          "totalStudents": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total de alunos distintos matriculados no período",
+            "example": 85
+          },
+          "totalLessonsWatched": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total de aulas assistidas pelos alunos no período",
+            "example": 310
+          },
+          "averageCompletionRate": {
+            "type": "number",
+            "format": "double",
+            "description": "Taxa média geral de conclusão (%) no período",
+            "example": 72.4
+          },
+          "courses": {
+            "type": "array",
+            "description": "Métricas detalhadas por curso no período",
+            "items": {
+              "$ref": "#/components/schemas/CourseStats"
+            }
+          }
+        }
+      },
+      "DeleteAccountRequest": {
+        "type": "object",
+        "description": "Confirmação para exclusão da própria conta",
+        "properties": {
+          "currentPassword": {
+            "type": "string",
+            "description": "Senha atual do usuário",
+            "maxLength": 4096,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "currentPassword"
+        ]
+      }
+    }
+  }
+}

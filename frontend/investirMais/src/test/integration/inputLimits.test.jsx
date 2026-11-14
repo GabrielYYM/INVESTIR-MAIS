@@ -12,7 +12,7 @@ describe("limites de entrada compatíveis com a API", () => {
     const save = mockApi("put", path, async ({ request }) => ({ ...item, ...await request.json() }));
     const { user } = renderApp("/educacao/" + course.id, { session: teacher });
     await user.click(await screen.findByRole("button", { name: edit, exact: true }));
-    const description = screen.getByRole("textbox", { name: "Descrição", exact: true });
+    const description = await screen.findByRole("textbox", { name: "Descrição", exact: true });
     fireEvent.change(description, { target: { value: "x".repeat(10001) } });
     await user.click(screen.getByRole("button", { name: "Salvar " + kind }));
     expect(await screen.findByText("A descrição deve ter no máximo 10.000 caracteres.")).toBeInTheDocument();
