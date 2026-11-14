@@ -14,9 +14,10 @@ export default defineConfig({
     unstubEnvs: true,
     coverage: {
       provider: "v8",
+      reportsDirectory: "./reports/coverage",
       include: ["src/**/*.{js,jsx,ts}"],
       exclude: ["src/main.jsx", "src/generated/**", "src/test/**"],
-      reporter: ["text", "html", "lcov"],
+      reporter: ["text-summary", "html"],
       thresholds: { statements: 85, branches: 80, functions: 85, lines: 85 },
     },
   },

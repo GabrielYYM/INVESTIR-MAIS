@@ -12,7 +12,8 @@ import java.util.UUID;
 @Entity
 @Table(name = "tb_question")
 @SoftDelete(strategy = SoftDeleteType.TIMESTAMP, columnName = "deleted_at")
-@Getter @Setter @NoArgsConstructor
+@Getter 
+@Setter @NoArgsConstructor
 public class Question {
     @Id @GeneratedValue
     private UUID id;

@@ -1,21 +1,16 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
-import { http, HttpResponse } from "msw/http";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { course, lesson, teacher } from "../fixtures.js";
+import { mockApi } from "../helpers.js";
 import { renderApp } from "../renderApp.jsx";
-import { origin, server } from "../server.js";
 
 describe("limites de entrada compatíveis com a API", () => {
   it.each([
     ["curso", "Editar curso", "/api/courses/" + course.id, course],
     ["aula", "Editar aula " + lesson.title, "/api/lessons/" + lesson.id, lesson],
   ])("valida a descrição de %s sem perder o texto e aceita 10.000 caracteres", async (kind, edit, path, item) => {
-    const save = vi.fn(async ({ request }) => HttpResponse.json({ ...item, ...await request.json() }));
-    server.use(
-      http.get(origin + "/auth/me", () => HttpResponse.json(teacher)),
-      http.put(origin + path, save),
-    );
-    const { user } = renderApp("/educacao/" + course.id);
+    const save = mockApi("put", path, async ({ request }) => ({ ...item, ...await request.json() }));
+    const { user } = renderApp("/educacao/" + course.id, { session: teacher });
     await user.click(await screen.findByRole("button", { name: edit, exact: true }));
     const description = screen.getByRole("textbox", { name: "Descrição", exact: true });
     fireEvent.change(description, { target: { value: "x".repeat(10001) } });
@@ -30,8 +25,7 @@ describe("limites de entrada compatíveis com a API", () => {
   });
 
   it("valida o limite de e-mail e aceita um endereço de 254 caracteres", async () => {
-    const send = vi.fn(() => HttpResponse.json({}));
-    server.use(http.post(origin + "/api/users/forgot-password", send));
+    const send = mockApi("post", "/api/users/forgot-password", {});
     const { user } = renderApp("/recuperar-senha");
     const email = screen.getByRole("textbox", { name: "E-mail", exact: true });
     const address = "a".repeat(64) + "@" + "b".repeat(63) + "." + "c".repeat(63) + "." + "d".repeat(56) + ".test";
@@ -47,11 +41,8 @@ describe("limites de entrada compatíveis com a API", () => {
   });
 
   it("valida o limite da nova senha e aceita 4096 caracteres", async () => {
-    const reset = vi.fn(() => HttpResponse.json({}));
-    server.use(
-      http.post(origin + "/api/users/forgot-password", () => HttpResponse.json({})),
-      http.post(origin + "/api/users/reset-password", reset),
-    );
+    mockApi("post", "/api/users/forgot-password", {});
+    const reset = mockApi("post", "/api/users/reset-password", {});
     const { user } = renderApp("/recuperar-senha");
     await user.type(screen.getByLabelText("E-mail"), "test@example.test");
     await user.click(screen.getByRole("button", { name: "Enviar código" }));

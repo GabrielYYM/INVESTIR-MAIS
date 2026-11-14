@@ -5,6 +5,7 @@ import { createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import { afterEach } from "vitest";
 import { appRoutes } from "../routes.jsx";
+import { mockApi } from "./helpers.js";
 
 const routers = new Set();
 afterEach(() => {
@@ -12,7 +13,8 @@ afterEach(() => {
   routers.clear();
 });
 
-export function renderApp(path = "/", { strict = false } = {}) {
+export function renderApp(path = "/", { strict = false, session } = {}) {
+  if (session) mockApi("get", "/auth/me", session);
   window.history.replaceState(null, "", path);
   const router = createMemoryRouter(appRoutes, { initialEntries: [path] });
   routers.add(router);

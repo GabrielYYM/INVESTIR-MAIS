@@ -21,6 +21,26 @@ Abra [localhost:5173](http://localhost:5173). O proxy do Vite encaminha `/api`, 
 | `npm run preview` | Serve localmente o bundle gerado pelo build. |
 | `npm run api:generate` | Regenera apenas o cliente OpenAPI de educação. |
 
+## Testes e cobertura
+
+Os testes usam Vitest, React Testing Library e `user-event`. O MSW intercepta as chamadas HTTP, permitindo testar as rotas, formulários e serviços reais sem iniciar o backend.
+
+```bash
+npm test
+npm run test:watch
+npm run test:coverage
+```
+
+O comando de cobertura mostra um resumo no terminal e gera `reports/coverage/index.html`, ignorado pelo Git. Os mínimos são 85% para linhas, instruções e funções e 80% para ramificações.
+
+Os testes de integração compartilham três helpers:
+
+- `renderApp(rota, { session: usuario })`: monta as rotas reais com o perfil desejado.
+- `mockApi(metodo, caminho, resposta, opcoes)`: simula um endpoint e retorna um spy; aceita `status`, `headers` e `once`.
+- `fillFields(user, campos, escopo)`: preenche os campos pelos rótulos, usando `screen` como escopo padrão.
+
+Reutilize os dados de `src/test/fixtures.js` e as respostas padrão de `src/test/server.js`. O setup limpa o estado de cada teste e rejeita requisições sem handler, evitando chamadas à API real.
+
 ## Rotas e permissões
 
 | Rota | Acesso | Função |

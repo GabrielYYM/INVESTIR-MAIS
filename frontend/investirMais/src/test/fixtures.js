@@ -31,6 +31,16 @@ export const otherLesson = {
   title: "Reserva de emergência",
 };
 
+export const teacherStats = {
+  startDate: "2026-05-13", endDate: "2026-11-13", totalCourses: 1, totalLessons: 2,
+  totalStudents: 3, totalLessonsWatched: 4, averageCompletionRate: 66.7,
+  courses: [{ courseId: course.id, courseName: course.name, totalLessons: 2,
+    enrolledStudents: 3, lessonsWatched: 4, completionRate: 66.7 }],
+};
+
+export const adminUser = { ...admin, id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", name: "Administrador", email: "admin@example.test" };
+export const teacherUser = { ...teacher, id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", name: "Bruno Professor", email: "bruno@example.test" };
+
 export function paged(content, { number = 0, size = 9, totalElements = content.length, totalPages = Math.ceil(totalElements / size) } = {}) {
   return { content, page: { number, size, totalElements, totalPages } };
 }

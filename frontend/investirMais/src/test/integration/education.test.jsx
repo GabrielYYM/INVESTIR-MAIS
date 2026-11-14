@@ -3,17 +3,14 @@ import { http, HttpResponse } from "msw/http";
 import { describe, expect, it, vi } from "vitest";
 import { admin, course, lesson, otherLesson, paged, student, teacher } from "../fixtures.js";
 import { renderApp } from "../renderApp.jsx";
+import { fillFields } from "../helpers.js";
 import { origin, server } from "../server.js";
 
 const coursePath = "/educacao/" + course.id;
-function asUser(user) {
-  server.use(http.get(origin + "/auth/me", () => HttpResponse.json(user)));
-}
 
 describe("catálogo e aulas", () => {
   it.each([[student, false], [teacher, true], [admin, true]])("mostra a criação de curso conforme o perfil %#", async (user, canCreate) => {
-    asUser(user);
-    renderApp("/educacao");
+    renderApp("/educacao", { session: user });
     await screen.findByRole("heading", { name: "Educação financeira" });
     expect(screen.getByRole("heading", { name: course.name })).toBeInTheDocument();
     if (canCreate) expect(screen.getByRole("button", { name: "Novo curso" })).toBeInTheDocument();
@@ -47,9 +44,8 @@ describe("catálogo e aulas", () => {
   });
 
   it.each([[student, "Os cursos aparecerão aqui quando forem cadastrados."], [teacher, "Crie um curso para começar a adicionar aulas."]])("explica catálogo vazio ao perfil %#", async (user, message) => {
-    asUser(user);
     server.use(http.get(origin + "/api/courses", () => HttpResponse.json(paged([]))));
-    renderApp("/educacao");
+    renderApp("/educacao", { session: user });
     expect(await screen.findByRole("heading", { name: "O catálogo ainda está vazio" })).toBeInTheDocument();
     expect(screen.getByText(message)).toBeInTheDocument();
   });
@@ -73,8 +69,7 @@ describe("catálogo e aulas", () => {
   });
 
   it.each([[student, false], [{ ...teacher, id: "outro-professor" }, false], [teacher, true], [{ ...admin, id: "outro-admin" }, true]])("aplica propriedade do curso aos controles de gestão %#", async (user, canManage) => {
-    asUser(user);
-    renderApp(coursePath);
+    renderApp(coursePath, { session: user });
     await screen.findByRole("heading", { name: course.name });
     for (const name of ["Editar curso", "Excluir curso", "Nova aula", "Editar aula " + lesson.title, "Excluir aula " + lesson.title]) {
       if (canManage) expect(screen.getByRole("button", { name })).toBeInTheDocument();
@@ -100,16 +95,14 @@ describe("catálogo e aulas", () => {
   });
 
   it.each([[student, "Este curso ainda não tem aulas cadastradas."], [teacher, "Adicione uma videoaula para começar."]])("explica curso vazio ao perfil %#", async (user, message) => {
-    asUser(user);
     server.use(http.get(origin + "/api/lessons/course/:id", () => HttpResponse.json(paged([]))));
-    renderApp(coursePath);
+    renderApp(coursePath, { session: user });
     expect(await screen.findByText(message)).toBeInTheDocument();
   });
 });
 
 describe("gestão de cursos", () => {
   it("volta à mesma aula e página após perder a sessão durante a edição", async () => {
-    asUser(teacher);
     server.use(
       http.get(origin + "/api/lessons/course/:id", () => HttpResponse.json(paged([lesson], { number: 1, totalPages: 2, totalElements: 11 }))),
       http.put(origin + "/api/courses/:id", () => HttpResponse.json({}, { status: 401 })),
@@ -117,13 +110,12 @@ describe("gestão de cursos", () => {
       http.post(origin + "/auth/verify-2fa", () => new HttpResponse(null, { status: 204 })),
     );
     const destination = coursePath + "/" + lesson.id + "?pagina=2";
-    const { user, router } = renderApp(destination);
+    const { user, router } = renderApp(destination, { session: teacher });
     await user.click(await screen.findByRole("button", { name: "Editar curso" }));
     await user.click(screen.getByRole("button", { name: "Salvar curso" }));
     await screen.findByRole("heading", { name: "Bem-vindo de volta" });
     expect(new URLSearchParams(router.state.location.search).get("retorno")).toBe(destination);
-    await user.type(screen.getByLabelText("E-mail"), teacher.email);
-    await user.type(screen.getByLabelText("Senha", { exact: true }), "senha-teste");
+    await fillFields(user, { "E-mail": teacher.email, Senha: "senha-teste" });
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     await user.click(await screen.findByText("Usar código manualmente"));
     await user.type(screen.getByLabelText("Código de verificação"), "codigo-teste");
@@ -133,21 +125,19 @@ describe("gestão de cursos", () => {
   });
 
   it("valida, cria o curso e navega para seu detalhe", async () => {
-    asUser(teacher);
     const payloads = [];
     server.use(http.post(origin + "/api/courses", async ({ request }) => {
       payloads.push(await request.json());
       return HttpResponse.json(course, { status: 201 });
     }));
-    const { user, router } = renderApp("/educacao");
+    const { user, router } = renderApp("/educacao", { session: teacher });
     await user.click(await screen.findByRole("button", { name: "Novo curso" }));
     const dialog = within(screen.getByRole("dialog", { name: "Novo curso" }));
     await user.click(dialog.getByRole("button", { name: "Salvar curso" }));
     expect(await dialog.findByText("Informe um título.")).toBeInTheDocument();
     expect(dialog.getByText("Informe uma descrição.")).toBeInTheDocument();
     expect(payloads).toHaveLength(0);
-    await user.type(dialog.getByLabelText("Nome do curso"), "  Renda fixa  ");
-    await user.type(dialog.getByLabelText("Descrição"), "  Aprenda sobre investimentos.  ");
+    await fillFields(user, { "Nome do curso": "  Renda fixa  ", Descrição: "  Aprenda sobre investimentos.  " }, dialog);
     await user.click(dialog.getByRole("button", { name: "Salvar curso" }));
     expect(await screen.findByRole("heading", { name: course.name, level: 1 })).toBeInTheDocument();
     expect(payloads).toEqual([{ name: "Renda fixa", description: "Aprenda sobre investimentos." }]);
@@ -156,10 +146,9 @@ describe("gestão de cursos", () => {
   });
 
   it("fecha o formulário ao cancelar e pelo botão de fechar", async () => {
-    asUser(teacher);
     const create = vi.fn();
     server.use(http.post(origin + "/api/courses", create));
-    const { user } = renderApp("/educacao");
+    const { user } = renderApp("/educacao", { session: teacher });
     await user.click(await screen.findByRole("button", { name: "Novo curso" }));
     await user.click(screen.getByRole("button", { name: "Cancelar" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -170,12 +159,10 @@ describe("gestão de cursos", () => {
   });
 
   it("mantém o diálogo e os dados quando a API recusa a criação", async () => {
-    asUser(teacher);
     server.use(http.post(origin + "/api/courses", () => HttpResponse.json({ detail: "Sem permissão para criar." }, { status: 403 })));
-    const { user } = renderApp("/educacao");
+    const { user } = renderApp("/educacao", { session: teacher });
     await user.click(await screen.findByRole("button", { name: "Novo curso" }));
-    await user.type(screen.getByLabelText("Nome do curso"), "Curso de teste");
-    await user.type(screen.getByLabelText("Descrição"), "Descrição de teste");
+    await fillFields(user, { "Nome do curso": "Curso de teste", Descrição: "Descrição de teste" });
     await user.click(screen.getByRole("button", { name: "Salvar curso" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Sem permissão para criar.");
     expect(screen.getByRole("dialog")).toBeInTheDocument();
@@ -183,7 +170,6 @@ describe("gestão de cursos", () => {
   });
 
   it("edita o curso, revalida o detalhe e fecha o diálogo", async () => {
-    asUser(teacher);
     let currentCourse = { ...course };
     server.use(
       http.get(origin + "/api/courses/:id", () => HttpResponse.json(currentCourse)),
@@ -193,26 +179,24 @@ describe("gestão de cursos", () => {
         return HttpResponse.json(currentCourse);
       }),
     );
-    const { user } = renderApp(coursePath);
+    const { user } = renderApp(coursePath, { session: teacher });
     await user.click(await screen.findByRole("button", { name: "Editar curso" }));
     const field = screen.getByLabelText("Nome do curso");
     expect(field).toHaveValue(course.name);
-    await user.clear(field);
-    await user.type(field, "Renda fixa avançada");
+    await fillFields(user, { "Nome do curso": "Renda fixa avançada" });
     await user.click(screen.getByRole("button", { name: "Salvar curso" }));
     expect(await screen.findByRole("heading", { name: "Renda fixa avançada" })).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
   it("só exclui após confirmação e volta ao catálogo", async () => {
-    asUser(teacher);
     let deleted = false;
     const remove = vi.fn(() => { deleted = true; return new HttpResponse(null, { status: 204 }); });
     server.use(
       http.delete(origin + "/api/courses/:id", remove),
       http.get(origin + "/api/courses", () => HttpResponse.json(paged(deleted ? [] : [course]))),
     );
-    const { user, router } = renderApp(coursePath);
+    const { user, router } = renderApp(coursePath, { session: teacher });
     await user.click(await screen.findByRole("button", { name: "Excluir curso" }));
     expect(remove).not.toHaveBeenCalled();
     expect(screen.getByRole("dialog", { name: "Excluir curso" })).toHaveTextContent("O curso e suas aulas deixarão de aparecer");
@@ -225,7 +209,6 @@ describe("gestão de cursos", () => {
 
 describe("gestão de aulas", () => {
   it("valida a URL e cria uma aula com vídeo e miniatura normalizados", async () => {
-    asUser(teacher);
     const payloads = [];
     server.use(
       http.post(origin + "/api/lessons/course/:id", async ({ params, request }) => {
@@ -235,16 +218,16 @@ describe("gestão de aulas", () => {
       }),
       http.get(origin + "/api/lessons/:id", () => HttpResponse.json(otherLesson)),
     );
-    const { user, router } = renderApp(coursePath);
+    const { user, router } = renderApp(coursePath, { session: teacher });
     await user.click(await screen.findByRole("button", { name: "Nova aula" }));
-    await user.type(screen.getByLabelText("Título da aula"), "  Reserva de emergência  ");
-    await user.type(screen.getByLabelText("Descrição"), "  Aprenda a criar sua reserva.  ");
-    await user.type(screen.getByLabelText("URL do vídeo no YouTube"), "https://evil.example.test/video");
+    await fillFields(user, {
+      "Título da aula": "  Reserva de emergência  ", Descrição: "  Aprenda a criar sua reserva.  ",
+      "URL do vídeo no YouTube": "https://evil.example.test/video",
+    });
     await user.click(screen.getByRole("button", { name: "Salvar aula" }));
     expect(await screen.findByText("Informe o link de um vídeo do YouTube.")).toBeInTheDocument();
     expect(payloads).toHaveLength(0);
-    await user.clear(screen.getByLabelText("URL do vídeo no YouTube"));
-    await user.type(screen.getByLabelText("URL do vídeo no YouTube"), "  https://youtu.be/dQw4w9WgXcQ?t=10  ");
+    await fillFields(user, { "URL do vídeo no YouTube": "  https://youtu.be/dQw4w9WgXcQ?t=10  " });
     await user.click(screen.getByRole("button", { name: "Salvar aula" }));
     expect(await screen.findByRole("heading", { name: otherLesson.title })).toBeInTheDocument();
     expect(payloads).toEqual([{
@@ -256,7 +239,6 @@ describe("gestão de aulas", () => {
   });
 
   it("preserva mídia de registro antigo ao editar somente o título", async () => {
-    asUser(teacher);
     let currentLesson = { ...lesson, mediaUrl: "https://videos.example.test/legado" };
     const payloads = [];
     server.use(
@@ -269,10 +251,9 @@ describe("gestão de aulas", () => {
         return HttpResponse.json(currentLesson);
       }),
     );
-    const { user } = renderApp(coursePath);
+    const { user } = renderApp(coursePath, { session: teacher });
     await user.click(await screen.findByRole("button", { name: "Editar aula " + lesson.title }));
-    await user.clear(screen.getByLabelText("Título da aula"));
-    await user.type(screen.getByLabelText("Título da aula"), "Aula atualizada");
+    await fillFields(user, { "Título da aula": "Aula atualizada" });
     await user.click(screen.getByRole("button", { name: "Salvar aula" }));
     expect(await screen.findByRole("heading", { name: "Aula atualizada" })).toBeInTheDocument();
     expect(payloads).toEqual([{ title: "Aula atualizada", description: lesson.description, mediaUrl: "https://videos.example.test/legado", thumbnailUrl: lesson.thumbnailUrl }]);
@@ -280,7 +261,6 @@ describe("gestão de aulas", () => {
   });
 
   it("exclui a aula selecionada e exibe o estado vazio do curso", async () => {
-    asUser(teacher);
     let deleted = false;
     server.use(
       http.get(origin + "/api/lessons/course/:id", () => HttpResponse.json(paged(deleted ? [] : [lesson]))),
@@ -290,7 +270,7 @@ describe("gestão de aulas", () => {
         return new HttpResponse(null, { status: 204 });
       }),
     );
-    const { user, router } = renderApp(coursePath + "/" + lesson.id);
+    const { user, router } = renderApp(coursePath + "/" + lesson.id, { session: teacher });
     await user.click(await screen.findByRole("button", { name: "Excluir aula " + lesson.title }));
     expect(screen.getByRole("dialog", { name: "Excluir aula" })).toHaveTextContent("A aula deixará de aparecer no curso.");
     await user.click(screen.getByRole("button", { name: "Confirmar exclusão" }));

@@ -2,6 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw/http";
 import { describe, expect, it, vi } from "vitest";
 import { course, lesson, otherLesson, paged, student, teacher } from "../fixtures.js";
+import { fillFields } from "../helpers.js";
 import { renderApp } from "../renderApp.jsx";
 import { origin, server } from "../server.js";
 
@@ -10,26 +11,23 @@ const base = origin + "/api/courses/" + course.id + "/questions";
 const question = { id: "55555555-5555-4555-8555-555555555555", prompt: "Qual é um título público?",
   afterLesson: 1, position: 0, options: ["Tesouro Selic", "CDB"], correctOptionIndex: 0 };
 
-function asTeacher() {
-  server.use(http.get(origin + "/auth/me", () => HttpResponse.json(teacher)));
-}
 async function fillQuestion(user, dialog) {
-  await user.type(dialog.getByLabelText("Enunciado"), question.prompt);
-  await user.clear(dialog.getByLabelText("Após a aula de número"));
-  await user.type(dialog.getByLabelText("Após a aula de número"), "1");
-  await user.type(dialog.getByLabelText("Alternativa 1", { exact: true }), "Tesouro Selic");
-  await user.type(dialog.getByLabelText("Alternativa 2", { exact: true }), "CDB");
+  await fillFields(user, {
+    Enunciado: question.prompt,
+    "Após a aula de número": 1,
+    "Alternativa 1": question.options[0],
+    "Alternativa 2": question.options[1],
+  }, dialog);
 }
 
 describe("perguntas para professores", () => {
   it("valida, cria uma pergunta e atualiza o conteúdo sem recarregar a página", async () => {
-    asTeacher();
     const payloads = []; let items = [];
     server.use(
       http.get(base + "/manage", () => HttpResponse.json(items)),
       http.post(base, async ({ request }) => { const body = await request.json(); payloads.push(body); items = [{ ...question, ...body }]; return HttpResponse.json(items[0], { status: 201 }); }),
     );
-    const { user } = renderApp(coursePath);
+    const { user } = renderApp(coursePath, { session: teacher });
     await user.click(await screen.findByRole("button", { name: "Nova pergunta" }));
     const dialog = within(screen.getByRole("dialog", { name: "Nova pergunta" }));
     await user.click(dialog.getByRole("button", { name: "Salvar pergunta" }));
@@ -44,13 +42,13 @@ describe("perguntas para professores", () => {
   });
 
   it("ajusta a alternativa correta ao remover uma opção e salva a edição", async () => {
-    asTeacher(); let item = { ...question, options: ["A", "B", "C"], correctOptionIndex: 2 };
+    let item = { ...question, options: ["A", "B", "C"], correctOptionIndex: 2 };
     const payloads = [];
     server.use(
       http.get(base + "/manage", () => HttpResponse.json([item])),
       http.put(base + "/:id", async ({ params, request }) => { expect(params.id).toBe(question.id); const body = await request.json(); payloads.push(body); item = { ...item, ...body }; return HttpResponse.json(item); }),
     );
-    const { user } = renderApp(coursePath);
+    const { user } = renderApp(coursePath, { session: teacher });
     await user.click(await screen.findByRole("button", { name: "Editar pergunta " + question.prompt }));
     const dialog = within(screen.getByRole("dialog", { name: "Editar pergunta" }));
     expect(dialog.getByText(/alunos precisarão acertar/)).toBeInTheDocument();
@@ -62,10 +60,10 @@ describe("perguntas para professores", () => {
   });
 
   it("confirma a exclusão e preserva a pergunta ao cancelar", async () => {
-    asTeacher(); let items = [question];
+    let items = [question];
     const remove = vi.fn(() => { items = []; return new HttpResponse(null, { status: 204 }); });
     server.use(http.get(base + "/manage", () => HttpResponse.json(items)), http.delete(base + "/:id", remove));
-    const { user } = renderApp(coursePath);
+    const { user } = renderApp(coursePath, { session: teacher });
     await user.click(await screen.findByRole("button", { name: "Excluir pergunta " + question.prompt }));
     await user.click(screen.getByRole("button", { name: "Cancelar" }));
     expect(remove).not.toHaveBeenCalled();
@@ -76,9 +74,9 @@ describe("perguntas para professores", () => {
   });
 
   it("cadastra perguntas no mesmo pedido de criação do curso", async () => {
-    asTeacher(); const payloads = [];
+    const payloads = [];
     server.use(http.post(origin + "/api/courses", async ({ request }) => { payloads.push(await request.json()); return HttpResponse.json(course, { status: 201 }); }));
-    const { user } = renderApp("/educacao");
+    const { user } = renderApp("/educacao", { session: teacher });
     await user.click(await screen.findByRole("button", { name: "Novo curso" }));
     const dialog = within(screen.getByRole("dialog", { name: "Novo curso" }));
     await user.type(dialog.getByLabelText("Nome do curso"), course.name);
@@ -91,9 +89,9 @@ describe("perguntas para professores", () => {
   });
 
   it("não envia alternativas repetidas e preserva os dados se a API falhar", async () => {
-    asTeacher(); const create = vi.fn(() => HttpResponse.json({ detail: "Não foi possível salvar a pergunta." }, { status: 500 }));
+    const create = vi.fn(() => HttpResponse.json({ detail: "Não foi possível salvar a pergunta." }, { status: 500 }));
     server.use(http.post(base, create));
-    const { user } = renderApp(coursePath);
+    const { user } = renderApp(coursePath, { session: teacher });
     await user.click(await screen.findByRole("button", { name: "Nova pergunta" }));
     const dialog = within(screen.getByRole("dialog"));
     await fillQuestion(user, dialog);
@@ -140,6 +138,7 @@ describe("perguntas para alunos", () => {
     await user.click(screen.getByRole("button", { name: "Responder pergunta" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Ainda não é a alternativa correta");
     expect(screen.queryByRole("link", { name: otherLesson.title })).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Responder pergunta" })).toBeEnabled());
     await user.click(screen.getByRole("radio", { name: "Tesouro Selic" }));
     await user.click(screen.getByRole("button", { name: "Responder pergunta" }));
     expect(await screen.findByText("Pergunta concluída")).toBeInTheDocument();

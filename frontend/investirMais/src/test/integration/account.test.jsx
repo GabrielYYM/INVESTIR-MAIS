@@ -1,27 +1,24 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
-import { http, HttpResponse } from "msw/http";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { renderApp } from "../renderApp.jsx";
-import { origin, server } from "../server.js";
 import { student } from "../fixtures.js";
+import { fillFields, mockApi } from "../helpers.js";
 
 async function fillSignUp(user) {
-  await user.type(screen.getByLabelText("Nome completo"), "  Ana Teste  ");
-  await user.type(screen.getByLabelText("Idade"), "25");
-  await user.type(screen.getByLabelText("E-mail"), student.email);
-  await user.type(screen.getByLabelText("Senha", { exact: true }), "senha-teste");
-  await user.type(screen.getByLabelText("Confirme a senha"), "senha-teste");
+  await fillFields(user, {
+    "Nome completo": "  Ana Teste  ", Idade: 25, "E-mail": student.email,
+    Senha: "senha-teste", "Confirme a senha": "senha-teste",
+  });
   await user.click(screen.getByRole("checkbox"));
 }
 
 describe("cadastro", () => {
   it("recusa senha composta apenas por espaços e preserva espaços em uma senha válida", async () => {
     const bodies = [];
-    const register = vi.fn(async ({ request }) => {
+    const register = mockApi("post", "/api/users/register", async ({ request }) => {
       bodies.push(await request.json());
-      return HttpResponse.json({}, { status: 202 });
-    });
-    server.use(http.post(origin + "/api/users/register", register));
+      return {};
+    }, { status: 202 });
     const { user } = renderApp("/cadastro");
     await fillSignUp(user);
     const password = screen.getByLabelText("Senha", { exact: true });
@@ -40,8 +37,7 @@ describe("cadastro", () => {
   });
 
   it("valida nome, idade, senha, confirmação e aceite antes de enviar", async () => {
-    const register = vi.fn();
-    server.use(http.post(origin + "/api/users/register", register));
+    const register = mockApi("post", "/api/users/register", {});
     const { user } = renderApp("/cadastro");
     await user.click(screen.getByRole("button", { name: "Criar conta" }));
     expect(await screen.findByText("Informe seu nome.")).toBeInTheDocument();
@@ -58,16 +54,14 @@ describe("cadastro", () => {
   it("envia dados normalizados, exibe confirmação e reenvia o link", async () => {
     const registered = [];
     const resent = [];
-    server.use(
-      http.post(origin + "/api/users/register", async ({ request }) => {
-        registered.push(await request.json());
-        return HttpResponse.json({ message: "Verifique o e-mail." });
-      }),
-      http.post(origin + "/api/users/resend-verification", async ({ request }) => {
-        resent.push(await request.json());
-        return HttpResponse.json({ message: "Solicitado." });
-      }),
-    );
+    mockApi("post", "/api/users/register", async ({ request }) => {
+      registered.push(await request.json());
+      return { message: "Verifique o e-mail." };
+    });
+    mockApi("post", "/api/users/resend-verification", async ({ request }) => {
+      resent.push(await request.json());
+      return { message: "Solicitado." };
+    });
     const { user } = renderApp("/cadastro");
     await fillSignUp(user);
     await user.click(screen.getByRole("button", { name: "Criar conta" }));
@@ -79,7 +73,7 @@ describe("cadastro", () => {
   });
 
   it("mantém os dados ao receber falha do cadastro", async () => {
-    server.use(http.post(origin + "/api/users/register", () => HttpResponse.json({ detail: "Dados recusados." }, { status: 422 })));
+    mockApi("post", "/api/users/register", { detail: "Dados recusados." }, { status: 422 });
     const { user } = renderApp("/cadastro");
     await fillSignUp(user);
     await user.click(screen.getByRole("button", { name: "Criar conta" }));
@@ -88,10 +82,8 @@ describe("cadastro", () => {
   });
 
   it("exibe limite de tentativas no reenvio do link", async () => {
-    server.use(
-      http.post(origin + "/api/users/register", () => HttpResponse.json({})),
-      http.post(origin + "/api/users/resend-verification", () => HttpResponse.json({}, { status: 429 })),
-    );
+    mockApi("post", "/api/users/register", {});
+    mockApi("post", "/api/users/resend-verification", {}, { status: 429 });
     const { user } = renderApp("/cadastro");
     await fillSignUp(user);
     await user.click(screen.getByRole("button", { name: "Criar conta" }));
@@ -105,16 +97,14 @@ describe("recuperação de senha", () => {
   it("solicita, reenvia e usa o código com a nova senha", async () => {
     const requests = [];
     const resets = [];
-    server.use(
-      http.post(origin + "/api/users/forgot-password", async ({ request }) => {
-        requests.push(await request.json());
-        return HttpResponse.json({});
-      }),
-      http.post(origin + "/api/users/reset-password", async ({ request }) => {
-        resets.push(await request.json());
-        return HttpResponse.json({});
-      }),
-    );
+    mockApi("post", "/api/users/forgot-password", async ({ request }) => {
+      requests.push(await request.json());
+      return {};
+    });
+    mockApi("post", "/api/users/reset-password", async ({ request }) => {
+      resets.push(await request.json());
+      return {};
+    });
     const { user } = renderApp("/recuperar-senha");
     await user.click(screen.getByRole("button", { name: "Enviar código" }));
     expect(await screen.findByText("Informe seu e-mail.")).toBeInTheDocument();
@@ -134,7 +124,7 @@ describe("recuperação de senha", () => {
   });
 
   it("exibe falha de solicitação sem avançar à redefinição", async () => {
-    server.use(http.post(origin + "/api/users/forgot-password", () => HttpResponse.json({}, { status: 503 })));
+    mockApi("post", "/api/users/forgot-password", {}, { status: 503 });
     const { user } = renderApp("/recuperar-senha");
     await user.type(screen.getByLabelText("E-mail"), student.email);
     await user.click(screen.getByRole("button", { name: "Enviar código" }));
@@ -143,10 +133,8 @@ describe("recuperação de senha", () => {
   });
 
   it("preserva o formulário quando o código de recuperação expira", async () => {
-    server.use(
-      http.post(origin + "/api/users/forgot-password", () => HttpResponse.json({})),
-      http.post(origin + "/api/users/reset-password", () => HttpResponse.json({}, { status: 400 })),
-    );
+    mockApi("post", "/api/users/forgot-password", {});
+    mockApi("post", "/api/users/reset-password", {}, { status: 400 });
     const { user } = renderApp("/recuperar-senha");
     await user.type(screen.getByLabelText("E-mail"), student.email);
     await user.click(screen.getByRole("button", { name: "Enviar código" }));
@@ -163,25 +151,21 @@ describe("edição do perfil", () => {
   it("exige a senha, salva o nome e atualiza a identidade da sessão", async () => {
     let currentUser = { ...student };
     const updates = [];
-    server.use(
-      http.get(origin + "/auth/me", () => HttpResponse.json(currentUser)),
-      http.put(origin + "/api/users/:id", async ({ request, params }) => {
-        expect(params.id).toBe(student.id);
-        const body = await request.json();
-        updates.push(body);
-        currentUser = { ...currentUser, name: body.name };
-        return HttpResponse.json(currentUser);
-      }),
-    );
+    mockApi("get", "/auth/me", () => currentUser);
+    mockApi("put", "/api/users/:id", async ({ request, params }) => {
+      expect(params.id).toBe(student.id);
+      const body = await request.json();
+      updates.push(body);
+      currentUser = { ...currentUser, name: body.name };
+      return currentUser;
+    });
     const { user } = renderApp("/perfil");
     const profileForm = within((await screen.findByRole("heading", { name: "Alterar informações" })).closest("form"));
     expect(screen.getByLabelText("E-mail")).toHaveAttribute("readonly");
     await user.click(screen.getByRole("button", { name: "Salvar perfil" }));
     expect(await screen.findByText("Informe sua senha atual para confirmar.")).toBeInTheDocument();
     expect(updates).toHaveLength(0);
-    await user.clear(screen.getByLabelText("Nome completo"));
-    await user.type(screen.getByLabelText("Nome completo"), "  Ana Atualizada  ");
-    await user.type(profileForm.getByLabelText("Senha atual"), "senha-teste");
+    await fillFields(user, { "Nome completo": "  Ana Atualizada  ", "Senha atual": "senha-teste" }, profileForm);
     await user.click(screen.getByRole("button", { name: "Salvar perfil" }));
     expect(await screen.findByRole("status")).toHaveTextContent("Perfil atualizado.");
     expect(screen.getByRole("heading", { name: "Ana Atualizada" })).toBeInTheDocument();
@@ -190,7 +174,7 @@ describe("edição do perfil", () => {
   });
 
   it("permanece no perfil se a senha atual for recusada com sessão válida", async () => {
-    server.use(http.put(origin + "/api/users/:id", () => HttpResponse.json({ detail: "Senha atual incorreta." }, { status: 401 })));
+    mockApi("put", "/api/users/:id", { detail: "Senha atual incorreta." }, { status: 401 });
     const { user, router } = renderApp("/perfil");
     const profileForm = within((await screen.findByRole("heading", { name: "Alterar informações" })).closest("form"));
     await user.type(profileForm.getByLabelText("Senha atual"), "errada");
