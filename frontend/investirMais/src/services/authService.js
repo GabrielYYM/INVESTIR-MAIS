@@ -10,10 +10,11 @@ export async function verify2FA(code) {
 }
 export async function logout() { await apiClient.post("/auth/logout"); }
 
-export const register = account.registerUser;
-export const updateUserProfile = account.updateProfile;
 export const getCurrentUser = (signal) => account.currentUser({ signal });
-export const forgotPassword = (email) => account.forgotPassword({ email });
-export const resetPassword = (token, newPassword) => account.resetPassword({ token, newPassword });
-export const updatePassword = (currentPassword, newPassword) => account.updatePassword({ currentPassword, newPassword });
 export const deleteAccount = (id, currentPassword) => account.deleteAccount(id, { currentPassword });
+
+export async function isSessionExpired(error) {
+  if (error.response?.status !== 401) return false;
+  try { await getCurrentUser(); return false; }
+  catch (sessionError) { return [401, 403].includes(sessionError.response?.status); }
+}

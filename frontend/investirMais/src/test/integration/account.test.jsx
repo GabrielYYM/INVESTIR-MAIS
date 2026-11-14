@@ -1,5 +1,6 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { HttpResponse } from "msw/http";
 import { renderApp } from "../renderApp.jsx";
 import { student } from "../fixtures.js";
 import { fillFields, mockApi } from "../helpers.js";
@@ -148,6 +149,39 @@ describe("recuperação de senha", () => {
 });
 
 describe("edição do perfil", () => {
+  it.each([401, 403, 503, "network"])("distingue a senha recusada da sessão encerrada (%s)", async status => {
+    let submitted = false;
+    mockApi("get", "/auth/me", () => !submitted ? student : status === "network" ? HttpResponse.error() : HttpResponse.json({}, { status }));
+    mockApi("put", `/api/users/${student.id}`, () => {
+      submitted = true;
+      return HttpResponse.json({ detail: "Senha atual incorreta." }, { status: 401 });
+    });
+    const { user, router } = renderApp("/perfil");
+    const form = within((await screen.findByRole("heading", { name: "Alterar informações" })).closest("form"));
+    await fillFields(user, { "Senha atual": "senha-incorreta" }, form);
+    await user.click(form.getByRole("button", { name: "Salvar perfil" }));
+    if ([401, 403].includes(status)) {
+      expect(await screen.findByRole("heading", { name: "Bem-vindo de volta" })).toBeInTheDocument();
+      expect(new URLSearchParams(router.state.location.search).get("retorno")).toBe("/perfil");
+    } else {
+      expect(await screen.findByRole("alert")).toHaveTextContent("Senha atual incorreta.");
+      expect(router.state.location.pathname).toBe("/perfil");
+      expect(form.getByLabelText("Senha atual")).toHaveValue("senha-incorreta");
+    }
+  });
+
+  it("preserva os dados e permite tentar novamente quando a atualização fica sem conexão", async () => {
+    const update = mockApi("put", `/api/users/${student.id}`, HttpResponse.error());
+    const { user, router } = renderApp("/perfil");
+    const form = within((await screen.findByRole("heading", { name: "Alterar informações" })).closest("form"));
+    await fillFields(user, { "Nome completo": "Ana Offline", "Senha atual": "senha-atual" }, form);
+    await user.click(form.getByRole("button", { name: "Salvar perfil" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Não foi possível salvar.");
+    expect(form.getByLabelText("Nome completo")).toHaveValue("Ana Offline");
+    expect(form.getByRole("button", { name: "Salvar perfil" })).toBeEnabled();
+    expect(router.state.location.pathname).toBe("/perfil");
+    expect(update).toHaveBeenCalledOnce();
+  });
   it("exige a senha, salva o nome e atualiza a identidade da sessão", async () => {
     let currentUser = { ...student };
     const updates = [];
@@ -168,7 +202,7 @@ describe("edição do perfil", () => {
     await fillFields(user, { "Nome completo": "  Ana Atualizada  ", "Senha atual": "senha-teste" }, profileForm);
     await user.click(screen.getByRole("button", { name: "Salvar perfil" }));
     expect(await screen.findByRole("status")).toHaveTextContent("Perfil atualizado.");
-    expect(screen.getByRole("heading", { name: "Ana Atualizada" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Ana Atualizada" })).toBeInTheDocument();
     await waitFor(() => expect(profileForm.getByLabelText("Senha atual")).toHaveValue(""));
     expect(updates).toEqual([{ name: "Ana Atualizada", email: student.email, currentPassword: "senha-teste" }]);
   });

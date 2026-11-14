@@ -1,65 +1,66 @@
-import { Button, Stack } from "@mui/material";
-import { useState } from "react";
-import { CheckCircle2, KeyRound, Lock, Mail, ShieldCheck } from "lucide-react";
+import { CheckCircle2, KeyRound, Mail, ShieldCheck } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { Link } from "react-router";
-import { AuthCard, confirmPasswordRules, emailRules, Field, newPasswordRules } from "../components/FormFields.jsx";
+import { useForgotPassword, useResetPassword } from "../generated/account.ts";
+import { AuthCard, Field } from "../components/FormFields.jsx";
+import PasswordFields from "../components/PasswordFields.jsx";
 import { Notice } from "../components/PageState.jsx";
+import { accountResolver, emailSchema, resetPasswordSchema } from "../services/accountSchema.js";
 import { apiError } from "../services/api.js";
-import { forgotPassword, resetPassword } from "../services/authService.js";
 export default function ForgotPassword() {
-  const [email, setEmail] = useState("");
-  const [complete, setComplete] = useState(false);
-  const request = useForm();
-  const reset = useForm();
-  const resend = useForm();
-  const sendCode = (form, onSuccess) => form.handleSubmit(async values => {
-    try {
-      const address = email || values.email;
-      await forgotPassword(address);
-      onSuccess(address);
-    } catch (error) {
-      form.setError("root", {
-        message: apiError(error, "Não foi possível solicitar o código agora.")
-      });
+  const requestForm = useForm({
+    resolver: accountResolver(emailSchema)
+  });
+  const resetForm = useForm({
+    resolver: accountResolver(resetPasswordSchema)
+  });
+  const request = useForgotPassword();
+  const resend = useForgotPassword();
+  const reset = useResetPassword({
+    mutation: {
+      onSuccess: () => resetForm.reset()
     }
   });
-  const changePassword = reset.handleSubmit(async ({
+  const email = request.isSuccess ? request.variables.data.email : "";
+  const complete = reset.isSuccess;
+  const busy = reset.isPending || resend.isPending;
+  const sendCode = requestForm.handleSubmit(data => request.mutate({
+    data
+  }));
+  const changePassword = resetForm.handleSubmit(({
     token,
     password
-  }) => {
-    try {
-      await resetPassword(token, password);
-      reset.reset();
-      setComplete(true);
-    } catch (error) {
-      reset.setError("root", {
-        message: apiError(error, "Código inválido ou expirado. Confira os dados ou solicite outro código.")
-      });
+  }) => reset.mutate({
+    data: {
+      token,
+      newPassword: password
     }
-  });
+  }));
   return <AuthCard icon={complete ? CheckCircle2 : email ? KeyRound : ShieldCheck} title={complete ? "Senha atualizada" : email ? "Redefinir senha" : "Recuperar senha"} description={complete ? "Você já pode entrar usando sua nova senha." : email ? "Se houver uma conta com esse e-mail, o código chegará em instantes." : "Informe o e-mail da conta para receber um código de recuperação."}>
-      {!complete && (email ? <>
-          <Stack onSubmit={changePassword} noValidate spacing={2} component="form">
-            {reset.formState.errors.root && <Notice error>{reset.formState.errors.root.message}</Notice>}
-            <Field label="Código de recuperação" icon={KeyRound} autoComplete="one-time-code" maxLength={64} placeholder="Cole ou digite o código recebido por e-mail" error={reset.formState.errors.token?.message} {...reset.register("token", {
-          required: "Informe o código recebido.",
-          setValueAs: value => value.trim()
-        })} />
-            <Field label="Nova senha" icon={Lock} type="password" autoComplete="new-password" placeholder="Digite a nova senha (mínimo 8 caracteres)" hint="A senha deve ter no mínimo 8 caracteres." error={reset.formState.errors.password?.message} {...reset.register("password", newPasswordRules)} />
-            <Field label="Confirme a nova senha" icon={Lock} type="password" autoComplete="new-password" placeholder="Repita a nova senha criada" error={reset.formState.errors.confirmPassword?.message} {...reset.register("confirmPassword", confirmPasswordRules)} />
-            <Button disabled={reset.formState.isSubmitting || resend.formState.isSubmitting} type="submit" variant="contained">Redefinir senha</Button>
-          </Stack>
-          <Stack onSubmit={sendCode(resend, () => {})} spacing={2} component="form">
-            {resend.formState.errors.root && <Notice error>{resend.formState.errors.root.message}</Notice>}
-            {resend.formState.isSubmitSuccessful && <Notice>Solicitamos um novo código para o e-mail informado.</Notice>}
-            <Button disabled={reset.formState.isSubmitting || resend.formState.isSubmitting} type="submit" variant="outlined">Solicitar outro código</Button>
-          </Stack>
-        </> : <Stack onSubmit={sendCode(request, setEmail)} noValidate spacing={2} component="form">
-          {request.formState.errors.root && <Notice error>{request.formState.errors.root.message}</Notice>}
-          <Field label="E-mail" icon={Mail} type="email" autoComplete="email" placeholder="seu.email@exemplo.com" hint="Enviaremos as instruções de recuperação para este endereço." error={request.formState.errors.email?.message} {...request.register("email", emailRules)} />
-          <Button disabled={request.formState.isSubmitting} type="submit" variant="contained">Enviar código</Button>
-        </Stack>)}
-      <Link to="/entrar">Voltar para entrar</Link>
-    </AuthCard>;
+    {!complete && (email ? <>
+      <form onSubmit={changePassword} noValidate className="space-y-4">
+        {reset.error && <Notice error>{apiError(reset.error, "Código inválido ou expirado. Confira os dados ou solicite outro código.")}</Notice>}
+        <Field label="Código de recuperação" icon={KeyRound} autoComplete="one-time-code" maxLength={64} placeholder="Cole ou digite o código recebido por e-mail" error={resetForm.formState.errors.token?.message} {...resetForm.register("token")} />
+        <PasswordFields form={resetForm} />
+        <button disabled={busy} type="submit" className="button-primary w-full">Redefinir senha</button>
+      </form>
+      <form onSubmit={event => {
+        event.preventDefault();
+        resend.mutate({
+          data: {
+            email
+          }
+        });
+      }} className="space-y-4">
+        {resend.error && <Notice error>{apiError(resend.error, "Não foi possível solicitar o código agora.")}</Notice>}
+        {resend.isSuccess && <Notice>Solicitamos um novo código para o e-mail informado.</Notice>}
+        <button disabled={busy} type="submit" className="button-secondary w-full">Solicitar outro código</button>
+      </form>
+    </> : <form onSubmit={sendCode} noValidate className="space-y-4">
+      {request.error && <Notice error>{apiError(request.error, "Não foi possível solicitar o código agora.")}</Notice>}
+      <Field label="E-mail" icon={Mail} type="email" autoComplete="email" placeholder="seu.email@exemplo.com" hint="Enviaremos as instruções de recuperação para este endereço." error={requestForm.formState.errors.email?.message} {...requestForm.register("email")} />
+      <button disabled={request.isPending} type="submit" className="button-primary w-full">Enviar código</button>
+    </form>)}
+    <Link to="/entrar" className="block text-center text-sm font-semibold text-brand hover:underline">Voltar para entrar</Link>
+  </AuthCard>;
 }

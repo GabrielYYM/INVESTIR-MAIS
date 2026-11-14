@@ -1,10 +1,19 @@
 import { Button, Stack, Typography } from "@mui/material";
 import { useState } from "react";
-import { CreateBase, EditBase, SaveButton, SimpleForm, Toolbar, useDelete, useNotify, useSaveContext } from "react-admin";
+import { CreateBase, EditBase, SaveButton, SimpleForm, Toolbar, useDelete, useSaveContext } from "react-admin";
 import { useLocation, useNavigate, useRevalidator } from "react-router";
 import { zodResolver } from "@hookform/resolvers/zod";
 import AppModal from "./AppModal.jsx";
 import { Notice } from "./PageState.jsx";
+function useOperationError() {
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
+  const location = useLocation();
+  return [error, failure => {
+    if (failure.status === 401) navigate("/entrar?" + new URLSearchParams({ retorno: location.pathname + location.search }), { replace: true });
+    else setError(failure.message);
+  }];
+}
 function FormFrame({
   title,
   label,
@@ -19,7 +28,7 @@ function FormFrame({
   const {
     saving
   } = useSaveContext();
-  return <AppModal title={title} onClose={onClose} busy={saving} width={640}>
+  return <AppModal title={title} onClose={onClose} busy={saving}>
     <SimpleForm resolver={zodResolver(schema)} defaultValues={defaults} record={record} mode="onSubmit" reValidateMode="onChange" sx={{
       p: 0
     }} toolbar={<Toolbar sx={{
@@ -28,7 +37,7 @@ function FormFrame({
       justifyContent: "end",
       gap: 1
     }}>
-        <Button disabled={saving} onClick={onClose}>Cancelar</Button><SaveButton label={label} alwaysEnable={!saving && alwaysEnable} disabled={saving} />
+        <Button disabled={saving} onClick={onClose}>Cancelar</Button><SaveButton icon={false} label={label} alwaysEnable={!saving && alwaysEnable} disabled={saving} />
       </Toolbar>}>
       {error && <Notice error>{error}</Notice>}{children}
     </SimpleForm>
@@ -48,22 +57,14 @@ export default function CrudDialog({
   children
 }) {
   const revalidator = useRevalidator();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [error,setError] = useState("");
+  const [error, onError] = useOperationError();
   const mutationOptions = {
     meta,
     onSuccess: async data => {
       await (onSuccess ? onSuccess(data) : revalidator.revalidate());
       onClose();
     },
-    onError: error => {
-      if (error.status === 401) navigate("/entrar?" + new URLSearchParams({
-        retorno: location.pathname + location.search
-      }), {
-        replace: true
-      });else setError(error.message);
-    }
+    onError,
   };
   const Controller = item ? EditBase : CreateBase;
   return <Controller resource={resource} id={item?.id} disableAuthentication mutationMode="pessimistic" mutationOptions={mutationOptions} transform={transform} {...item ? {
@@ -91,7 +92,7 @@ export function DeleteRecordDialog({
   const [remove, {
     isPending
   }] = useDelete();
-  const notify = useNotify();
+  const [error, onError] = useOperationError();
   const revalidator = useRevalidator();
   const submit = () => remove(resource, {
     id: item.id,
@@ -103,12 +104,10 @@ export function DeleteRecordDialog({
       await (onSuccess ? onSuccess() : revalidator.revalidate());
       onClose();
     },
-    onError: error => notify(error.message, {
-      type: "error"
-    })
+    onError,
   });
   return <AppModal title={title} busy={isPending} onClose={onClose}>
-    <Stack spacing={3}><Typography>{children}</Typography><Stack direction="row" spacing={1} sx={{
+    <Stack spacing={3}>{error && <Notice error>{error}</Notice>}<Typography>{children}</Typography><Stack direction="row" spacing={1} sx={{
         justifyContent: "end"
       }}>
       <Button disabled={isPending} onClick={onClose}>Cancelar</Button><Button color="error" variant="contained" disabled={isPending} onClick={submit}>Confirmar exclusão</Button>

@@ -102,6 +102,18 @@ describe("gestão de usuários", () => {
 });
 
 describe("histórico de auditoria", () => {
+  it("pagina mais de cem revisões sem misturar os parâmetros da lista de usuários", async () => {
+    mockApi("get", `/api/users/${student.id}/audit`, Array.from({ length: 103 }, (_, index) => ({
+      revisionNumber: index + 1, operation: "UPDATE", user: { ...student, name: `Revisão ${index + 1}` },
+    })));
+    const { user, router } = setup();
+    await user.click((await userRow()).getByRole("button", { name: "Auditoria" }));
+    const dialog = within(screen.getByRole("dialog"));
+    expect(await dialog.findByText("Revisão 103")).toBeInTheDocument();
+    await user.click(dialog.getByRole("button", { name: /página 11/i }));
+    expect(await dialog.findByText("Revisão 1", { exact: true })).toBeInTheDocument();
+    expect(router.state.location.search).toBe("");
+  });
   it("consulta novamente ao reabrir e separa o histórico de cada usuário", async () => {
     let name = "Snapshot anterior";
     const audit = mockApi("get", `/api/users/${student.id}/audit`, () => [

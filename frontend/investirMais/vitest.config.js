@@ -6,6 +6,8 @@ export default defineConfig({
   test: {
     // Keep component/jsdom suites from competing for resources during coverage.
     maxWorkers: 2,
+    // Nested form interactions also run with V8 coverage instrumentation.
+    testTimeout: 15000,
     server: { deps: { inline: [/react-admin/, /ra-core/, /ra-ui-materialui/, /ra-i18n-polyglot/, /react-router/] } },
     environment: "jsdom",
     environmentOptions: { jsdom: { url: "http://localhost:5173" } },

@@ -19,7 +19,7 @@ Abra [localhost:5173](http://localhost:5173). O proxy do Vite encaminha `/api`, 
 | `npm run dev` | Gera os clientes da API e inicia o Vite. |
 | `npm run build` | Gera os clientes da API e compila o bundle em `dist/`. |
 | `npm run preview` | Serve localmente o bundle gerado pelo build. |
-| `npm run api:generate` | Regenera os clientes OpenAPI de conta e educação. |
+| `npm run api:generate` | Regenera clientes, hooks e schemas Zod de conta e educação. |
 
 ## Testes e cobertura
 
@@ -33,7 +33,7 @@ npm run test:coverage
 
 O comando de cobertura mostra um resumo no terminal e gera `reports/coverage/index.html`, ignorado pelo Git. Os mínimos são 85% para linhas, instruções e funções e 80% para ramificações.
 
-O Vitest executa até duas suítes em paralelo para reduzir a disputa de recursos entre o jsdom e o Ant Design, especialmente durante a cobertura.
+O Vitest executa até duas suítes em paralelo para limitar o uso de memória pelo jsdom e pelos componentes Material UI, especialmente durante a cobertura.
 
 Os testes de integração compartilham três helpers:
 
@@ -54,7 +54,8 @@ Reutilize os dados de `src/test/fixtures.js` e as respostas padrão de `src/test
 | `/` | Sessão completa | Painel com cursos em destaque e métricas conforme o perfil. |
 | `/educacao` | Sessão completa | Catálogo paginado de cursos e criação de curso para perfis autorizados. |
 | `/educacao/:courseId/:lessonId?` | Sessão completa | Detalhe do curso, lista de aulas e reprodução da aula selecionada. |
-| `/perfil` | Sessão completa | Exibe os dados da conta e permite editar o nome com a senha atual. |
+| `/perfil` | Sessão completa | Exibe os dados da conta, permite editar o nome e gerenciar senha e exclusão. |
+| `/admin` | Administrador | Consulta usuários e auditoria e altera papéis autorizados. |
 
 A saída é uma ação em `/sair`, que chama `POST /auth/logout`.
 
@@ -70,7 +71,9 @@ A instância Axios compartilhada envia cookies de sessão. Em escritas, consulta
 
 | Arquivo ou diretório | Papel |
 | --- | --- |
-| [`src/App.jsx`](src/App.jsx) | Rotas, verificação de sessão e tratamento de erros de navegação. |
+| [`src/routes.jsx`](src/routes.jsx) | Rotas, verificação de sessão e tratamento de erros de navegação. |
+| [`src/services/dataProvider.js`](src/services/dataProvider.js) | Adapta o CRUD do React-admin à API Spring e normaliza paginação e erros. |
+| [`src/components/CrudDialog.jsx`](src/components/CrudDialog.jsx) | Editor e confirmação de exclusão compartilhados pelos recursos. |
 | [`src/pages/`](src/pages/) | Telas, formulários e ações dos fluxos da aplicação. |
 | [`src/components/`](src/components/) | Layout, navegação, estados de página, formulários e componentes de educação. |
 | [`src/services/api.js`](src/services/api.js) | Instância Axios, credenciais, CSRF e mensagens de erro. |
@@ -80,15 +83,21 @@ A instância Axios compartilhada envia cookies de sessão. Em escritas, consulta
 
 ## Componentes e formulários
 
-O Ant Design fornece os modais compartilhados (`AppModal`), as tabelas e calendários do painel, as abas dos termos, os botões e a busca da administração. O `UiProvider` define português, tema escuro e a cor âmbar. A administração, o painel do professor, os editores, os termos e o modal de exclusão de conta são carregados sob demanda.
+A interface preserva o layout anterior à reconstrução: navegação, cartões, espaçamentos, cores e páginas usam os estilos do **Tailwind CSS 4**. Os campos, modais, abas, tabelas e paginação continuam usando **Material UI**, com apresentação ajustada em `UiProvider`. A ordem das camadas CSS é declarada no início de `index.html` para que o reset do Tailwind não sobrescreva os componentes. Ant Design e a integração `react-hook-form-antd` continuam removidos.
 
-Os formulários de cursos e perguntas usam React Hook Form com `useFieldArray`. As validações ficam em `src/services/educationSchema.js` e `questionSchema.js`, integradas pelo resolver Zod. As alternativas são objetos apenas no formulário, para manter identificadores estáveis; o payload continua enviando `options: string[]` e posições a partir de zero.
+O **React-admin** assume os formulários CRUD (`CreateBase`, `EditBase`, `SimpleForm`), as listas dinâmicas de perguntas e alternativas (`ArrayInput`, `SimpleFormIterator`) e as tabelas com filtros, ordenação e paginação (`ListBase`, `DataTable`). `CrudDialog` centraliza envio, validação, falhas e confirmação de exclusão. Os editores, a administração, o painel do professor e os termos são carregados sob demanda.
 
-O perfil usa os estados do React Hook Form para envio, falha e sucesso. A exclusão mantém a confirmação explícita e a senha atual; o modal bloqueia fechamento e reenvio durante a operação. O Day.js cuida das datas do painel, com limite de seis meses de calendário e validação de datas reais, inclusive anos bissextos.
+`dataProvider.js` concentra a adaptação dos recursos `courses`, `lessons`, `questions`, `users` e `audit` aos clientes gerados pelo Orval. Cursos e aulas usam a paginação da API. Usuários e auditoria são paginados e filtrados no cliente porque seus endpoints retornam listas completas. O histórico é produzido pelo Hibernate Envers no backend; o frontend apenas consulta e apresenta os snapshots.
 
-O nuqs centraliza os parâmetros de período e paginação em `src/services/searchParams.js`, compartilhados pelos componentes e loaders. Os filtros do painel usam o adaptador do React Router 8 com `shallow: false` para consultar as métricas ao aplicar o período. React Hook Form mantém as datas em edição até o envio. A navegação preserva os outros parâmetros da URL e o histórico do navegador.
+As validações de conta e educação são geradas em `src/generated/*.zod.ts` pelo Orval. Os schemas dos editores acrescentam mensagens em português e as regras de apresentação: posições a partir de um, alternativas com texto e uma única opção correta. O payload continua usando `options: string[]`, `correctOptionIndex` e posições a partir de zero. A aprovação e o bloqueio da próxima aula continuam sob responsabilidade do backend; as respostas marcadas e o número de tentativas não são persistidos pelo frontend.
 
-A auditoria usa TanStack Query com o hook `useGetUserAuditHistory`, gerado pelo Orval. O cliente é criado no layout autenticado; consultas sem observadores são descartadas imediatamente, não há tentativas automáticas nem nova consulta ao focar a janela. Fechar o modal cancela a chamada pendente e reabri-lo consulta o histórico atualizado. Os demais loaders e actions continuam sob controle do React Router.
+Os formulários de conta usam `accountSchema.js`, que reaproveita os schemas Zod gerados pelo Orval e acrescenta normalização, mensagens em português, aceite dos termos e confirmação de senha. Nome, e-mail e código são aparados; senhas mantêm seus espaços. `PasswordFields` compartilha os campos de nova senha e confirmação entre cadastro, recuperação e perfil. Os painéis do perfil mantêm as classes visuais originais, sem restaurar os antigos controladores e validações manuais.
+
+Cadastro, recuperação, alteração de senha e atualização do perfil usam os hooks gerados pelo Orval para envio, carregamento, erros e sucesso. Após editar o nome, o perfil revalida a identidade do layout. Uma resposta `401` na atualização só redireciona ao login quando uma nova consulta à sessão confirma sua expiração; senha incorreta e falha de conexão preservam os dados digitados. A exclusão exige confirmação e senha atual, bloqueando fechamento e reenvio durante a operação. O Day.js valida datas reais e o limite de seis meses de calendário do painel.
+
+O nuqs centraliza os parâmetros de período e paginação em `src/services/searchParams.js`, com adaptador do React Router 7 e `shallow: false` para consultar as métricas ao aplicar o período. Os campos em edição não alteram a URL até o envio. A navegação preserva os outros parâmetros e o histórico do navegador.
+
+`ApplicationProviders` configura o React-admin, a tradução brasileira e o cliente TanStack Query em memória. Consultas e mutações sem observadores são descartadas imediatamente, não há tentativas automáticas nem atualização ao focar a janela. Fechar a auditoria cancela a chamada pendente; reabri-la consulta o histórico atualizado. Os loaders do React Router continuam compondo os dados das páginas de aprendizagem, enquanto o CRUD usa o Data Provider.
 
 ## Contrato da API de educação
 

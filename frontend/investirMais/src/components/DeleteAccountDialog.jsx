@@ -1,4 +1,3 @@
-import { Button, Stack, Typography } from "@mui/material";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { ArrowRight, Trash2 } from "lucide-react";
@@ -40,43 +39,43 @@ export default function DeleteAccountDialog({
     }
   });
   return <AppModal title={step === 1 ? "Excluir Conta — Confirmação (1 de 2)" : "Excluir Conta — Autenticação (2 de 2)"} onClose={onClose} busy={busy} closeLabel="Fechar modal">
-    <Stack onSubmit={submit} noValidate spacing={2} component="form">
+    <form onSubmit={submit} className="space-y-4 pt-4" noValidate>
       {(errors.root || errors.password) && <Notice error>{errors.root?.message || errors.password?.message}</Notice>}
       {step === 1 ? <>
-        <Stack spacing={2}>
-          <Typography>Atenção às consequências da exclusão:</Typography>
-          <ul>
+        <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-xs text-zinc-300 space-y-2 leading-relaxed">
+          <p className="font-bold text-rose-300">Atenção às consequências da exclusão:</p>
+          <ul className="list-disc list-inside space-y-1">
             <li>Sua conta será desativada de forma definitiva</li>
             <li>Todas as sessões abertas em qualquer dispositivo serão desconectadas na hora.</li>
             <li>Seu progresso em cursos, matrículas e certificados serão tornados inacessíveis.</li>
             <li>Você não poderá mais utilizar este e-mail para acessar a conta atual.</li>
           </ul>
-        </Stack>
-        <label>
-          <input type="checkbox" {...form.register("consent")} />
-          <span><strong>1ª Confirmação:</strong> Li com atenção e tenho plena ciência de que minha conta será desativada e todo o meu acesso à plataforma será revogado.</span>
+        </div>
+        <label className="flex items-start gap-3 p-3 rounded-xl border border-line bg-canvas cursor-pointer">
+          <input type="checkbox" className="mt-0.5 size-4 accent-amber-500" {...form.register("consent")} />
+          <span className="text-xs"><strong>1ª Confirmação:</strong> Li com atenção e tenho plena ciência de que minha conta será desativada e todo o meu acesso à plataforma será revogado.</span>
         </label>
-        <Stack spacing={2}>
-          <Button type="button" onClick={onClose} variant="outlined">Cancelar</Button>
-          <Button type="button" disabled={!form.watch("consent")} onClick={() => setStep(2)} variant="outlined" color="error">
+        <div className="flex flex-wrap justify-end gap-3 border-t border-line pt-4">
+          <button type="button" onClick={onClose} className="button-secondary">Cancelar</button>
+          <button type="button" disabled={!form.watch("consent")} onClick={() => setStep(2)} className="button-danger">
             Prosseguir para confirmação com senha <ArrowRight size={14} />
-          </Button>
-        </Stack>
+          </button>
+        </div>
       </> : <>
-        <Typography><strong>2ª Confirmação:</strong> Para garantir que você é realmente o titular da conta e evitar exclusões acidentais ou não autorizadas, digite a sua <strong>senha atual</strong>:</Typography>
+        <p className="text-sm text-muted"><strong>2ª Confirmação:</strong> Para garantir que você é realmente o titular da conta e evitar exclusões acidentais ou não autorizadas, digite a sua <strong>senha atual</strong>:</p>
         <Field label="Senha atual da conta" type="password" autoFocus autoComplete="current-password" disabled={busy} {...form.register("password", {
           validate: value => Boolean(value.trim()) || "Informe sua senha atual para autorizar a exclusão."
         })} />
-        <Stack spacing={2}>
-          <Button type="button" disabled={busy} onClick={() => setStep(1)} variant="outlined">Voltar</Button>
-          <Stack spacing={2}>
-            <Button type="button" disabled={busy} onClick={onClose} variant="outlined">Cancelar</Button>
-            <Button disabled={busy || !form.watch("password")} type="submit" variant="outlined" color="error"><Trash2 size={14} />
+        <div className="flex flex-wrap justify-between gap-3 border-t border-line pt-4">
+          <button type="button" disabled={busy} onClick={() => setStep(1)} className="button-secondary">Voltar</button>
+          <div className="flex gap-2">
+            <button type="button" disabled={busy} onClick={onClose} className="button-secondary">Cancelar</button>
+            <button disabled={busy || !form.watch("password")} className="button-danger"><Trash2 size={14} />
               {busy ? "Excluindo conta…" : "Confirmar e Desativar Conta"}
-            </Button>
-          </Stack>
-        </Stack>
+            </button>
+          </div>
+        </div>
       </>}
-    </Stack>
+    </form>
   </AppModal>;
 }

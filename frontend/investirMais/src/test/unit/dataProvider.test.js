@@ -70,6 +70,10 @@ describe("contrato entre React-admin e Spring", () => {
     await expect(dataProvider.getOne("courses", { id: course.id })).rejects.toMatchObject({ status: 500, message: expect.stringContaining("Não foi possível") });
     await expect(dataProvider.delete("users", { id: student.id })).rejects.toMatchObject({ status: 400 });
   });
+  it("preserva cancelamento como AbortError em vez de falha HTTP", async () => {
+    account.listAllUsers.mockRejectedValue({ __CANCEL__: true });
+    await expect(dataProvider.getList("users", {})).rejects.toMatchObject({ name: "AbortError" });
+  });
   it("agrupa consultas e mutações mantendo os identificadores", async () => {
     education.getCourseById.mockImplementation(id => Promise.resolve({ id }));
     education.updateCourse.mockImplementation(id => Promise.resolve({ id }));

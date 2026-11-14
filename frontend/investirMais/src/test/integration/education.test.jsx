@@ -140,9 +140,10 @@ describe("gestão de cursos", () => {
     expect(dialog.getByText("Informe uma descrição.")).toBeInTheDocument();
     expect(payloads).toHaveLength(0);
     await fillFields(user, { "Nome do curso": "  Renda fixa  ", Descrição: "  Aprenda sobre investimentos.  " }, dialog);
+    await waitFor(() => expect(dialog.getByRole("button", { name: "Salvar curso" })).toBeEnabled());
     await user.click(dialog.getByRole("button", { name: "Salvar curso" }));
+    await waitFor(() => expect(payloads).toEqual([{ name: "Renda fixa", description: "Aprenda sobre investimentos." }]));
     expect(await screen.findByRole("heading", { name: course.name, level: 1 })).toBeInTheDocument();
-    expect(payloads).toEqual([{ name: "Renda fixa", description: "Aprenda sobre investimentos." }]);
     expect(router.state.location.pathname).toBe(coursePath);
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
@@ -255,11 +256,12 @@ describe("gestão de aulas", () => {
     );
     const { user } = renderApp(coursePath, { session: teacher });
     await user.click(await screen.findByRole("button", { name: "Editar aula " + lesson.title }));
-    await fillFields(user, { "Título da aula": "Aula atualizada" });
-    await user.click(screen.getByRole("button", { name: "Salvar aula" }));
-    expect(await screen.findByRole("heading", { name: "Aula atualizada" })).toBeInTheDocument();
-    expect(payloads).toEqual([{ title: "Aula atualizada", description: lesson.description, mediaUrl: "https://videos.example.test/legado", thumbnailUrl: lesson.thumbnailUrl }]);
+    const dialog = within(await screen.findByRole("dialog", { name: "Editar aula" }));
+    await fillFields(user, { "Título da aula": "Aula atualizada" }, dialog);
+    await user.click(dialog.getByRole("button", { name: "Salvar aula" }));
+    await waitFor(() => expect(payloads).toEqual([{ title: "Aula atualizada", description: lesson.description, mediaUrl: "https://videos.example.test/legado", thumbnailUrl: lesson.thumbnailUrl }]));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(await screen.findByRole("heading", { name: "Aula atualizada" })).toBeInTheDocument();
   });
 
   it("exclui a aula selecionada e exibe o estado vazio do curso", async () => {

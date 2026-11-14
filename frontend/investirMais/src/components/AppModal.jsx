@@ -18,12 +18,12 @@ export default function AppModal({
   }} aria-labelledby="app-dialog-title">
     <DialogTitle component="h2" id="app-dialog-title" sx={{
       pr: 7
-    }}>{title}
+    }}>{title}</DialogTitle>
       <IconButton aria-label={closeLabel} disabled={busy} onClick={onClose} sx={{
         position: "absolute",
         top: 12,
         right: 12
       }}><X size={20} /></IconButton>
-    </DialogTitle><DialogContent dividers>{children}</DialogContent>
+    <DialogContent dividers>{children}</DialogContent>
   </Dialog>;
 }

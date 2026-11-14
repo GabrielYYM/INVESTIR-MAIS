@@ -1,5 +1,5 @@
 import { useId, useState } from "react";
-import { Box, Card, Container, IconButton, InputAdornment, Stack, TextField, Typography } from "@mui/material";
+import { IconButton, InputAdornment, TextField } from "@mui/material";
 import { Eye, EyeOff } from "lucide-react";
 import Footer from "./Footer.jsx";
 export function AuthCard({
@@ -8,31 +8,21 @@ export function AuthCard({
   description,
   children
 }) {
-  return <Stack sx={{
-    minHeight: "100dvh",
-    justifyContent: "space-between"
-  }}><Container maxWidth="xs" sx={{
-      py: 6,
-      my: "auto"
-    }}>
-    <Card sx={{
-        p: {
-          xs: 3,
-          sm: 4
-        }
-      }}><Stack spacing={3}>
-      <Box sx={{
-            color: "primary.main",
-            textAlign: "center"
-          }}><Icon size={36} /></Box>
-      <Typography variant="h1" sx={{
-            textAlign: "center"
-          }}>{title}</Typography><Typography color="text.secondary" sx={{
-            textAlign: "center"
-          }}>{description}</Typography>
-      {children}
-    </Stack></Card>
-  </Container><Footer /></Stack>;
+  return <div className="flex min-h-dvh flex-col justify-between">
+      <main className="grid flex-1 place-items-center px-4 py-8">
+        <section className="panel w-full max-w-md overflow-hidden shadow-2xl">
+          <header className="border-b border-line px-6 pt-8 pb-6 text-center sm:px-8">
+            <span className="mx-auto mb-4 grid size-16 place-items-center rounded-full bg-amber-500/20 text-brand">
+              <Icon size={32} />
+            </span>
+            <h1 className="mb-2 text-2xl font-bold">{title}</h1>
+            <p className="text-sm leading-relaxed text-muted">{description}</p>
+          </header>
+          <div className="space-y-5 p-6 sm:p-8">{children}</div>
+        </section>
+      </main>
+      <Footer />
+    </div>;
 }
 export function Field({
   label,
@@ -71,31 +61,3 @@ export function Field({
     }
   }} />;
 }
-export const emailRules = {
-  required: "Informe seu e-mail.",
-  maxLength: {
-    value: 254,
-    message: "O e-mail deve ter no máximo 254 caracteres."
-  },
-  pattern: {
-    value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-    message: "Informe um e-mail válido."
-  },
-  setValueAs: value => value.trim()
-};
-export const newPasswordRules = {
-  required: "Informe a senha.",
-  minLength: {
-    value: 8,
-    message: "A senha deve ter no mínimo 8 caracteres."
-  },
-  maxLength: {
-    value: 4096,
-    message: "A senha deve ter no máximo 4096 caracteres."
-  },
-  validate: value => value.trim().length > 0 || "A senha não pode conter apenas espaços."
-};
-export const confirmPasswordRules = {
-  required: "Confirme a senha.",
-  validate: (value, fields) => value === fields.password || "As senhas não coincidem."
-};

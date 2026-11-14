@@ -7,7 +7,7 @@ import Login, { LoginLink } from "./pages/Login.jsx";
 import SignUp from "./pages/SignUp.jsx";
 import ForgotPassword from "./pages/ForgotPassword.jsx";
 import VerifyEmail from "./pages/VerifyEmail.jsx";
-import Perfil, { profileAction } from "./pages/Perfil.jsx";
+import Perfil from "./pages/Perfil.jsx";
 import Home, { dashboardLoader } from "./pages/Home.jsx";
 import Education, { catalogLoader } from "./pages/Education.jsx";
 import Course, { courseLoader } from "./pages/Course.jsx";
@@ -41,7 +41,7 @@ export const appRoutes = [{ Component: ApplicationProviders, children: [
       { index: true, Component: Home, loader: dashboardLoader, ErrorBoundary: PageError },
       { path: "educacao", Component: Education, loader: catalogLoader, ErrorBoundary: PageError },
       { path: "educacao/:courseId/:lessonId?", Component: Course, loader: courseLoader, action: courseAction, ErrorBoundary: PageError },
-      { path: "perfil", Component: Perfil, action: profileAction },
+      { path: "perfil", Component: Perfil },
       { path: "admin", lazy: async () => {
         const { default: Component, adminLoader: loader } = await import("./pages/Admin.jsx");
         return { Component, loader };

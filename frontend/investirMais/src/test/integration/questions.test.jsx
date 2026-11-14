@@ -89,6 +89,23 @@ describe("perguntas para professores", () => {
     await screen.findByRole("heading", { name: course.name, level: 1 });
     expect(payloads[0].questions).toEqual([{ prompt: question.prompt, afterLesson: 1, position: 0, options: question.options, correctOptionIndex: 0 }]);
   });
+  it.each([401, 409])("trata recusa da exclusão de pergunta (%i)", async status => {
+    server.use(
+      http.get(base + "/manage", () => HttpResponse.json([question])),
+      http.delete(base + "/:id", () => HttpResponse.json({ detail: "Exclusão indisponível." }, { status })),
+    );
+    const { user, router } = renderApp(coursePath + "?pagina=1", { session: teacher });
+    await user.click(await screen.findByRole("button", { name: "Excluir pergunta " + question.prompt }));
+    await user.click(screen.getByRole("button", { name: "Confirmar exclusão" }));
+    if (status === 401) {
+      expect(await screen.findByRole("heading", { name: "Bem-vindo de volta" })).toBeInTheDocument();
+      expect(new URLSearchParams(router.state.location.search).get("retorno")).toBe(coursePath + "?pagina=1");
+    } else {
+      expect(await within(screen.getByRole("dialog")).findByRole("alert")).toHaveTextContent("Exclusão indisponível.");
+      await user.click(screen.getByRole("button", { name: "Cancelar" }));
+      expect(await screen.findByRole("heading", { name: question.prompt })).toBeInTheDocument();
+    }
+  });
 
   it("não envia alternativas repetidas e preserva os dados se a API falhar", async () => {
     const create = vi.fn(() => HttpResponse.json({ detail: "Não foi possível salvar a pergunta." }, { status: 500 }));

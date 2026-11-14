@@ -1,4 +1,5 @@
 import { HttpError } from "react-admin";
+import { isCancel } from "axios";
 import * as education from "../generated/education.ts";
 import * as account from "../generated/account.ts";
 import { apiError } from "./api.js";
@@ -26,6 +27,7 @@ async function call(resource, operation, ...args) {
     if (!fn) throw new HttpError("Operação indisponível para este recurso.", 400);
     return await fn(...args);
   } catch (error) {
+    if (isCancel(error)) throw new DOMException("Consulta cancelada.", "AbortError");
     if (error instanceof HttpError) throw error;
     const failure = new HttpError(apiError(error, "Não foi possível concluir a operação. Tente novamente."), error.response?.status ?? 500);
     failure.response = error.response;

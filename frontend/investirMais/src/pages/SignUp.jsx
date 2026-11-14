@@ -1,95 +1,80 @@
-import { useResendVerification } from "../generated/account.ts";
-import { Button, Stack, Typography } from "@mui/material";
 import { lazy, Suspense, useState } from "react";
-import { Calendar, CheckCircle2, Lock, Mail, ShieldCheck, User } from "lucide-react";
+import { Calendar, CheckCircle2, Mail, ShieldCheck, User } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { Link } from "react-router";
-const TermsModal = lazy(() => import("../components/TermsModal.jsx"));
-import { AuthCard, confirmPasswordRules, emailRules, Field, newPasswordRules } from "../components/FormFields.jsx";
+import { useRegisterUser, useResendVerification } from "../generated/account.ts";
+import { AuthCard, Field } from "../components/FormFields.jsx";
+import PasswordFields from "../components/PasswordFields.jsx";
 import { Notice } from "../components/PageState.jsx";
+import { accountResolver, registrationSchema } from "../services/accountSchema.js";
 import { apiError } from "../services/api.js";
-import { register as createAccount } from "../services/authService.js";
+const TermsModal = lazy(() => import("../components/TermsModal.jsx"));
 export default function SignUp() {
-  const [email, setEmail] = useState("");
   const [termsModalTab, setTermsModalTab] = useState(null);
-  const form = useForm();
+  const form = useForm({
+    resolver: accountResolver(registrationSchema)
+  });
+  const registration = useRegisterUser({
+    mutation: {
+      onSuccess: () => form.reset()
+    }
+  });
   const resend = useResendVerification();
+  const email = registration.isSuccess ? registration.variables.data.email : "";
   const {
-    errors,
-    isSubmitting
+    errors
   } = form.formState;
-  const submit = form.handleSubmit(async ({
+  const submit = form.handleSubmit(({
     name,
     age,
     email,
     password
-  }) => {
-    try {
-      await createAccount({
-        name,
-        age,
-        email,
-        password
-      });
-      form.reset();
-      setEmail(email);
-    } catch (error) {
-      const fallback = "Não foi possível criar sua conta. Verifique os dados informados.";
-      form.setError("root", {
-        message: apiError(error, fallback)
-      });
+  }) => registration.mutate({
+    data: {
+      name,
+      age,
+      email,
+      password
     }
-  });
-  const resendLink = (event) => { event.preventDefault(); resend.mutate({ data: { email } }); };
-
-  return <AuthCard icon={email ? CheckCircle2 : ShieldCheck} title={email ? "Confirme seu e-mail" : "Crie sua conta"} description={email ? "Se o cadastro puder ser realizado, você receberá um link em " + email + ". Confira também a pasta de spam." : "Crie uma conta para explorar os cursos de educação financeira."}>
-      {email ? <Stack onSubmit={resendLink} spacing={2} component="form">
-          {resend.error && <Notice error>{apiError(resend.error,"Não foi possível reenviar o link agora.")}</Notice>}
-          {resend.isSuccess && <Notice>Link de confirmação solicitado novamente.</Notice>}
-          <Button disabled={resend.isPending} type="submit" variant="outlined">Reenviar link de confirmação</Button>
-        </Stack> : <Stack onSubmit={submit} noValidate spacing={2} component="form">
-          {errors.root && <Notice error>{errors.root.message}</Notice>}
-          <Field label="Nome completo" icon={User} autoComplete="name" maxLength={100} placeholder="Ex: Maria da Silva" error={errors.name?.message} {...form.register("name", {
-        setValueAs: value => value.trim(),
-        required: "Informe seu nome.",
-        minLength: {
-          value: 2,
-          message: "Informe pelo menos 2 caracteres."
+  }));
+  return <AuthCard icon={email ? CheckCircle2 : ShieldCheck} title={email ? "Confirme seu e-mail" : "Crie sua conta"} description={email ? `Se o cadastro puder ser realizado, você receberá um link em ${email}. Confira também a pasta de spam.` : "Crie uma conta para explorar os cursos de educação financeira."}>
+    {email ? <form onSubmit={event => {
+      event.preventDefault();
+      resend.mutate({
+        data: {
+          email
         }
+      });
+    }} className="space-y-4">
+      {resend.error && <Notice error>{apiError(resend.error, "Não foi possível reenviar o link agora.")}</Notice>}
+      {resend.isSuccess && <Notice>Link de confirmação solicitado novamente.</Notice>}
+      <button disabled={resend.isPending} type="submit" className="button-secondary w-full">Reenviar link de confirmação</button>
+    </form> : <form onSubmit={submit} noValidate className="space-y-4">
+      {registration.error && <Notice error>{apiError(registration.error, "Não foi possível criar sua conta. Verifique os dados informados.")}</Notice>}
+      <Field label="Nome completo" icon={User} autoComplete="name" maxLength={100} placeholder="Ex: Maria da Silva" error={errors.name?.message} {...form.register("name")} />
+      <Field label="Idade" icon={Calendar} type="number" min={0} max={120} placeholder="Ex: 25" error={errors.age?.message} {...form.register("age", {
+        valueAsNumber: true
       })} />
-          <Field label="Idade" icon={Calendar} type="number" min={0} max={120} placeholder="Ex: 25" error={errors.age?.message} {...form.register("age", {
-        valueAsNumber: true,
-        validate: value => Number.isInteger(value) && value >= 0 && value <= 120 || "Informe uma idade inteira de 0 a 120."
-      })} />
-          <Field label="E-mail" icon={Mail} type="email" autoComplete="email" placeholder="seu.email@exemplo.com" error={errors.email?.message} {...form.register("email", emailRules)} />
-          <Field label="Senha" icon={Lock} type="password" autoComplete="new-password" placeholder="Crie uma senha (mínimo 8 caracteres)" hint="A senha deve ter no mínimo 8 caracteres." error={errors.password?.message} {...form.register("password", newPasswordRules)} />
-          <Field label="Confirme a senha" icon={Lock} type="password" autoComplete="new-password" placeholder="Repita a senha criada acima" error={errors.confirmPassword?.message} {...form.register("confirmPassword", confirmPasswordRules)} />
-          <label>
-            <input type="checkbox" {...form.register("acceptTerms", {
-          required: "Aceite os termos para continuar."
-        })} />
-            <span>
-              Concordo com os{" "}
-              <Button type="button" onClick={e => {
-            e.preventDefault();
+      <Field label="E-mail" icon={Mail} type="email" autoComplete="email" placeholder="seu.email@exemplo.com" error={errors.email?.message} {...form.register("email")} />
+      <PasswordFields form={form} creating />
+      <label className="flex items-start gap-3 rounded-xl border border-line bg-canvas p-4 text-xs leading-relaxed text-muted">
+        <input type="checkbox" className="mt-0.5 size-4 shrink-0 accent-amber-500" {...form.register("acceptTerms")} />
+        <span>Concordo com os{" "}
+          <button type="button" onClick={event => {
+            event.preventDefault();
             setTermsModalTab("termos");
-          }} variant="text">
-                Termos de Uso
-              </Button>{" "}
-              e a{" "}
-              <Button type="button" onClick={e => {
-            e.preventDefault();
+          }} className="font-semibold text-brand underline hover:text-amber-400">Termos de Uso</button>{" "}
+          e a{" "}<button type="button" onClick={event => {
+            event.preventDefault();
             setTermsModalTab("privacidade");
-          }} variant="text">
-                Política de Privacidade
-              </Button>{" "}
-              do Investir Mais.
-            </span>
-          </label>
-          {errors.acceptTerms && <Typography role="alert">{errors.acceptTerms.message}</Typography>}
-          <Button disabled={isSubmitting} type="submit" variant="contained">{isSubmitting ? "Criando conta…" : "Criar conta"}</Button>
-        </Stack>}
-      <Link to="/entrar">Voltar para entrar</Link>
-      {termsModalTab && <Suspense fallback={null}><TermsModal initialTab={termsModalTab} onClose={() => setTermsModalTab(null)} /></Suspense>}
-    </AuthCard>;
+          }} className="font-semibold text-brand underline hover:text-amber-400">Política de Privacidade</button>{" "}
+          do Investir Mais.
+        </span>
+      </label>
+      {errors.acceptTerms && <p role="alert" className="text-sm text-negative">{errors.acceptTerms.message}</p>}
+      <button disabled={registration.isPending} type="submit" className="button-primary w-full">{registration.isPending ? "Criando conta…" : "Criar conta"}</button>
+    </form>}
+    <Link to="/entrar" className="block text-center text-sm font-semibold text-brand hover:underline">Voltar para entrar</Link>
+    {termsModalTab && <Suspense fallback={null}><TermsModal initialTab={termsModalTab} onClose={() => setTermsModalTab(null)} /></Suspense>}
+  </AuthCard>;
 }

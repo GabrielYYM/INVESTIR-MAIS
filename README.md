@@ -35,7 +35,7 @@ O cadastro público aceita apenas `STUDENT`. A interface exibe as ações dispon
 | Stack | Versões e referências |
 | --- | --- |
 | Backend | Java 21, Spring Boot 4.1.2, Spring Modulith 2.1.1, MapStruct 1.6.3 e SpringDoc 3.1.1. [Configuração Maven](pom.xml) |
-| Frontend | Node.js 24 na CI, React 19.3.1, React Router 8.5.1, Vite 8.3.5, Tailwind CSS 4.3.4 e Orval 8.46.0. [Dependências travadas](frontend/investirMais/package-lock.json) |
+| Frontend | Node.js 24 na CI, React 19.3.1, React Router 7, React-admin 5, Material UI 9, Tailwind CSS 4, Vite 8 e Orval 8.46.0. [Dependências travadas](frontend/investirMais/package-lock.json) |
 | Infraestrutura de integração | PostgreSQL 17 e Redis 8 nos testes com Testcontainers. [Configuração da aplicação](src/main/resources/application.properties) |
 
 ```text
