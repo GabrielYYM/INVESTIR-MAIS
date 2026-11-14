@@ -56,7 +56,7 @@ class LessonServiceTest {
 
     @BeforeEach
     void setUp() {
-        courseService = new CourseService(courseRepository, lessonRepository, null, userService);
+        courseService = new CourseService(courseRepository, lessonRepository, null, null, userService);
         lessonService = new LessonService(lessonRepository, courseService, lessonMapper, userService, questionService);
         UUID professorId = UUID.randomUUID();
         professor = new User();

@@ -48,8 +48,7 @@ public class LessonService {
 
     @Transactional(readOnly = true)
     public LessonDTO.Response getLessonForStudent(UUID lessonId, String email) {
-        Lesson lesson = lessonRepository.findById(lessonId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Aula não encontrada."));
+        Lesson lesson = findLessonOrThrow(lessonId);
         if (!questionService.canPreview(lesson, email)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Acerte as perguntas e conclua o conteúdo anterior para avançar.");
         }
@@ -87,8 +86,7 @@ public class LessonService {
     public CourseDTO.CourseProgressResponse updateLessonProgress(UUID courseId, UUID lessonId, boolean completed, String studentEmail) {
         User student = userService.findByEmailForUpdate(studentEmail);
         Course course = courseService.findCourseOrThrow(courseId);
-        Lesson lesson = lessonRepository.findById(lessonId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Aula não encontrada."));
+        Lesson lesson = findLessonOrThrow(lessonId);
 
         if (!lesson.getCourse().getId().equals(courseId)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A aula informada não pertence ao curso.");
@@ -106,6 +104,11 @@ public class LessonService {
 
         log.info("Progresso da aula {} atualizado para {} pelo aluno {}", lessonId, completed, student.getEmail());
         return courseService.buildCourseProgress(courseId, student.getId(), true);
+    }
+
+    private Lesson findLessonOrThrow(UUID lessonId) {
+        return lessonRepository.findById(lessonId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Aula não encontrada."));
     }
 
     public Lesson findLessonOwnedBy(UUID lessonId, String principalName) {

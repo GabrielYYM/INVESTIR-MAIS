@@ -59,9 +59,7 @@ public class UserService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não pode alterar este perfil.");
         }
 
-        if (!passwordEncoder.matches(dto.currentPassword(), user.getPassword())) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Senha atual inválida.");
-        }
+        verifyCurrentPassword(user, dto.currentPassword());
 
         if (userRepository.existsByEmailAndIdNot(dto.email(), user.getId())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Não foi possível atualizar o perfil. Verifique os dados informados.");
@@ -109,9 +107,7 @@ public class UserService {
         if (!user.getId().equals(requestedId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não pode excluir outra conta.");
         }
-        if (!passwordEncoder.matches(dto.currentPassword(), user.getPassword())) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Senha atual inválida.");
-        }
+        verifyCurrentPassword(user, dto.currentPassword());
 
         userRepository.delete(user);
         userRepository.flush();
@@ -123,10 +119,7 @@ public class UserService {
     public void updatePassword(String email, AuthDTO.UpdatePasswordRequest dto) {
         User user = findByEmailForUpdate(email);
 
-        if (!passwordEncoder.matches(dto.currentPassword(), user.getPassword())) {
-            log.warn("Falha ao atualizar senha para o usuário {}: Senha atual incorreta", user.getId());
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Senha atual inválida.");
-        }
+        verifyCurrentPassword(user, dto.currentPassword());
 
         user.setPassword(passwordEncoder.encode(dto.newPassword()));
         accountSecurity.revokeAllSessions(user.getEmail());
@@ -159,6 +152,13 @@ public class UserService {
         User user = findByEmail(email);
         user.setEmailVerified(true);
         return userMapper.toDTO(user);
+    }
+
+    private void verifyCurrentPassword(User user, String currentPassword) {
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            log.warn("Senha atual incorreta para o usuário {}", user.getId());
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Senha atual inválida.");
+        }
     }
 
     private OneTimeToken sendVerificationLink(String email) {

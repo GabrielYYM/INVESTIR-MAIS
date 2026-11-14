@@ -2,6 +2,7 @@ package com.repositorio.investir_mais.domain.education.service;
 
 import com.repositorio.investir_mais.domain.education.DTO.CourseDTO;
 import com.repositorio.investir_mais.domain.education.mapper.CourseMapper;
+import com.repositorio.investir_mais.domain.education.mapper.QuestionMapper;
 import com.repositorio.investir_mais.domain.education.model.Course;
 import com.repositorio.investir_mais.domain.education.repository.CourseRepository;
 import com.repositorio.investir_mais.domain.education.repository.LessonRepository;
@@ -33,6 +34,7 @@ public class CourseService {
     private final CourseRepository courseRepository;
     private final LessonRepository lessonRepository;
     private final CourseMapper courseMapper;
+    private final QuestionMapper questionMapper;
     private final UserService userService;
 
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
@@ -42,7 +44,7 @@ public class CourseService {
         course.setProfessor(professor);
         if (request.questions() != null) {
             request.questions().forEach(q -> course.getQuestions().add(
-                    com.repositorio.investir_mais.domain.education.mapper.QuestionFactory.create(course, q)));
+                    questionMapper.toEntity(course, q)));
         }
         
         Course savedCourse = courseRepository.save(course);
@@ -161,11 +163,7 @@ public class CourseService {
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public Course findCourseOwnedBy(UUID courseId, String principalName) {
         User professor = userService.findByEmail(principalName);
-        Course course = courseRepository.findForUpdateById(courseId)
-            .orElseThrow(() -> {
-                log.warn("Tentativa de alterar/excluir curso inexistente. ID: {}", courseId);
-                return new ResponseStatusException(HttpStatus.NOT_FOUND, "Curso não encontrado.");
-            });
+        Course course = findCourseForProgressUpdate(courseId);
 
         if (professor.getRole() != UserRole.ADMIN
                 && !course.getProfessor().getId().equals(professor.getId())) {

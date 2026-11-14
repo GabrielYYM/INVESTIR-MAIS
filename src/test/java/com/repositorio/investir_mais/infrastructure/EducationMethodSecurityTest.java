@@ -4,6 +4,7 @@ import com.repositorio.investir_mais.domain.education.DTO.CourseDTO;
 import com.repositorio.investir_mais.domain.education.DTO.LessonDTO;
 import com.repositorio.investir_mais.domain.education.mapper.CourseMapper;
 import com.repositorio.investir_mais.domain.education.mapper.LessonMapper;
+import com.repositorio.investir_mais.domain.education.mapper.QuestionMapper;
 import com.repositorio.investir_mais.domain.education.model.Course;
 import com.repositorio.investir_mais.domain.education.model.Lesson;
 import com.repositorio.investir_mais.domain.education.repository.CourseRepository;
@@ -146,6 +147,7 @@ class EducationMethodSecurityTest {
         @Bean CourseRepository courseRepository() { return mock(CourseRepository.class); }
         @Bean LessonRepository lessonRepository() { return mock(LessonRepository.class); }
         @Bean CourseMapper courseMapper() { return mock(CourseMapper.class); }
+        @Bean QuestionMapper questionMapper() { return mock(QuestionMapper.class); }
         @Bean LessonMapper lessonMapper() { return mock(LessonMapper.class); }
         @Bean UserService users() { return mock(UserService.class); }
         @Bean com.repositorio.investir_mais.domain.education.service.QuestionService questions() {

@@ -1,7 +1,7 @@
 package com.repositorio.investir_mais.domain.education.service;
 
 import com.repositorio.investir_mais.domain.education.DTO.QuestionDTO;
-import com.repositorio.investir_mais.domain.education.mapper.QuestionFactory;
+import com.repositorio.investir_mais.domain.education.mapper.QuestionMapper;
 import com.repositorio.investir_mais.domain.education.model.*;
 import com.repositorio.investir_mais.domain.education.repository.*;
 import com.repositorio.investir_mais.domain.user.model.User;
@@ -23,7 +23,7 @@ import java.util.*;
 public class QuestionService {
     private final QuestionRepository questions;
     private final LessonRepository lessons;
-    private final CourseRepository courses;
+    private final QuestionMapper questionMapper;
     private final CourseService courseService;
     private final UserService users;
     private final UserRepository userRepository;
@@ -31,18 +31,18 @@ public class QuestionService {
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public QuestionDTO.TeacherQuestion create(UUID courseId, QuestionDTO.Request request, String email) {
         Course course = courseService.findCourseOwnedBy(courseId, email);
-        return teacher(questions.saveAndFlush(QuestionFactory.create(course, request)));
+        return questionMapper.toDTO(questions.saveAndFlush(questionMapper.toEntity(course, request)));
     }
 
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public QuestionDTO.TeacherQuestion update(UUID courseId, UUID questionId, QuestionDTO.Request request, String email) {
         courseService.findCourseOwnedBy(courseId, email);
         Question question = find(courseId, questionId);
-        QuestionFactory.apply(question, request);
+        questionMapper.updateEntity(request, question);
         questions.flush();
         // A pass on the previous content does not validate the edited question.
         userRepository.clearQuestionPasses(questionId);
-        return teacher(question);
+        return questionMapper.toDTO(question);
     }
 
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
@@ -54,13 +54,13 @@ public class QuestionService {
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public List<QuestionDTO.TeacherQuestion> manage(UUID courseId, String email) {
         courseService.findCourseOwnedBy(courseId, email);
-        return ordered(courseId).stream().map(this::teacher).toList();
+        return ordered(courseId).stream().map(questionMapper::toDTO).toList();
     }
 
     @Transactional(readOnly = true)
     public List<QuestionDTO.StudentQuestion> list(UUID courseId, String email) {
         User student = users.findByEmail(email);
-        Course course = courses.findById(courseId).orElseThrow(() -> error(HttpStatus.NOT_FOUND, "Curso não encontrado."));
+        Course course = courseService.findCourseOrThrow(courseId);
         if (!student.isEnrolledIn(course)) throw error(HttpStatus.FORBIDDEN, "Matricule-se no curso para responder.");
         List<Question> all = ordered(courseId);
         Set<UUID> passed = student.getPassedQuestionIds();
@@ -72,7 +72,7 @@ public class QuestionService {
 
     public QuestionDTO.AnswerResponse answer(UUID courseId, UUID questionId, QuestionDTO.AnswerRequest request, String email) {
         User student = users.findByEmailForUpdate(email);
-        Course course = courses.findForUpdateById(courseId).orElseThrow(() -> error(HttpStatus.NOT_FOUND, "Curso não encontrado."));
+        Course course = courseService.findCourseForProgressUpdate(courseId);
         if (!student.isEnrolledIn(course)) throw error(HttpStatus.FORBIDDEN, "Matricule-se no curso para responder.");
         Question question = find(courseId, questionId);
         if (request.optionIndex() >= question.getOptions().size()) {
@@ -138,10 +138,6 @@ public class QuestionService {
     private Question find(UUID courseId, UUID questionId) {
         return questions.findById(questionId).filter(q -> q.getCourse().getId().equals(courseId))
                 .orElseThrow(() -> error(HttpStatus.NOT_FOUND, "Pergunta não encontrada neste curso."));
-    }
-    private QuestionDTO.TeacherQuestion teacher(Question q) {
-        return new QuestionDTO.TeacherQuestion(q.getId(), q.getPrompt(), q.getAfterLesson(), q.getPosition(),
-                List.copyOf(q.getOptions()), q.getCorrectOptionIndex());
     }
     private ResponseStatusException error(HttpStatus status, String message) { return new ResponseStatusException(status, message); }
 }
