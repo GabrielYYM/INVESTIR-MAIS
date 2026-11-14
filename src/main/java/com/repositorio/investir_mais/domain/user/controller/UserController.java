@@ -7,7 +7,6 @@ import com.repositorio.investir_mais.domain.user.DTO.UserDTO;
 import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -48,8 +47,6 @@ public class UserController {
     private final HttpSessionSecurityContextRepository securityContexts = new HttpSessionSecurityContextRepository();
 
     @Operation(summary = "Cadastrar novo usuário", description = "Registra um novo usuário no sistema e envia um e-mail com o link de ativação.")
-    @ApiResponse(responseCode = "202", description = "Solicitação recebida")
-    @ApiResponse(responseCode = "400", description = "Requisição inválida ou perfil diferente de STUDENT")
     @PostMapping("/users/register")
     @ResponseStatus(HttpStatus.ACCEPTED)
     public Map<String, String> registerUser(@Valid @RequestBody UserDTO.Request dto, HttpServletRequest request) {
@@ -107,30 +104,18 @@ public class UserController {
     }
 
     @Operation(summary = "Obter perfil do usuário por ID", description = "Retorna os detalhes do perfil do usuário autenticado.")
-    @ApiResponse(responseCode = "200", description = "Perfil retornado com sucesso")
-    @ApiResponse(responseCode = "403", description = "Acesso negado para perfis de outros usuários")
-    @ApiResponse(responseCode = "404", description = "Usuário não encontrado")
     @GetMapping("/users/{id}")
     public UserDTO.Response getProfile(Principal principal, @PathVariable UUID id) {
         return userService.getProfile(principal.getName(), id);
     }
 
     @Operation(summary = "Atualizar dados do perfil", description = "Atualiza nome, idade ou e-mail do usuário autenticado.")
-    @ApiResponse(responseCode = "200", description = "Perfil atualizado com sucesso")
-    @ApiResponse(responseCode = "401", description = "Senha atual incorreta")
-    @ApiResponse(responseCode = "403", description = "Acesso negado para atualizar perfis de terceiros")
-    @ApiResponse(responseCode = "409", description = "Novo e-mail informado já está em uso")
     @PutMapping("/users/{id}")
     public UserDTO.Response updateProfile(Principal principal, @PathVariable UUID id, @Valid @RequestBody UserDTO.UpdateProfileRequest dto) {
         return userService.updateProfile(principal.getName(), id, dto);
     }
 
     @Operation(summary = "Excluir a própria conta", description = "Exclui logicamente o usuário e seus cursos e aulas, preservando os registros. Exige a senha atual e encerra todas as sessões da conta.")
-    @ApiResponse(responseCode = "204", description = "Conta excluída logicamente")
-    @ApiResponse(responseCode = "400", description = "Senha de confirmação ausente")
-    @ApiResponse(responseCode = "401", description = "Senha atual incorreta ou usuário não autenticado")
-    @ApiResponse(responseCode = "403", description = "Acesso negado para excluir outra conta")
-    @ApiResponse(responseCode = "404", description = "Usuário não encontrado")
     @DeleteMapping("/users/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteAccount(Principal principal, @PathVariable UUID id, @Valid @RequestBody UserDTO.DeleteAccountRequest dto) {
@@ -138,8 +123,6 @@ public class UserController {
     }
 
     @Operation(summary = "Atualizar senha do usuário logado", description = "Permite alterar a senha mediante confirmação da senha atual.")
-    @ApiResponse(responseCode = "200", description = "Senha atualizada com sucesso")
-    @ApiResponse(responseCode = "401", description = "Senha atual incorreta")
     @PutMapping("/users/update-password")
     public Map<String, String> updatePassword(Principal principal, @Valid @RequestBody AuthDTO.UpdatePasswordRequest dto) {
         userService.updatePassword(principal.getName(), dto);
@@ -147,7 +130,6 @@ public class UserController {
     }
 
     @Operation(summary = "Solicitar link de recuperação de senha", description = "Envia um link/token de acesso único caso o e-mail exista no sistema.")
-    @ApiResponse(responseCode = "200", description = "Solicitação processada com sucesso")
     @PostMapping("/users/forgot-password")
     public Map<String, String> forgotPassword(@Valid @RequestBody AuthDTO.ForgotPasswordRequest dto) {
         userService.forgotPassword(dto);
@@ -155,8 +137,6 @@ public class UserController {
     }
 
     @Operation(summary = "Redefinir senha via token OTT", description = "Consome o token de acesso único recebido por e-mail para cadastrar uma nova senha.")
-    @ApiResponse(responseCode = "200", description = "Senha redefinida e e-mail validado com sucesso")
-    @ApiResponse(responseCode = "400", description = "Token inválido ou expirado")
     @PostMapping("/users/reset-password")
     public Map<String, String> resetPassword(@Valid @RequestBody AuthDTO.ResetPasswordRequest dto) {
         userService.resetPassword(dto);
@@ -164,27 +144,18 @@ public class UserController {
     }
 
     @Operation(summary = "Listar todos os usuários", description = "Retorna a lista completa de usuários cadastrados no sistema. Exige perfil ADMIN.")
-    @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso")
-    @ApiResponse(responseCode = "403", description = "Acesso negado para perfis diferentes de ADMIN")
     @GetMapping("/users")
     public List<UserDTO.Response> listAllUsers() {
         return userService.listAllUsers();
     }
 
     @Operation(summary = "Alterar perfil (role) do usuário", description = "Atualiza o perfil de acesso de um usuário para ADMIN, TEACHER ou STUDENT. Exige perfil ADMIN.")
-    @ApiResponse(responseCode = "200", description = "Perfil atualizado com sucesso")
-    @ApiResponse(responseCode = "400", description = "Requisição inválida ou tentativa do admin remover seu próprio perfil")
-    @ApiResponse(responseCode = "403", description = "Acesso negado para perfis diferentes de ADMIN")
-    @ApiResponse(responseCode = "404", description = "Usuário não encontrado")
     @PatchMapping("/users/{id}/role")
     public UserDTO.Response updateUserRole(Principal principal, @PathVariable UUID id, @Valid @RequestBody UserDTO.UpdateRoleRequest dto) {
         return userService.updateUserRole(principal.getName(), id, dto.role());
     }
 
     @Operation(summary = "Consultar histórico de auditoria do usuário", description = "Retorna todas as revisões históricas do usuário registradas pelo Hibernate Envers. Exige perfil ADMIN.")
-    @ApiResponse(responseCode = "200", description = "Histórico de auditoria retornado com sucesso")
-    @ApiResponse(responseCode = "403", description = "Acesso negado para perfis diferentes de ADMIN")
-    @ApiResponse(responseCode = "404", description = "Usuário não encontrado")
     @GetMapping("/users/{id}/audit")
     public List<UserDTO.AuditResponse> getUserAuditHistory(@PathVariable UUID id) {
         return userService.getUserAuditHistory(id);
@@ -194,9 +165,6 @@ public class UserController {
         summary = "Obter estatísticas do painel do professor",
         description = "Retorna métricas consolidadas sobre cursos, alunos matriculados, videoaulas assistidas e taxas de conclusão no período informado (padrão últimos 6 meses, máximo de 6 meses de intervalo). Exige perfil TEACHER ou ADMIN."
     )
-    @ApiResponse(responseCode = "200", description = "Métricas retornadas com sucesso")
-    @ApiResponse(responseCode = "400", description = "Período inválido ou superior a 6 meses")
-    @ApiResponse(responseCode = "403", description = "Acesso negado")
     @GetMapping("/teacher/dashboard")
     public CourseDTO.Summary getDashboard(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
