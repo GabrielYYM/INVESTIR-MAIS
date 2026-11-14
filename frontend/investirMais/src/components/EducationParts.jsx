@@ -1,36 +1,36 @@
-import { ArrowLeft, ArrowRight, BookOpen, ChevronRight } from "lucide-react";
+import { Box, Button, Card, CardActionArea, CardContent, Stack, Typography } from "@mui/material";
 import { Link, useLocation } from "react-router";
 import { pageHref } from "../services/searchParams.js";
-
-export function CourseCard({ course }) {
-  return (
-    <Link to={"/educacao/" + course.id} className="panel group flex min-w-0 flex-col overflow-hidden transition-colors hover:border-brand/55">
-      <div className="flex items-center gap-3 px-5 pt-5">
-        <span className="grid size-10 place-items-center rounded-xl bg-amber-500/20 text-amber-400"><BookOpen size={20} /></span>
-        <span className="eyebrow">Curso</span>
-      </div>
-      <div className="flex flex-1 flex-col p-5">
-        <h3 className="line-clamp-2 font-bold break-words">{course.name}</h3>
-        <p className="mt-2 mb-4 line-clamp-3 text-sm leading-relaxed break-words text-muted">{course.description}</p>
-        <span className="mt-auto inline-flex items-center gap-1.5 text-sm font-semibold text-brand">Ver curso <ChevronRight size={16} className="transition-transform group-hover:translate-x-0.5" /></span>
-      </div>
-    </Link>
-  );
+export function CourseCard({
+  course
+}) {
+  return <Card><CardActionArea component={Link} to={"/educacao/" + course.id}><CardContent>
+    <Typography variant="overline" color="primary">Curso</Typography><Typography variant="h3" gutterBottom>{course.name}</Typography>
+    <Typography color="text.secondary" sx={{
+          display: "-webkit-box",
+          WebkitLineClamp: 3,
+          WebkitBoxOrient: "vertical",
+          overflow: "hidden"
+        }}>{course.description}</Typography>
+    <Typography color="primary" sx={{
+          mt: 2
+        }}>Ver curso →</Typography>
+  </CardContent></CardActionArea></Card>;
 }
-
-export function Pagination({ page, pathname }) {
-  const { search } = useLocation();
-  const base = pathname + search;
+export function Pagination({
+  page,
+  pathname
+}) {
+  const {
+    search
+  } = useLocation();
   if (page.totalPages <= 1) return null;
-  return (
-    <nav className="flex flex-wrap items-center justify-between gap-2" aria-label="Paginação">
-      {page.number > 0
-        ? <Link className="button-secondary" to={pageHref(base, page.number - 1)}><ArrowLeft size={15} /> Anterior</Link>
-        : <span />}
-      <span className="text-xs font-semibold text-muted">Página {page.number + 1} de {page.totalPages}</span>
-      {page.number + 1 < page.totalPages
-        ? <Link className="button-secondary" to={pageHref(base, page.number + 1)}>Próxima <ArrowRight size={15} /></Link>
-        : <span />}
-    </nav>
-  );
+  return <Stack component="nav" aria-label="Paginação" direction="row" spacing={2} sx={{
+    justifyContent: "space-between",
+    alignItems: "center"
+  }}>
+    {page.number > 0 ? <Button component={Link} to={pageHref(pathname + search, page.number - 1)}>Anterior</Button> : <Box />}
+    <Typography variant="body2">Página {page.number + 1} de {page.totalPages}</Typography>
+    {page.number + 1 < page.totalPages ? <Button component={Link} to={pageHref(pathname + search, page.number + 1)}>Próxima</Button> : <Box />}
+  </Stack>;
 }

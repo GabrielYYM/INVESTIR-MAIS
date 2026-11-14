@@ -13,8 +13,6 @@ export async function logout() { await apiClient.post("/auth/logout"); }
 export const register = account.registerUser;
 export const updateUserProfile = account.updateProfile;
 export const getCurrentUser = (signal) => account.currentUser({ signal });
-export const resendVerification = (email) => account.resendVerification({ email });
-export const verifyEmail = (token) => account.verifyEmail({ token: token.trim() });
 export const forgotPassword = (email) => account.forgotPassword({ email });
 export const resetPassword = (token, newPassword) => account.resetPassword({ token, newPassword });
 export const updatePassword = (currentPassword, newPassword) => account.updatePassword({ currentPassword, newPassword });

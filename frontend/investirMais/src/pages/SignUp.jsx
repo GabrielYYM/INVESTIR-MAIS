@@ -1,3 +1,5 @@
+import { useResendVerification } from "../generated/account.ts";
+import { Button, Stack, Typography } from "@mui/material";
 import { lazy, Suspense, useState } from "react";
 import { Calendar, CheckCircle2, Lock, Mail, ShieldCheck, User } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -6,133 +8,88 @@ const TermsModal = lazy(() => import("../components/TermsModal.jsx"));
 import { AuthCard, confirmPasswordRules, emailRules, Field, newPasswordRules } from "../components/FormFields.jsx";
 import { Notice } from "../components/PageState.jsx";
 import { apiError } from "../services/api.js";
-import { register as createAccount, resendVerification } from "../services/authService.js";
-
+import { register as createAccount } from "../services/authService.js";
 export default function SignUp() {
   const [email, setEmail] = useState("");
   const [termsModalTab, setTermsModalTab] = useState(null);
   const form = useForm();
-  const resend = useForm();
-  const { errors, isSubmitting } = form.formState;
-
-  const submit = form.handleSubmit(async ({ name, age, email, password }) => {
+  const resend = useResendVerification();
+  const {
+    errors,
+    isSubmitting
+  } = form.formState;
+  const submit = form.handleSubmit(async ({
+    name,
+    age,
+    email,
+    password
+  }) => {
     try {
-      await createAccount({ name, age, email, password });
+      await createAccount({
+        name,
+        age,
+        email,
+        password
+      });
       form.reset();
       setEmail(email);
     } catch (error) {
       const fallback = "Não foi possível criar sua conta. Verifique os dados informados.";
-      form.setError("root", { message: apiError(error, fallback) });
+      form.setError("root", {
+        message: apiError(error, fallback)
+      });
     }
   });
+  const resendLink = (event) => { event.preventDefault(); resend.mutate({ data: { email } }); };
 
-  const resendLink = resend.handleSubmit(async () => {
-    try {
-      await resendVerification(email);
-    } catch (error) {
-      resend.setError("root", { message: apiError(error, "Não foi possível reenviar o link agora.") });
-    }
-  });
-
-  return (
-    <AuthCard
-      icon={email ? CheckCircle2 : ShieldCheck}
-      title={email ? "Confirme seu e-mail" : "Crie sua conta"}
-      description={email ? "Se o cadastro puder ser realizado, você receberá um link em " + email + ". Confira também a pasta de spam." : "Crie uma conta para explorar os cursos de educação financeira."}
-    >
-      {email ? (
-        <form onSubmit={resendLink} className="space-y-4">
-          {resend.formState.errors.root && <Notice error>{resend.formState.errors.root.message}</Notice>}
-          {resend.formState.isSubmitSuccessful && <Notice>Link de confirmação solicitado novamente.</Notice>}
-          <button className="button-secondary w-full" disabled={resend.formState.isSubmitting}>Reenviar link de confirmação</button>
-        </form>
-      ) : (
-        <form onSubmit={submit} className="space-y-4" noValidate>
+  return <AuthCard icon={email ? CheckCircle2 : ShieldCheck} title={email ? "Confirme seu e-mail" : "Crie sua conta"} description={email ? "Se o cadastro puder ser realizado, você receberá um link em " + email + ". Confira também a pasta de spam." : "Crie uma conta para explorar os cursos de educação financeira."}>
+      {email ? <Stack onSubmit={resendLink} spacing={2} component="form">
+          {resend.error && <Notice error>{apiError(resend.error,"Não foi possível reenviar o link agora.")}</Notice>}
+          {resend.isSuccess && <Notice>Link de confirmação solicitado novamente.</Notice>}
+          <Button disabled={resend.isPending} type="submit" variant="outlined">Reenviar link de confirmação</Button>
+        </Stack> : <Stack onSubmit={submit} noValidate spacing={2} component="form">
           {errors.root && <Notice error>{errors.root.message}</Notice>}
-          <Field
-            label="Nome completo"
-            icon={User}
-            autoComplete="name"
-            maxLength={100}
-            placeholder="Ex: Maria da Silva"
-            error={errors.name?.message}
-            {...form.register("name", {
-              setValueAs: (value) => value.trim(),
-              required: "Informe seu nome.",
-              minLength: { value: 2, message: "Informe pelo menos 2 caracteres." },
-            })}
-          />
-          <Field
-            label="Idade"
-            icon={Calendar}
-            type="number"
-            min={0}
-            max={120}
-            placeholder="Ex: 25"
-            error={errors.age?.message}
-            {...form.register("age", {
-              valueAsNumber: true,
-              validate: (value) =>
-                (Number.isInteger(value) && value >= 0 && value <= 120) ||
-                "Informe uma idade inteira de 0 a 120.",
-            })}
-          />
-          <Field
-            label="E-mail"
-            icon={Mail}
-            type="email"
-            autoComplete="email"
-            placeholder="seu.email@exemplo.com"
-            error={errors.email?.message}
-            {...form.register("email", emailRules)}
-          />
-          <Field
-            label="Senha"
-            icon={Lock}
-            type="password"
-            autoComplete="new-password"
-            placeholder="Crie uma senha (mínimo 8 caracteres)"
-            hint="A senha deve ter no mínimo 8 caracteres."
-            error={errors.password?.message}
-            {...form.register("password", newPasswordRules)}
-          />
-          <Field
-            label="Confirme a senha"
-            icon={Lock}
-            type="password"
-            autoComplete="new-password"
-            placeholder="Repita a senha criada acima"
-            error={errors.confirmPassword?.message}
-            {...form.register("confirmPassword", confirmPasswordRules)}
-          />
-          <label className="flex items-start gap-2.5 text-sm text-muted">
-            <input type="checkbox" className="mt-0.5 size-4 shrink-0 accent-brand" {...form.register("acceptTerms", { required: "Aceite os termos para continuar." })} />
+          <Field label="Nome completo" icon={User} autoComplete="name" maxLength={100} placeholder="Ex: Maria da Silva" error={errors.name?.message} {...form.register("name", {
+        setValueAs: value => value.trim(),
+        required: "Informe seu nome.",
+        minLength: {
+          value: 2,
+          message: "Informe pelo menos 2 caracteres."
+        }
+      })} />
+          <Field label="Idade" icon={Calendar} type="number" min={0} max={120} placeholder="Ex: 25" error={errors.age?.message} {...form.register("age", {
+        valueAsNumber: true,
+        validate: value => Number.isInteger(value) && value >= 0 && value <= 120 || "Informe uma idade inteira de 0 a 120."
+      })} />
+          <Field label="E-mail" icon={Mail} type="email" autoComplete="email" placeholder="seu.email@exemplo.com" error={errors.email?.message} {...form.register("email", emailRules)} />
+          <Field label="Senha" icon={Lock} type="password" autoComplete="new-password" placeholder="Crie uma senha (mínimo 8 caracteres)" hint="A senha deve ter no mínimo 8 caracteres." error={errors.password?.message} {...form.register("password", newPasswordRules)} />
+          <Field label="Confirme a senha" icon={Lock} type="password" autoComplete="new-password" placeholder="Repita a senha criada acima" error={errors.confirmPassword?.message} {...form.register("confirmPassword", confirmPasswordRules)} />
+          <label>
+            <input type="checkbox" {...form.register("acceptTerms", {
+          required: "Aceite os termos para continuar."
+        })} />
             <span>
               Concordo com os{" "}
-              <button
-                type="button"
-                onClick={(e) => { e.preventDefault(); setTermsModalTab("termos"); }}
-                className="font-medium text-brand hover:underline cursor-pointer"
-              >
+              <Button type="button" onClick={e => {
+            e.preventDefault();
+            setTermsModalTab("termos");
+          }} variant="text">
                 Termos de Uso
-              </button>{" "}
+              </Button>{" "}
               e a{" "}
-              <button
-                type="button"
-                onClick={(e) => { e.preventDefault(); setTermsModalTab("privacidade"); }}
-                className="font-medium text-brand hover:underline cursor-pointer"
-              >
+              <Button type="button" onClick={e => {
+            e.preventDefault();
+            setTermsModalTab("privacidade");
+          }} variant="text">
                 Política de Privacidade
-              </button>{" "}
+              </Button>{" "}
               do Investir Mais.
             </span>
           </label>
-          {errors.acceptTerms && <p role="alert" className="text-xs text-negative">{errors.acceptTerms.message}</p>}
-          <button className="button-primary w-full" disabled={isSubmitting}>{isSubmitting ? "Criando conta…" : "Criar conta"}</button>
-        </form>
-      )}
-      <Link to="/entrar" className="block text-center text-sm font-semibold text-brand hover:underline">Voltar para entrar</Link>
+          {errors.acceptTerms && <Typography role="alert">{errors.acceptTerms.message}</Typography>}
+          <Button disabled={isSubmitting} type="submit" variant="contained">{isSubmitting ? "Criando conta…" : "Criar conta"}</Button>
+        </Stack>}
+      <Link to="/entrar">Voltar para entrar</Link>
       {termsModalTab && <Suspense fallback={null}><TermsModal initialTab={termsModalTab} onClose={() => setTermsModalTab(null)} /></Suspense>}
-    </AuthCard>
-  );
+    </AuthCard>;
 }

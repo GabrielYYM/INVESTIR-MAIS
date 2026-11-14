@@ -4,9 +4,7 @@ import { getCurrentUser } from "./authService.js";
 import { getCourseProgress } from "./teacherService.js";
 import { loadPagination, pageHref } from "./searchParams.js";
 import {
-  createCourse, createLesson, deleteCourse, deleteLesson, getAllCourses, getCourseById,
-  getLessonById, getLessonsByCourse, updateCourse, updateLesson,
-  create as createQuestion, update as updateQuestion, _delete as deleteQuestion,
+  getAllCourses, getCourseById, getLessonById, getLessonsByCourse,
   list as getQuestions, manage as getTeacherQuestions, answer as answerQuestion, enrollStudent,
 } from "../generated/education.ts";
 
@@ -85,53 +83,12 @@ function mutationError(error, request) {
   return data({ error: apiError(error, "Não foi possível concluir a operação. Tente novamente.") }, { status });
 }
 
-export async function catalogAction({ request }) {
-  const { intent, payload } = await request.json();
-  if (intent !== "create-curso") throw new Response(null, { status: 400 });
-  try {
-    const course = await createCourse(payload);
-    return redirect("/educacao/" + course.id);
-  } catch (error) {
-    return mutationError(error, request);
-  }
-}
-
-export async function courseAction({ request, params: { courseId, lessonId } }) {
+export async function courseAction({ request, params: { courseId } }) {
   const { intent, id, payload } = await request.json();
   if (!uuid.test(courseId) || (id != null && !uuid.test(id))) throw new Response(null, { status: 404 });
-  const coursePath = "/educacao/" + courseId;
 
   try {
     switch (intent) {
-      case "update-curso":
-        await updateCourse(courseId, payload);
-        break;
-      case "delete-curso":
-        await deleteCourse(courseId);
-        return replace("/educacao");
-      case "create-aula": {
-        const created = await createLesson(courseId, payload);
-        return redirect(coursePath + "/" + created.id);
-      }
-      case "update-aula":
-        await updateLesson(id, payload);
-        break;
-      case "delete-aula":
-        await deleteLesson(id);
-        if (id === lessonId) {
-          const url = new URL(request.url);
-          return replace(pageHref(coursePath + url.search, loadPagination(url.searchParams).pagina));
-        }
-        break;
-      case "create-question":
-        await createQuestion(courseId, payload);
-        break;
-      case "update-question":
-        await updateQuestion(courseId, id, payload);
-        break;
-      case "delete-question":
-        await deleteQuestion(courseId, id);
-        break;
       case "answer-question":
         return await answerQuestion(courseId, id, payload);
       case "enroll-course":

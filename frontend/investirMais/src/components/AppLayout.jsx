@@ -1,52 +1,111 @@
-import { useState } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { NuqsAdapter } from "nuqs/adapters/react-router/v8";
-import { Outlet, redirect, useFetcher, useLoaderData, useNavigation } from "react-router";
+import { AppBar, Avatar, Box, Button, Container, Drawer, LinearProgress, List, ListItemButton, ListItemIcon, ListItemText, Stack, Toolbar, Typography, useMediaQuery } from "@mui/material";
+import { BookOpen, Home, LogOut, ShieldCheck, User } from "lucide-react";
+import { Link, NavLink, Outlet, redirect, useFetcher, useLoaderData, useLocation, useNavigation } from "react-router";
 import { logout } from "../services/authService.js";
 import { apiError } from "../services/api.js";
-import Sidebar from "./Sidebar.jsx";
-import Topbar from "./Topbar.jsx";
+import { roleNames } from "../services/dataProvider.js";
 import Footer from "./Footer.jsx";
 import { Notice } from "./PageState.jsx";
-
 export async function signOut() {
   try {
     await logout();
   } catch (error) {
-    if (error.response?.status !== 401) {
-      return { error: apiError(error, "Não foi possível encerrar a sessão. Tente novamente.") };
-    }
+    if (error.response?.status !== 401) return {
+      error: apiError(error, "Não foi possível encerrar a sessão. Tente novamente.")
+    };
   }
   return redirect("/entrar");
 }
-
 export default function AppLayout() {
-  const [queryClient] = useState(() => new QueryClient({
-    defaultOptions: { queries: { retry: false, gcTime: 0, refetchOnWindowFocus: false } },
-  }));
   const user = useLoaderData();
   const signOutForm = useFetcher();
+  const location = useLocation();
   const navigation = useNavigation();
-
-  return (
-    <QueryClientProvider client={queryClient}>
-      <NuqsAdapter>
-        <div className="min-h-dvh lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
-          <a href="#conteudo" className="sr-only focus:not-sr-only focus:fixed focus:z-30 focus:bg-brand focus:p-3 focus:text-canvas">Pular para o conteúdo</a>
-          <Sidebar logout={signOutForm} user={user} />
-          <div className="flex min-w-0 min-h-dvh flex-col justify-between">
-            <div className="flex-1">
-              <Topbar user={user} />
-              <div className={navigation.state === "loading" ? "h-0.5 animate-pulse bg-brand" : "h-0.5"} aria-hidden="true" />
-              <main id="conteudo" className="mx-auto max-w-6xl space-y-8 px-4 py-6 sm:p-8">
-                {signOutForm.data?.error && <Notice error>{signOutForm.data.error}</Notice>}
-                <Outlet />
-              </main>
-            </div>
-            <Footer />
-          </div>
-        </div>
-      </NuqsAdapter>
-    </QueryClientProvider>
-  );
+  const desktop = useMediaQuery(theme => theme.breakpoints.up("md"));
+  const links = [{
+    to: "/",
+    label: "Dashboard",
+    icon: Home
+  }, {
+    to: "/educacao",
+    label: "Educação",
+    icon: BookOpen
+  }, {
+    to: "/perfil",
+    label: "Meu perfil",
+    icon: User
+  }, ...(user.role === "ADMIN" ? [{
+    to: "/admin",
+    label: "Administração",
+    icon: ShieldCheck
+  }] : [])];
+  const menu = <List component="nav" role="navigation" aria-label="Menu principal" sx={{
+    display: desktop ? "block" : "flex",
+    overflowX: "auto"
+  }}>{links.map(({
+      to,
+      label,
+      icon: Icon
+    }) => <ListItemButton key={to} component={NavLink} end={to === "/"} to={to} selected={to === "/" ? location.pathname === to : location.pathname.startsWith(to)} sx={{
+      borderRadius: 2,
+      mx: .5
+    }}>
+      <ListItemIcon sx={{
+        minWidth: 28
+      }}><Icon size={18} /></ListItemIcon><ListItemText primary={label} />
+    </ListItemButton>)}</List>;
+  return <Box sx={{
+    minHeight: "100dvh",
+    display: "flex"
+  }}>
+    <Box component="a" href="#conteudo" sx={{
+      position: "absolute",
+      left: -9999,
+      "&:focus": {
+        left: 8,
+        top: 8,
+        zIndex: 1500
+      }
+    }}>Pular para o conteúdo</Box>
+    {desktop && <Drawer variant="permanent" sx={{
+      width: 230,
+      flexShrink: 0,
+      "& .MuiDrawer-paper": {
+        width: 230,
+        p: 2
+      }
+    }}>
+      <Typography sx={{
+        p: 2,
+        fontWeight: 800
+      }} component={Link} to="/">INVESTIR MAIS</Typography>{menu}
+    </Drawer>}
+    <Box sx={{
+      flex: 1,
+      minWidth: 0
+    }}>
+      <AppBar position="static" color="transparent" elevation={0}><Toolbar sx={{
+          gap: 2,
+          justifyContent: "space-between"
+        }}>
+        <Typography component={Link} to="/" sx={{
+            fontWeight: 800
+          }}>INVESTIR MAIS</Typography>
+        <Stack direction="row" spacing={1} sx={{
+            alignItems: "center"
+          }}><Button component={Link} to="/perfil" aria-label="Abrir meu perfil" startIcon={<Avatar sx={{
+              width: 30,
+              height: 30
+            }}><User size={17} /></Avatar>}>{user.name} · {roleNames[user.role]}</Button>
+          <signOutForm.Form method="post" action="/sair"><Button type="submit" aria-label="Sair da conta" disabled={signOutForm.state !== "idle"} startIcon={<LogOut size={17} />}>Sair</Button></signOutForm.Form></Stack>
+      </Toolbar>{!desktop && <Box>{menu}</Box>}</AppBar>
+      {navigation.state === "loading" && <LinearProgress />}
+      <Container component="main" id="conteudo" maxWidth="lg" sx={{
+        py: 4,
+        minHeight: "80dvh"
+      }}>
+        <Stack spacing={3}>{signOutForm.data?.error && <Notice error>{signOutForm.data.error}</Notice>}<Outlet /></Stack>
+      </Container><Footer />
+    </Box>
+  </Box>;
 }

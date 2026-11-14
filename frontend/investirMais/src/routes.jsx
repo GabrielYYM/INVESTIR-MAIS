@@ -1,3 +1,4 @@
+import ApplicationProviders from "./components/ApplicationProviders.jsx";
 import { redirect } from "react-router";
 import AppLayout, { signOut } from "./components/AppLayout.jsx";
 import { PageError, PendingPage } from "./components/PageState.jsx";
@@ -10,7 +11,7 @@ import Perfil, { profileAction } from "./pages/Perfil.jsx";
 import Home, { dashboardLoader } from "./pages/Home.jsx";
 import Education, { catalogLoader } from "./pages/Education.jsx";
 import Course, { courseLoader } from "./pages/Course.jsx";
-import { catalogAction, courseAction } from "./services/educationData.js";
+import { courseAction } from "./services/educationData.js";
 
 async function requireSession({ request }) {
   try {
@@ -27,7 +28,7 @@ async function requireSession({ request }) {
 
 const termsRoute = async () => ({ Component: (await import("./pages/Terms.jsx")).default });
 
-export const appRoutes = [
+export const appRoutes = [{ Component: ApplicationProviders, children: [
   {
     id: "app",
     Component: AppLayout,
@@ -38,7 +39,7 @@ export const appRoutes = [
     ErrorBoundary: PageError,
     children: [
       { index: true, Component: Home, loader: dashboardLoader, ErrorBoundary: PageError },
-      { path: "educacao", Component: Education, loader: catalogLoader, action: catalogAction, ErrorBoundary: PageError },
+      { path: "educacao", Component: Education, loader: catalogLoader, ErrorBoundary: PageError },
       { path: "educacao/:courseId/:lessonId?", Component: Course, loader: courseLoader, action: courseAction, ErrorBoundary: PageError },
       { path: "perfil", Component: Perfil, action: profileAction },
       { path: "admin", lazy: async () => {
@@ -57,5 +58,5 @@ export const appRoutes = [
   { path: "termos-de-uso", lazy: termsRoute, HydrateFallback: PendingPage },
   { path: "politica-de-privacidade", lazy: termsRoute, HydrateFallback: PendingPage },
   { path: "*", Component: PageError },
-];
+]}];
 

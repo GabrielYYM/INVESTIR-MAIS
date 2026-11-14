@@ -31,7 +31,8 @@ describe("perguntas para professores", () => {
     await user.click(await screen.findByRole("button", { name: "Nova pergunta" }));
     const dialog = within(await screen.findByRole("dialog", { name: "Nova pergunta" }));
     await user.click(dialog.getByRole("button", { name: "Salvar pergunta" }));
-    expect(dialog.getByRole("alert")).toHaveTextContent("Informe o enunciado");
+    expect(await dialog.findByText("Informe o enunciado da pergunta.")).toBeInTheDocument();
+    expect(dialog.getByLabelText("Enunciado")).toHaveAttribute("aria-invalid", "true");
     expect(payloads).toHaveLength(0);
     await fillQuestion(user, dialog);
     await user.click(dialog.getByRole("button", { name: "Salvar pergunta" }));
@@ -70,6 +71,7 @@ describe("perguntas para professores", () => {
     await user.click(screen.getByRole("button", { name: "Excluir pergunta " + question.prompt }));
     await user.click(screen.getByRole("button", { name: "Confirmar exclusão" }));
     await waitFor(() => expect(screen.queryByRole("heading", { name: question.prompt })).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(remove).toHaveBeenCalledOnce(); expect(screen.getByRole("heading", { name: course.name })).toBeInTheDocument();
   });
 
@@ -98,7 +100,7 @@ describe("perguntas para professores", () => {
     await user.clear(dialog.getByLabelText("Alternativa 2", { exact: true }));
     await user.type(dialog.getByLabelText("Alternativa 2", { exact: true }), " tesouro selic ");
     await user.click(dialog.getByRole("button", { name: "Salvar pergunta" }));
-    expect(dialog.getByRole("alert")).toHaveTextContent("precisam ser diferentes"); expect(create).not.toHaveBeenCalled();
+    expect(await dialog.findByText("As alternativas precisam ser diferentes.")).toBeInTheDocument(); expect(create).not.toHaveBeenCalled();
     await user.clear(dialog.getByLabelText("Alternativa 2", { exact: true }));
     await user.type(dialog.getByLabelText("Alternativa 2", { exact: true }), "CDB");
     await user.click(dialog.getByRole("button", { name: "Salvar pergunta" }));

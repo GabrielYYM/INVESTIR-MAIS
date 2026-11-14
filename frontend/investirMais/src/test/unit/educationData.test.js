@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as client from "../../generated/education.ts";
-import { canManageEducation, catalogAction, catalogLoader, courseAction, courseLoader, dashboardCourses } from "../../services/educationData.js";
+import { canManageEducation, catalogLoader, courseAction, courseLoader, dashboardCourses } from "../../services/educationData.js";
 import { pageHref } from "../../services/searchParams.js";
 import { actionRequest, admin, course, lesson, loaderRequest, paged, student, teacher } from "../fixtures.js";
 
@@ -90,85 +90,39 @@ describe("loaders e paginação", () => {
   });
 });
 
-describe("ações de cursos e aulas", () => {
-  const payload = { name: "Novo curso", description: "Descrição" };
-  const run = (intent, options = {}) => courseAction({
-    request: actionRequest({ intent, id: lesson.id, payload, ...options }, "/educacao/" + course.id + "/" + lesson.id + "?pagina=2"),
-    params: { courseId: course.id, lessonId: lesson.id },
+describe("ações de aprendizagem", () => {
+  const payload = { optionIndex: 0 };
+  const run = (intent) => courseAction({
+    request: actionRequest({ intent, id: lesson.id, payload }, `/educacao/${course.id}/${lesson.id}?pagina=2`),
+    params: { courseId: course.id },
   });
-
-  it("cria um curso e navega para seu detalhe", async () => {
-    client.createCourse.mockResolvedValue(course);
-    const response = await catalogAction({ request: actionRequest({ intent: "create-curso", payload }) });
-    expect(client.createCourse).toHaveBeenCalledWith(payload);
-    expect(response.headers.get("Location")).toBe("/educacao/" + course.id);
+  it("envia a resposta e devolve somente o resultado do servidor", async () => {
+    client.answer.mockResolvedValue({ passed: true });
+    expect(await run("answer-question")).toEqual({ passed: true });
+    expect(client.answer).toHaveBeenCalledWith(course.id, lesson.id, payload);
   });
-
-  it("recusa intenção não reconhecida no catálogo", async () => {
-    await expect(catalogAction({ request: actionRequest({ intent: "delete-curso" }) })).rejects.toMatchObject({ status: 400 });
-    expect(client.createCourse).not.toHaveBeenCalled();
+  it("matricula o aluno", async () => {
+    expect(await run("enroll-course")).toEqual({ ok: true });
+    expect(client.enrollStudent).toHaveBeenCalledWith(course.id);
   });
-
-  it.each([["update-curso", "updateCourse", course.id], ["update-aula", "updateLesson", lesson.id]])("salva %s", async (intent, method, id) => {
-    expect(await run(intent)).toEqual({ ok: true });
-    expect(client[method]).toHaveBeenCalledWith(id, payload);
-  });
-
-  it("exclui curso e substitui a navegação pelo catálogo", async () => {
-    const response = await run("delete-curso");
-    expect(client.deleteCourse).toHaveBeenCalledWith(course.id);
-    expect(response.headers.get("Location")).toBe("/educacao");
-    expect(response.headers.get("X-Remix-Replace")).toBe("true");
-  });
-
-  it("cria aula e navega para o vídeo criado", async () => {
-    client.createLesson.mockResolvedValue(lesson);
-    const response = await run("create-aula");
-    expect(client.createLesson).toHaveBeenCalledWith(course.id, payload);
-    expect(response.headers.get("Location")).toBe(`/educacao/${course.id}/${lesson.id}`);
-  });
-
-  it("exclui a aula selecionada preservando a página da lista", async () => {
-    const response = await run("delete-aula");
-    expect(client.deleteLesson).toHaveBeenCalledWith(lesson.id);
-    expect(response.headers.get("Location")).toBe(`/educacao/${course.id}?pagina=2`);
-  });
-
-  it("exclui outra aula sem trocar a seleção", async () => {
-    expect(await run("delete-aula", { id: course.id })).toEqual({ ok: true });
-    expect(client.deleteLesson).toHaveBeenCalledWith(course.id);
-  });
-
-  it("retorna 400 para operação desconhecida", async () => {
+  it("recusa uma operação desconhecida", async () => {
     expect(await run("unknown")).toMatchObject({ data: { error: "Operação inválida." }, init: { status: 400 } });
   });
-
-  it.each([{ courseId: "inválido", id: lesson.id }, { courseId: course.id, id: "inválido" }])("recusa UUID inválido nas ações %#", async ({ courseId, id }) => {
-    await expect(courseAction({ request: actionRequest({ intent: "delete-aula", id }), params: { courseId } })).rejects.toMatchObject({ status: 404 });
-    expect(client.deleteLesson).not.toHaveBeenCalled();
+  it.each([{ courseId: "inválido", id: lesson.id }, { courseId: course.id, id: "inválido" }])("recusa UUID inválido %#", async ({ courseId, id }) => {
+    await expect(courseAction({ request: actionRequest({ intent: "answer-question", id }), params: { courseId } })).rejects.toMatchObject({ status: 404 });
+    expect(client.answer).not.toHaveBeenCalled();
   });
-
-  it.each([401, 403, 422, 500])("preserva o tratamento HTTP %i nas mutações", async (status) => {
-    client.updateCourse.mockRejectedValue({ response: { status, data: { detail: "Falha da API" } } });
-    const response = await run("update-curso");
+  it.each([401, 403, 422, 500])("preserva o tratamento HTTP %i", async (status) => {
+    client.answer.mockRejectedValue({ response: { status, data: { detail: "Falha da API" } } });
+    const response = await run("answer-question");
     if (status === 401) {
       const destination = new URL(response.headers.get("Location"), "http://localhost");
       expect(destination.pathname).toBe("/entrar");
       expect(destination.searchParams.get("retorno")).toBe(`/educacao/${course.id}/${lesson.id}?pagina=2`);
-    }
-    else expect(response).toMatchObject({ data: { error: "Falha da API" }, init: { status } });
+    } else expect(response).toMatchObject({ data: { error: "Falha da API" }, init: { status } });
   });
-
-  it("trata erro de rede na criação de curso", async () => {
-    client.createCourse.mockRejectedValue(new Error("offline"));
-    const response = await catalogAction({ request: actionRequest({ intent: "create-curso", payload }) });
-    expect(response).toMatchObject({ init: { status: 500 }, data: { error: expect.stringContaining("Não foi possível") } });
-  });
-
-  it("preserva a página do catálogo quando a sessão expira ao criar curso", async () => {
-    client.createCourse.mockRejectedValue({ response: { status: 401 } });
-    const response = await catalogAction({ request: actionRequest({ intent: "create-curso", payload }, "/educacao?pagina=2") });
-    expect(new URL(response.headers.get("Location"), "http://localhost").searchParams.get("retorno"))
-      .toBe("/educacao?pagina=2");
+  it("trata a indisponibilidade da rede", async () => {
+    client.enrollStudent.mockRejectedValue(new Error("offline"));
+    expect(await run("enroll-course")).toMatchObject({ init: { status: 500 }, data: { error: expect.stringContaining("Não foi possível") } });
   });
 });

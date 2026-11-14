@@ -12,7 +12,7 @@ describe("campos de formulário", () => {
     render(<Field label="E-mail" type="email" hint="Use seu endereço pessoal." />);
     const input = screen.getByRole("textbox", { name: "E-mail" });
     expect(input).toHaveAccessibleDescription("Use seu endereço pessoal.");
-    expect(input).not.toHaveAttribute("aria-invalid");
+    expect(input).toHaveAttribute("aria-invalid", "false");
   });
 
   it("prioriza a mensagem de validação e marca o campo inválido", () => {

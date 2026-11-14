@@ -19,18 +19,18 @@ describe("gestão de usuários", () => {
     expect(row.getByRole("button", { name: "Alterar Papel" })).toBeDisabled();
     expect(row.getByText("Você")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Professores", exact: true }));
-    expect(screen.queryByText(student.email)).not.toBeInTheDocument();
-    expect(screen.getByText(teacherUser.email)).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText(student.email)).not.toBeInTheDocument());
+    expect(await screen.findByText(teacherUser.email)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Todos", exact: true }));
     const search = screen.getByPlaceholderText("Buscar por nome ou e-mail...");
-    await user.type(search, "ANA@"); expect(screen.getByText(student.email)).toBeInTheDocument();
-    expect(screen.queryByText(teacherUser.email)).not.toBeInTheDocument();
+    await user.type(search, "ANA@"); expect(await screen.findByText(student.email)).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText(teacherUser.email)).not.toBeInTheDocument());
     await user.clear(search); await user.type(search, "inexistente");
-    expect(screen.getByText(/Nenhum usuário encontrado/)).toBeInTheDocument();
+    expect(await screen.findByText(/Nenhum usuário encontrado/)).toBeInTheDocument();
     await user.clear(search); await user.click(screen.getByRole("button", { name: "Alunos", exact: true }));
-    expect(screen.getByText(student.email)).toBeInTheDocument();
+    expect(await screen.findByText(student.email)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Admins", exact: true }));
-    expect(screen.getByText(adminUser.email)).toBeInTheDocument();
+    expect(await screen.findByText(adminUser.email)).toBeInTheDocument();
   });
 
   it("altera o papel, envia apenas o novo perfil e revalida a listagem", async () => {
@@ -44,7 +44,8 @@ describe("gestão de usuários", () => {
     await user.click((await userRow()).getByRole("button", { name: "Alterar Papel" }));
     const dialog = within(screen.getByRole("dialog"));
     expect(dialog.getByRole("button", { name: "Salvar Alteração" })).toBeDisabled();
-    await user.selectOptions(dialog.getByLabelText("Novo Papel"), "TEACHER");
+    await user.click(dialog.getByRole("combobox", { name: "Novo Papel" }));
+    await user.click(await screen.findByRole("option", { name: "Professor" }));
     await user.click(dialog.getByRole("button", { name: "Salvar Alteração" }));
     expect(await screen.findByRole("status")).toHaveTextContent(/alterado com sucesso para Professor/);
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
@@ -55,15 +56,16 @@ describe("gestão de usuários", () => {
     mockApi("patch", `/api/users/${teacherUser.id}/role`, { detail: "Perfil indisponível." }, { status: 409 });
     const { user } = setup();
     await user.click((await userRow(teacherUser.email)).getByRole("button", { name: "Alterar Papel" }));
-    await user.selectOptions(screen.getByLabelText("Novo Papel"), "STUDENT");
+    await user.click(screen.getByRole("combobox", { name: "Novo Papel" }));
+    await user.click(await screen.findByRole("option", { name: "Aluno" }));
     await user.click(screen.getByRole("button", { name: "Salvar Alteração" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Perfil indisponível");
-    expect(screen.getByLabelText("Novo Papel")).toHaveValue("STUDENT");
+    expect(screen.getByRole("combobox", { name: "Novo Papel" })).toHaveTextContent("Aluno");
     await user.click(screen.getByRole("button", { name: "Cancelar", exact: true }));
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     await user.click((await userRow()).getByRole("button", { name: "Alterar Papel" }));
     await user.keyboard("{Escape}");
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
   it.each([{ users: [] }, { users: [student] }, { users: [{ ...student, role: "CUSTOM", age: null, createdAt: null }] }])("mostra bases vazias e dados incompletos %#", async ({ users }) => {
@@ -91,11 +93,11 @@ describe("gestão de usuários", () => {
     const { user } = setup([adminUser, ...students]);
     await screen.findByText(students[0].email);
     expect(screen.queryByText(students[11].email)).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Página 2", exact: true }));
+    await user.click(screen.getByRole("button", { name: /página 2/i }));
     expect(await screen.findByText(students[11].email)).toBeInTheDocument();
     await user.type(screen.getByPlaceholderText("Buscar por nome ou e-mail..."), students[11].email);
     expect(screen.getByText(students[11].email)).toBeInTheDocument();
-    expect(screen.queryByText(students[10].email)).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText(students[10].email)).not.toBeInTheDocument());
   });
 });
 

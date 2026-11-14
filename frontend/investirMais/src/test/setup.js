@@ -3,7 +3,7 @@ import { cleanup } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll } from "vitest";
 import { server } from "./server.js";
 
-// Ant Design observes viewport breakpoints; jsdom does not implement matchMedia.
+// Material UI observes viewport breakpoints; jsdom does not implement matchMedia.
 window.matchMedia ??= (media) => ({
   media, matches: false, onchange: null,
   addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent() { return true; },

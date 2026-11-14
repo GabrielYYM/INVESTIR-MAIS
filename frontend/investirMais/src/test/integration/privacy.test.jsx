@@ -34,7 +34,7 @@ describe("termos e privacidade", () => {
     await user.click(screen.getByRole("heading", { name: "Termos e Condições Gerais de Uso" })); expect(close).not.toHaveBeenCalled();
     rerender(<TermsModal initialTab="privacidade" onClose={close} />);
     expect(screen.getByRole("heading", { name: "Política de Privacidade e Proteção de Dados Pessoais", exact: true })).toBeInTheDocument();
-    const backdrop = screen.getByRole("dialog").closest(".ant-modal-wrap");
+    const backdrop = screen.getByRole("dialog").closest(".MuiDialog-container");
     fireEvent.mouseDown(backdrop); fireEvent.click(backdrop); expect(close).toHaveBeenCalledOnce();
   });
 

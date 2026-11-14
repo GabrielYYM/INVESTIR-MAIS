@@ -18,6 +18,9 @@ export async function fillFields(user, fields, scope = screen) {
   for (const [label, value] of Object.entries(fields)) {
     const field = scope.getByLabelText(label, { exact: true });
     await user.clear(field);
-    if (String(value)) await user.type(field, String(value));
+    if (String(value)) {
+      if (field.type === "number" || field.type === "date") await user.type(field, String(value));
+      else await user.paste(String(value));
+    }
   }
 }
