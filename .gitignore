@@ -86,3 +86,6 @@ build/
 *.drawio
 *.drawio.*
 
+
+# Fonte editável dos diagramas documentados no README
+!docs/diagramas/investir-mais.drawio
