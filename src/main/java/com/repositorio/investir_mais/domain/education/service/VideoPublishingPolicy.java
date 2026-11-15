@@ -6,9 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
-import java.text.Normalizer;
 import java.util.*;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service @RequiredArgsConstructor
@@ -16,12 +14,6 @@ public class VideoPublishingPolicy {
     private final YouTubeCatalog youtube;
     private final TeacherYouTubeChannelRepository channels;
     private static final String DELIVERY_ISSUE = "Este vídeo está indisponível ou ainda não foi validado. Avise o professor e tente novamente mais tarde.";
-    private static final List<Pattern> ECONOMIC_TOPICS = List.of(
-            "economia", "financas?", "financeir[oa]s?", "investimentos?", "inflacao", "macroeconomia", "microeconomia",
-            "renda fixa", "renda variavel", "tesouro direto", "educacao financeira", "mercado de capitais",
-            "bolsa de valores", "taxa selic", "politica monetaria", "politica fiscal", "juros compostos", "fundos imobiliarios",
-            "economic[sa]?", "finance", "investing", "investment[s]?", "inflation", "stock market")
-            .stream().map(term -> Pattern.compile("\\b(?:" + term + ")\\b")).toList();
 
     public VerifiedVideo validate(String url, UUID teacherId) {
         var parsed = YouTubeVideoUrl.parse(url);
@@ -74,17 +66,8 @@ public class VideoPublishingPolicy {
         if (!approved.contains(video.snippet().channelId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "O canal deste vídeo não está aprovado para o professor responsável. Solicite a aprovação ao administrador.");
         }
-        String titleAndTags = normalize(video.snippet().title() + " " + String.join(" ", video.snippet().tags() == null ? List.of() : video.snippet().tags()));
-        String description = normalize(video.snippet().description());
-        boolean theme = ECONOMIC_TOPICS.stream().anyMatch(p -> p.matcher(titleAndTags).find())
-                || ECONOMIC_TOPICS.stream().filter(p -> p.matcher(description).find()).count() >= 2;
-        if (!theme) reject("Não foi identificado tema de economia, finanças ou investimentos no título, nas tags ou na descrição do vídeo no YouTube.");
     }
 
-    private String normalize(String value) {
-        String normalized = Normalizer.normalize(value == null ? "" : value, Normalizer.Form.NFD).replaceAll("\\p{M}+", "").toLowerCase(Locale.ROOT);
-        return normalized.replaceAll("economia de (bateria|energia|dados|agua)", "");
-    }
     private void reject(String message) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST, message); }
     public record VerifiedVideo(String mediaUrl, String thumbnailUrl) {}
 }

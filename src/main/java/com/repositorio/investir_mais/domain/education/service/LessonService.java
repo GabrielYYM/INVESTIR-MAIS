@@ -94,14 +94,14 @@ public class LessonService {
                 lesson.getCourse().getId(), lesson.getPosition(), false, issue);
     }
 
-    @PreAuthorize("hasRole('TEACHER')")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public List<LessonDTO.OrderItem> getLessonOrder(UUID courseId, String email) {
         findCourseForOrdering(courseId, email);
         return lessonRepository.findAllByCourseIdOrderByPositionAscIdAsc(courseId).stream()
                 .map(l -> new LessonDTO.OrderItem(l.getId(), l.getTitle(), l.getPosition())).toList();
     }
 
-    @PreAuthorize("hasRole('TEACHER')")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public void reorderLessons(UUID courseId, LessonDTO.OrderRequest request, String email) {
         // Same course lock as creation, question editing and student progression.
         findCourseForOrdering(courseId, email);
@@ -129,8 +129,8 @@ public class LessonService {
     private Course findCourseForOrdering(UUID courseId, String email) {
         User user = userService.findByEmail(email);
         Course course = courseService.findCourseForProgressUpdate(courseId);
-        if (user.getRole() != UserRole.TEACHER || !course.getProfessor().getId().equals(user.getId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Somente o professor responsável pode alterar a ordem das aulas.");
+        if (user.getRole() != UserRole.ADMIN && (user.getRole() != UserRole.TEACHER || !course.getProfessor().getId().equals(user.getId()))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Somente administradores e o professor responsável podem alterar a ordem das aulas.");
         }
         return course;
     }

@@ -203,16 +203,18 @@ class LessonServiceTest {
         verify(lessonRepository).delete(lesson);
     }
 
-    @Test
-    void reorderLessons_ShouldApplyCompleteOrderAndMoveQuestionAnchors() {
-        professor.setRole(UserRole.TEACHER);
+    @ParameterizedTest
+    @EnumSource(value = UserRole.class, names = {"TEACHER", "ADMIN"})
+    void reorderLessons_ShouldAllowOwnerTeacherOrAdminAndMoveQuestionAnchors(UserRole role) {
+        User actor = role == UserRole.ADMIN ? outroUser : professor;
+        actor.setRole(role);
         lesson.setPosition(1);
         Lesson second = new Lesson(); second.setId(UUID.randomUUID()); second.setPosition(3);
-        when(userService.findByEmail("teacher")).thenReturn(professor);
+        when(userService.findByEmail("manager")).thenReturn(actor);
         when(courseRepository.findForUpdateById(courseId)).thenReturn(Optional.of(course));
         when(lessonRepository.findForUpdateByCourseIdOrderByPositionAscIdAsc(courseId)).thenReturn(List.of(lesson, second));
 
-        lessonService.reorderLessons(courseId, new LessonDTO.OrderRequest(List.of(second.getId(), lessonId)), "teacher");
+        lessonService.reorderLessons(courseId, new LessonDTO.OrderRequest(List.of(second.getId(), lessonId)), "manager");
 
         assertEquals(1, second.getPosition());
         assertEquals(2, lesson.getPosition());
@@ -237,8 +239,8 @@ class LessonServiceTest {
     }
 
     @ParameterizedTest
-    @EnumSource(UserRole.class)
-    void reorderLessons_OnlyResponsibleTeacherMayReorder(UserRole role) {
+    @EnumSource(value = UserRole.class, names = {"STUDENT", "TEACHER"})
+    void reorderLessons_ShouldRejectStudentsAndOtherTeachers(UserRole role) {
         outroUser.setRole(role);
         when(userService.findByEmail("other")).thenReturn(outroUser);
         when(courseRepository.findForUpdateById(courseId)).thenReturn(Optional.of(course));

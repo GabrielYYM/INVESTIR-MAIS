@@ -157,7 +157,6 @@ export default function Course() {
   const [editor, setEditor] = useState(null);
   const [questionEditor, setQuestionEditor] = useState(null);
   const [ordering, setOrdering] = useState(false);
-  const canOrder = user.role === "TEACHER" && course.professorId === user.id;
   const revalidator = useRevalidator();
   const enroll = useFetcher();
   const location = useLocation();
@@ -198,7 +197,7 @@ export default function Course() {
           kind: "curso",
           item: course
         })}><Pencil size={15} /> Editar curso</button>
-        {canOrder && <button className="button-secondary" onClick={() => setOrdering(true)}>Ordenar aulas</button>}
+        {canManage && <button className="button-secondary" onClick={() => setOrdering(true)}>Ordenar aulas</button>}
         <button className="button-danger" onClick={() => setEditor({
           kind: "curso",
           item: course,
@@ -304,7 +303,7 @@ export default function Course() {
       </section>
     </div>
     {editor && canManage && <Suspense fallback={null}><EducationDialog {...editor} onClose={() => setEditor(null)} /></Suspense>}
-    {ordering && canOrder && <Suspense fallback={null}><LessonOrderDialog courseId={course.id} onClose={() => setOrdering(false)} /></Suspense>}
+    {ordering && canManage && <Suspense fallback={null}><LessonOrderDialog courseId={course.id} onClose={() => setOrdering(false)} /></Suspense>}
     {questionEditor && canManage && <Suspense fallback={null}><QuestionDialog {...questionEditor} onClose={() => setQuestionEditor(null)} /></Suspense>}
   </>;
 }

@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { course, lesson, otherLesson, paged, student, teacher, admin } from "../fixtures.js";
+import { course, lesson, otherLesson, paged, student, teacher, adminUser } from "../fixtures.js";
 import { mockApi } from "../helpers.js";
 import { renderApp } from "../renderApp.jsx";
 
@@ -8,7 +8,7 @@ const path = "/educacao/" + course.id;
 const endpoint = `/api/lessons/course/${course.id}/order`;
 
 describe("ordem didática das aulas", () => {
-  it("salva a ordem de todas as páginas e a mantém ao reabrir para professor e aluno", async () => {
+  it.each([teacher, adminUser])("permite ao professor responsável e ao admin salvar a ordem de todas as páginas %#", async session => {
     let items = Array.from({ length: 12 }, (_, index) => ({
       ...lesson, id: `11111111-1111-4111-8111-${String(index).padStart(12, "0")}`,
       title: `Vídeo ${index + 1}`, position: index + 1,
@@ -22,7 +22,7 @@ describe("ordem didática das aulas", () => {
       items = lessonIds.map((id, index) => ({ ...items.find(item => item.id === id), position: index + 1 }));
       return null;
     }, { status: 204 });
-    const view = renderApp(path, { session: teacher });
+    const view = renderApp(path, { session });
     await view.user.click(await screen.findByRole("button", { name: "Ordenar aulas" }));
     let dialog = within(await screen.findByRole("dialog"));
     await dialog.findByText("Vídeo 12");
@@ -45,7 +45,7 @@ describe("ordem didática das aulas", () => {
     expect(screen.queryByRole("button", { name: "Ordenar aulas" })).not.toBeInTheDocument();
   });
 
-  it.each([student, { ...teacher, id: "outro-professor" }, admin])("oculta a ordenação de quem não é o professor responsável %#", async session => {
+  it.each([student, { ...teacher, id: "outro-professor" }])("oculta a ordenação de alunos e de outros professores %#", async session => {
     renderApp(path, { session });
     await screen.findByRole("heading", { name: course.name });
     expect(screen.queryByRole("button", { name: "Ordenar aulas" })).not.toBeInTheDocument();

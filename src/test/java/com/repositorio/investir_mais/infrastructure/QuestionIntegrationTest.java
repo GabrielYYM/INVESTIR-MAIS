@@ -8,6 +8,8 @@ import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.repository.UserRepository;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -194,11 +196,13 @@ class QuestionIntegrationTest extends PostgreSqlIntegrationTest {
         return new QuestionDTO.Request("Qual alternativa?", afterLesson, position, List.of("Certa", "Errada"), 0);
     }
 
-    @Test
-    void lessonOrderPersistsForStudentsAndQuestionsFollowTheirLesson() throws Exception {
+    @ParameterizedTest
+    @EnumSource(value = UserRole.class, names = {"TEACHER", "ADMIN"})
+    void lessonOrderPersistsForStudentsAndQuestionsFollowTheirLesson(UserRole role) throws Exception {
+        User actor = role == UserRole.ADMIN ? admin : teacher;
         var question = create(1, 1);
         String orderPath = "/api/lessons/course/" + course.getId() + "/order";
-        mvc.perform(put(orderPath).with(as(teacher)).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(put(orderPath).with(as(actor)).with(csrf()).contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(new LessonDTO.OrderRequest(List.of(second.getId(), first.getId())))))
                 .andExpect(status().isNoContent());
         em.flush(); em.clear();
@@ -210,9 +214,10 @@ class QuestionIntegrationTest extends PostgreSqlIntegrationTest {
     }
 
     @Test
-    void orderEndpointRejectsOtherTeachersStudentsAdminsAndInvalidLists() throws Exception {
+    void orderEndpointRejectsOtherTeachersStudentsAndInvalidLists() throws Exception {
         String orderPath = "/api/lessons/course/" + course.getId() + "/order";
-        for (User user : List.of(other, student, admin)) {
+        User unrelatedTeacher = user(UserRole.TEACHER);
+        for (User user : List.of(other, student, unrelatedTeacher)) {
             mvc.perform(put(orderPath).with(as(user)).with(csrf()).contentType(MediaType.APPLICATION_JSON)
                     .content(json.writeValueAsString(new LessonDTO.OrderRequest(List.of(second.getId(), first.getId())))))
                     .andExpect(status().isForbidden());

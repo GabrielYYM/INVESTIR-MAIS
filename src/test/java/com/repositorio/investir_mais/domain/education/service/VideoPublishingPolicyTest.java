@@ -31,19 +31,31 @@ class VideoPublishingPolicyTest {
         when(youtube.refreshVideos(List.of(ID))).thenReturn(Map.of(ID, video));
     }
 
-    @Test void acceptsEconomicVideoFromApprovedChannelAndUsesCanonicalMedia() {
+    @Test void acceptsVideoFromApprovedChannelAndUsesCanonicalMedia() {
         allow(valid("Educação financeira: investimentos e inflação"));
         var result = policy.validate("https://youtu.be/" + ID, teacherId);
         assertEquals("https://www.youtube.com/watch?v=" + ID, result.mediaUrl());
         assertEquals("https://i.ytimg.com/vi/" + ID + "/hqdefault.jpg", result.thumbnailUrl());
     }
 
-    @ParameterizedTest @ValueSource(strings = {"Minecraft: aventura", "Economia de bateria no celular", "Receita de bolo"})
-    void rejectsUnrelatedVideosEvenIfTheLessonTitleCouldClaimEconomics(String title) {
+    @ParameterizedTest @ValueSource(strings = {"Aula 1", "Como organizar o orçamento", "Receita de bolo"})
+    void acceptsAvailableVideosFromApprovedChannelsWithoutClassifyingTheirTitles(String title) {
         allow(valid(title));
-        var error = assertThrows(ResponseStatusException.class, () -> policy.validate("https://youtu.be/" + ID, teacherId));
-        assertEquals(400, error.getStatusCode().value());
-        assertTrue(error.getReason().contains("economia"));
+        assertEquals("https://www.youtube.com/watch?v=" + ID,
+                policy.validate("https://youtu.be/" + ID, teacherId).mediaUrl());
+    }
+
+    @Test void deliversApprovedVideosWithoutTopicKeywordsAndWithholdsThemAfterRevocation() {
+        var teacher = new User(); teacher.setId(teacherId);
+        var course = new Course(); course.setProfessor(teacher);
+        var lesson = new Lesson(); lesson.setId(UUID.randomUUID()); lesson.setCourse(course); lesson.setMediaUrl("https://youtu.be/" + ID);
+        var approval = new TeacherYouTubeChannel(); approval.setChannelId(CHANNEL);
+        when(channels.findAllByTeacherIdOrderByTitleAsc(teacherId)).thenReturn(List.of(approval));
+        when(youtube.videos(List.of(ID))).thenReturn(Map.of(ID, valid("Aula 1")));
+        assertTrue(policy.deliveryIssues(List.of(lesson)).isEmpty());
+
+        when(channels.findAllByTeacherIdOrderByTitleAsc(teacherId)).thenReturn(List.of());
+        assertTrue(policy.deliveryIssues(List.of(lesson)).containsKey(lesson.getId()));
     }
 
     @Test void requiresChannelApprovedForThisTeacherAndChecksAgainAfterRevocation() {

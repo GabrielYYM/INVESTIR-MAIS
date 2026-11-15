@@ -26,13 +26,13 @@ public class LessonController {
 
     private final LessonService lessonService;
 
-    @Operation(summary = "Consultar ordem de todas as aulas", description = "Lista todas as aulas, sem paginação. Exige o professor responsável pelo curso.")
+    @Operation(summary = "Consultar ordem de todas as aulas", description = "Lista todas as aulas, sem paginação. Exige ADMIN ou o professor responsável pelo curso.")
     @GetMapping("/course/{courseId}/order")
     public List<LessonDTO.OrderItem> getLessonOrder(@PathVariable UUID courseId, Principal principal) {
         return lessonService.getLessonOrder(courseId, principal.getName());
     }
 
-    @Operation(summary = "Reordenar aulas de um curso", description = "Recebe os IDs de todas as aulas na ordem desejada. Somente o professor responsável pode reordenar. As perguntas acompanham suas aulas.")
+    @Operation(summary = "Reordenar aulas de um curso", description = "Recebe os IDs de todas as aulas na ordem desejada. Exige ADMIN ou o professor responsável. As perguntas acompanham suas aulas.")
     @PutMapping("/course/{courseId}/order")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void reorderLessons(@PathVariable UUID courseId, @Valid @RequestBody LessonDTO.OrderRequest request, Principal principal) {

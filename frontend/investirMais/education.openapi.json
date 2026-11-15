@@ -118,6 +118,7 @@
             "Aulas"
           ],
           "summary": "Consultar ordem de todas as aulas",
+          "description": "Exige ADMIN ou o professor responsável pelo curso.",
           "operationId": "getLessonOrder",
           "parameters": [
             {
@@ -151,6 +152,7 @@
             "Aulas"
           ],
           "summary": "Reordenar aulas de um curso",
+          "description": "Exige ADMIN ou o professor responsável pelo curso. As perguntas acompanham suas aulas.",
           "operationId": "reorderLessons",
           "parameters": [
             {
