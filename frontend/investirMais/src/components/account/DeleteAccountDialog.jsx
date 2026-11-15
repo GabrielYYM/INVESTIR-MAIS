@@ -4,6 +4,7 @@ import { ArrowRight, Trash2 } from "lucide-react";
 import AppModal from "../ui/AppModal.jsx";
 import { Field } from "../ui/FormFields.jsx";
 import { Notice } from "../ui/PageState.jsx";
+import SubmitButton from "../ui/SubmitButton.jsx";
 import { deleteAccount, logout } from "../../services/authService.js";
 import { apiError } from "../../services/api.js";
 export default function DeleteAccountDialog({
@@ -70,9 +71,9 @@ export default function DeleteAccountDialog({
           <button type="button" disabled={busy} onClick={() => setStep(1)} className="button-secondary">Voltar</button>
           <div className="flex gap-2">
             <button type="button" disabled={busy} onClick={onClose} className="button-secondary">Cancelar</button>
-            <button disabled={busy || !form.watch("password")} className="button-danger"><Trash2 size={14} />
-              {busy ? "Excluindo conta…" : "Confirmar e Desativar Conta"}
-            </button>
+            <SubmitButton variant="danger" loading={busy} disabled={!form.watch("password")} loadingText="Excluindo conta…" icon={Trash2} iconSize={14}>
+              Confirmar e Desativar Conta
+            </SubmitButton>
           </div>
         </div>
       </>}

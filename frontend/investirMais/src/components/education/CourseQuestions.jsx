@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Radio, RadioGroup } from "@mui/material";
 import { useFetcher, useLocation } from "react-router";
 import { Notice } from "../ui/PageState.jsx";
+import SubmitButton from "../ui/SubmitButton.jsx";
 function StudentQuestion({
   question
 }) {
@@ -34,7 +35,7 @@ function StudentQuestion({
     </fieldset>
     {question.passed ? <p className="flex items-center gap-2 text-sm font-semibold text-positive"><CheckCircle2 size={16} />Pergunta concluída</p> : question.locked ? <p className="text-sm text-muted">Conclua as aulas e acerte as perguntas anteriores para responder.</p> : <>
       {fetcher.data?.error && <Notice error>{fetcher.data.error}</Notice>}{fetcher.data?.passed === false && <Notice error>Ainda não é a alternativa correta. Escolha outra opção e tente novamente.</Notice>}
-      <button type="submit" className="button-primary" disabled={busy || selected === null}>{busy ? "Verificando…" : "Responder pergunta"}</button>
+      <SubmitButton loading={busy} disabled={selected === null} loadingText="Verificando…">Responder pergunta</SubmitButton>
     </>}
   </form>;
 }
@@ -57,7 +58,7 @@ export default function CourseQuestions({
         </div>
         {canManage && <button className="button-primary" onClick={() => onEdit({})}><Plus size={16} /> Nova pergunta</button>}
       </header>
-      {error ? <div className="space-y-3"><Notice error>{error}</Notice><button className="button-secondary" disabled={loading} onClick={onRetry}>Tentar novamente</button></div> : needsEnrollment ? <div className="space-y-3"><p className="text-sm leading-relaxed text-muted">Entre no curso para responder às perguntas e liberar os próximos conteúdos.</p><button className="button-primary" disabled={loading} onClick={onEnroll}>{loading ? "Entrando…" : "Começar curso"}</button></div> : questions.length ? <div className="space-y-4">{questions.map((question, index) => <article key={question.id} className="min-w-0 space-y-4 rounded-xl border border-line bg-raised p-4" aria-labelledby={"question-" + question.id}>
+      {error ? <div className="space-y-3"><Notice error>{error}</Notice><button className="button-secondary" disabled={loading} onClick={onRetry}>Tentar novamente</button></div> : needsEnrollment ? <div className="space-y-3"><p className="text-sm leading-relaxed text-muted">Entre no curso para responder às perguntas e liberar os próximos conteúdos.</p><SubmitButton type="button" loading={loading} loadingText="Entrando…" onClick={onEnroll}>Começar curso</SubmitButton></div> : questions.length ? <div className="space-y-4">{questions.map((question, index) => <article key={question.id} className="min-w-0 space-y-4 rounded-xl border border-line bg-raised p-4" aria-labelledby={"question-" + question.id}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 space-y-2">
                   <p className="flex flex-wrap items-center gap-2 text-xs text-muted"><CircleHelp size={15} className="text-brand" /> Pergunta {index + 1}<span aria-hidden="true">·</span>{question.afterLesson === 0 ? "Antes da primeira aula" : "Após a aula " + question.afterLesson}</p>

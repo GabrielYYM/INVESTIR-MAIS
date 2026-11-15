@@ -1,12 +1,14 @@
 import { lazy, Suspense, useState } from "react";
-import { AlertTriangle, ArrowRight, KeyRound, Lock, Mail, Save, ShieldCheck, Trash2, User } from "lucide-react";
+import { AlertTriangle, ArrowRight, KeyRound, Mail, Save, ShieldCheck, Trash2, User } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate, useRevalidator, useRouteLoaderData } from "react-router";
 import { useForgotPassword, useUpdatePassword, useUpdateProfile } from "../generated/account.ts";
 import { Field } from "../components/ui/FormFields.jsx";
 import PasswordFields from "../components/account/PasswordFields.jsx";
+import RoleBadge from "../components/account/RoleBadge.jsx";
+import PageHeader from "../components/layout/PageHeader.jsx";
 import { Notice } from "../components/ui/PageState.jsx";
-import { roleNames } from "../services/dataProvider.js";
+import SubmitButton from "../components/ui/SubmitButton.jsx";
 import { apiError } from "../services/api.js";
 import { isSessionExpired } from "../services/authService.js";
 import { accountResolver, passwordSchema, profileSchema } from "../services/accountSchema.js";
@@ -73,15 +75,18 @@ export default function Perfil() {
     }
   }));
   return <div className="mx-auto max-w-4xl space-y-6">
-      <header>
-        <h1 className="text-2xl font-bold">Meu perfil</h1>
-        <p className="mt-1 text-sm text-muted">Consulte seus dados, gerencie suas credenciais e configurações de segurança.</p>
-      </header>
+      <PageHeader
+        panel={false}
+        title="Meu perfil"
+        description="Consulte seus dados, gerencie suas credenciais e configurações de segurança."
+      />
 
       <section className="panel p-6 shadow-xl">
         <h2 className="text-lg font-bold break-words">{user.name}</h2>
         <p className="text-sm break-words text-muted">{user.email}</p>
-        <p className="mt-2 text-xs font-semibold text-amber-400">{roleNames[user.role]}</p>
+        <div className="mt-2">
+          <RoleBadge role={user.role} />
+        </div>
       </section>
 
       {profile.isSuccess && !savingProfile && <Notice>Perfil atualizado.</Notice>}
@@ -91,9 +96,9 @@ export default function Perfil() {
         <Field label="Nome completo" icon={User} autoComplete="name" maxLength={100} error={form.formState.errors.name?.message} {...form.register("name")} />
         <Field label="E-mail" icon={Mail} type="email" value={user.email} disabled readOnly hint="Somente leitura. O e-mail não pode ser alterado diretamente." />
         <PasswordFields form={form} onlyCurrent hint="Necessária para confirmar a atualização do seu nome." />
-        <button className="button-primary" disabled={savingProfile}>
-          <Save size={17} /> {savingProfile ? "Salvando…" : "Salvar perfil"}
-        </button>
+        <SubmitButton loading={savingProfile} loadingText="Salvando…" icon={Save}>
+          Salvar perfil
+        </SubmitButton>
       </form>
 
       <section className="panel space-y-6 p-6 shadow-xl sm:p-8">
@@ -108,9 +113,9 @@ export default function Perfil() {
         <form onSubmit={updatePassword} className="space-y-4" noValidate>
           <PasswordFields form={passwordForm} name="newPassword" />
 
-          <button className="button-primary" disabled={password.isPending}>
-            <Save size={17} /> {password.isPending ? "Atualizando senha…" : "Atualizar senha"}
-          </button>
+          <SubmitButton loading={password.isPending} loadingText="Atualizando senha…" icon={Save}>
+            Atualizar senha
+          </SubmitButton>
         </form>
 
         <div className="rounded-xl border border-line bg-canvas p-4 space-y-3">
@@ -121,13 +126,22 @@ export default function Perfil() {
                 Você pode solicitar um link seguro com código de recuperação para o seu e-mail cadastrado ({user.email}).
               </p>
             </div>
-            <button type="button" onClick={() => recovery.mutate({
-            data: {
-              email: user.email
-            }
-          })} disabled={recovery.isPending} className="button-secondary text-xs !min-h-8 !px-3">
-              <Mail size={14} /> {recovery.isPending ? "Enviando…" : "Enviar link de recuperação"}
-            </button>
+            <SubmitButton
+              type="button"
+              variant="secondary"
+              className="text-xs !min-h-8 !px-3"
+              loading={recovery.isPending}
+              loadingText="Enviando…"
+              icon={Mail}
+              iconSize={14}
+              onClick={() => recovery.mutate({
+                data: {
+                  email: user.email
+                }
+              })}
+            >
+              Enviar link de recuperação
+            </SubmitButton>
           </div>
           {recoveryStatus && <div className="pt-2">
               <Notice>{recoveryStatus}</Notice>

@@ -5,6 +5,7 @@ import { useForgotPassword, useResetPassword } from "../generated/account.ts";
 import { AuthCard, Field } from "../components/ui/FormFields.jsx";
 import PasswordFields from "../components/account/PasswordFields.jsx";
 import { Notice } from "../components/ui/PageState.jsx";
+import SubmitButton from "../components/ui/SubmitButton.jsx";
 import { accountResolver, emailSchema, resetPasswordSchema } from "../services/accountSchema.js";
 import { apiError } from "../services/api.js";
 export default function ForgotPassword() {
@@ -42,7 +43,7 @@ export default function ForgotPassword() {
         {reset.error && <Notice error>{apiError(reset.error, "Código inválido ou expirado. Confira os dados ou solicite outro código.")}</Notice>}
         <Field label="Código de recuperação" icon={KeyRound} autoComplete="one-time-code" maxLength={64} placeholder="Cole ou digite o código recebido por e-mail" error={resetForm.formState.errors.token?.message} {...resetForm.register("token")} />
         <PasswordFields form={resetForm} />
-        <button disabled={busy} type="submit" className="button-primary w-full">Redefinir senha</button>
+        <SubmitButton loading={busy} fullWidth>Redefinir senha</SubmitButton>
       </form>
       <form onSubmit={event => {
         event.preventDefault();
@@ -54,12 +55,12 @@ export default function ForgotPassword() {
       }} className="space-y-4">
         {resend.error && <Notice error>{apiError(resend.error, "Não foi possível solicitar o código agora.")}</Notice>}
         {resend.isSuccess && <Notice>Solicitamos um novo código para o e-mail informado.</Notice>}
-        <button disabled={busy} type="submit" className="button-secondary w-full">Solicitar outro código</button>
+        <SubmitButton variant="secondary" loading={busy} fullWidth>Solicitar outro código</SubmitButton>
       </form>
     </> : <form onSubmit={sendCode} noValidate className="space-y-4">
       {request.error && <Notice error>{apiError(request.error, "Não foi possível solicitar o código agora.")}</Notice>}
       <Field label="E-mail" icon={Mail} type="email" autoComplete="email" placeholder="seu.email@exemplo.com" hint="Enviaremos as instruções de recuperação para este endereço." error={requestForm.formState.errors.email?.message} {...requestForm.register("email")} />
-      <button disabled={request.isPending} type="submit" className="button-primary w-full">Enviar código</button>
+      <SubmitButton loading={request.isPending} fullWidth>Enviar código</SubmitButton>
     </form>)}
     <Link to="/entrar" className="block text-center text-sm font-semibold text-brand hover:underline">Voltar para entrar</Link>
   </AuthCard>;

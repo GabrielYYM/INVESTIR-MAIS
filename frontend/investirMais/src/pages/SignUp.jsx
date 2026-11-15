@@ -6,6 +6,7 @@ import { useRegisterUser, useResendVerification } from "../generated/account.ts"
 import { AuthCard, Field } from "../components/ui/FormFields.jsx";
 import PasswordFields from "../components/account/PasswordFields.jsx";
 import { Notice } from "../components/ui/PageState.jsx";
+import SubmitButton from "../components/ui/SubmitButton.jsx";
 import { accountResolver, registrationSchema } from "../services/accountSchema.js";
 import { apiError } from "../services/api.js";
 const TermsModal = lazy(() => import("../components/account/TermsModal.jsx"));
@@ -48,7 +49,7 @@ export default function SignUp() {
     }} className="space-y-4">
       {resend.error && <Notice error>{apiError(resend.error, "Não foi possível reenviar o link agora.")}</Notice>}
       {resend.isSuccess && <Notice>Link de confirmação solicitado novamente.</Notice>}
-      <button disabled={resend.isPending} type="submit" className="button-secondary w-full">Reenviar link de confirmação</button>
+      <SubmitButton variant="secondary" loading={resend.isPending} fullWidth>Reenviar link de confirmação</SubmitButton>
     </form> : <form onSubmit={submit} noValidate className="space-y-4">
       {registration.error && <Notice error>{apiError(registration.error, "Não foi possível criar sua conta. Verifique os dados informados.")}</Notice>}
       <Field label="Nome completo" icon={User} autoComplete="name" maxLength={100} placeholder="Ex: Maria da Silva" error={errors.name?.message} {...form.register("name")} />
@@ -72,7 +73,7 @@ export default function SignUp() {
         </span>
       </label>
       {errors.acceptTerms && <p role="alert" className="text-sm text-negative">{errors.acceptTerms.message}</p>}
-      <button disabled={registration.isPending} type="submit" className="button-primary w-full">{registration.isPending ? "Criando conta…" : "Criar conta"}</button>
+      <SubmitButton loading={registration.isPending} loadingText="Criando conta…" fullWidth>Criar conta</SubmitButton>
     </form>}
     <Link to="/entrar" className="block text-center text-sm font-semibold text-brand hover:underline">Voltar para entrar</Link>
     {termsModalTab && <Suspense fallback={null}><TermsModal initialTab={termsModalTab} onClose={() => setTermsModalTab(null)} /></Suspense>}
