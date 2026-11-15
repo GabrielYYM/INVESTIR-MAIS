@@ -67,12 +67,16 @@ describe("perguntas para professores", () => {
     const { user } = renderApp(coursePath, { session: teacher });
     await user.click(await screen.findByRole("button", { name: "Excluir pergunta " + question.prompt }));
     await user.click(screen.getByRole("button", { name: "Cancelar" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(await screen.findByRole("heading", { name: question.prompt })).toBeInTheDocument();
     expect(remove).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "Excluir pergunta " + question.prompt }));
-    await user.click(screen.getByRole("button", { name: "Confirmar exclusão" }));
-    await waitFor(() => expect(screen.queryByRole("heading", { name: question.prompt })).not.toBeInTheDocument());
+    const confirmation = within(await screen.findByRole("dialog", { name: "Excluir pergunta" }));
+    await user.click(confirmation.getByRole("button", { name: "Confirmar exclusão" }));
+    await waitFor(() => expect(remove).toHaveBeenCalledOnce());
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(remove).toHaveBeenCalledOnce(); expect(screen.getByRole("heading", { name: course.name })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: course.name })).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("heading", { name: question.prompt })).not.toBeInTheDocument());
   });
 
   it("cadastra perguntas no mesmo pedido de criação do curso", async () => {
