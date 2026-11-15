@@ -6,6 +6,7 @@ import com.repositorio.investir_mais.domain.education.model.Course;
 import com.repositorio.investir_mais.domain.education.model.Lesson;
 import com.repositorio.investir_mais.domain.education.repository.CourseRepository;
 import com.repositorio.investir_mais.domain.education.repository.LessonRepository;
+import com.repositorio.investir_mais.domain.education.service.VideoPublishingPolicy;
 import com.repositorio.investir_mais.domain.user.model.User;
 import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.repository.UserRepository;
@@ -21,6 +22,7 @@ import org.springframework.security.concurrent.DelegatingSecurityContextCallable
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -34,7 +36,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 
@@ -50,12 +54,16 @@ class LessonConcurrentRequestsIntegrationTest extends PostgreSqlIntegrationTest 
     @Autowired private CourseRepository courses;
     @MockitoSpyBean private LessonRepository lessons;
     @MockitoSpyBean private LessonMapper mapper;
+    @MockitoBean private VideoPublishingPolicy videoPolicy;
     @PersistenceContext private EntityManager entityManager;
 
     @ParameterizedTest
     @ValueSource(strings = {"DELETE", "PUT"})
     @WithMockUser(username = EMAIL, authorities = {"ROLE_TEACHER", "FACTOR_PASSWORD", "FACTOR_OTT"})
     void concurrentWritesAreSerializedBeforeLessonDeletion(String method) throws Exception {
+        // Keep this database-locking test independent of YouTube configuration and availability.
+        when(videoPolicy.validate(anyString(), any(UUID.class))).thenReturn(new VideoPublishingPolicy.VerifiedVideo(
+                "https://www.youtube.com/watch?v=dQw4w9WgXcQ", "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg"));
         User owner = users.findByEmail(EMAIL).orElseGet(() -> {
             var user = new User();
             user.setName("Professor de teste");
