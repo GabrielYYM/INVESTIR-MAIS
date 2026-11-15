@@ -39,6 +39,7 @@ class QuestionIntegrationTest extends PostgreSqlIntegrationTest {
     @Autowired CourseRepository courses;
     @Autowired LessonRepository lessons;
     @Autowired QuestionRepository questions;
+    @Autowired javax.sql.DataSource dataSource;
     @Autowired EntityManager em;
     @Autowired JdbcTemplate jdbc;
     @Autowired com.repositorio.investir_mais.domain.LegalDocumentsService legal;
@@ -191,6 +192,66 @@ class QuestionIntegrationTest extends PostgreSqlIntegrationTest {
 
     private QuestionDTO.Request request(int afterLesson, int position) {
         return new QuestionDTO.Request("Qual alternativa?", afterLesson, position, List.of("Certa", "Errada"), 0);
+    }
+
+    @Test
+    void lessonOrderPersistsForStudentsAndQuestionsFollowTheirLesson() throws Exception {
+        var question = create(1, 1);
+        String orderPath = "/api/lessons/course/" + course.getId() + "/order";
+        mvc.perform(put(orderPath).with(as(teacher)).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(new LessonDTO.OrderRequest(List.of(second.getId(), first.getId())))))
+                .andExpect(status().isNoContent());
+        em.flush(); em.clear();
+        assertEquals(2, questions.findById(question.id()).orElseThrow().getAfterLesson());
+        mvc.perform(get("/api/lessons/course/" + course.getId()).with(as(student)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].id").value(second.getId().toString()))
+                .andExpect(jsonPath("$.content[1].id").value(first.getId().toString()));
+    }
+
+    @Test
+    void orderEndpointRejectsOtherTeachersStudentsAdminsAndInvalidLists() throws Exception {
+        String orderPath = "/api/lessons/course/" + course.getId() + "/order";
+        for (User user : List.of(other, student, admin)) {
+            mvc.perform(put(orderPath).with(as(user)).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                    .content(json.writeValueAsString(new LessonDTO.OrderRequest(List.of(second.getId(), first.getId())))))
+                    .andExpect(status().isForbidden());
+        }
+        mvc.perform(put(orderPath).with(as(teacher)).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(new LessonDTO.OrderRequest(List.of(first.getId(), first.getId())))))
+                .andExpect(status().isBadRequest());
+        for (var ids : List.of(List.of(first.getId()), List.of(first.getId(), UUID.randomUUID()))) {
+            mvc.perform(put(orderPath).with(as(teacher)).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                    .content(json.writeValueAsString(new LessonDTO.OrderRequest(ids))))
+                    .andExpect(status().isConflict());
+        }
+        em.flush(); em.clear();
+        assertEquals(1, lessons.findById(first.getId()).orElseThrow().getPosition());
+        assertEquals(2, lessons.findById(second.getId()).orElseThrow().getPosition());
+    }
+
+    @Test
+    void legacyMigrationBackfillsAlphabeticallyAndDoesNotResetSavedOrder() throws Exception {
+        first.setTitle("Zulu"); first.setPosition(0);
+        second.setTitle("Alpha"); second.setPosition(0);
+        var third = lesson(1);
+        var question = create(1, 1);
+        em.flush();
+        var migration = new org.springframework.jdbc.datasource.init.ResourceDatabasePopulator(
+                new org.springframework.core.io.ClassPathResource("lesson-order-postgresql.sql"));
+        migration.execute(dataSource); em.clear();
+        assertEquals(List.of(second.getId(), first.getId(), third.getId()),
+                lessons.findAllByCourseIdOrderByPositionAscIdAsc(course.getId()).stream().map(Lesson::getId).toList());
+        assertEquals(3, questions.findById(question.id()).orElseThrow().getAfterLesson());
+
+        String orderPath = "/api/lessons/course/" + course.getId() + "/order";
+        mvc.perform(put(orderPath).with(as(teacher)).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(new LessonDTO.OrderRequest(List.of(third.getId(), second.getId(), first.getId())))))
+                .andExpect(status().isNoContent());
+        em.flush(); em.clear(); migration.execute(dataSource); em.clear();
+        assertEquals(List.of(third.getId(), second.getId(), first.getId()),
+                lessons.findAllByCourseIdOrderByPositionAscIdAsc(course.getId()).stream().map(Lesson::getId).toList());
+        assertEquals(1, questions.findById(question.id()).orElseThrow().getAfterLesson());
     }
     private QuestionDTO.TeacherQuestion create(int afterLesson, int position) throws Exception {
         var response = mvc.perform(post(base()).with(as(teacher)).with(csrf()).contentType(MediaType.APPLICATION_JSON)

@@ -23,6 +23,8 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import org.springframework.modulith.NamedInterface;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.time.Period;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -53,6 +55,13 @@ public class User {
 
     @Range(min = 0, max = 120)
     private Integer age;
+
+    private LocalDate birthDate;
+
+    public Integer getAge() {
+        if (birthDate == null) return age;
+        return Period.between(birthDate, LocalDate.now()).getYears();
+    }
 
     @Email
     @Column(nullable = false, unique = true)

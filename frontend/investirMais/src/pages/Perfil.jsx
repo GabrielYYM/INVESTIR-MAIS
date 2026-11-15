@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState } from "react";
-import { AlertTriangle, ArrowRight, KeyRound, Mail, Save, ShieldCheck, Trash2, User } from "lucide-react";
+import { AlertTriangle, ArrowRight, Calendar, KeyRound, Mail, Save, ShieldCheck, Trash2, User } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate, useRevalidator, useRouteLoaderData } from "react-router";
 import { useForgotPassword, useUpdatePassword, useUpdateProfile } from "../generated/account.ts";
@@ -22,6 +22,7 @@ export default function Perfil() {
     resolver: accountResolver(profileSchema),
     defaultValues: {
       name: user.name,
+      birthDate: user.birthDate ?? "",
       currentPassword: ""
     }
   });
@@ -39,6 +40,7 @@ export default function Perfil() {
       onSuccess: async updated => {
         form.reset({
           name: updated.name,
+          birthDate: updated.birthDate ?? "",
           currentPassword: ""
         });
         await revalidator.revalidate();
@@ -94,8 +96,9 @@ export default function Perfil() {
     <form onSubmit={submit} className="panel space-y-6 p-6 shadow-xl sm:p-8" noValidate>
       <h2 className="border-b border-line pb-4 font-semibold text-lg">Alterar informações</h2>
       <Field label="Nome completo" icon={User} autoComplete="name" maxLength={100} error={form.formState.errors.name?.message} {...form.register("name")} />
+      <Field label="Data de nascimento" icon={Calendar} type="date" autoComplete="bday" error={form.formState.errors.birthDate?.message} {...form.register("birthDate")} />
       <Field label="E-mail" icon={Mail} type="email" value={user.email} disabled readOnly hint="Somente leitura. O e-mail não pode ser alterado diretamente." />
-      <PasswordFields form={form} onlyCurrent hint="Necessária para confirmar a atualização do seu nome." />
+      <PasswordFields form={form} onlyCurrent hint="Necessária para confirmar a atualização dos seus dados." />
       <SubmitButton loading={savingProfile} loadingText="Salvando…" icon={Save}>
         Salvar perfil
       </SubmitButton>

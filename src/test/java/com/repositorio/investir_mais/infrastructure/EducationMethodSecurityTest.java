@@ -144,6 +144,12 @@ class EducationMethodSecurityTest {
     @EnableMethodSecurity
     @Import({CourseService.class, LessonService.class})
     static class Config {
+        @Bean com.repositorio.investir_mais.domain.education.service.VideoPublishingPolicy videoPolicy() {
+            var policy = mock(com.repositorio.investir_mais.domain.education.service.VideoPublishingPolicy.class);
+            when(policy.validate(anyString(), any(UUID.class))).thenAnswer(call ->
+                    new com.repositorio.investir_mais.domain.education.service.VideoPublishingPolicy.VerifiedVideo(call.getArgument(0), "https://example.test/thumbnail"));
+            return policy;
+        }
         @Bean CourseRepository courseRepository() { return mock(CourseRepository.class); }
         @Bean LessonRepository lessonRepository() { return mock(LessonRepository.class); }
         @Bean CourseMapper courseMapper() { return mock(CourseMapper.class); }

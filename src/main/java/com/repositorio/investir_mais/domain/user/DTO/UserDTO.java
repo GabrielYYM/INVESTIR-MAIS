@@ -3,13 +3,14 @@ package com.repositorio.investir_mais.domain.user.DTO;
 import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
-import org.hibernate.validator.constraints.Range;
+import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.UUID;
 
 public class UserDTO {
@@ -21,10 +22,10 @@ public class UserDTO {
         @Size(min = 2, max = 100, message = "O nome deve ter entre 2 e 100 caracteres")
         String name,
 
-        @Schema(description = "Idade do usuário", example = "22")
-        @NotNull(message = "A idade é obrigatória")
-        @Range(min = 0, max = 120, message = "A idade deve estar entre 0 e 120 anos")
-        Integer age,
+        @Schema(description = "Data de nascimento do usuário", example = "2000-01-15")
+        @NotNull(message = "A data de nascimento é obrigatória")
+        @PastOrPresent(message = "A data de nascimento não pode estar no futuro")
+        LocalDate birthDate,
 
         @Schema(description = "Endereço de e-mail único", example = "usuario@gmail.com")
         @NotBlank(message = "O e-mail é obrigatório")
@@ -54,9 +55,9 @@ public class UserDTO {
         @Size(max = 254)
         String email,
         
-        @Schema(description = "Idade do usuário", example = "23")
-        @Range(min = 0, max = 120, message = "A idade deve estar entre 0 e 120 anos")
-        Integer age,
+        @Schema(description = "Data de nascimento do usuário", example = "2000-01-15")
+        @PastOrPresent(message = "A data de nascimento não pode estar no futuro")
+        LocalDate birthDate,
 
         @Schema(description = "Senha atual para confirmar a alteração do perfil")
         @NotBlank(message = "A senha atual é obrigatória")
@@ -82,6 +83,9 @@ public class UserDTO {
 
         @Schema(description = "Idade do usuário", example = "22")
         Integer age,
+
+        @Schema(description = "Data de nascimento do usuário, ausente em contas antigas", example = "2000-01-15")
+        LocalDate birthDate,
 
         @Schema(description = "E-mail cadastrado", example = "usuario@gmail.com")
         String email,

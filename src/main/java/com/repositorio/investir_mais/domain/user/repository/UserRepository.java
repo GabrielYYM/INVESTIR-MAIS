@@ -20,6 +20,9 @@ public interface UserRepository extends JpaRepository<User, UUID>, RevisionRepos
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<User> findForUpdateByEmail(String email);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<User> findForUpdateById(UUID id);
+
 
     boolean existsByEmail(String email);
 

@@ -13,6 +13,7 @@ import PageHeader from "../components/layout/PageHeader.jsx";
 import { Pagination } from "../components/education/EducationParts.jsx";
 const EducationDialog = lazy(() => import("../components/education/EducationDialog.jsx"));
 const QuestionDialog = lazy(() => import("../components/education/QuestionDialog.jsx"));
+const LessonOrderDialog = lazy(() => import("../components/education/LessonOrderDialog.jsx"));
 export { courseLoader } from "../services/educationData.js";
 function StudentQuestion({
   question
@@ -135,7 +136,7 @@ function LessonPlayer({
           <span>{busy ? "Atualizando…" : isCompleted ? "Aula concluída" : "Marcar como assistida"}</span>
         </button>}
       </div>
-      {video && <p className="text-xs leading-relaxed text-muted">Vídeos privados devem ser abertos no YouTube com a conta convidada pelo professor.</p>}
+      {video && <p className="text-xs leading-relaxed text-muted">Se o vídeo deixar de funcionar, avise o professor. A reprodução depende da disponibilidade no YouTube.</p>}
       {!link && <p className="text-sm text-muted">O endereço do vídeo está indisponível.</p>}
     </div>
   </article>;
@@ -155,6 +156,8 @@ export default function Course() {
   const canManage = canManageEducation(user, course);
   const [editor, setEditor] = useState(null);
   const [questionEditor, setQuestionEditor] = useState(null);
+  const [ordering, setOrdering] = useState(false);
+  const canOrder = user.role === "TEACHER" && course.professorId === user.id;
   const revalidator = useRevalidator();
   const enroll = useFetcher();
   const location = useLocation();
@@ -195,6 +198,7 @@ export default function Course() {
           kind: "curso",
           item: course
         })}><Pencil size={15} /> Editar curso</button>
+        {canOrder && <button className="button-secondary" onClick={() => setOrdering(true)}>Ordenar aulas</button>}
         <button className="button-danger" onClick={() => setEditor({
           kind: "curso",
           item: course,
@@ -207,7 +211,10 @@ export default function Course() {
       <div className="min-w-0 space-y-5">
         {failure && <Notice error>{failure}</Notice>}
         {progressError && <button className="button-secondary" disabled={revalidator.state !== "idle"} onClick={() => revalidator.revalidate()}>Tentar novamente</button>}
-        {lesson?.locked ? <div className="panel space-y-3 p-6">
+        {lesson?.videoIssue ? <div className="panel space-y-3 p-6">
+          <h2 className="text-xl font-bold">Vídeo indisponível</h2><Notice error>{lesson.videoIssue}</Notice>
+          <button className="button-secondary" disabled={revalidator.state !== "idle"} onClick={() => revalidator.revalidate()}>Tentar verificar novamente</button>
+        </div> : lesson?.locked ? <div className="panel space-y-3 p-6">
           <LockKeyhole size={28} className="text-brand" />
           <h2 className="text-xl font-bold">Aula bloqueada</h2>
           <p className="text-sm leading-relaxed text-muted">Conclua o conteúdo anterior e acerte as perguntas para liberar esta aula.</p>
@@ -297,6 +304,7 @@ export default function Course() {
       </section>
     </div>
     {editor && canManage && <Suspense fallback={null}><EducationDialog {...editor} onClose={() => setEditor(null)} /></Suspense>}
+    {ordering && canOrder && <Suspense fallback={null}><LessonOrderDialog courseId={course.id} onClose={() => setOrdering(false)} /></Suspense>}
     {questionEditor && canManage && <Suspense fallback={null}><QuestionDialog {...questionEditor} onClose={() => setQuestionEditor(null)} /></Suspense>}
   </>;
 }

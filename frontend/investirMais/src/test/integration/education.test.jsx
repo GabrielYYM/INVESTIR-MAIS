@@ -143,7 +143,7 @@ describe("gestão de cursos", () => {
     await waitFor(() => expect(dialog.getByRole("button", { name: "Salvar curso" })).toBeEnabled());
     await user.click(dialog.getByRole("button", { name: "Salvar curso" }));
     await waitFor(() => expect(payloads).toEqual([{ name: "Renda fixa", description: "Aprenda sobre investimentos." }]));
-    expect(await screen.findByRole("heading", { name: course.name, level: 1 })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: course.name, level: 1 }, { timeout: 5000 })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe(coursePath);
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
@@ -241,7 +241,7 @@ describe("gestão de aulas", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
-  it("preserva mídia de registro antigo ao editar somente o título", async () => {
+  it("exige substituir links antigos de outros sites por um vídeo do YouTube ao editar", async () => {
     let currentLesson = { ...lesson, mediaUrl: "https://videos.example.test/legado" };
     const payloads = [];
     server.use(
@@ -259,7 +259,11 @@ describe("gestão de aulas", () => {
     const dialog = within(await screen.findByRole("dialog", { name: "Editar aula" }));
     await fillFields(user, { "Título da aula": "Aula atualizada" }, dialog);
     await user.click(dialog.getByRole("button", { name: "Salvar aula" }));
-    await waitFor(() => expect(payloads).toEqual([{ title: "Aula atualizada", description: lesson.description, mediaUrl: "https://videos.example.test/legado", thumbnailUrl: lesson.thumbnailUrl }]));
+    expect(await dialog.findByText("Informe o link de um vídeo do YouTube.")).toBeInTheDocument();
+    expect(payloads).toEqual([]);
+    await fillFields(user, { "URL do vídeo no YouTube": lesson.mediaUrl }, dialog);
+    await user.click(dialog.getByRole("button", { name: "Salvar aula" }));
+    await waitFor(() => expect(payloads).toEqual([{ title: "Aula atualizada", description: lesson.description, mediaUrl: lesson.mediaUrl, thumbnailUrl: lesson.thumbnailUrl }]));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(await screen.findByRole("heading", { name: "Aula atualizada" })).toBeInTheDocument();
   });

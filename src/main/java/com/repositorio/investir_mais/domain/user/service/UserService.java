@@ -66,8 +66,8 @@ public class UserService {
         }
 
         user.setName(dto.name());
-        if (dto.age() != null) {
-            user.setAge(dto.age());
+        if (dto.birthDate() != null) {
+            user.setBirthDate(dto.birthDate());
         }
         String previousEmail = user.getEmail();
         boolean emailChanged = !previousEmail.equals(dto.email());
@@ -188,7 +188,7 @@ public class UserService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não é permitido conceder o perfil de Administrador pelo painel.");
         }
 
-        User targetUser = userRepository.findById(userId)
+        User targetUser = userRepository.findForUpdateById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
 
         if (targetUser.getRole() == UserRole.ADMIN) {
@@ -196,6 +196,19 @@ public class UserService {
         }
 
         User admin = findByEmail(principalName);
+
+        if (newRole == UserRole.TEACHER) {
+            String reason = targetUser.getBirthDate() == null
+                    ? "Este usuário não tem data de nascimento cadastrada. Não é possível verificar a idade mínima para professor."
+                    : targetUser.getAge() < 18
+                    ? "Este usuário não pode ser promovido a professor porque tem menos de 18 anos."
+                    : null;
+            if (reason != null) {
+                log.warn("Promoção a professor bloqueada: admin={}, usuário={}, data={}, motivo={}",
+                        admin.getId(), targetUser.getId(), java.time.Instant.now(), reason);
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, reason);
+            }
+        }
 
         targetUser.setRole(newRole);
         User saved = userRepository.save(targetUser);

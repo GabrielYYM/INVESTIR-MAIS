@@ -109,7 +109,7 @@ class UserSoftDeleteTest {
         service.resendVerification(deleted.getEmail());
         assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM app_one_time_token", Integer.class));
         var conflict = assertThrows(ResponseStatusException.class, () -> service.registerUser(
-                new UserDTO.Request("Novo usuário", 25, deleted.getEmail(), PASSWORD, UserRole.STUDENT)));
+                new UserDTO.Request("Novo usuário", java.time.LocalDate.now().minusYears(25), deleted.getEmail(), PASSWORD, UserRole.STUDENT)));
         assertEquals(409, conflict.getStatusCode().value());
     }
 

@@ -2,6 +2,7 @@ export const student = {
   id: "11111111-1111-4111-8111-111111111111",
   name: "Ana Teste",
   age: 25,
+  birthDate: "2000-01-15",
   email: "ana@example.test",
   role: "STUDENT",
 };

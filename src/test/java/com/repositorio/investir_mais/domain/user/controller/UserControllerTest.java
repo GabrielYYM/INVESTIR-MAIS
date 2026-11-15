@@ -68,7 +68,7 @@ class UserControllerTest {
 
     @Test
     void registerUser_WithValidData_ShouldReturnGenericAcceptance() throws Exception {
-        UserDTO.Request requestDTO = new UserDTO.Request("Felipe", 22, "felipe@investir.com", "senha12345", UserRole.STUDENT);
+        UserDTO.Request requestDTO = new UserDTO.Request("Felipe", java.time.LocalDate.now().minusYears(22), "felipe@investir.com", "senha12345", UserRole.STUDENT);
         when(userService.registerUser(any(UserDTO.Request.class)))
                 .thenReturn(new DefaultOneTimeToken("registration-token", requestDTO.email(), Instant.now().plusSeconds(300)));
 
@@ -164,7 +164,7 @@ class UserControllerTest {
     void listAllUsers_ShouldReturnUsersList() throws Exception {
         UUID id = UUID.randomUUID();
         UserDTO.Response responseDTO = new UserDTO.Response(
-            id, "Admin", 30, "admin@investir.com", UserRole.ADMIN, true, LocalDateTime.now()
+            id, "Admin", 30, null, "admin@investir.com", UserRole.ADMIN, true, LocalDateTime.now()
         );
         when(userService.listAllUsers()).thenReturn(List.of(responseDTO));
 
@@ -181,7 +181,7 @@ class UserControllerTest {
         UUID id = UUID.randomUUID();
         UserDTO.UpdateRoleRequest dto = new UserDTO.UpdateRoleRequest(UserRole.TEACHER);
         UserDTO.Response responseDTO = new UserDTO.Response(
-            id, "Felipe", 25, "felipe@investir.com", UserRole.TEACHER, true, LocalDateTime.now()
+            id, "Felipe", 25, null, "felipe@investir.com", UserRole.TEACHER, true, LocalDateTime.now()
         );
         when(userService.updateUserRole(eq("admin@investir.com"), eq(id), eq(UserRole.TEACHER))).thenReturn(responseDTO);
 
@@ -200,7 +200,7 @@ class UserControllerTest {
     void getUserAuditHistory_ShouldReturnAuditList() throws Exception {
         UUID id = UUID.randomUUID();
         UserDTO.Response userSnapshot = new UserDTO.Response(
-            id, "Felipe", 25, "felipe@investir.com", UserRole.STUDENT, true, LocalDateTime.now()
+            id, "Felipe", 25, null, "felipe@investir.com", UserRole.STUDENT, true, LocalDateTime.now()
         );
         UserDTO.AuditResponse auditDTO = new UserDTO.AuditResponse(1, Instant.now(), "INSERT", userSnapshot);
         when(userService.getUserAuditHistory(id)).thenReturn(List.of(auditDTO));

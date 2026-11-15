@@ -7,7 +7,7 @@ import { fillFields, mockApi } from "../helpers.js";
 
 async function fillSignUp(user) {
   await fillFields(user, {
-    "Nome completo": "  Ana Teste  ", Idade: 25, "E-mail": student.email,
+    "Nome completo": "  Ana Teste  ", "Data de nascimento": "2000-01-15", "E-mail": student.email,
     Senha: "senha-teste", "Confirme a senha": "senha-teste",
   });
   await user.click(screen.getByRole("checkbox"));
@@ -43,7 +43,7 @@ describe("cadastro", () => {
     const { user } = renderApp("/cadastro");
     await user.click(screen.getByRole("button", { name: "Criar conta" }));
     expect(await screen.findByText("Informe seu nome.")).toBeInTheDocument();
-    expect(screen.getByText("Informe uma idade inteira de 0 a 120.")).toBeInTheDocument();
+    expect(screen.getByText("Informe uma data de nascimento válida.")).toBeInTheDocument();
     expect(screen.getByRole("alert")).toHaveTextContent("Aceite os termos para continuar.");
     await user.type(screen.getByLabelText("Senha", { exact: true }), "curta");
     await user.type(screen.getByLabelText("Confirme a senha"), "diferente");
@@ -68,7 +68,7 @@ describe("cadastro", () => {
     await fillSignUp(user);
     await user.click(screen.getByRole("button", { name: "Criar conta" }));
     expect(await screen.findByRole("heading", { name: "Confirme seu e-mail" })).toBeInTheDocument();
-    expect(registered).toEqual([{ name: student.name, age: 25, email: student.email, password: "senha-teste" }]);
+    expect(registered).toEqual([{ name: student.name, birthDate: "2000-01-15", email: student.email, password: "senha-teste" }]);
     await user.click(screen.getByRole("button", { name: "Reenviar link de confirmação" }));
     expect(await screen.findByRole("status")).toHaveTextContent("Link de confirmação solicitado novamente.");
     expect(resent).toEqual([{ email: student.email }]);
@@ -192,24 +192,24 @@ describe("edição do perfil", () => {
       expect(params.id).toBe(student.id);
       const body = await request.json();
       updates.push(body);
-      currentUser = { ...currentUser, name: body.name };
+      currentUser = { ...currentUser, name: body.name, birthDate: body.birthDate };
       return currentUser;
     });
     const { user } = renderApp("/perfil");
     const profileForm = within((await screen.findByRole("heading", { name: "Alterar informações" })).closest("form"));
     expect(profileForm.queryByLabelText("Nova senha", { exact: true })).not.toBeInTheDocument();
     expect(profileForm.queryByLabelText("Confirme a nova senha")).not.toBeInTheDocument();
-    expect(profileForm.getByLabelText("Senha atual")).toHaveAccessibleDescription("Necessária para confirmar a atualização do seu nome.");
+    expect(profileForm.getByLabelText("Senha atual")).toHaveAccessibleDescription("Necessária para confirmar a atualização dos seus dados.");
     expect(screen.getByLabelText("E-mail")).toHaveAttribute("readonly");
     await user.click(screen.getByRole("button", { name: "Salvar perfil" }));
     expect(await screen.findByText("Informe sua senha atual para confirmar.")).toBeInTheDocument();
     expect(updates).toHaveLength(0);
-    await fillFields(user, { "Nome completo": "  Ana Atualizada  ", "Senha atual": "senha-teste" }, profileForm);
+    await fillFields(user, { "Nome completo": "  Ana Atualizada  ", "Data de nascimento": "2001-02-03", "Senha atual": "senha-teste" }, profileForm);
     await user.click(screen.getByRole("button", { name: "Salvar perfil" }));
     expect(await screen.findByRole("status")).toHaveTextContent("Perfil atualizado.");
     expect(await screen.findByRole("heading", { name: "Ana Atualizada" })).toBeInTheDocument();
     await waitFor(() => expect(profileForm.getByLabelText("Senha atual")).toHaveValue(""));
-    expect(updates).toEqual([{ name: "Ana Atualizada", email: student.email, currentPassword: "senha-teste" }]);
+    expect(updates).toEqual([{ name: "Ana Atualizada", birthDate: "2001-02-03", email: student.email, currentPassword: "senha-teste" }]);
   });
 
   it("permanece no perfil se a senha atual for recusada com sessão válida", async () => {

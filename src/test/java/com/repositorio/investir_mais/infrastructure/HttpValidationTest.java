@@ -8,8 +8,6 @@ import com.repositorio.investir_mais.domain.user.service.UserService;
 import com.repositorio.investir_mais.infrastructure.exception.GlobalExceptionHandler;
 import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -62,7 +60,7 @@ class HttpValidationTest {
     @Test void profileUpdateRequiresConfirmationPasswordBeforeCallingService() throws Exception {
         mvc.perform(put("/api/users/{id}", UUID.randomUUID()).principal(() -> "user@investir.com")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\":\"Teste\",\"email\":\"test@example.com\",\"age\":22}"))
+                .content("{\"name\":\"Teste\",\"email\":\"test@example.com\",\"birthDate\":\"2000-01-15\"}"))
                 .andExpect(status().isBadRequest());
         verifyNoInteractions(users);
     }
@@ -80,7 +78,7 @@ class HttpValidationTest {
                 ConstraintViolationException.ConstraintKind.UNIQUE, "private_constraint");
         when(users.registerUser(any())).thenThrow(new DataIntegrityViolationException("private details", violation));
         mvc.perform(post("/api/users/register").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\":\"Teste\",\"age\":22,\"email\":\"test@example.com\",\"password\":\"Senha1234\"}"))
+                .content("{\"name\":\"Teste\",\"birthDate\":\"2000-01-15\",\"email\":\"test@example.com\",\"password\":\"Senha1234\"}"))
                 .andExpect(status().isAccepted()).andExpect(jsonPath("$.message").isString());
     }
 
@@ -103,23 +101,23 @@ class HttpValidationTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.detail").value("A operação conflita com registros relacionados."));
     }
-    @ParameterizedTest
-    @ValueSource(ints = {-1, 121})
-    void ageOutsideRangeIsRejectedBeforeRegistration(int age) throws Exception {
-        mvc.perform(post("/api/users/register").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\":\"Teste\",\"age\":" + age + ",\"email\":\"test@example.com\",\"password\":\"Senha1234\"}"))
-                .andExpect(status().isBadRequest());
+    @Test
+    void missingOrFutureBirthDateIsRejectedBeforeRegistration() throws Exception {
+        for (String date : new String[]{"null", "\"" + java.time.LocalDate.now().plusDays(1) + "\""}) {
+            mvc.perform(post("/api/users/register").contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"name\":\"Teste\",\"birthDate\":" + date + ",\"email\":\"test@example.com\",\"password\":\"Senha1234\"}"))
+                    .andExpect(status().isBadRequest());
+        }
         verifyNoInteractions(users);
     }
 
-    @ParameterizedTest
-    @ValueSource(ints = {0, 120})
-    void boundaryAgesAreAccepted(int age) throws Exception {
+    @Test
+    void validBirthDateIsAccepted() throws Exception {
         when(users.registerUser(any())).thenReturn(new DefaultOneTimeToken(
                 "registration-token", "test@example.com", java.time.Instant.now().plusSeconds(300)));
         mvc.perform(post("/api/users/register").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\":\"Teste\",\"age\":" + age + ",\"email\":\"test@example.com\",\"password\":\"Senha1234\"}"))
+                .content("{\"name\":\"Teste\",\"birthDate\":\"2000-01-15\",\"email\":\"test@example.com\",\"password\":\"Senha1234\"}"))
                 .andExpect(status().isAccepted());
-        verify(users).registerUser(argThat(request -> request.age() == age));
+        verify(users).registerUser(argThat(request -> request.birthDate().equals(java.time.LocalDate.of(2000, 1, 15))));
     }
 }

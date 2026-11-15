@@ -43,6 +43,9 @@ public interface LessonRepository extends JpaRepository<Lesson, UUID> {
 
     List<Lesson> findAllByCourseIdOrderByPositionAscIdAsc(UUID courseId);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    List<Lesson> findForUpdateByCourseIdOrderByPositionAscIdAsc(UUID courseId);
+
     @Query(value = "select count(*) from tb_question where course_id = :courseId and deleted_at is null", nativeQuery = true)
     long countQuestions(UUID courseId);
 

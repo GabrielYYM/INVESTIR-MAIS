@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { accountResolver, emailSchema, loginSchema, passwordSchema, profileSchema, registrationSchema, resetPasswordSchema } from "../../services/accountSchema.js";
 
-const valid = { name: "Ana Teste", email: "ana@example.test", age: 25, password: "senha-teste", confirmPassword: "senha-teste", acceptTerms: true };
+const valid = { name: "Ana Teste", email: "ana@example.test", birthDate: "2000-01-15", password: "senha-teste", confirmPassword: "senha-teste", acceptTerms: true };
 const validate = (schema, values) => accountResolver(schema)(values, {}, { fields: {}, shouldUseNativeValidation: false });
 
 describe("validação compartilhada dos formulários de conta", () => {
@@ -14,7 +14,7 @@ describe("validação compartilhada dos formulários de conta", () => {
   it.each([
     ["name", "   ", "Informe seu nome."], ["name", " A ", "Informe pelo menos 2 caracteres."],
     ["name", "a".repeat(101), "O nome deve ter no máximo 100 caracteres."],
-    ["age", -1, "Informe uma idade inteira de 0 a 120."], ["age", 121, "Informe uma idade inteira de 0 a 120."],
+    ["birthDate", "", "Informe uma data de nascimento válida."], ["birthDate", "2000-02-30", "Informe uma data de nascimento válida."],
     ["password", "", "Informe a senha."], ["password", "curta", "A senha deve ter no mínimo 8 caracteres."],
     ["password", "        ", "A senha não pode conter apenas espaços."],
     ["password", "x".repeat(4097), "A senha deve ter no máximo 4096 caracteres."],
@@ -24,8 +24,8 @@ describe("validação compartilhada dos formulários de conta", () => {
     expect(result.values).toEqual({});
   });
   it("valida a confirmação mesmo que a idade também seja inválida", async () => {
-    const { errors } = await validate(registrationSchema, { ...valid, age: NaN, confirmPassword: "outra" });
-    expect(errors.age.message).toBe("Informe uma idade inteira de 0 a 120.");
+    const { errors } = await validate(registrationSchema, { ...valid, birthDate: "inválida", confirmPassword: "outra" });
+    expect(errors.birthDate.message).toBe("Informe uma data de nascimento válida.");
     expect(errors.confirmPassword.message).toBe("As senhas não coincidem.");
   });
   it.each([["", "Informe seu e-mail."], ["invalido", "Informe um e-mail válido."], ["a".repeat(255), "O e-mail deve ter no máximo 254 caracteres."]])("traduz a validação de e-mail %#", async (email, message) => {

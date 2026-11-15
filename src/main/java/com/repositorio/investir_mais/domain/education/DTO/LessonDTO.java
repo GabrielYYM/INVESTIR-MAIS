@@ -2,12 +2,20 @@ package com.repositorio.investir_mais.domain.education.DTO;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import org.hibernate.validator.constraints.URL;
 
 import java.util.UUID;
+import java.util.List;
 
 public class LessonDTO {
+    @Schema(name = "LessonOrderRequest", description = "Todas as aulas ativas do curso na sequência desejada")
+    public record OrderRequest(@NotNull List<@NotNull UUID> lessonIds) {}
+
+    @Schema(name = "LessonOrderItem", description = "Aula na sequência didática do curso")
+    public record OrderItem(UUID id, String title, int position) {}
+
     @Schema(name = "LessonRequest", description = "Dados para criação ou atualização de uma aula")
     public record Request(
         @Schema(description = "Título da aula", example = "Aula 1 - O que é Renda Fixa?")
@@ -53,10 +61,14 @@ public class LessonDTO {
         @Schema(description = "ID do curso ao qual esta aula pertence", example = "b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e")
         UUID courseId,
         int position,
-        boolean locked
+        boolean locked,
+        String videoIssue
     ) {
+        public Response(UUID id, String title, String description, String mediaUrl, String thumbnailUrl, UUID courseId, int position, boolean locked) {
+            this(id, title, description, mediaUrl, thumbnailUrl, courseId, position, locked, null);
+        }
         public Response(UUID id, String title, String description, String mediaUrl, String thumbnailUrl, UUID courseId) {
-            this(id, title, description, mediaUrl, thumbnailUrl, courseId, 0, false);
+            this(id, title, description, mediaUrl, thumbnailUrl, courseId, 0, false, null);
         }
     }
 

@@ -16,6 +16,7 @@ import java.security.Principal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/lessons")
@@ -24,6 +25,19 @@ import java.util.UUID;
 public class LessonController {
 
     private final LessonService lessonService;
+
+    @Operation(summary = "Consultar ordem de todas as aulas", description = "Lista todas as aulas, sem paginação. Exige o professor responsável pelo curso.")
+    @GetMapping("/course/{courseId}/order")
+    public List<LessonDTO.OrderItem> getLessonOrder(@PathVariable UUID courseId, Principal principal) {
+        return lessonService.getLessonOrder(courseId, principal.getName());
+    }
+
+    @Operation(summary = "Reordenar aulas de um curso", description = "Recebe os IDs de todas as aulas na ordem desejada. Somente o professor responsável pode reordenar. As perguntas acompanham suas aulas.")
+    @PutMapping("/course/{courseId}/order")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void reorderLessons(@PathVariable UUID courseId, @Valid @RequestBody LessonDTO.OrderRequest request, Principal principal) {
+        lessonService.reorderLessons(courseId, request, principal.getName());
+    }
 
     @Operation(summary = "Cadastrar nova aula em um curso", description = "Cria uma nova aula para o curso informado. Exige permissão de proprietário do curso ou ADMIN.")
     @PostMapping("/course/{courseId}")

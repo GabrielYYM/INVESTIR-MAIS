@@ -24,6 +24,9 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.Map;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -42,6 +45,7 @@ class LessonServiceTest {
     private UserService userService;
     @Mock
     private QuestionService questionService;
+    @Mock private VideoPublishingPolicy videoPolicy;
 
     private CourseService courseService;
 
@@ -57,7 +61,8 @@ class LessonServiceTest {
     @BeforeEach
     void setUp() {
         courseService = new CourseService(courseRepository, lessonRepository, null, null, userService);
-        lessonService = new LessonService(lessonRepository, courseService, lessonMapper, userService, questionService);
+        lessonService = new LessonService(lessonRepository, courseService, lessonMapper, userService, questionService, videoPolicy);
+        lenient().when(videoPolicy.validate(anyString(), any(UUID.class))).thenAnswer(call -> new VideoPublishingPolicy.VerifiedVideo(call.getArgument(0), "https://example.com/thumb"));
         UUID professorId = UUID.randomUUID();
         professor = new User();
         professor.setId(professorId);
@@ -126,6 +131,7 @@ class LessonServiceTest {
 
     @Test
     void getLessonById_WhenLessonExists_ShouldReturnDTO() {
+        when(userService.findByEmail("aluno@investir.com")).thenReturn(outroUser);
         LessonDTO.Response responseDTO = new LessonDTO.Response(lessonId, "Aula 1", "Desc", "url_video", "url_thumb", courseId);
         when(lessonRepository.findById(lessonId)).thenReturn(Optional.of(lesson));
         when(lessonMapper.toDTO(lesson)).thenReturn(responseDTO);
@@ -139,7 +145,8 @@ class LessonServiceTest {
 
     @Test
     void getLessonsByCourseId_ShouldReturnPage() {
-        Pageable pageable = PageRequest.of(0, 10);
+        when(userService.findByEmail("aluno@investir.com")).thenReturn(outroUser);
+        Pageable pageable = PageRequest.of(0, 10, org.springframework.data.domain.Sort.by("position", "id"));
         Page<Lesson> page = new PageImpl<>(List.of(lesson));
         LessonDTO.Response responseDTO = new LessonDTO.Response(lessonId, "Aula 1", "Desc", "url_video", "url_thumb", courseId);
 
@@ -194,5 +201,101 @@ class LessonServiceTest {
         lessonService.deleteLesson(lessonId, "prof@investir.com");
 
         verify(lessonRepository).delete(lesson);
+    }
+
+    @Test
+    void reorderLessons_ShouldApplyCompleteOrderAndMoveQuestionAnchors() {
+        professor.setRole(UserRole.TEACHER);
+        lesson.setPosition(1);
+        Lesson second = new Lesson(); second.setId(UUID.randomUUID()); second.setPosition(3);
+        when(userService.findByEmail("teacher")).thenReturn(professor);
+        when(courseRepository.findForUpdateById(courseId)).thenReturn(Optional.of(course));
+        when(lessonRepository.findForUpdateByCourseIdOrderByPositionAscIdAsc(courseId)).thenReturn(List.of(lesson, second));
+
+        lessonService.reorderLessons(courseId, new LessonDTO.OrderRequest(List.of(second.getId(), lessonId)), "teacher");
+
+        assertEquals(1, second.getPosition());
+        assertEquals(2, lesson.getPosition());
+        verify(questionService).relocateLessonQuestions(courseId, Map.of(1, 2, 3, 1));
+        verify(lessonRepository).flush();
+    }
+
+    @Test
+    void reorderLessons_ShouldRejectPartialDuplicateAndForeignListsBeforeWriting() {
+        professor.setRole(UserRole.TEACHER);
+        lesson.setPosition(1);
+        when(userService.findByEmail("teacher")).thenReturn(professor);
+        when(courseRepository.findForUpdateById(courseId)).thenReturn(Optional.of(course));
+        when(lessonRepository.findForUpdateByCourseIdOrderByPositionAscIdAsc(courseId)).thenReturn(List.of(lesson));
+        for (var ids : List.of(List.<UUID>of(), List.of(UUID.randomUUID()), List.of(lessonId, lessonId))) {
+            assertThrows(ResponseStatusException.class,
+                    () -> lessonService.reorderLessons(courseId, new LessonDTO.OrderRequest(ids), "teacher"));
+        }
+        assertEquals(1, lesson.getPosition());
+        verifyNoInteractions(questionService);
+        verify(lessonRepository, never()).flush();
+    }
+
+    @ParameterizedTest
+    @EnumSource(UserRole.class)
+    void reorderLessons_OnlyResponsibleTeacherMayReorder(UserRole role) {
+        outroUser.setRole(role);
+        when(userService.findByEmail("other")).thenReturn(outroUser);
+        when(courseRepository.findForUpdateById(courseId)).thenReturn(Optional.of(course));
+        var exception = assertThrows(ResponseStatusException.class,
+                () -> lessonService.reorderLessons(courseId, new LessonDTO.OrderRequest(List.of(lessonId)), "other"));
+        assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
+        verifyNoInteractions(lessonRepository, questionService);
+    }
+
+    @Test
+    void getLessonOrder_ShouldReturnAllLessonsInStoredOrder() {
+        professor.setRole(UserRole.TEACHER);
+        lesson.setPosition(2);
+        when(userService.findByEmail("teacher")).thenReturn(professor);
+        when(courseRepository.findForUpdateById(courseId)).thenReturn(Optional.of(course));
+        when(lessonRepository.findAllByCourseIdOrderByPositionAscIdAsc(courseId)).thenReturn(List.of(lesson));
+        assertEquals(List.of(new LessonDTO.OrderItem(lessonId, lesson.getTitle(), 2)), lessonService.getLessonOrder(courseId, "teacher"));
+    }
+
+    @Test
+    void createLesson_ShouldAppendAfterLastPosition() {
+        var request = new LessonDTO.Request("Nova aula", "Descrição", "https://example.com/video", "https://example.com/image");
+        when(userService.findByEmail("teacher")).thenReturn(professor);
+        when(courseRepository.findForUpdateById(courseId)).thenReturn(Optional.of(course));
+        when(lessonMapper.toEntity(request)).thenReturn(lesson);
+        when(lessonRepository.nextPosition(courseId)).thenReturn(9);
+        when(lessonRepository.save(lesson)).thenReturn(lesson);
+        lessonService.createLesson(courseId, request, "teacher");
+        assertEquals(9, lesson.getPosition());
+    }
+
+    @Test
+    void cannotCreateOrEditLessonWhenVideoValidationFails() {
+        var request = new LessonDTO.Request("Finanças", "Descrição", "https://youtu.be/dQw4w9WgXcQ", "https://example.com/fake-thumbnail");
+        when(userService.findByEmail("teacher")).thenReturn(professor);
+        when(courseRepository.findForUpdateById(courseId)).thenReturn(Optional.of(course));
+        when(lessonRepository.findByIdAndCourse_Professor_Id(lessonId, professor.getId())).thenReturn(Optional.of(lesson));
+        when(videoPolicy.validate(request.mediaUrl(), professor.getId()))
+                .thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Canal não aprovado."));
+        String originalTitle = lesson.getTitle();
+        assertThrows(ResponseStatusException.class, () -> lessonService.createLesson(courseId, request, "teacher"));
+        assertThrows(ResponseStatusException.class, () -> lessonService.updateLesson(lessonId, request, "teacher"));
+        assertEquals(originalTitle, lesson.getTitle());
+        verify(lessonRepository, never()).save(any());
+        verifyNoInteractions(lessonMapper);
+    }
+
+    @Test
+    void unavailableVideoDoesNotExposeItsMediaToTheStudent() {
+        when(userService.findByEmail("student")).thenReturn(outroUser);
+        when(lessonRepository.findById(lessonId)).thenReturn(Optional.of(lesson));
+        when(questionService.canPreview(lesson, "student")).thenReturn(true);
+        when(videoPolicy.deliveryIssues(List.of(lesson))).thenReturn(Map.of(lessonId, "Vídeo indisponível."));
+        var result = lessonService.getLessonForStudent(lessonId, "student");
+        assertNull(result.mediaUrl());
+        assertNull(result.thumbnailUrl());
+        assertEquals("Vídeo indisponível.", result.videoIssue());
+        verifyNoInteractions(lessonMapper);
     }
 }

@@ -15,6 +15,171 @@
     "description" : "Endpoints para gerenciamento de aulas associadas a cursos"
   } ],
   "paths" : {
+      "/api/teachers/{teacherId}/youtube-channels": {
+        "get": {
+          "operationId": "listTeacherChannels",
+          "parameters": [
+            {
+              "name": "teacherId",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "OK",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/TeacherChannelResponse"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "post": {
+          "operationId": "approveTeacherChannel",
+          "parameters": [
+            {
+              "name": "teacherId",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          ],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeacherChannelRequest"
+                }
+              }
+            }
+          },
+          "responses": {
+            "201": {
+              "description": "Created",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/TeacherChannelResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/teachers/{teacherId}/youtube-channels/{approvalId}": {
+        "delete": {
+          "operationId": "revokeTeacherChannel",
+          "parameters": [
+            {
+              "name": "teacherId",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "format": "uuid"
+              }
+            },
+            {
+              "name": "approvalId",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          ],
+          "responses": {
+            "204": {
+              "description": "No Content"
+            }
+          }
+        }
+      },
+      "/api/lessons/course/{courseId}/order": {
+        "get": {
+          "tags": [
+            "Aulas"
+          ],
+          "summary": "Consultar ordem de todas as aulas",
+          "operationId": "getLessonOrder",
+          "parameters": [
+            {
+              "name": "courseId",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "OK",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/LessonOrderItem"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "put": {
+          "tags": [
+            "Aulas"
+          ],
+          "summary": "Reordenar aulas de um curso",
+          "operationId": "reorderLessons",
+          "parameters": [
+            {
+              "name": "courseId",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          ],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonOrderRequest"
+                }
+              }
+            }
+          },
+          "responses": {
+            "204": {
+              "description": "No Content"
+            }
+          }
+        }
+      },
     "/api/lessons/{lessonId}" : {
       "get" : {
         "tags" : [ "Aulas" ],
@@ -894,6 +1059,73 @@
   },
   "components" : {
     "schemas" : {
+        "TeacherChannelResponse": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "channelId": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "approvedAt": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        },
+        "TeacherChannelRequest": {
+          "type": "object",
+          "properties": {
+            "channelId": {
+              "type": "string",
+              "pattern": "UC[A-Za-z0-9_-]{22}"
+            }
+          },
+          "required": [
+            "channelId"
+          ]
+        },
+        "LessonOrderItem": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "title": {
+              "type": "string"
+            },
+            "position": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "position"
+          ]
+        },
+        "LessonOrderRequest": {
+          "type": "object",
+          "properties": {
+            "lessonIds": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          "required": [
+            "lessonIds"
+          ]
+        },
       "LessonRequest" : {
         "type" : "object",
         "description" : "Dados para criação ou atualização de uma aula",
@@ -933,6 +1165,7 @@
         "type" : "object",
         "description" : "Resposta com dados da aula",
         "properties" : {
+          "videoIssue": {"type": "string", "description": "Motivo para não liberar a reprodução do vídeo"},
           "id" : {
             "type" : "string",
             "format" : "uuid",

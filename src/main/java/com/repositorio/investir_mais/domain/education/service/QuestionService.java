@@ -135,6 +135,14 @@ public class QuestionService {
     }
 
     private List<Question> ordered(UUID courseId) { return questions.findAllByCourseIdOrderByAfterLessonAscPositionAscIdAsc(courseId); }
+
+    void relocateLessonQuestions(UUID courseId, Map<Integer, Integer> positions) {
+        for (Question question : ordered(courseId)) {
+            if (question.getAfterLesson() > 0) {
+                question.setAfterLesson(positions.getOrDefault(question.getAfterLesson(), question.getAfterLesson()));
+            }
+        }
+    }
     private Question find(UUID courseId, UUID questionId) {
         return questions.findById(questionId).filter(q -> q.getCourse().getId().equals(courseId))
                 .orElseThrow(() -> error(HttpStatus.NOT_FOUND, "Pergunta não encontrada neste curso."));

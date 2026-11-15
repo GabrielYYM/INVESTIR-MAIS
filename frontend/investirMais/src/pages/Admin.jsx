@@ -12,6 +12,7 @@ import ResourcePagination from "../components/ui/ResourcePagination.jsx";
 import { Notice } from "../components/ui/PageState.jsx";
 import StatCard from "../components/ui/StatCard.jsx";
 import RoleBadge from "../components/account/RoleBadge.jsx";
+import TeacherChannelsDialog from "../components/account/TeacherChannelsDialog.jsx";
 
 export async function adminLoader({ request }) {
   try {
@@ -72,7 +73,13 @@ function AuditTable() {
 export default function Admin() {
   const { currentUser } = useLoaderData();
   const [editor, setEditor] = useState(null), [audited, setAudited] = useState(null), [feedback, setFeedback] = useState("");
+  const [channelTeacher, setChannelTeacher] = useState(null);
   const refresh = useRefresh();
+  const promotionBlock = !editor?.birthDate
+    ? "Este usuário não tem data de nascimento cadastrada. Não é possível verificar a idade mínima para professor."
+    : editor.age < 18
+    ? "Este usuário não pode ser promovido a professor porque tem menos de 18 anos."
+    : "";
   return <div className="space-y-8"><h1 className="sr-only">Administração</h1>
     <ListBase resource="users" perPage={10} sort={{ field: "name", order: "ASC" }} disableAuthentication><UserListState>
       <UserStats />{feedback && <Notice>{feedback}</Notice>}
@@ -85,13 +92,18 @@ export default function Admin() {
           <DataTable.Col source="age" label="Idade" render={user => user.age == null ? "—" : `${user.age} anos`} />
           <DataTable.Col source="createdAt" label="Data de Cadastro" render={user => formatDate(user.createdAt)} />
           <DataTable.Col label="Ações" align="right" render={user => <div className="inline-flex gap-2"><Button size="small" startIcon={<ShieldCheck size={14} />} disabled={user.role === "ADMIN"} onClick={() => setEditor(user)}>Alterar Papel</Button>
+            {user.role === "TEACHER" && <Button size="small" onClick={() => setChannelTeacher(user)}>Canais de vídeo</Button>}
             <Button size="small" startIcon={<History size={14} />} onClick={() => setAudited(user)}>Auditoria</Button></div>} />
         </DataTable><ResourcePagination /></div>
       </section>
     </UserListState></ListBase>
     {editor && <CrudDialog resource="users" item={editor} title="Alterar Papel de Acesso" label="Salvar Alteração" schema={UpdateUserRoleBody} defaults={{ role: editor.role }} onClose={() => setEditor(null)} onSuccess={updated => {
       setFeedback(`Papel de ${updated.name} alterado com sucesso para ${roleNames[updated.role]}. As sessões ativas foram revogadas.`); refresh();
-    }}><p className="text-sm text-muted">{editor.name} ({editor.email})</p><SelectInput source="role" label="Novo Papel" choices={[{ id: "STUDENT", name: "Aluno" }, { id: "TEACHER", name: "Professor" }]} /></CrudDialog>}
+    }}><p className="text-sm text-muted">{editor.name} ({editor.email})</p>
+      {promotionBlock && <Notice>{promotionBlock}</Notice>}
+      <SelectInput source="role" label="Novo Papel" choices={[{ id: "STUDENT", name: "Aluno" }, { id: "TEACHER", name: "Professor", disabled: Boolean(promotionBlock) }]} />
+    </CrudDialog>}
     {audited && <AuditDialog user={audited} onClose={() => setAudited(null)} />}
+    {channelTeacher && <TeacherChannelsDialog teacher={channelTeacher} onClose={() => setChannelTeacher(null)} />}
   </div>;
 }
