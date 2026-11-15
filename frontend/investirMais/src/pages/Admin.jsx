@@ -10,6 +10,7 @@ import CrudDialog from "../components/ui/CrudDialog.jsx";
 import AppModal from "../components/ui/AppModal.jsx";
 import ResourcePagination from "../components/ui/ResourcePagination.jsx";
 import { Notice } from "../components/ui/PageState.jsx";
+import StatCard from "../components/ui/StatCard.jsx";
 import RoleBadge from "../components/account/RoleBadge.jsx";
 
 export async function adminLoader({ request }) {
@@ -34,9 +35,8 @@ function UserStats() {
   const stats = meta?.stats ?? {};
   return <section className="grid grid-cols-2 gap-4 sm:grid-cols-4" aria-label="Estatísticas">
     {[["Total de Usuários", "total", Users, "text-ink", `${stats.STUDENT ?? 0} alunos`], ["Administradores", "ADMIN", ShieldCheck, "text-amber-400", "Acesso total"],
-      ["Professores", "TEACHER", UserCheck, "text-purple-400", "Criadores de conteúdo"], ["Alunos", "STUDENT", Users, "text-sky-400", "Estudantes"]].map(([label, key, Icon, color, caption]) =>
-      <div className="panel p-5" key={key}><div className="flex items-center justify-between text-muted"><span className="text-xs font-medium">{label}</span><Icon size={18} className={color} /></div>
-        <p className={`mt-2 text-2xl font-bold ${color}`}>{stats[key] ?? 0}</p><span className="text-xs text-muted">{caption}</span></div>)}
+    ["Professores", "TEACHER", UserCheck, "text-purple-400", "Criadores de conteúdo"], ["Alunos", "STUDENT", Users, "text-sky-400", "Estudantes"]].map(([label, key, Icon, color, caption]) =>
+      <StatCard key={key} label={label} value={stats[key] ?? 0} icon={Icon} color={color} caption={caption} />)}
   </section>;
 }
 function UserFilters() {

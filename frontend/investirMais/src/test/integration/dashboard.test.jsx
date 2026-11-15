@@ -19,7 +19,7 @@ describe("métricas educacionais", () => {
     expect(screen.getByRole("region", { name: "Estatísticas do Professor" })).toHaveTextContent("66.7%");
     const row = within(screen.getByRole("row", { name: /Renda fixa/ }));
     expect(row.getByRole("link", { name: "Ver Curso" })).toHaveAttribute("href", "/educacao/" + teacherStats.courses[0].courseId);
-    await user.click(screen.getByRole("link", { name: "Gerenciar Cursos" }));
+    await user.click(screen.getByRole("link", { name: /Ver catálogo/i }));
     await waitFor(() => expect(router.state.location.pathname).toBe("/educacao"));
   });
 
