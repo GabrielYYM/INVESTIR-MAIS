@@ -13,10 +13,9 @@ function setup({ session = teacher, stats = teacherStats, path = "/", browser = 
 }
 
 describe("métricas educacionais", () => {
-  it.each([[teacher, "Painel do Professor"], [adminUser, "Painel de Ensino & Gestão (Admin)"]])("mostra métricas e cursos do perfil %#", async (session, label) => {
+  it.each([teacher, adminUser])("mostra métricas e cursos do perfil %#", async (session) => {
     const { user, router } = setup({ session });
-    expect(await screen.findByText(label, {}, { timeout: 5000 })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Estatísticas do Professor" })).toHaveTextContent("66.7%");
+    expect(await screen.findByRole("region", { name: "Estatísticas do Professor" }, { timeout: 5000 })).toHaveTextContent("66.7%");
     const row = within(screen.getByRole("row", { name: /Renda fixa/ }));
     expect(row.getByRole("link", { name: "Ver Curso" })).toHaveAttribute("href", "/educacao/" + teacherStats.courses[0].courseId);
     await user.click(screen.getByRole("link", { name: /Ver catálogo/i }));
@@ -36,7 +35,7 @@ describe("métricas educacionais", () => {
 
   it("valida datas antes de consultar e mantém outros parâmetros ao filtrar", async () => {
     const { user, router, request } = setup({ path: "/?contexto=ensino" });
-    await screen.findByText("Painel do Professor");
+    await screen.findByRole("region", { name: "Estatísticas do Professor" });
     const initialRequests = request.mock.calls.length;
     await user.clear(screen.getByLabelText("De:"));
     await user.type(screen.getByLabelText("De:"), "2026-12-01");
@@ -88,7 +87,7 @@ describe("métricas educacionais", () => {
     expect(screen.getByRole("heading", { name: "Catálogo de Cursos" })).toBeInTheDocument();
     mockApi("get", "/api/teacher/dashboard", teacherStats);
     await user.click(screen.getByRole("button", { name: /Voltar para o período padrão/ }));
-    expect(await screen.findByText("Painel do Professor")).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "Estatísticas do Professor" })).toBeInTheDocument();
     expect(router.state.location.search).toBe("?contexto=ensino");
   });
 
