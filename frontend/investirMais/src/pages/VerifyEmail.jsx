@@ -5,6 +5,7 @@ import { useResendVerification, useVerifyEmail } from "../generated/account.ts";
 import { AuthCard, Field } from "../components/ui/FormFields.jsx";
 import { accountResolver, emailSchema } from "../services/accountSchema.js";
 import { Notice } from "../components/ui/PageState.jsx";
+import SubmitButton from "../components/ui/SubmitButton.jsx";
 import { apiError } from "../services/api.js";
 export default function VerifyEmail() {
   const navigate = useNavigate();
@@ -39,14 +40,14 @@ export default function VerifyEmail() {
       }))} className="space-y-4">
           <Field label="E-mail" type="email" placeholder="seu-email@dominio.com" error={form.formState.errors.email?.message} {...form.register("email")} />
           {(resend.error || resend.isSuccess) && <Notice error={Boolean(resend.error)}>{resend.error ? apiError(resend.error, "Não foi possível reenviar o link agora. Tente novamente em instantes.") : resend.data?.message || "Se houver uma conta pendente para este e-mail, um novo link será enviado."}</Notice>}
-          <button type="submit" disabled={resend.isPending} className="button-secondary w-full">Reenviar link de confirmação</button>
+          <SubmitButton variant="secondary" loading={resend.isPending} fullWidth>Reenviar link de confirmação</SubmitButton>
         </form><Link to="/entrar" className="button-secondary w-full">Voltar para o login</Link>
       </div> : <div className="space-y-4">{!token && <Notice error>Nenhum código de confirmação foi fornecido no link.</Notice>}
-        <button disabled={confirmation.isPending || !token} onClick={() => confirmation.mutate({
+        <SubmitButton type="button" loading={confirmation.isPending} disabled={!token} loadingText="Confirmando…" fullWidth onClick={() => confirmation.mutate({
         data: {
           token
         }
-      })} className="button-primary w-full" type="button">{confirmation.isPending ? "Confirmando…" : "Confirmar e-mail"}</button>
+      })}>Confirmar e-mail</SubmitButton>
         <Link to="/entrar" className="button-secondary w-full">Voltar para entrar</Link>
       </div>}
   </AuthCard>;

@@ -10,6 +10,7 @@ import CrudDialog from "../components/ui/CrudDialog.jsx";
 import AppModal from "../components/ui/AppModal.jsx";
 import ResourcePagination from "../components/ui/ResourcePagination.jsx";
 import { Notice } from "../components/ui/PageState.jsx";
+import RoleBadge from "../components/account/RoleBadge.jsx";
 
 export async function adminLoader({ request }) {
   try {
@@ -20,9 +21,7 @@ export async function adminLoader({ request }) {
 }
 const formatDate = value => value ? new Date(value).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
 const operations = { INSERT: "Criação (INSERT)", UPDATE: "Modificação (UPDATE)", DELETE: "Exclusão (DELETE)" };
-const roleBadges = { STUDENT: "bg-sky-500/10 text-sky-400 border-sky-500/20", TEACHER: "bg-purple-500/10 text-purple-400 border-purple-500/20", ADMIN: "bg-amber-500/10 text-amber-400 border-amber-500/20" };
 const operationBadges = { INSERT: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20", UPDATE: "bg-sky-500/10 text-sky-400 border-sky-500/20", DELETE: "bg-rose-500/10 text-rose-400 border-rose-500/20" };
-const RoleBadge = ({ role }) => <span className={`inline-flex rounded border px-2 py-0.5 text-xs font-medium ${roleBadges[role] ?? "border-line bg-raised text-muted"}`}>{roleNames[role] ?? role}</span>;
 function UserListState({ children }) {
   const { error, isPending } = useListContext();
   if ([401, 403].includes(error?.status)) return <Navigate to="/" replace />;

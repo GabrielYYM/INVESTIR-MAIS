@@ -6,6 +6,7 @@ import { Link, useNavigate, useSearchParams } from "react-router";
 import { AuthCard, Field } from "../components/ui/FormFields.jsx";
 import { accountResolver, loginSchema } from "../services/accountSchema.js";
 import { Notice } from "../components/ui/PageState.jsx";
+import SubmitButton from "../components/ui/SubmitButton.jsx";
 import { apiError } from "../services/api.js";
 import { login, verify2FA } from "../services/authService.js";
 function returnPath(value) {
@@ -122,7 +123,7 @@ export default function Login() {
             required: "Informe o código recebido.",
             setValueAs: value => value.trim()
           })} />
-              <button className="button-primary w-full" disabled={isSubmitting}>{isSubmitting ? "Confirmando…" : "Confirmar acesso"}</button>
+              <SubmitButton loading={isSubmitting} loadingText="Confirmando…" fullWidth>Confirmar acesso</SubmitButton>
             </form>
           </details>
           <button type="button" className="w-full text-sm text-muted hover:text-ink" disabled={isSubmitting} onClick={() => {
@@ -148,7 +149,7 @@ export default function Login() {
             </button>
             <Link to="/recuperar-senha" className="text-brand hover:underline">Esqueceu a senha?</Link>
           </div>
-          <button className="button-primary w-full" disabled={isSubmitting}>{isSubmitting ? "Verificando…" : "Continuar"}</button>
+          <SubmitButton loading={isSubmitting} loadingText="Verificando…" fullWidth>Continuar</SubmitButton>
           <p className="text-center text-sm text-muted">Ainda sem conta? <Link to="/cadastro" className="font-semibold text-brand hover:underline">Cadastre-se</Link></p>
         </form>}
     </AuthCard>;
