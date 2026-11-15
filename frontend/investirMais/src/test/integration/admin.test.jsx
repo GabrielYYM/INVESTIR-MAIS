@@ -30,7 +30,14 @@ describe("gestão de usuários", () => {
     await user.clear(search); await user.click(screen.getByRole("button", { name: "Alunos", exact: true }));
     expect(await screen.findByText(student.email)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Admins", exact: true }));
-    expect(await screen.findByText(adminUser.email)).toBeInTheDocument();
+    // The list can replace cached rows while the filter query completes.
+    // Query and assert in the same retry so we don't retain a detached row.
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Admins", exact: true })).toHaveAttribute("aria-pressed", "true");
+      expect(screen.getByText(adminUser.email)).toBeInTheDocument();
+      expect(screen.queryByText(student.email)).not.toBeInTheDocument();
+      expect(screen.queryByText(teacherUser.email)).not.toBeInTheDocument();
+    });
   });
 
   it("altera o papel, envia apenas o novo perfil e revalida a listagem", async () => {
