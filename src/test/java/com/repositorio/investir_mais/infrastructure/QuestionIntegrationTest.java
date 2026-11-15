@@ -41,6 +41,7 @@ class QuestionIntegrationTest extends PostgreSqlIntegrationTest {
     @Autowired QuestionRepository questions;
     @Autowired EntityManager em;
     @Autowired JdbcTemplate jdbc;
+    @Autowired com.repositorio.investir_mais.domain.LegalDocumentsService legal;
     User teacher, student, other, admin;
     Course course;
     Lesson first, second;
@@ -211,7 +212,10 @@ class QuestionIntegrationTest extends PostgreSqlIntegrationTest {
     private String base() { return "/api/courses/" + course.getId() + "/questions"; }
     private User user(UserRole role) {
         User u = new User(); u.setName("Usuário teste"); u.setEmail(UUID.randomUUID() + "@example.test");
-        u.setRole(role); u.setEmailVerified(true); u.setPassword("unused-test-password"); return users.saveAndFlush(u);
+        u.setRole(role); u.setEmailVerified(true); u.setPassword("unused-test-password");
+        u = users.saveAndFlush(u);
+        legal.accept(u.getEmail(), legal.current().version());
+        return u;
     }
     private Lesson lesson(int position) {
         Lesson l = new Lesson(); l.setCourse(course); l.setPosition(position); l.setTitle("Aula " + position);

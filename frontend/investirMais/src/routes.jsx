@@ -12,10 +12,18 @@ import Home, { dashboardLoader } from "./pages/Home.jsx";
 import Education, { catalogLoader } from "./pages/Education.jsx";
 import Course, { courseLoader } from "./pages/Course.jsx";
 import { courseAction } from "./services/educationData.js";
+import { getLegalDocuments, getLegalStatus, legalAcceptancePath } from "./services/legalService.js";
+import AcceptLegalDocuments from "./pages/AcceptLegalDocuments.jsx";
 
 async function requireSession({ request }) {
   try {
-    return await getCurrentUser(request.signal);
+    const user = await getCurrentUser(request.signal);
+    const url = new URL(request.url);
+    if (!["/perfil", "/sair", "/aceitar-documentos"].includes(url.pathname)) {
+      const status = await getLegalStatus(request.signal);
+      if (status.acceptanceRequired) throw redirect(legalAcceptancePath(url.pathname + url.search));
+    }
+    return user;
   } catch (error) {
     if ([401, 403].includes(error.response?.status)) {
       const url = new URL(request.url);
@@ -50,6 +58,10 @@ export const appRoutes = [{ Component: ApplicationProviders, children: [
     ],
   },
   { path: "entrar", Component: Login },
+  { path: "aceitar-documentos", Component: AcceptLegalDocuments, loader: async args => {
+    await requireSession(args);
+    return getLegalDocuments(undefined, args.request.signal);
+  }, HydrateFallback: PendingPage, ErrorBoundary: PageError },
   { path: "entrar/link", Component: LoginLink },
   { path: "cadastro", Component: SignUp },
   { path: "confirmar-email", Component: VerifyEmail },

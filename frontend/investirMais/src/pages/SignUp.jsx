@@ -72,6 +72,7 @@ export default function SignUp() {
         </span>
       </label>
       {errors.acceptTerms && <p role="alert" className="text-sm text-negative">{errors.acceptTerms.message}</p>}
+      <p className="text-xs text-muted">Após verificar seu e-mail, você confirmará a versão vigente dos documentos. Essa confirmação ficará disponível no seu perfil.</p>
       <button disabled={registration.isPending} type="submit" className="button-primary w-full">{registration.isPending ? "Criando conta…" : "Criar conta"}</button>
     </form>}
     <Link to="/entrar" className="block text-center text-sm font-semibold text-brand hover:underline">Voltar para entrar</Link>

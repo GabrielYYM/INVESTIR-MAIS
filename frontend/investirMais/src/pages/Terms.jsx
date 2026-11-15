@@ -1,11 +1,12 @@
 import { ArrowLeft, Lock } from "lucide-react";
-import { Link, useLocation, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
 import Footer from "../components/layout/Footer.jsx";
 import TermsContent from "../components/account/TermsContent.jsx";
 
 export default function Terms() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [search] = useSearchParams();
   const isPrivacy = location.pathname.includes("privacidade");
 
   return (
@@ -42,7 +43,7 @@ export default function Terms() {
             </div>
 
           </header>
-          <div className="p-6 sm:p-8"><TermsContent key={location.pathname} initialTab={isPrivacy ? "privacidade" : "termos"} /></div>
+          <div className="p-6 sm:p-8"><TermsContent key={location.pathname} initialTab={isPrivacy ? "privacidade" : "termos"} version={search.get("versao")} /></div>
         </section>
       </div>
 

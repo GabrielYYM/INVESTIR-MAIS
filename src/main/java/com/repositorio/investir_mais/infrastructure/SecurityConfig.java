@@ -196,6 +196,7 @@ public class SecurityConfig {
                     .deleteCookies("SESSION")
                     .logoutSuccessHandler(new HttpStatusReturningLogoutSuccessHandler(HttpStatus.NO_CONTENT)))
                 .authorizeHttpRequests(auth -> auth
+                    .requestMatchers(HttpMethod.GET, "/api/legal/current", "/api/legal/versions/{version}").permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/users/verify-email").permitAll()
                     .requestMatchers(
                         "/auth/login",

@@ -700,6 +700,128 @@
           }
         }
       }
+    },
+    "/api/legal/acceptances": {
+      "get": {
+        "tags": [
+          "legal-documents-controller"
+        ],
+        "operationId": "history",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Acceptance"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "legal-documents-controller"
+        ],
+        "operationId": "accept",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptanceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/legal/versions/{version}": {
+      "get": {
+        "tags": [
+          "legal-documents-controller"
+        ],
+        "operationId": "release",
+        "parameters": [
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Release"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/legal/status": {
+      "get": {
+        "tags": [
+          "legal-documents-controller"
+        ],
+        "operationId": "status",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/legal/current": {
+      "get": {
+        "tags": [
+          "legal-documents-controller"
+        ],
+        "operationId": "current",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Release"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1055,6 +1177,101 @@
         "required": [
           "currentPassword"
         ]
+      },
+      "Acceptance": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "acceptedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AcceptanceRequest": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1
+          },
+          "accepted": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "accepted"
+        ]
+      },
+      "Status": {
+        "type": "object",
+        "properties": {
+          "currentVersion": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "acceptanceRequired": {
+            "type": "boolean"
+          },
+          "acceptedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Release": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "publishedOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Document"
+            }
+          }
+        }
+      },
+      "Document": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "sections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Section"
+            }
+          }
+        }
+      },
+      "Section": {
+        "type": "object",
+        "properties": {
+          "heading": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          }
+        }
       }
     }
   }

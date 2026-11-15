@@ -31,6 +31,13 @@ apiClient.interceptors.request.use(async (config) => {
   return config;
 });
 
+apiClient.interceptors.response.use(response => response, error => {
+  if (error.response?.status === 428 && error.response.data?.code === "LEGAL_ACCEPTANCE_REQUIRED") {
+    window.dispatchEvent(new Event("legal-acceptance-required"));
+  }
+  return Promise.reject(error);
+});
+
 export function apiError(error, fallback) {
   const { status, data, headers } = error.response ?? {};
   if (status === 429) {

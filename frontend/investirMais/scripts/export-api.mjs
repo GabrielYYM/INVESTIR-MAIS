@@ -5,7 +5,7 @@ const response = await fetch(new URL("/v3/api-docs", process.env.API_DOCS_ORIGIN
 if (!response.ok) throw new Error(`OpenAPI retornou HTTP ${response.status}`);
 const { servers, ...document } = await response.json();
 document.paths = Object.fromEntries(Object.entries(document.paths).filter(([path]) =>
-  path.startsWith("/api/users") || path === "/auth/me" || path === "/api/teacher/dashboard"));
+  path.startsWith("/api/users") || path.startsWith("/api/legal/") || path === "/auth/me" || path === "/api/teacher/dashboard"));
 const schemas = document.components?.schemas || {};
 const used = new Set();
 function collect(value) {

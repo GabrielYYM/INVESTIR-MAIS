@@ -5,6 +5,7 @@ import { Link, useNavigate, useRevalidator, useRouteLoaderData } from "react-rou
 import { useForgotPassword, useUpdatePassword, useUpdateProfile } from "../generated/account.ts";
 import { Field } from "../components/ui/FormFields.jsx";
 import PasswordFields from "../components/account/PasswordFields.jsx";
+import LegalHistory from "../components/account/LegalHistory.jsx";
 import { Notice } from "../components/ui/PageState.jsx";
 import { roleNames } from "../services/dataProvider.js";
 import { apiError } from "../services/api.js";
@@ -169,6 +170,7 @@ export default function Perfil() {
             Política de Privacidade
           </Link>
         </div>
+        <LegalHistory />
       </section>
 
       <section className="panel border-red-500/20 bg-red-500/5 p-6 shadow-xl sm:p-8 space-y-4" aria-labelledby="zona-perigo-titulo">

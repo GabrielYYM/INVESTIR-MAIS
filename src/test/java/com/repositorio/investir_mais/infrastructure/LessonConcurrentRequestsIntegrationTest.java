@@ -46,6 +46,7 @@ class LessonConcurrentRequestsIntegrationTest extends PostgreSqlIntegrationTest 
     private static final String EMAIL = "concurrent-lesson@example.test";
     @Autowired private MockMvc mvc;
     @Autowired private UserRepository users;
+    @Autowired private com.repositorio.investir_mais.domain.LegalDocumentsService legal;
     @Autowired private CourseRepository courses;
     @MockitoSpyBean private LessonRepository lessons;
     @MockitoSpyBean private LessonMapper mapper;
@@ -65,6 +66,7 @@ class LessonConcurrentRequestsIntegrationTest extends PostgreSqlIntegrationTest 
             user.setEmailVerified(true);
             return users.saveAndFlush(user);
         });
+        legal.accept(owner.getEmail(), legal.current().version());
         var course = new Course();
         course.setName("Curso de teste");
         course.setDescription("Exclusões e edições concorrentes");

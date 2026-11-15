@@ -56,3 +56,4 @@ export function actionRequest(body, path = "/educacao") {
     body: JSON.stringify(body),
   });
 }
+export { default as legalRelease } from "../../../../src/main/resources/legal/v1.json";
