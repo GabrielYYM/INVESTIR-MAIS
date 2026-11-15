@@ -12,7 +12,6 @@ import ResourcePagination from "../components/ui/ResourcePagination.jsx";
 import { Notice } from "../components/ui/PageState.jsx";
 import StatCard from "../components/ui/StatCard.jsx";
 import RoleBadge from "../components/account/RoleBadge.jsx";
-import TeacherChannelsDialog from "../components/account/TeacherChannelsDialog.jsx";
 
 export async function adminLoader({ request }) {
   try {
@@ -73,7 +72,6 @@ function AuditTable() {
 export default function Admin() {
   const { currentUser } = useLoaderData();
   const [editor, setEditor] = useState(null), [audited, setAudited] = useState(null), [feedback, setFeedback] = useState("");
-  const [channelTeacher, setChannelTeacher] = useState(null);
   const refresh = useRefresh();
   const promotionBlock = !editor?.birthDate
     ? "Este usuário não tem data de nascimento cadastrada. Não é possível verificar a idade mínima para professor."
@@ -92,7 +90,6 @@ export default function Admin() {
           <DataTable.Col source="age" label="Idade" render={user => user.age == null ? "—" : `${user.age} anos`} />
           <DataTable.Col source="createdAt" label="Data de Cadastro" render={user => formatDate(user.createdAt)} />
           <DataTable.Col label="Ações" align="right" render={user => <div className="inline-flex gap-2"><Button size="small" startIcon={<ShieldCheck size={14} />} disabled={user.role === "ADMIN"} onClick={() => setEditor(user)}>Alterar Papel</Button>
-            {user.role === "TEACHER" && <Button size="small" onClick={() => setChannelTeacher(user)}>Canais de vídeo</Button>}
             <Button size="small" startIcon={<History size={14} />} onClick={() => setAudited(user)}>Auditoria</Button></div>} />
         </DataTable><ResourcePagination /></div>
       </section>
@@ -104,6 +101,5 @@ export default function Admin() {
       <SelectInput source="role" label="Novo Papel" choices={[{ id: "STUDENT", name: "Aluno" }, { id: "TEACHER", name: "Professor", disabled: Boolean(promotionBlock) }]} />
     </CrudDialog>}
     {audited && <AuditDialog user={audited} onClose={() => setAudited(null)} />}
-    {channelTeacher && <TeacherChannelsDialog teacher={channelTeacher} onClose={() => setChannelTeacher(null)} />}
   </div>;
 }

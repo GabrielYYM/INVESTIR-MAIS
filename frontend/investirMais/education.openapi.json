@@ -15,103 +15,6 @@
     "description" : "Endpoints para gerenciamento de aulas associadas a cursos"
   } ],
   "paths" : {
-      "/api/teachers/{teacherId}/youtube-channels": {
-        "get": {
-          "operationId": "listTeacherChannels",
-          "parameters": [
-            {
-              "name": "teacherId",
-              "in": "path",
-              "required": true,
-              "schema": {
-                "type": "string",
-                "format": "uuid"
-              }
-            }
-          ],
-          "responses": {
-            "200": {
-              "description": "OK",
-              "content": {
-                "application/json": {
-                  "schema": {
-                    "type": "array",
-                    "items": {
-                      "$ref": "#/components/schemas/TeacherChannelResponse"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "post": {
-          "operationId": "approveTeacherChannel",
-          "parameters": [
-            {
-              "name": "teacherId",
-              "in": "path",
-              "required": true,
-              "schema": {
-                "type": "string",
-                "format": "uuid"
-              }
-            }
-          ],
-          "requestBody": {
-            "required": true,
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TeacherChannelRequest"
-                }
-              }
-            }
-          },
-          "responses": {
-            "201": {
-              "description": "Created",
-              "content": {
-                "application/json": {
-                  "schema": {
-                    "$ref": "#/components/schemas/TeacherChannelResponse"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "/api/teachers/{teacherId}/youtube-channels/{approvalId}": {
-        "delete": {
-          "operationId": "revokeTeacherChannel",
-          "parameters": [
-            {
-              "name": "teacherId",
-              "in": "path",
-              "required": true,
-              "schema": {
-                "type": "string",
-                "format": "uuid"
-              }
-            },
-            {
-              "name": "approvalId",
-              "in": "path",
-              "required": true,
-              "schema": {
-                "type": "string",
-                "format": "uuid"
-              }
-            }
-          ],
-          "responses": {
-            "204": {
-              "description": "No Content"
-            }
-          }
-        }
-      },
       "/api/lessons/course/{courseId}/order": {
         "get": {
           "tags": [
@@ -1061,37 +964,6 @@
   },
   "components" : {
     "schemas" : {
-        "TeacherChannelResponse": {
-          "type": "object",
-          "properties": {
-            "id": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "channelId": {
-              "type": "string"
-            },
-            "title": {
-              "type": "string"
-            },
-            "approvedAt": {
-              "type": "string",
-              "format": "date-time"
-            }
-          }
-        },
-        "TeacherChannelRequest": {
-          "type": "object",
-          "properties": {
-            "channelId": {
-              "type": "string",
-              "pattern": "UC[A-Za-z0-9_-]{22}"
-            }
-          },
-          "required": [
-            "channelId"
-          ]
-        },
         "LessonOrderItem": {
           "type": "object",
           "properties": {
@@ -1148,15 +1020,15 @@
           },
           "mediaUrl" : {
             "type" : "string",
-            "description" : "URL do vídeo/mídia hospedada",
-            "example" : "https://media.investirmais.com/videos/aula-1.mp4",
+            "description" : "URL do vídeo no YouTube",
+            "example" : "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
             "maxLength" : 4096,
             "minLength" : 0
           },
           "thumbnailUrl" : {
             "type" : "string",
             "description" : "URL da imagem de capa/thumbnail",
-            "example" : "https://media.investirmais.com/thumbs/aula-1.jpg",
+            "example" : "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
             "maxLength" : 4096,
             "minLength" : 0
           }
@@ -1167,7 +1039,6 @@
         "type" : "object",
         "description" : "Resposta com dados da aula",
         "properties" : {
-          "videoIssue": {"type": "string", "description": "Motivo para não liberar a reprodução do vídeo"},
           "id" : {
             "type" : "string",
             "format" : "uuid",
@@ -1187,12 +1058,12 @@
           "mediaUrl" : {
             "type" : "string",
             "description" : "URL da mídia",
-            "example" : "https://media.investirmais.com/videos/aula-1.mp4"
+            "example" : "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
           },
           "thumbnailUrl" : {
             "type" : "string",
             "description" : "URL da thumbnail",
-            "example" : "https://media.investirmais.com/thumbs/aula-1.jpg"
+            "example" : "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg"
           },
           "courseId" : {
             "type" : "string",

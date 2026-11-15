@@ -28,8 +28,8 @@ export default function EducationDialog({ kind, item, remove, onClose }) {
     transform={transform} onClose={onClose} onSuccess={!item ? created => navigate(lesson ? coursePath + "/" + created.id : "/educacao/" + created.id) : undefined}>
     <TextInput source="title" label={lesson ? "Título da aula" : "Nome do curso"} fullWidth slotProps={{ htmlInput: { maxLength: 100 } }} />
     <TextInput source="description" label="Descrição" multiline rows={4} fullWidth />
-    {lesson && <><TextInput source="mediaUrl" label="URL do vídeo no YouTube" type="url" fullWidth placeholder="https://www.youtube.com/watch?v=…" helperText="Use um vídeo público ou não listado de um canal aprovado pelo administrador para o professor responsável." />
-      <p className="text-xs text-muted">O administrador seleciona os canais de economia, finanças e investimentos. O vídeo precisa permitir reprodução incorporada no Brasil e não ter restrição etária. Confira se o conteúdo é adequado à aula antes de publicar.</p></>}
+    {lesson && <><TextInput source="mediaUrl" label="URL do vídeo no YouTube" type="url" fullWidth placeholder="https://www.youtube.com/watch?v=…" helperText="Cole o link do vídeo do YouTube que deseja usar nesta aula." />
+      <p className="text-xs text-muted">Confira o conteúdo e a reprodução do vídeo antes de publicar. A plataforma não faz análise nem aprovação automática dos vídeos.</p></>}
     {!lesson && !item && <CourseQuestionFields defaults={index => questionDefaults(undefined, 0, index)} />}
   </CrudDialog>;
 }

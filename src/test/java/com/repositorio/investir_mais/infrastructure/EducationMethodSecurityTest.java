@@ -42,7 +42,7 @@ class EducationMethodSecurityTest {
     private static final UUID COURSE_ID = UUID.randomUUID();
     private static final UUID LESSON_ID = UUID.randomUUID();
     private static final CourseDTO.Request COURSE = new CourseDTO.Request("Curso", "Descrição");
-    private static final LessonDTO.Request LESSON = new LessonDTO.Request("Aula", "Descrição", "video", "capa");
+    private static final LessonDTO.Request LESSON = new LessonDTO.Request("Aula", "Descrição", "https://youtu.be/dQw4w9WgXcQ", "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg");
 
     @Autowired CourseService courses;
     @Autowired LessonService lessons;
@@ -144,12 +144,6 @@ class EducationMethodSecurityTest {
     @EnableMethodSecurity
     @Import({CourseService.class, LessonService.class})
     static class Config {
-        @Bean com.repositorio.investir_mais.domain.education.service.VideoPublishingPolicy videoPolicy() {
-            var policy = mock(com.repositorio.investir_mais.domain.education.service.VideoPublishingPolicy.class);
-            when(policy.validate(anyString(), any(UUID.class))).thenAnswer(call ->
-                    new com.repositorio.investir_mais.domain.education.service.VideoPublishingPolicy.VerifiedVideo(call.getArgument(0), "https://example.test/thumbnail"));
-            return policy;
-        }
         @Bean CourseRepository courseRepository() { return mock(CourseRepository.class); }
         @Bean LessonRepository lessonRepository() { return mock(LessonRepository.class); }
         @Bean CourseMapper courseMapper() { return mock(CourseMapper.class); }

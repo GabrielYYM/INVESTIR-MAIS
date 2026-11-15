@@ -210,10 +210,7 @@ export default function Course() {
       <div className="min-w-0 space-y-5">
         {failure && <Notice error>{failure}</Notice>}
         {progressError && <button className="button-secondary" disabled={revalidator.state !== "idle"} onClick={() => revalidator.revalidate()}>Tentar novamente</button>}
-        {lesson?.videoIssue ? <div className="panel space-y-3 p-6">
-          <h2 className="text-xl font-bold">Vídeo indisponível</h2><Notice error>{lesson.videoIssue}</Notice>
-          <button className="button-secondary" disabled={revalidator.state !== "idle"} onClick={() => revalidator.revalidate()}>Tentar verificar novamente</button>
-        </div> : lesson?.locked ? <div className="panel space-y-3 p-6">
+        {lesson?.locked ? <div className="panel space-y-3 p-6">
           <LockKeyhole size={28} className="text-brand" />
           <h2 className="text-xl font-bold">Aula bloqueada</h2>
           <p className="text-sm leading-relaxed text-muted">Conclua o conteúdo anterior e acerte as perguntas para liberar esta aula.</p>

@@ -28,13 +28,13 @@ public class LessonDTO {
         @Size(max = 10000)
         String description,
 
-        @Schema(description = "URL do vídeo/mídia hospedada", example = "https://media.investirmais.com/videos/aula-1.mp4")
+        @Schema(description = "URL do vídeo no YouTube", example = "https://www.youtube.com/watch?v=dQw4w9WgXcQ")
         @NotBlank(message = "A URL da mídia é obrigatória")
         @Size(max = 4096)
         @URL(message = "A URL da mídia é inválida")
         String mediaUrl,
 
-        @Schema(description = "URL da imagem de capa/thumbnail", example = "https://media.investirmais.com/thumbs/aula-1.jpg")
+        @Schema(description = "URL da imagem de capa/thumbnail", example = "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg")
         @NotBlank(message = "A URL da thumbnail é obrigatória")
         @Size(max = 4096)
         @URL(message = "A URL da thumbnail é inválida")
@@ -52,23 +52,19 @@ public class LessonDTO {
         @Schema(description = "Descrição da aula", example = "Conceitos fundamentais sobre Tesouro Direto e CDBs.")
         String description,
 
-        @Schema(description = "URL da mídia", example = "https://media.investirmais.com/videos/aula-1.mp4")
+        @Schema(description = "URL da mídia", example = "https://www.youtube.com/watch?v=dQw4w9WgXcQ")
         String mediaUrl,
 
-        @Schema(description = "URL da thumbnail", example = "https://media.investirmais.com/thumbs/aula-1.jpg")
+        @Schema(description = "URL da thumbnail", example = "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg")
         String thumbnailUrl,
 
         @Schema(description = "ID do curso ao qual esta aula pertence", example = "b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e")
         UUID courseId,
         int position,
-        boolean locked,
-        String videoIssue
+        boolean locked
     ) {
-        public Response(UUID id, String title, String description, String mediaUrl, String thumbnailUrl, UUID courseId, int position, boolean locked) {
-            this(id, title, description, mediaUrl, thumbnailUrl, courseId, position, locked, null);
-        }
         public Response(UUID id, String title, String description, String mediaUrl, String thumbnailUrl, UUID courseId) {
-            this(id, title, description, mediaUrl, thumbnailUrl, courseId, 0, false, null);
+            this(id, title, description, mediaUrl, thumbnailUrl, courseId, 0, false);
         }
     }
 

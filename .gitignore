@@ -87,3 +87,4 @@ build/
 ### Draw.io ###
 *.drawio
 *.drawio.*
+!docs/diagramas/investir-mais.drawio

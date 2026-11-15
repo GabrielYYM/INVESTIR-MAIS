@@ -39,17 +39,16 @@ public class LessonService {
     private final LessonMapper lessonMapper;
     private final UserService userService;
     private final QuestionService questionService;
-    private final VideoPublishingPolicy videoPolicy;
 
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public LessonDTO.Response createLesson(UUID courseId, LessonDTO.Request request, String principalName) {
         Course course = courseService.findCourseOwnedBy(courseId, principalName);
-        var verified = videoPolicy.validate(request.mediaUrl(), course.getProfessor().getId());
+        var video = YouTubeVideoUrl.parse(request.mediaUrl());
 
         Lesson lesson = lessonMapper.toEntity(request);
         lesson.setCourse(course);
-        lesson.setMediaUrl(verified.mediaUrl());
-        lesson.setThumbnailUrl(verified.thumbnailUrl());
+        lesson.setMediaUrl(video.watchUrl());
+        lesson.setThumbnailUrl(video.thumbnailUrl());
         lesson.setPosition(Math.max(1, lessonRepository.nextPosition(courseId)));
 
         Lesson savedLesson = lessonRepository.save(lesson);
@@ -63,35 +62,20 @@ public class LessonService {
         if (!questionService.canPreview(lesson, email)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Acerte as perguntas e conclua o conteúdo anterior para avançar.");
         }
-        User viewer = userService.findByEmail(email);
-        var issues = isManager(viewer, lesson) ? java.util.Map.<UUID, String>of() : videoPolicy.deliveryIssues(List.of(lesson));
-        return displayLesson(lesson, issues.get(lessonId));
+        return lessonMapper.toDTO(lesson);
     }
 
     @Transactional(readOnly = true)
     public Page<LessonDTO.Response> getLessonsForStudent(UUID courseId, Pageable pageable, String email) {
         pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by("position", "id"));
         var result = lessonRepository.findAllByCourseId(courseId, pageable);
-        User viewer = userService.findByEmail(email);
         var accessible = result.stream().filter(l -> questionService.canPreview(l, email)).toList();
-        var issues = videoPolicy.deliveryIssues(accessible.stream().filter(l -> !isManager(viewer, l)).toList());
         return result.map(lesson -> {
-            if (accessible.contains(lesson)) return displayLesson(lesson, issues.get(lesson.getId()));
+            if (accessible.contains(lesson)) return lessonMapper.toDTO(lesson);
             // Keep the curriculum visible, withholding the content and media of locked lessons.
             return new LessonDTO.Response(lesson.getId(), lesson.getTitle(), null, null, null,
                     courseId, lesson.getPosition(), true);
         });
-    }
-
-    private boolean isManager(User viewer, Lesson lesson) {
-        return viewer.getRole() == UserRole.ADMIN || (viewer.getRole() == UserRole.TEACHER
-                && lesson.getCourse().getProfessor().getId().equals(viewer.getId()));
-    }
-
-    private LessonDTO.Response displayLesson(Lesson lesson, String issue) {
-        if (issue == null) return lessonMapper.toDTO(lesson);
-        return new LessonDTO.Response(lesson.getId(), lesson.getTitle(), lesson.getDescription(), null, null,
-                lesson.getCourse().getId(), lesson.getPosition(), false, issue);
     }
 
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
@@ -138,10 +122,10 @@ public class LessonService {
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public LessonDTO.Response updateLesson(UUID lessonId, LessonDTO.Request request, String principalName) {
         Lesson lesson = findLessonOwnedBy(lessonId, principalName);
-        var verified = videoPolicy.validate(request.mediaUrl(), lesson.getCourse().getProfessor().getId());
+        var video = YouTubeVideoUrl.parse(request.mediaUrl());
         lessonMapper.updateEntity(request, lesson);
-        lesson.setMediaUrl(verified.mediaUrl());
-        lesson.setThumbnailUrl(verified.thumbnailUrl());
+        lesson.setMediaUrl(video.watchUrl());
+        lesson.setThumbnailUrl(video.thumbnailUrl());
         
         log.info("Aula atualizada com sucesso. ID: {}", lesson.getId());
         return lessonMapper.toDTO(lesson);

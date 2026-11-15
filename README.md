@@ -54,17 +54,18 @@ INVESTIR-MAIS/
 
 ## Diagramas
 
-O [arquivo editável do Draw.io](docs/diagramas/investir-mais.drawio) reúne cinco abas com as classes de domínio, as classes da aplicação, a navegação, o BPMN do login e a arquitetura. A [documentação dos diagramas](docs/diagrama-de-classes.md) relaciona cada visão ao código.
+O [arquivo editável do Draw.io](docs/diagramas/investir-mais.drawio) reúne cinco abas com as classes de domínio, as classes da aplicação, a navegação, o BPMN do login e a arquitetura. Os diagramas incluem os documentos legais versionados, a publicação de links do YouTube e a ordenação das aulas. A [documentação dos diagramas](docs/diagrama-de-classes.md) relaciona cada visão ao código.
 
 ### Arquitetura
 
-[![Arquitetura do Investir Mais com React, Spring Boot, PostgreSQL, Redis e Resend](docs/diagramas/arquitetura.png)](docs/diagramas/arquitetura.png)
+[![Arquitetura com React, Spring Boot, PostgreSQL, Redis, Resend e YouTube](docs/diagramas/arquitetura.png)](docs/diagramas/arquitetura.png)
 
 ### Fluxo de navegação
 
-- O cadastro público cria uma conta de aluno. Ao confirmar o e-mail original no navegador do cadastro, o usuário entra no painel. Em outro navegador, ou com um link reenviado, a página confirma a conta e oferece o login. A recuperação usa um código separado para definir a nova senha.
+- O cadastro público cria uma conta de aluno com data de nascimento. Ao confirmar o e-mail original no navegador do cadastro, o usuário inicia a primeira sessão. Em outro navegador, ou com um link reenviado, a página confirma a conta e oferece o login. A recuperação usa um código separado para definir a nova senha.
 - Uma rota protegida verifica a sessão com `GET /auth/me`. Sem acesso, o React redireciona ao login e guarda a rota solicitada. Após os dois fatores, o navegador abre um destino interno permitido ou o painel.
-- A área autenticada oferece painel, catálogo, curso, aulas, perguntas e perfil com opções de senha e exclusão de conta. Professor e administrador veem ações de gestão conforme suas permissões. A saída encerra a sessão no backend.
+- Antes do painel e do catálogo, a aplicação verifica o aceite da versão atual dos Termos e da Política de Privacidade. Uma versão nova exige nova confirmação; o perfil mostra o histórico com o texto de cada versão aceita.
+- O professor proprietário e o administrador podem ordenar as aulas, preservando o vínculo das perguntas. A publicação aceita links de qualquer canal do YouTube; a promoção a professor exige data de nascimento e idade mínima de 18 anos. A saída encerra a sessão no backend.
 
 [![Fluxo de navegação do cadastro e login à área autenticada](docs/diagramas/fluxo-de-navegacao.png)](docs/diagramas/fluxo-de-navegacao.png)
 
@@ -73,7 +74,7 @@ O [arquivo editável do Draw.io](docs/diagramas/investir-mais.drawio) reúne cin
 1. A pessoa informa e-mail e senha. O Spring valida as credenciais e exige e-mail confirmado. Nessa etapa existe uma sessão parcial.
 2. O serviço JDBC de OTT do Spring Security gera um token de uso único com validade de cinco minutos. O e-mail inclui o link **Concluir acesso** e a opção de digitar o código.
 3. Na rota `/entrar/link`, o React lê e remove o token do fragmento da URL e o envia com CSRF para `POST /auth/verify-2fa`. O código manual chama o mesmo endpoint. O token pertence à sessão que iniciou o login e deve ser usado no mesmo navegador.
-4. Após validar e consumir o OTT, o Spring combina os fatores e troca o identificador da sessão. O diagrama também mostra as saídas de recusa por credenciais ou token inválido.
+4. Após validar e consumir o OTT, o Spring combina os fatores e troca o identificador da sessão. A interface consulta o aceite legal antes de liberar o catálogo. O diagrama também mostra as saídas de recusa por credenciais ou token inválido.
 
 [![BPMN do login com raias para pessoa usuária, React e Spring](docs/diagramas/bpmn-login-ott.png)](docs/diagramas/bpmn-login-ott.png)
 
@@ -82,6 +83,7 @@ O [arquivo editável do Draw.io](docs/diagramas/investir-mais.drawio) reúne cin
 - `User` representa a conta e seu perfil `UserRole`. A senha é persistida como hash Argon2id e fica fora das revisões Envers.
 - Cada `Course` tem um usuário proprietário e pode ter zero ou mais aulas e perguntas. Cada `Lesson` pertence a exatamente um curso e guarda os endereços de mídia e miniatura.
 - `User` mantém matrículas por curso e progresso por aula como coleções de valores embutíveis. Os acertos são UUIDs em `passedQuestionIds`; as alternativas pertencem a `Question`.
+- Documentos e aceites ficam nas tabelas SQL `legal_document_release` e `legal_document_acceptance`, acessadas por JDBC e protegidas contra alterações.
 - A exclusão é lógica. Excluir um curso propaga a exclusão às aulas e perguntas. Excluir uma conta pelo serviço também exclui logicamente os cursos e aulas vinculados.
 
 [![Entidades de domínio, perfis, matrículas e progresso com atributos e cardinalidades](docs/diagramas/classes-de-dominio.png)](docs/diagramas/classes-de-dominio.png)
@@ -90,6 +92,8 @@ O [arquivo editável do Draw.io](docs/diagramas/investir-mais.drawio) reúne cin
 
 - Na área de conta, `UserController` e `AuthenticationController` expõem operações de usuário e sessão. `UserService` concentra as regras da conta e usa `AccountSecurityService` para tokens de confirmação e recuperação e para revogação de sessões.
 - No catálogo, controllers chamam `CourseService`, `LessonService` e `QuestionService`. As perguntas e o conteúdo anterior controlam a progressão do aluno. Os serviços aplicam regras de permissão e propriedade, usam repositórios JPA e mapeiam entidades para DTOs com MapStruct, incluindo `QuestionMapper`.
+- `LessonService` usa `YouTubeVideoUrl` para normalizar o endereço e a miniatura. Não há aprovação de canais, filtro de conteúdo nem dependência de chave da API do YouTube.
+- `LegalDocumentsService` publica e consulta versões imutáveis e registra os aceites. O interceptor de aceite retorna HTTP 428 quando há pendência para acessar os recursos da plataforma.
 - O `AuthenticationEmailHandler` envia os e-mails transacionais pela API do Resend.
 
 [![Classes da aplicação para conta, educação e envio de e-mails](docs/diagramas/classes-da-aplicacao.png)](docs/diagramas/classes-da-aplicacao.png)

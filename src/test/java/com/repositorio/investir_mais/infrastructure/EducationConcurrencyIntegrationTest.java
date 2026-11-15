@@ -38,14 +38,11 @@ class EducationConcurrencyIntegrationTest extends PostgreSqlIntegrationTest {
     @MockitoSpyBean private LessonMapper lessonMapper;
     @Autowired private CourseService courseService;
     @Autowired private LessonService lessonService;
-    @org.springframework.test.context.bean.override.mockito.MockitoBean private com.repositorio.investir_mais.domain.education.service.VideoPublishingPolicy videoPolicy;
     @Autowired private JdbcTemplate jdbc;
 
     @Test
     @WithMockUser(username = EMAIL, authorities = {"ROLE_TEACHER", "FACTOR_PASSWORD", "FACTOR_OTT"})
     void courseDeletionWaitsForLessonCreationAndDeletesTheNewLesson() throws Exception {
-        org.mockito.Mockito.when(videoPolicy.validate(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any()))
-                .thenAnswer(call -> new com.repositorio.investir_mais.domain.education.service.VideoPublishingPolicy.VerifiedVideo(call.getArgument(0), "https://example.test/thumbnail"));
         var owner = new User();
         owner.setName("Professor de teste");
         owner.setEmail(EMAIL);
@@ -70,7 +67,7 @@ class EducationConcurrencyIntegrationTest extends PostgreSqlIntegrationTest {
 
         try (var executor = Executors.newFixedThreadPool(2)) {
             var creation = executor.submit(new DelegatingSecurityContextCallable<>(() -> lessonService.createLesson(
-                    courseId, new LessonDTO.Request("Aula concorrente", "Descrição", "https://example.test/video",
+                    courseId, new LessonDTO.Request("Aula concorrente", "Descrição", "https://youtu.be/dQw4w9WgXcQ",
                             "https://example.test/thumbnail"), EMAIL)));
             assertTrue(beforeInsert.await(5, TimeUnit.SECONDS));
             var deletionStarted = new CountDownLatch(1);
