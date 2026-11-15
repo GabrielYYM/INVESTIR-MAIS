@@ -21,6 +21,7 @@ describe("cadastro", () => {
       return {};
     }, { status: 202 });
     const { user } = renderApp("/cadastro");
+    expect(screen.queryByLabelText("Senha atual")).not.toBeInTheDocument();
     await fillSignUp(user);
     const password = screen.getByLabelText("Senha", { exact: true });
     const confirmation = screen.getByLabelText("Confirme a senha");
@@ -140,6 +141,7 @@ describe("recuperação de senha", () => {
     await user.type(screen.getByLabelText("E-mail"), student.email);
     await user.click(screen.getByRole("button", { name: "Enviar código" }));
     await user.type(await screen.findByLabelText("Código de recuperação"), "expirado");
+    expect(screen.queryByLabelText("Senha atual")).not.toBeInTheDocument();
     await user.type(screen.getByLabelText("Nova senha", { exact: true }), "senha-nova");
     await user.type(screen.getByLabelText("Confirme a nova senha"), "senha-nova");
     await user.click(screen.getByRole("button", { name: "Redefinir senha" }));
@@ -195,6 +197,9 @@ describe("edição do perfil", () => {
     });
     const { user } = renderApp("/perfil");
     const profileForm = within((await screen.findByRole("heading", { name: "Alterar informações" })).closest("form"));
+    expect(profileForm.queryByLabelText("Nova senha", { exact: true })).not.toBeInTheDocument();
+    expect(profileForm.queryByLabelText("Confirme a nova senha")).not.toBeInTheDocument();
+    expect(profileForm.getByLabelText("Senha atual")).toHaveAccessibleDescription("Necessária para confirmar a atualização do seu nome.");
     expect(screen.getByLabelText("E-mail")).toHaveAttribute("readonly");
     await user.click(screen.getByRole("button", { name: "Salvar perfil" }));
     expect(await screen.findByText("Informe sua senha atual para confirmar.")).toBeInTheDocument();
