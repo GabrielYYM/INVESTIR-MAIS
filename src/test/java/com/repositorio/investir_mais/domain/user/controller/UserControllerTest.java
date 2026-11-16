@@ -68,7 +68,7 @@ class UserControllerTest {
 
     @Test
     void registerUser_WithValidData_ShouldReturnGenericAcceptance() throws Exception {
-        UserDTO.Request requestDTO = new UserDTO.Request("Felipe", LocalDate.now().minusYears(22), "felipe@investir.com", "senha12345", UserRole.STUDENT);
+        UserDTO.Request requestDTO = new UserDTO.Request("Felipe", LocalDate.now().minusYears(22), "felipe@investir.com", "SenhaTeste1!", UserRole.STUDENT);
         when(userService.registerUser(any(UserDTO.Request.class)))
                 .thenReturn(new DefaultOneTimeToken("registration-token", requestDTO.email(), Instant.now().plusSeconds(300)));
 
