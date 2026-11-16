@@ -165,7 +165,7 @@ class HttpValidationTest {
         mvc.perform(put("/api/users/{id}", UUID.randomUUID()).principal(() -> "user@investir.com")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                        {"name":"Teste","email":"user@investir.com","birthDate":"2000-01-15","currentPassword":"Senha1234!"}
+                        {"name":"Teste","email":"user@investir.com","birthDate":"2000-01-15","currentPassword":"Senha1234"}
                         """))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.detail").value("Ocorreu um erro interno no servidor."));
