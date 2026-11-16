@@ -1,6 +1,6 @@
 package com.repositorio.investir_mais.infrastructure;
 
-import com.repositorio.investir_mais.domain.AccountSecurityService;
+import com.repositorio.investir_mais.domain.token.service.AccountSecurityService;
 import com.repositorio.investir_mais.domain.education.model.Course;
 import com.repositorio.investir_mais.domain.education.model.Lesson;
 import com.repositorio.investir_mais.domain.education.repository.CourseRepository;

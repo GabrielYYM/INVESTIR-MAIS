@@ -1,6 +1,8 @@
-package com.repositorio.investir_mais.domain;
+package com.repositorio.investir_mais.domain.token.service;
 
-import java.sql.Timestamp;
+import com.repositorio.investir_mais.domain.AccountEmailRequested;
+import com.repositorio.investir_mais.domain.token.DTO.TokenDTO;
+import com.repositorio.investir_mais.domain.token.mapper.TokenMapper;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
@@ -11,14 +13,15 @@ import lombok.RequiredArgsConstructor;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.convert.DurationStyle;
-import org.springframework.jdbc.core.simple.JdbcClient;
-import org.springframework.security.authentication.ott.DefaultOneTimeToken;
+import com.repositorio.investir_mais.domain.token.model.*;
+import com.repositorio.investir_mais.domain.token.repository.*;
 import org.springframework.security.authentication.ott.OneTimeToken;
 import org.springframework.session.FindByIndexNameSessionRepository;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@org.springframework.modulith.NamedInterface("account-security-service")
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -28,7 +31,10 @@ public class AccountSecurityService {
     private static final String PASSWORD_RESET = "PASSWORD_RESET";
     private static final Pattern TOKEN_FORMAT = Pattern.compile("[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}");
 
-    private final JdbcClient jdbc;
+    private final AccountTokenRepository tokens;
+    private final LoginTokenService loginTokens;
+    private final TokenMapper mapper;
+    private final TokenAccountRepository accounts;
     private final FindByIndexNameSessionRepository<?> sessions;
     private Duration emailCooldown;
 
@@ -61,19 +67,19 @@ public class AccountSecurityService {
     }
 
     public void invalidateAll(String email) {
-        jdbc.sql("DELETE FROM app_one_time_token WHERE username = ?").param(email).update();
+        tokens.deleteForUser(email);
     }
 
     public void revokeAllSessions(String email) {
-        jdbc.sql("DELETE FROM one_time_tokens WHERE username = ?").param(email).update();
+        loginTokens.invalidateAll(email);
         sessions.findByPrincipalName(email).keySet().forEach(sessions::deleteById);
     }
 
     @Scheduled(cron = "${app.security.token-cleanup-cron:0 0 * * * *}")
     public void cleanupExpiredTokens() {
-        Timestamp now = Timestamp.from(Instant.now());
-        jdbc.sql("DELETE FROM app_one_time_token WHERE expires_at <= ?").param(now).update();
-        jdbc.sql("DELETE FROM one_time_tokens WHERE expires_at <= ?").param(now).update();
+        Instant now = Instant.now();
+        tokens.deleteExpired(now);
+        loginTokens.cleanupExpired(now);
     }
 
     @Transactional(readOnly = true)
@@ -82,31 +88,23 @@ public class AccountSecurityService {
             case VERIFY_EMAIL -> EMAIL_VERIFICATION;
             case PASSWORD_RESET -> PASSWORD_RESET;
         };
-        return jdbc.sql("""
-            SELECT EXISTS (
-                SELECT 1 FROM app_one_time_token
-                WHERE token_value = ? AND username = ? AND purpose = ? AND expires_at > ?
-            )
-            """).params(DigestUtils.sha256Hex(event.token()), event.email(), purpose, Timestamp.from(Instant.now()))
-                .query(Boolean.class).single();
+        return tokens.existsByTokenValueAndUsernameAndPurposeAndExpiresAtAfter(
+                DigestUtils.sha256Hex(event.token()), event.email(), purpose, Instant.now());
     }
 
     private Optional<OneTimeToken> generate(String email, String purpose, Duration cooldown) {
         lockAccount(email);
         Instant now = Instant.now();
-        if (!cooldown.isZero() && jdbc.sql("""
-                SELECT EXISTS (SELECT 1 FROM app_one_time_token WHERE username = ? AND purpose = ? AND expires_at > ?)
-                """).params(email, purpose, Timestamp.from(now.plus(TOKEN_TTL).minus(cooldown))).query(Boolean.class).single()) {
+        if (!cooldown.isZero() && tokens.existsByUsernameAndPurposeAndExpiresAtAfter(
+                email, purpose, now.plus(TOKEN_TTL).minus(cooldown))) {
             return Optional.empty();
         }
-        jdbc.sql("DELETE FROM app_one_time_token WHERE username = ? AND purpose = ?").params(email, purpose).update();
+        tokens.deleteForPurpose(email, purpose);
         String value = UUID.randomUUID().toString();
         Instant expiresAt = now.plus(TOKEN_TTL);
-        jdbc.sql("""
-            INSERT INTO app_one_time_token (token_value, username, expires_at, purpose)
-            VALUES (?, ?, ?, ?)
-            """).params(DigestUtils.sha256Hex(value), email, Timestamp.from(expiresAt), purpose).update();
-        return Optional.of(new DefaultOneTimeToken(value, email, expiresAt));
+        var issued = new TokenDTO.Issued(value, email, expiresAt);
+        tokens.saveAndFlush(mapper.toAccountEntity(issued, purpose));
+        return Optional.of(mapper.toSecurityToken(issued));
     }
 
     private Optional<String> consume(String token, String purpose) {
@@ -114,26 +112,19 @@ public class AccountSecurityService {
             return Optional.empty();
         }
         String digest = DigestUtils.sha256Hex(token);
-        var owner = jdbc.sql("""
-            SELECT username FROM app_one_time_token
-            WHERE token_value = ? AND purpose = ?
-            """).params(digest, purpose).query(String.class).optional();
+        var owner = tokens.findOwner(digest, purpose);
         if (owner.isEmpty()) {
             return Optional.empty();
         }
         lockAccount(owner.get());
-        var email = jdbc.sql("""
-            SELECT username FROM app_one_time_token
-            WHERE token_value = ? AND purpose = ? AND expires_at > ?
-            FOR UPDATE
-            """).params(digest, purpose, Timestamp.from(Instant.now())).query(String.class).optional();
-        if (email.isPresent()) {
-            jdbc.sql("DELETE FROM app_one_time_token WHERE token_value = ? AND purpose = ?").params(digest, purpose).update();
-        }
+        var activeToken = tokens.findByTokenValueAndPurposeAndExpiresAtAfter(digest, purpose, Instant.now());
+        var email = activeToken.map(AccountToken::getUsername);
+        activeToken.ifPresent(tokens::delete);
+        tokens.flush();
         return email;
     }
 
     private void lockAccount(String email) {
-        jdbc.sql("SELECT id FROM tb_user WHERE email = ? FOR UPDATE").param(email).query(UUID.class).list();
+        accounts.findByEmail(email);
     }
 }

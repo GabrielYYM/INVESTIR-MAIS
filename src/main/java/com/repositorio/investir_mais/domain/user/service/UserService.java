@@ -2,7 +2,7 @@ package com.repositorio.investir_mais.domain.user.service;
 
 import com.repositorio.investir_mais.domain.user.repository.TeacherApplicationRepository;
 import com.repositorio.investir_mais.domain.AccountEmailRequested;
-import com.repositorio.investir_mais.domain.AccountSecurityService;
+import com.repositorio.investir_mais.domain.token.service.AccountSecurityService;
 import com.repositorio.investir_mais.domain.user.DTO.AuthDTO;
 import com.repositorio.investir_mais.domain.user.DTO.UserDTO;
 import com.repositorio.investir_mais.domain.user.mapper.UserMapper;

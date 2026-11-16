@@ -4,6 +4,7 @@ import com.repositorio.investir_mais.domain.education.controller.LessonControlle
 import com.repositorio.investir_mais.domain.education.service.CourseService;
 import com.repositorio.investir_mais.domain.education.service.LessonService;
 import com.repositorio.investir_mais.domain.user.controller.UserController;
+import com.repositorio.investir_mais.domain.token.controller.AccountTokenController;
 import com.repositorio.investir_mais.domain.user.service.UserService;
 import com.repositorio.investir_mais.infrastructure.exception.GlobalExceptionHandler;
 import java.sql.SQLException;
@@ -30,8 +31,8 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@ContextConfiguration(classes = {UserController.class, LessonController.class, GlobalExceptionHandler.class})
-@WebMvcTest({UserController.class, LessonController.class})
+@ContextConfiguration(classes = {UserController.class, AccountTokenController.class, LessonController.class, GlobalExceptionHandler.class})
+@WebMvcTest({UserController.class, AccountTokenController.class, LessonController.class})
 @AutoConfigureMockMvc(addFilters = false)
 class HttpValidationTest {
     @Autowired MockMvc mvc;

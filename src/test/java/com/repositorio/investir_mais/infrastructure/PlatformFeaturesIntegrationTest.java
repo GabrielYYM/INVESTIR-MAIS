@@ -1,6 +1,7 @@
 package com.repositorio.investir_mais.infrastructure;
 
-import com.repositorio.investir_mais.domain.LegalDocumentsService;
+import com.repositorio.investir_mais.domain.legal.service.LegalDocumentsService;
+import com.repositorio.investir_mais.domain.legal.DTO.LegalDocumentDTO;
 import com.repositorio.investir_mais.domain.education.DTO.*;
 import com.repositorio.investir_mais.domain.education.service.*;
 import com.repositorio.investir_mais.domain.user.DTO.UserDTO;
@@ -106,6 +107,21 @@ class PlatformFeaturesIntegrationTest extends PostgreSqlIntegrationTest {
         courses.enrollStudent(course.id(),teacher.getEmail());
         assertEquals(403,assertThrows(ResponseStatusException.class,() -> questions.answer(course.id(),question.id(),new QuestionDTO.AnswerRequest(0),teacher.getEmail())).getStatusCode().value());
     }
+    @Test void questionStatisticsExcludeDeletedStudentsAndKeepUnansweredQuestions() throws Exception {
+        var course=course();
+        var question=questions.create(course.id(),new QuestionDTO.Request("Respondida",0,1,List.of("Certa","Errada"),0),teacher.getEmail());
+        questions.create(course.id(),new QuestionDTO.Request("Sem respostas",0,2,List.of("Certa","Errada"),0),teacher.getEmail());
+        var removed=account(UserRole.STUDENT,UUID.randomUUID()+"@example.test");
+        for (var learner : List.of(student,removed)) courses.enrollStudent(course.id(),learner.getEmail());
+        questions.answer(course.id(),question.id(),new QuestionDTO.AnswerRequest(1),student.getEmail());
+        questions.answer(course.id(),question.id(),new QuestionDTO.AnswerRequest(0),removed.getEmail());
+        jdbc.update("UPDATE tb_user SET deleted_at=CURRENT_TIMESTAMP WHERE id=?",removed.getId());
+        mvc.perform(get("/api/learning/courses/{id}/questions",course.id()).with(as(teacher)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].attempts").value(1)).andExpect(jsonPath("$[0].accuracy").value(0))
+                .andExpect(jsonPath("$[1].attempts").value(0)).andExpect(jsonPath("$[1].accuracy").value(0));
+    }
+
     @Test void searchesCategoryAndKeywordsAndAuditsCourseChanges() throws Exception {
         var course=course();
         mvc.perform(get("/api/courses").param("query","tesouro").param("category","Investimentos").param("sort","createdAt,desc").with(as(student)))
@@ -118,8 +134,8 @@ class PlatformFeaturesIntegrationTest extends PostgreSqlIntegrationTest {
     }
     @Test void publishesAdditionalDocumentsAndRequiresRenewedAcceptance() throws Exception {
         var previous=legal.current();var documents=new ArrayList<>(previous.documents());
-        documents.add(new LegalDocumentsService.Document("regras-"+previous.version(),"Regras","Regras adicionais",List.of(new LegalDocumentsService.Section("Uso","Texto de teste"))));
-        var next=new LegalDocumentsService.Release(previous.version()+1,LocalDate.now(),documents);
+        documents.add(new LegalDocumentDTO.Document("regras-"+previous.version(),"Regras","Regras adicionais",List.of(new LegalDocumentDTO.Section("Uso","Texto de teste"))));
+        var next=new LegalDocumentDTO.Release(previous.version()+1,LocalDate.now(),documents);
         legal.publishNewRelease(next);
         assertEquals(previous,legal.release(previous.version()));assertTrue(legal.status(student.getEmail()).acceptanceRequired());
         assertEquals(409,assertThrows(ResponseStatusException.class,() -> legal.publishNewRelease(next)).getStatusCode().value());

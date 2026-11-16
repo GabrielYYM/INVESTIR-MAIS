@@ -1,7 +1,7 @@
 package com.repositorio.investir_mais.domain.user.service;
 
 import com.repositorio.investir_mais.domain.AccountEmailRequested;
-import com.repositorio.investir_mais.domain.AccountSecurityService;
+import com.repositorio.investir_mais.domain.token.service.AccountSecurityService;
 import com.repositorio.investir_mais.domain.education.service.CourseService;
 import com.repositorio.investir_mais.domain.user.DTO.AuthDTO;
 import com.repositorio.investir_mais.domain.user.DTO.UserDTO;
@@ -423,7 +423,7 @@ class UserServiceTest {
         when(userRepository.findForUpdateById(user.getId())).thenReturn(Optional.of(user));
         when(userRepository.findByEmail("admin@investir.com")).thenReturn(Optional.of(new User()));
         var mvc = MockMvcBuilders.standaloneSetup(new UserController(userService,
-                mock(CourseService.class), mock(CsrfTokenRepository.class)))
+                mock(CourseService.class)))
                 .setControllerAdvice(new GlobalExceptionHandler()).build();
 
         mvc.perform(patch("/api/users/{id}/role", user.getId()).principal(() -> "admin@investir.com")

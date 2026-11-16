@@ -1,6 +1,6 @@
 package com.repositorio.investir_mais.infrastructure;
 
-import com.repositorio.investir_mais.domain.LegalDocumentsService;
+import com.repositorio.investir_mais.domain.legal.service.LegalDocumentsService;
 import com.repositorio.investir_mais.domain.education.DTO.*;
 import com.repositorio.investir_mais.domain.education.model.*;
 import com.repositorio.investir_mais.domain.education.repository.*;

@@ -1,6 +1,6 @@
 package com.repositorio.investir_mais.domain.user.repository;
 
-import com.repositorio.investir_mais.domain.AccountSecurityService;
+import com.repositorio.investir_mais.domain.token.service.AccountSecurityService;
 import com.repositorio.investir_mais.domain.education.model.Course;
 import com.repositorio.investir_mais.domain.education.model.Lesson;
 import com.repositorio.investir_mais.domain.education.repository.CourseRepository;
@@ -210,10 +210,11 @@ class UserSoftDeleteTest {
 
     @Configuration(proxyBeanMethods = false)
     @EnableJpaAuditing
-    @EntityScan(basePackageClasses = {Course.class, User.class})
-    @EnableEnversRepositories(basePackageClasses = {CourseRepository.class, UserRepository.class})
-    @Import({UserService.class, AccountSecurityService.class})
+    @EntityScan(basePackageClasses = {Course.class, User.class, com.repositorio.investir_mais.domain.token.model.AccountToken.class})
+    @EnableEnversRepositories(basePackageClasses = {CourseRepository.class, UserRepository.class, com.repositorio.investir_mais.domain.token.repository.AccountTokenRepository.class})
+    @Import({UserService.class, AccountSecurityService.class, com.repositorio.investir_mais.domain.token.service.LoginTokenService.class})
     static class JpaConfig {
+        @Bean com.repositorio.investir_mais.domain.token.mapper.TokenMapper tokenMapper() { return Mappers.getMapper(com.repositorio.investir_mais.domain.token.mapper.TokenMapper.class); }
         @Bean UserMapper userMapper() { return Mappers.getMapper(UserMapper.class); }
         @Bean PasswordEncoder passwordEncoder() { return new SecurityConfig().passwordEncoder(); }
     }

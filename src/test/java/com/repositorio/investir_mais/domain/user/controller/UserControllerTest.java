@@ -66,22 +66,6 @@ class UserControllerTest {
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 
     @Test
-    void registerUser_WithValidData_ShouldReturnGenericAcceptance() throws Exception {
-        UserDTO.Request requestDTO = new UserDTO.Request("Felipe", "felipe@investir.com", "SenhaTeste1!", UserRole.STUDENT);
-        when(userService.registerUser(any(UserDTO.Request.class)))
-                .thenReturn(new DefaultOneTimeToken("registration-token", requestDTO.email(), Instant.now().plusSeconds(300)));
-
-        mockMvc.perform(post("/api/users/register")
-                .with(csrf())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(requestDTO)))
-                .andExpect(status().isAccepted())
-                .andExpect(jsonPath("$.message").isString())
-                .andExpect(jsonPath("$.email").doesNotExist())
-                .andExpect(jsonPath("$.token").doesNotExist());
-    }
-
-    @Test
     void deleteAccount_WithConfirmation_ShouldReturnNoContent() throws Exception {
         UUID id = UUID.randomUUID();
         var dto = new UserDTO.DeleteAccountRequest("current-password");
@@ -118,45 +102,6 @@ class UserControllerTest {
             .andExpect(jsonPath("$.message").value("Senha atualizada com sucesso!"));
 
         verify(userService).updatePassword(eq("felipe@investir.com"), any(AuthDTO.UpdatePasswordRequest.class));
-    }
-
-    @Test
-    void forgotPassword_WithValidEmail_ShouldReturnOk() throws Exception {
-        AuthDTO.ForgotPasswordRequest dto = new AuthDTO.ForgotPasswordRequest("felipe@investir.com");
-
-        mockMvc.perform(post("/api/users/forgot-password")
-                .with(csrf())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(dto)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message", containsString("Se o e-mail existir na nossa base")));
-
-        verify(userService).forgotPassword(any(AuthDTO.ForgotPasswordRequest.class));
-    }
-
-    @Test
-    void resetPassword_WithValidData_ShouldReturnOk() throws Exception {
-        AuthDTO.ResetPasswordRequest dto = new AuthDTO.ResetPasswordRequest("token-123", "NovaSenha123!");
-
-        mockMvc.perform(post("/api/users/reset-password")
-                .with(csrf())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(dto)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Senha redefinida com sucesso!"));
-
-        verify(userService).resetPassword(any(AuthDTO.ResetPasswordRequest.class));
-    }
-
-    @Test
-    void resetPassword_WithInvalidData_ShouldReturnBadRequest() throws Exception {
-        AuthDTO.ResetPasswordRequest dto = new AuthDTO.ResetPasswordRequest("", "123");
-
-        mockMvc.perform(post("/api/users/reset-password")
-                .with(csrf())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(dto)))
-                .andExpect(status().isBadRequest());
     }
 
     @Test

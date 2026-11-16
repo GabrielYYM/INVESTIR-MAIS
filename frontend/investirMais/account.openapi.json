@@ -197,8 +197,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "$ref": "#/components/schemas/VerificationResponse"
                 }
               }
             }
@@ -230,10 +229,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {
-                    "type": "string"
-                  }
+                  "$ref": "#/components/schemas/MessageResponse"
                 }
               }
             }
@@ -263,10 +259,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {
-                    "type": "string"
-                  }
+                  "$ref": "#/components/schemas/MessageResponse"
                 }
               }
             }
@@ -298,10 +291,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {
-                    "type": "string"
-                  }
+                  "$ref": "#/components/schemas/MessageResponse"
                 }
               }
             }
@@ -333,10 +323,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {
-                    "type": "string"
-                  }
+                  "$ref": "#/components/schemas/MessageResponse"
                 }
               }
             }
@@ -1124,6 +1111,17 @@
           "newPassword"
         ]
       },
+      "VerificationResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "signedIn": {
+            "type": "boolean"
+          }
+        }
+      },
       "ResetPasswordRequest": {
         "type": "object",
         "description": "Dados para redefinição de senha com token OTT",
@@ -1148,6 +1146,14 @@
           "newPassword",
           "token"
         ]
+      },
+      "MessageResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        }
       },
       "ForgotPasswordRequest": {
         "type": "object",
@@ -1395,6 +1401,10 @@
             "type": "string",
             "description": "Tipo de operação: INSERT, UPDATE ou DELETE",
             "example": "UPDATE"
+          },
+          "before": {
+            "$ref": "#/components/schemas/Response",
+            "description": "Estado anterior do usuário (antes da alteração)"
           },
           "user": {
             "$ref": "#/components/schemas/Response",

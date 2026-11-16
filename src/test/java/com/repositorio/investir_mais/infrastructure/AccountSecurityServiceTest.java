@@ -1,7 +1,7 @@
 package com.repositorio.investir_mais.infrastructure;
 
 import com.repositorio.investir_mais.domain.AccountEmailRequested;
-import com.repositorio.investir_mais.domain.AccountSecurityService;
+import com.repositorio.investir_mais.domain.token.service.AccountSecurityService;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -11,10 +11,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.RedisConnectionFailureException;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseBuilder;
 import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseType;
-import org.springframework.jdbc.support.JdbcTransactionManager;
 import org.springframework.session.FindByIndexNameSessionRepository;
 import org.springframework.session.MapSession;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
@@ -40,6 +38,7 @@ import static org.mockito.Mockito.*;
 class AccountSecurityServiceTest {
     private static final String EMAIL = "user@investir.com";
     @Autowired AccountSecurityService service;
+    @Autowired com.repositorio.investir_mais.domain.token.service.LoginTokenService loginTokens;
     @Autowired JdbcTemplate jdbc;
     @Autowired PlatformTransactionManager transactionManager;
     @Autowired FindByIndexNameSessionRepository<MapSession> sessions;
@@ -207,17 +206,33 @@ class AccountSecurityServiceTest {
         assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM one_time_tokens", Integer.class));
     }
 
+    @Test
+    void concurrentLoginCodeConsumptionSucceedsOnlyOnce() throws Exception {
+        var token = loginTokens.generate(new org.springframework.security.authentication.ott.GenerateOneTimeTokenRequest(EMAIL));
+        var start = new CountDownLatch(1);
+        Callable<Boolean> consume = () -> {
+            start.await();
+            return loginTokens.consume(org.springframework.security.authentication.ott.OneTimeTokenAuthenticationToken
+                    .unauthenticated(token.getTokenValue())) != null;
+        };
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var first = executor.submit(consume);
+            var second = executor.submit(consume);
+            start.countDown();
+            assertEquals(1, List.of(first.get(10, TimeUnit.SECONDS), second.get(10, TimeUnit.SECONDS))
+                    .stream().filter(Boolean::booleanValue).count());
+        }
+    }
+
     @Configuration(proxyBeanMethods = false)
     @EnableTransactionManagement
-    @Import(AccountSecurityService.class)
+    @Import({AccountSecurityService.class, TokenJpaTestConfiguration.class})
     static class Config {
         @Bean(destroyMethod = "shutdown") DataSource dataSource() {
             return new EmbeddedDatabaseBuilder().generateUniqueName(true).setType(EmbeddedDatabaseType.H2)
                     .addScript("classpath:account-security-schema.sql").addScript("classpath:schema-postgresql.sql").build();
         }
         @Bean JdbcTemplate jdbc(DataSource source) { return new JdbcTemplate(source); }
-        @Bean JdbcClient jdbcClient(JdbcTemplate jdbc) { return JdbcClient.create(jdbc); }
-        @Bean PlatformTransactionManager transactionManager(DataSource source) { return new JdbcTransactionManager(source); }
         @Bean @SuppressWarnings("unchecked") FindByIndexNameSessionRepository<MapSession> sessions() {
             return mock(FindByIndexNameSessionRepository.class);
         }

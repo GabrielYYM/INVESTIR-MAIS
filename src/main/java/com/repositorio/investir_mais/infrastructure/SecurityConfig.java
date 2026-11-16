@@ -11,10 +11,8 @@ import org.springframework.core.env.Environment;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.ott.GenerateOneTimeTokenRequest;
-import org.springframework.security.authentication.ott.JdbcOneTimeTokenService;
 import org.springframework.security.authentication.ott.OneTimeTokenAuthenticationToken;
 import org.springframework.security.authentication.ott.OneTimeTokenService;
 import org.springframework.security.config.Customizer;
@@ -73,14 +71,6 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new Argon2PasswordEncoder(16, 32, 1, 19 * 1024, 2);
-    }
-
-    @Bean
-    public OneTimeTokenService loginOneTimeTokenService(JdbcTemplate jdbcTemplate) throws Exception {
-        var tokens = new JdbcOneTimeTokenService(jdbcTemplate);
-        tokens.destroy();
-        tokens.setCleanupCron(null);
-        return tokens;
     }
 
     @Bean

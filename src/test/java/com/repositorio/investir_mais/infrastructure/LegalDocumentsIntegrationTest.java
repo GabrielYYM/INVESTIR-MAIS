@@ -1,6 +1,7 @@
 package com.repositorio.investir_mais.infrastructure;
 
-import com.repositorio.investir_mais.domain.LegalDocumentsService;
+import com.repositorio.investir_mais.domain.legal.service.LegalDocumentsService;
+import com.repositorio.investir_mais.domain.legal.DTO.LegalDocumentDTO;
 import com.repositorio.investir_mais.domain.user.model.User;
 import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.repository.UserRepository;
@@ -92,9 +93,9 @@ class LegalDocumentsIntegrationTest extends PostgreSqlIntegrationTest {
     void newReleaseBlocksAnAlreadyAuthenticatedUserAndRejectsTheOldConfirmation() throws Exception {
         legal.accept(account.getEmail(), 1);
         var original = legal.current();
-        var updated = new LegalDocumentsService.Release(2, original.publishedOn(), original.documents());
+        var updated = new LegalDocumentDTO.Release(2, original.publishedOn(), original.documents());
         String content = json.writeValueAsString(updated);
-        jdbc.update("INSERT INTO legal_document_release VALUES (?, ?, ?, ?)", 2, updated.publishedOn(), content,
+        jdbc.update("INSERT INTO legal_document_release (version, published_on, content, content_hash) VALUES (?, ?, ?, ?)", 2, updated.publishedOn(), content,
                 DigestUtils.sha256Hex(content));
         legal.publishBundledReleases();
         assertEquals(2, legal.current().version());

@@ -1,6 +1,9 @@
 package com.repositorio.investir_mais.infrastructure;
 
 import com.repositorio.investir_mais.domain.education.service.CourseService;
+import com.repositorio.investir_mais.domain.token.controller.AuthenticationController;
+import com.repositorio.investir_mais.domain.token.controller.AccountTokenController;
+import com.repositorio.investir_mais.domain.token.service.AuthenticationService;
 import com.repositorio.investir_mais.domain.user.mapper.UserMapper;
 import com.repositorio.investir_mais.domain.user.controller.UserController;
 import com.repositorio.investir_mais.domain.user.DTO.UserDTO;
@@ -56,7 +59,7 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppC
 
 @ExtendWith(SpringExtension.class)
 @WebAppConfiguration
-@ContextConfiguration(classes = {SecurityConfig.class, AuthenticationController.class, UserController.class, SpringLoginFlowTest.Config.class})
+@ContextConfiguration(classes = {SecurityConfig.class, AuthenticationController.class, AccountTokenController.class, UserController.class, SpringLoginFlowTest.Config.class})
 class SpringLoginFlowTest {
     private static final String EMAIL = "user@investir.com";
     private static final String PASSWORD = "MinhaSenhaSegura123";
@@ -335,6 +338,7 @@ class SpringLoginFlowTest {
 
     @Configuration
     @EnableWebMvc
+    @org.springframework.context.annotation.Import({TokenJpaTestConfiguration.class, AuthenticationService.class})
     @EnableConfigurationProperties(WebApplicationProperties.class)
     static class Config {
         @Bean UserMapper userMapper() {
