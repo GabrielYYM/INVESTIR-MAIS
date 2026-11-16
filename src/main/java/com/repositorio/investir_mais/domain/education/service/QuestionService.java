@@ -40,7 +40,7 @@ public class QuestionService {
         Question question = find(courseId, questionId);
         questionMapper.updateEntity(request, question);
         questions.flush();
-        // A pass on the previous content does not validate the edited question.
+
         userRepository.clearQuestionPasses(questionId);
         return questionMapper.toDTO(question);
     }

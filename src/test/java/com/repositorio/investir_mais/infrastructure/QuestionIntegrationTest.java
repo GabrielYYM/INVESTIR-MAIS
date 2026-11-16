@@ -1,5 +1,6 @@
 package com.repositorio.investir_mais.infrastructure;
 
+import com.repositorio.investir_mais.domain.LegalDocumentsService;
 import com.repositorio.investir_mais.domain.education.DTO.*;
 import com.repositorio.investir_mais.domain.education.model.*;
 import com.repositorio.investir_mais.domain.education.repository.*;
@@ -7,23 +8,34 @@ import com.repositorio.investir_mais.domain.user.model.User;
 import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.repository.UserRepository;
 import jakarta.persistence.EntityManager;
+import java.sql.Timestamp;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import javax.sql.DataSource;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.transaction.annotation.*;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import tools.jackson.databind.ObjectMapper;
-import java.util.List;
-import java.util.UUID;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -41,10 +53,10 @@ class QuestionIntegrationTest extends PostgreSqlIntegrationTest {
     @Autowired CourseRepository courses;
     @Autowired LessonRepository lessons;
     @Autowired QuestionRepository questions;
-    @Autowired javax.sql.DataSource dataSource;
+    @Autowired DataSource dataSource;
     @Autowired EntityManager em;
     @Autowired JdbcTemplate jdbc;
-    @Autowired com.repositorio.investir_mais.domain.LegalDocumentsService legal;
+    @Autowired LegalDocumentsService legal;
     User teacher, student, other, admin;
     Course course;
     Lesson first, second;
@@ -61,7 +73,7 @@ class QuestionIntegrationTest extends PostgreSqlIntegrationTest {
 
     @AfterEach
     void cleanupCommittedFixtures() {
-        if (org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive()) return;
+        if (TransactionSynchronizationManager.isActualTransactionActive()) return;
         jdbc.update("delete from tb_question_pass where question_id in (select id from tb_question where course_id = ?)", course.getId());
         jdbc.update("delete from tb_question where course_id = ?", course.getId());
         jdbc.update("delete from tb_lesson_progress where lesson_id in (select id from tb_lesson where course_id = ?)", course.getId());
@@ -122,7 +134,7 @@ class QuestionIntegrationTest extends PostgreSqlIntegrationTest {
         progress(first, 200);
         mvc.perform(delete(base() + "/" + q.id()).with(as(teacher)).with(csrf())).andExpect(status().isNoContent());
         em.flush(); em.clear(); assertTrue(questions.findById(q.id()).isEmpty());
-        create(2, 0); // adding a question remains permitted after student activity
+        create(2, 0);
     }
 
     @Test
@@ -174,20 +186,20 @@ class QuestionIntegrationTest extends PostgreSqlIntegrationTest {
         em.flush(); em.clear(); courses.deleteById(course.getId()); courses.flush(); em.clear();
         assertTrue(questions.findById(q.id()).isEmpty()); assertEquals(1, passCount());
         assertEquals(0, lessons.countPassedQuestions(course.getId(), student.getId()));
-        assertNotNull(jdbc.queryForObject("select deleted_at from tb_question where id = ?", java.sql.Timestamp.class, q.id()));
+        assertNotNull(jdbc.queryForObject("select deleted_at from tb_question where id = ?", Timestamp.class, q.id()));
     }
 
     @Test
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     void concurrentCorrectAnswersCreateOnePass() throws Exception {
         var q = create(0, 0);
-        var start = new java.util.concurrent.CountDownLatch(1);
-        try (var executor = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor()) {
-            java.util.concurrent.Callable<Boolean> send = () -> {
-                assertTrue(start.await(10, java.util.concurrent.TimeUnit.SECONDS)); return answer(q.id(), 0, 200).passed();
+        var start = new CountDownLatch(1);
+        try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            Callable<Boolean> send = () -> {
+                assertTrue(start.await(10, TimeUnit.SECONDS)); return answer(q.id(), 0, 200).passed();
             };
             var one = executor.submit(send); var two = executor.submit(send); start.countDown();
-            assertTrue(one.get(15, java.util.concurrent.TimeUnit.SECONDS)); assertTrue(two.get(15, java.util.concurrent.TimeUnit.SECONDS));
+            assertTrue(one.get(15, TimeUnit.SECONDS)); assertTrue(two.get(15, TimeUnit.SECONDS));
         }
         assertEquals(1, passCount());
     }
@@ -242,8 +254,8 @@ class QuestionIntegrationTest extends PostgreSqlIntegrationTest {
         var third = lesson(1);
         var question = create(1, 1);
         em.flush();
-        var migration = new org.springframework.jdbc.datasource.init.ResourceDatabasePopulator(
-                new org.springframework.core.io.ClassPathResource("lesson-order-postgresql.sql"));
+        var migration = new ResourceDatabasePopulator(
+                new ClassPathResource("lesson-order-postgresql.sql"));
         migration.execute(dataSource); em.clear();
         assertEquals(List.of(second.getId(), first.getId(), third.getId()),
                 lessons.findAllByCourseIdOrderByPositionAscIdAsc(course.getId()).stream().map(Lesson::getId).toList());
@@ -289,7 +301,7 @@ class QuestionIntegrationTest extends PostgreSqlIntegrationTest {
         return lessons.saveAndFlush(l);
     }
     private RequestPostProcessor as(User u) {
-        return org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user(u.getEmail())
+        return SecurityMockMvcRequestPostProcessors.user(u.getEmail())
                 .authorities(new SimpleGrantedAuthority("ROLE_" + u.getRole()), new SimpleGrantedAuthority("FACTOR_PASSWORD"), new SimpleGrantedAuthority("FACTOR_OTT"));
     }
 }

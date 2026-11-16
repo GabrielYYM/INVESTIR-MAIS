@@ -23,7 +23,6 @@ CREATE TABLE IF NOT EXISTS legal_document_release (
     content_hash varchar(64) NOT NULL
 );
 
--- user_id is a stable reference, without a cascade that could erase the acceptance history.
 CREATE TABLE IF NOT EXISTS legal_document_acceptance (
     user_id uuid NOT NULL,
     version integer NOT NULL REFERENCES legal_document_release(version),

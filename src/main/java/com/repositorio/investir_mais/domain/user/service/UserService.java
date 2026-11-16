@@ -1,27 +1,27 @@
 package com.repositorio.investir_mais.domain.user.service;
 
+import com.repositorio.investir_mais.domain.AccountEmailRequested;
+import com.repositorio.investir_mais.domain.AccountSecurityService;
 import com.repositorio.investir_mais.domain.user.DTO.AuthDTO;
 import com.repositorio.investir_mais.domain.user.DTO.UserDTO;
 import com.repositorio.investir_mais.domain.user.mapper.UserMapper;
 import com.repositorio.investir_mais.domain.user.model.User;
 import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.repository.UserRepository;
-import com.repositorio.investir_mais.domain.AccountEmailRequested;
-import com.repositorio.investir_mais.domain.AccountSecurityService;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.modulith.NamedInterface;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
+import org.springframework.modulith.NamedInterface;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.ott.OneTimeToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.util.List;
-import java.util.UUID;
 
 @NamedInterface("user-service")
 @Service
@@ -205,7 +205,7 @@ public class UserService {
                     : null;
             if (reason != null) {
                 log.warn("Promoção a professor bloqueada: admin={}, usuário={}, data={}, motivo={}",
-                        admin.getId(), targetUser.getId(), java.time.Instant.now(), reason);
+                        admin.getId(), targetUser.getId(), Instant.now(), reason);
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, reason);
             }
         }

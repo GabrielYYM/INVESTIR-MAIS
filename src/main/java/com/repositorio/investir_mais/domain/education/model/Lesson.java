@@ -1,12 +1,11 @@
 package com.repositorio.investir_mais.domain.education.model;
 
 import jakarta.persistence.*;
+import java.util.UUID;
 import lombok.*;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.SoftDelete;
 import org.hibernate.annotations.SoftDeleteType;
-
-import java.util.UUID;
-
 import org.hibernate.validator.constraints.URL;
 
 @Entity
@@ -41,6 +40,6 @@ public class Lesson {
     private Course course;
 
     @Column(nullable = false)
-    @org.hibernate.annotations.ColumnDefault("0")
+    @ColumnDefault("0")
     private int position;
 }

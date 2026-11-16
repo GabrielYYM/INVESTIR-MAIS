@@ -3,7 +3,6 @@ import { http, HttpResponse } from "msw/http";
 import { vi } from "vitest";
 import { origin, server } from "./server.js";
 
-// Defaults stay in server.js; each test declares only the endpoint it changes.
 export function mockApi(method, path, response, { status = 200, headers, once } = {}) {
   const handler = vi.fn(async (info) => {
     const body = typeof response === "function" ? await response(info) : response;

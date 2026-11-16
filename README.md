@@ -224,6 +224,7 @@ A suíte inclui testes do fluxo de login com H2 e Redis simulado, além de teste
 - [Perguntas, progressão e ordem das aulas](docs/questions.md)
 - [Vídeos do YouTube e limites da validação](docs/video-validation.md)
 - [Publicação e versionamento dos documentos legais](docs/documentos-legais.md)
+- [Correção de identificadores da auditoria em bancos existentes](docs/auditoria-revisoes.md)
 - [Apresentação e roteiro dos slides](docs/apresentacao.md)
 - [Auditoria histórica de frontend e segurança](docs/auditoria-frontend-seguranca.md)
 - [Privacidade e dados pessoais](docs/lgpd/README.md)

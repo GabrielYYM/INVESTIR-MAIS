@@ -1,7 +1,6 @@
 import { apiClient } from "./api";
 import * as account from "../generated/account.ts";
 
-// These endpoints are Spring Security filters, outside the controller OpenAPI contract.
 export async function login(email, password, retorno) {
   await apiClient.post("/auth/login", new URLSearchParams({ email, password, retorno }));
 }

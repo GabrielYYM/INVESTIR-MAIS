@@ -1,5 +1,6 @@
 package com.repositorio.investir_mais.infrastructure;
 
+import com.repositorio.investir_mais.domain.LegalDocumentsService;
 import com.repositorio.investir_mais.domain.education.DTO.LessonDTO;
 import com.repositorio.investir_mais.domain.education.mapper.LessonMapper;
 import com.repositorio.investir_mais.domain.education.model.Course;
@@ -11,6 +12,13 @@ import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.repository.UserRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,13 +32,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.testcontainers.junit.jupiter.Testcontainers;
-
-import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -46,7 +47,7 @@ class LessonConcurrentRequestsIntegrationTest extends PostgreSqlIntegrationTest 
     private static final String EMAIL = "concurrent-lesson@example.test";
     @Autowired private MockMvc mvc;
     @Autowired private UserRepository users;
-    @Autowired private com.repositorio.investir_mais.domain.LegalDocumentsService legal;
+    @Autowired private LegalDocumentsService legal;
     @Autowired private CourseRepository courses;
     @MockitoSpyBean private LessonRepository lessons;
     @MockitoSpyBean private LessonMapper mapper;
@@ -109,7 +110,7 @@ class LessonConcurrentRequestsIntegrationTest extends PostgreSqlIntegrationTest 
                           """);
                 return mvc.perform(request.with(csrf())).andReturn();
             }));
-            java.util.concurrent.Future<MvcResult> second;
+            Future<MvcResult> second;
             try {
                 assertTrue(writeStarted.await(5, TimeUnit.SECONDS));
                 var deleteStarted = new CountDownLatch(1);

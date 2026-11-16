@@ -28,11 +28,11 @@ public class LegalAcceptanceConfiguration implements WebMvcConfigurer {
         registry.addInterceptor(new HandlerInterceptor() {
             @Override
             public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
-                // Use the matched controller pattern so encoded paths cannot evade this check.
+
                 String pattern = (String) request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
                 if (pattern == null || pattern.startsWith("/api/legal/") || PUBLIC_ACCOUNT_ROUTES.contains(pattern)
                         || request.getUserPrincipal() == null) return true;
-                // Keep account access, security and deletion available when the user declines the new documents.
+
                 if (("/api/users/{id}".equals(pattern) && Set.of("GET", "PUT", "DELETE").contains(request.getMethod()))
                         || "/api/users/update-password".equals(pattern)) return true;
                 if (legal.status(request.getUserPrincipal().getName()).acceptanceRequired()) {

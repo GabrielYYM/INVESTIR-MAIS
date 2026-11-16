@@ -12,6 +12,7 @@ planejada; o produto implementado concentra conta, catálogo educacional e progr
 | [Vídeos do YouTube](video-validation.md) | Validação local de links e limites de autoria, conteúdo e disponibilidade. |
 | [Documentos legais](documentos-legais.md) | Versões imutáveis no banco, novos aceites e procedimento de publicação. |
 | [Privacidade: estado técnico](lgpd/README.md) | Dados persistidos, controles implementados e limitações. |
+| [Revisões da auditoria](auditoria-revisoes.md) | Correção da sequência Envers em bancos com histórico anterior. |
 | [Apresentação](apresentacao.md) | Slides no Canva, escopo e roteiro técnico atualizado. |
 | [Monografia em elaboração](monografia.md) | Texto acadêmico e requisitos; contém partes ainda propostas. |
 | [Auditoria histórica do frontend](auditoria-frontend-seguranca.md) | Registro de uma revisão anterior, sem atestar o estado atual da implantação. |

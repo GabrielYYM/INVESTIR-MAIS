@@ -37,6 +37,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         }
         for (Throwable cause = ex.getCause(); cause != null; cause = cause.getCause()) {
             if (cause instanceof ConstraintViolationException violation) {
+                if ("revinfo_pkey".equalsIgnoreCase(violation.getConstraintName())) {
+                    return handleGenericException(ex);
+                }
                 return switch (violation.getKind()) {
                     case UNIQUE -> ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "Já existe um registro com esses dados.");
                     case FOREIGN_KEY -> ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "A operação conflita com registros relacionados.");

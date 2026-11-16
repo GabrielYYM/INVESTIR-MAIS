@@ -31,7 +31,7 @@ export default function DeleteAccountDialog({
     if (!consent || step !== 2) return;
     try {
       await deleteAccount(user.id, password);
-      await logout().catch(() => {}); // Account deletion already revokes its sessions.
+      await logout().catch(() => {});
       window.location.href = "/entrar?contaExcluida=true";
     } catch (error) {
       form.setError("root", {

@@ -13,6 +13,10 @@ import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.service.UserService;
 import com.repositorio.investir_mais.infrastructure.SecurityConfig;
 import jakarta.persistence.EntityManager;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,10 +39,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.sql.Timestamp;
-import java.time.Instant;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -109,7 +109,7 @@ class UserSoftDeleteTest {
         service.resendVerification(deleted.getEmail());
         assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM app_one_time_token", Integer.class));
         var conflict = assertThrows(ResponseStatusException.class, () -> service.registerUser(
-                new UserDTO.Request("Novo usuário", java.time.LocalDate.now().minusYears(25), deleted.getEmail(), PASSWORD, UserRole.STUDENT)));
+                new UserDTO.Request("Novo usuário", LocalDate.now().minusYears(25), deleted.getEmail(), PASSWORD, UserRole.STUDENT)));
         assertEquals(409, conflict.getStatusCode().value());
     }
 

@@ -1,11 +1,12 @@
 package com.repositorio.investir_mais.domain.education.service;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 import java.util.Set;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 public record YouTubeVideoUrl(String id) {
     private static final Set<String> HOSTS = Set.of("youtube.com", "www.youtube.com", "m.youtube.com", "youtube-nocookie.com", "www.youtube-nocookie.com");
@@ -14,7 +15,7 @@ public record YouTubeVideoUrl(String id) {
             URI uri = URI.create(value);
             String scheme = uri.getScheme();
             if (!("https".equalsIgnoreCase(scheme) || "http".equalsIgnoreCase(scheme)) || uri.getUserInfo() != null || uri.getPort() != -1) throw new IllegalArgumentException();
-            String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase(java.util.Locale.ROOT);
+            String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase(Locale.ROOT);
             String id = null;
             if ("youtu.be".equals(host) && uri.getPath().matches("/[A-Za-z0-9_-]{11}/?")) id = uri.getPath().substring(1, 12);
             else if (HOSTS.contains(host)) {

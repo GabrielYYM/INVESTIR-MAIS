@@ -50,7 +50,7 @@ public class UserController {
     @PostMapping("/users/register")
     @ResponseStatus(HttpStatus.ACCEPTED)
     public Map<String, String> registerUser(@Valid @RequestBody UserDTO.Request dto, HttpServletRequest request) {
-        // Create a session even on a duplicate so the cookie does not reveal which accounts exist.
+
         var session = request.getSession();
         try {
             var token = userService.registerUser(dto);
