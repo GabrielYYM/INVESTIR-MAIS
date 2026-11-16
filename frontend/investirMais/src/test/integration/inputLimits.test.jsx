@@ -49,15 +49,14 @@ describe("limites de entrada compatíveis com a API", () => {
     await user.type(await screen.findByLabelText("Código de recuperação"), "codigo-teste");
     const password = screen.getByLabelText("Nova senha", { exact: true });
     const confirmation = screen.getByLabelText("Confirme a nova senha");
-    const validPassword = "Aa1!" + "x".repeat(96);
-    fireEvent.change(password, { target: { value: validPassword + "x" } });
-    fireEvent.change(confirmation, { target: { value: validPassword + "x" } });
+    fireEvent.change(password, { target: { value: "x".repeat(4097) } });
+    fireEvent.change(confirmation, { target: { value: "x".repeat(4097) } });
     await user.click(screen.getByRole("button", { name: "Redefinir senha" }));
     expect(await screen.findByText("A senha deve ter no máximo 100 caracteres.")).toBeInTheDocument();
     expect(reset).not.toHaveBeenCalled();
 
-    fireEvent.change(password, { target: { value: validPassword } });
-    fireEvent.change(confirmation, { target: { value: validPassword } });
+    fireEvent.change(password, { target: { value: "x".repeat(4096) } });
+    fireEvent.change(confirmation, { target: { value: "x".repeat(4096) } });
     await user.click(screen.getByRole("button", { name: "Redefinir senha" }));
     expect(await screen.findByRole("heading", { name: "Senha atualizada" })).toBeInTheDocument();
     expect(reset).toHaveBeenCalledOnce();
