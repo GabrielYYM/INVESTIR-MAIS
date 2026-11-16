@@ -2,6 +2,7 @@ package com.repositorio.investir_mais.domain.education.service;
 
 import com.repositorio.investir_mais.domain.education.DTO.CourseDTO;
 import com.repositorio.investir_mais.domain.education.mapper.CourseMapper;
+import com.repositorio.investir_mais.domain.education.mapper.QuestionMapper;
 import com.repositorio.investir_mais.domain.education.model.Course;
 import com.repositorio.investir_mais.domain.education.repository.CourseRepository;
 import com.repositorio.investir_mais.domain.user.model.User;
@@ -35,6 +36,8 @@ class CourseServiceTest {
     private CourseRepository courseRepository;
     @Mock
     private CourseMapper courseMapper;
+    @Mock
+    private QuestionMapper questionMapper;
     @Mock
     private UserService userService;
 

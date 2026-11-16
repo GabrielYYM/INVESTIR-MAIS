@@ -39,4 +39,8 @@ public class Lesson {
     @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "course_id", nullable = false)
     private Course course;
+
+    @Column(nullable = false)
+    @org.hibernate.annotations.ColumnDefault("0")
+    private int position;
 }

@@ -9,9 +9,19 @@ import com.repositorio.investir_mais.domain.user.repository.UserRepository;
 import com.repositorio.investir_mais.domain.AccountEmailRequested;
 import org.springframework.context.ApplicationEventPublisher;
 import com.repositorio.investir_mais.domain.AccountSecurityService;
+import com.repositorio.investir_mais.domain.user.controller.UserController;
+import com.repositorio.investir_mais.domain.education.service.CourseService;
+import com.repositorio.investir_mais.infrastructure.exception.GlobalExceptionHandler;
+import org.springframework.security.web.csrf.CsrfTokenRepository;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.http.MediaType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import java.time.LocalDate;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -30,6 +40,8 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
@@ -82,7 +94,7 @@ class UserServiceTest {
 
     @Test
     void registerUser_WhenRoleIsAdmin_ShouldThrowBadRequest() {
-        UserDTO.Request dto = new UserDTO.Request("Admin", 30, "admin@investir.com", "password123", UserRole.ADMIN);
+        UserDTO.Request dto = new UserDTO.Request("Admin", java.time.LocalDate.now().minusYears(30), "admin@investir.com", "password123", UserRole.ADMIN);
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class, 
             () -> userService.registerUser(dto));
@@ -93,7 +105,7 @@ class UserServiceTest {
 
     @Test
     void registerUser_WhenRoleIsTeacher_ShouldThrowBadRequest() {
-        UserDTO.Request dto = new UserDTO.Request("Professor", 30, "teacher@investir.com", "password123", UserRole.TEACHER);
+        UserDTO.Request dto = new UserDTO.Request("Professor", java.time.LocalDate.now().minusYears(30), "teacher@investir.com", "password123", UserRole.TEACHER);
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
             () -> userService.registerUser(dto));
@@ -104,7 +116,7 @@ class UserServiceTest {
 
     @Test
     void registerUser_WhenEmailExists_ShouldRejectWithoutPublishingEmail() {
-        var dto = new UserDTO.Request("Felipe", 22, user.getEmail(), "password123", UserRole.STUDENT);
+        var dto = new UserDTO.Request("Felipe", java.time.LocalDate.now().minusYears(22), user.getEmail(), "password123", UserRole.STUDENT);
         when(userRepository.existsByEmailIncludingDeleted(dto.email())).thenReturn(true);
 
         var exception = assertThrows(ResponseStatusException.class, () -> userService.registerUser(dto));
@@ -115,7 +127,7 @@ class UserServiceTest {
 
     @Test
     void updateProfile_WhenEmailBelongsToAnotherUser_ShouldRejectBeforeChangingProfile() {
-        var dto = new UserDTO.UpdateProfileRequest("Outro nome", "other@investir.com", 30, "correct-password");
+        var dto = new UserDTO.UpdateProfileRequest("Outro nome", "other@investir.com", java.time.LocalDate.now().minusYears(30), "correct-password");
         when(userRepository.findForUpdateByEmail(user.getEmail())).thenReturn(Optional.of(user));
         when(userRepository.existsByEmailAndIdNot(dto.email(), user.getId())).thenReturn(true);
         when(passwordEncoder.matches("correct-password", "encoded_password")).thenReturn(true);
@@ -131,7 +143,7 @@ class UserServiceTest {
 
     @Test
     void updateProfile_WhenConfirmationPasswordIsWrong_ShouldNotChangeAccount() {
-        var dto = new UserDTO.UpdateProfileRequest("Outro nome", "other@investir.com", 30, "wrong-password");
+        var dto = new UserDTO.UpdateProfileRequest("Outro nome", "other@investir.com", java.time.LocalDate.now().minusYears(30), "wrong-password");
         when(userRepository.findForUpdateByEmail(user.getEmail())).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("wrong-password", "encoded_password")).thenReturn(false);
 
@@ -147,7 +159,7 @@ class UserServiceTest {
 
     @Test
     void registerUser_OnSuccess_ShouldSaveAndSendOtt() {
-        UserDTO.Request dto = new UserDTO.Request("Felipe", 22, "felipe@investir.com", "password123", UserRole.STUDENT);
+        UserDTO.Request dto = new UserDTO.Request("Felipe", java.time.LocalDate.now().minusYears(22), "felipe@investir.com", "password123", UserRole.STUDENT);
         OneTimeToken ott = new DefaultOneTimeToken("token-123", "felipe@investir.com", Instant.now().plusSeconds(300));
 
         when(userRepository.existsByEmailIncludingDeleted("felipe@investir.com")).thenReturn(false);
@@ -229,10 +241,10 @@ class UserServiceTest {
     void updateProfile_WhenEmailChanges_ShouldRequireVerificationAndSendLink() {
         UUID userId = user.getId();
         user.setEmailVerified(true);
-        UserDTO.UpdateProfileRequest dto = new UserDTO.UpdateProfileRequest("Felipe", "novo@investir.com", 22, "correct-password");
+        UserDTO.UpdateProfileRequest dto = new UserDTO.UpdateProfileRequest("Felipe", "novo@investir.com", java.time.LocalDate.now().minusYears(22), "correct-password");
         when(passwordEncoder.matches("correct-password", "encoded_password")).thenReturn(true);
         UserDTO.Response response = new UserDTO.Response(
-            userId, "Felipe", 22, "novo@investir.com", UserRole.STUDENT, false, LocalDateTime.now());
+            userId, "Felipe", 22, null, "novo@investir.com", UserRole.STUDENT, false, LocalDateTime.now());
         OneTimeToken ott = new DefaultOneTimeToken(
             "verification-token", "novo@investir.com", Instant.now().plusSeconds(300));
 
@@ -306,7 +318,7 @@ class UserServiceTest {
     void listAllUsers_ShouldReturnMappedUsers() {
         when(userRepository.findAll()).thenReturn(List.of(user));
         UserDTO.Response response = new UserDTO.Response(
-            user.getId(), user.getName(), user.getAge(), user.getEmail(), user.getRole(), user.isEmailVerified(), LocalDateTime.now()
+            user.getId(), user.getName(), user.getAge(), null, user.getEmail(), user.getRole(), user.isEmailVerified(), LocalDateTime.now()
         );
         when(userMapper.toDTO(user)).thenReturn(response);
 
@@ -332,7 +344,7 @@ class UserServiceTest {
     void updateUserRole_WhenTargetUserIsAdmin_ShouldThrowBadRequest() {
         UUID adminId = user.getId();
         user.setRole(UserRole.ADMIN);
-        when(userRepository.findById(adminId)).thenReturn(Optional.of(user));
+        when(userRepository.findForUpdateById(adminId)).thenReturn(Optional.of(user));
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
             () -> userService.updateUserRole("admin@investir.com", adminId, UserRole.STUDENT));
@@ -342,19 +354,21 @@ class UserServiceTest {
         verify(userRepository, never()).save(any());
     }
 
-    @Test
-    void updateUserRole_WhenValid_ShouldUpdateRoleAndRevokeSessions() {
+    @ParameterizedTest
+    @ValueSource(ints = {18, 25})
+    void updateUserRole_WhenValid_ShouldUpdateRoleAndRevokeSessions(int age) {
+        user.setBirthDate(LocalDate.now().minusYears(age));
         UUID targetId = user.getId();
         User admin = new User();
         admin.setId(UUID.randomUUID());
         admin.setEmail("admin@investir.com");
         admin.setRole(UserRole.ADMIN);
 
-        when(userRepository.findById(targetId)).thenReturn(Optional.of(user));
+        when(userRepository.findForUpdateById(targetId)).thenReturn(Optional.of(user));
         when(userRepository.findByEmail("admin@investir.com")).thenReturn(Optional.of(admin));
         when(userRepository.save(user)).thenReturn(user);
         UserDTO.Response response = new UserDTO.Response(
-            targetId, user.getName(), user.getAge(), user.getEmail(), UserRole.TEACHER, user.isEmailVerified(), LocalDateTime.now()
+            targetId, user.getName(), user.getAge(), null, user.getEmail(), UserRole.TEACHER, user.isEmailVerified(), LocalDateTime.now()
         );
         when(userMapper.toDTO(user)).thenReturn(response);
 
@@ -363,5 +377,67 @@ class UserServiceTest {
         assertEquals(UserRole.TEACHER, user.getRole());
         verify(userRepository).save(user);
         verify(accountSecurity).revokeAllSessions(user.getEmail());
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(ints = {0, 17})
+    void updateUserRole_WhenTooYoungOrBirthDateMissing_ShouldNotChangeRole(Integer age) {
+        user.setAge(30); // Legacy age alone must not authorize promotion.
+        user.setBirthDate(age == null ? null : LocalDate.now().minusYears(age));
+        when(userRepository.findForUpdateById(user.getId())).thenReturn(Optional.of(user));
+        User admin = new User();
+        admin.setId(UUID.randomUUID());
+        when(userRepository.findByEmail("admin@investir.com")).thenReturn(Optional.of(admin));
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> userService.updateUserRole("admin@investir.com", user.getId(), UserRole.TEACHER));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals(age == null
+                ? "Este usuário não tem data de nascimento cadastrada. Não é possível verificar a idade mínima para professor."
+                : "Este usuário não pode ser promovido a professor porque tem menos de 18 anos.", ex.getReason());
+        assertEquals(UserRole.STUDENT, user.getRole());
+        verify(userRepository, never()).save(any());
+        verifyNoInteractions(accountSecurity);
+    }
+
+    @Test
+    void updateUserRole_OneDayBeforeEighteenthBirthday_ShouldRejectPromotion() {
+        user.setBirthDate(LocalDate.now().minusYears(18).plusDays(1));
+        when(userRepository.findForUpdateById(user.getId())).thenReturn(Optional.of(user));
+        when(userRepository.findByEmail("admin@investir.com")).thenReturn(Optional.of(new User()));
+        assertThrows(ResponseStatusException.class,
+                () -> userService.updateUserRole("admin@investir.com", user.getId(), UserRole.TEACHER));
+        verify(userRepository, never()).save(any());
+        verifyNoInteractions(accountSecurity);
+    }
+
+    @Test
+    void updateUserRole_WithoutBirthDate_ShouldStillAllowDemotion() {
+        user.setRole(UserRole.TEACHER);
+        when(userRepository.findForUpdateById(user.getId())).thenReturn(Optional.of(user));
+        when(userRepository.findByEmail("admin@investir.com")).thenReturn(Optional.of(new User()));
+        when(userRepository.save(user)).thenReturn(user);
+        userService.updateUserRole("admin@investir.com", user.getId(), UserRole.STUDENT);
+        assertEquals(UserRole.STUDENT, user.getRole());
+        verify(accountSecurity).revokeAllSessions(user.getEmail());
+    }
+
+    @Test
+    void updateUserRole_DirectHttpRequestForMinor_ShouldReturnBadRequest() throws Exception {
+        user.setBirthDate(LocalDate.now().minusYears(17));
+        when(userRepository.findForUpdateById(user.getId())).thenReturn(Optional.of(user));
+        when(userRepository.findByEmail("admin@investir.com")).thenReturn(Optional.of(new User()));
+        var mvc = MockMvcBuilders.standaloneSetup(new UserController(userService,
+                mock(CourseService.class), mock(CsrfTokenRepository.class)))
+                .setControllerAdvice(new GlobalExceptionHandler()).build();
+
+        mvc.perform(patch("/api/users/{id}/role", user.getId()).principal(() -> "admin@investir.com")
+                .contentType(MediaType.APPLICATION_JSON).content("{\"role\":\"TEACHER\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Este usuário não pode ser promovido a professor porque tem menos de 18 anos."));
+        verify(userRepository, never()).save(any());
+        verifyNoInteractions(accountSecurity);
     }
 }

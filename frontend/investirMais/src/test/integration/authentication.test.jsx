@@ -4,10 +4,10 @@ import { describe, expect, it, vi } from "vitest";
 import { renderApp } from "../renderApp.jsx";
 import { origin, server } from "../server.js";
 import { student } from "../fixtures.js";
+import { fillFields, mockApi } from "../helpers.js";
 
 async function fillCredentials(user) {
-  await user.type(screen.getByLabelText("E-mail"), "  ana@example.test  ");
-  await user.type(screen.getByLabelText("Senha", { exact: true }), "senha-teste");
+  await fillFields(user, { "E-mail": "  ana@example.test  ", Senha: "senha-teste" });
   await user.click(screen.getByRole("button", { name: "Continuar" }));
 }
 
@@ -16,8 +16,7 @@ describe("confirmação do cadastro", () => {
     [true, "Olá, Ana.", "/"],
     [false, "E-mail confirmado!", "/confirmar-email"],
   ])("respeita a sessão retornada pelo servidor (%s)", async (signedIn, heading, path) => {
-    const confirm = vi.fn(() => HttpResponse.json({ signedIn }));
-    server.use(http.post(origin + "/api/users/verify-email", confirm));
+    const confirm = mockApi("post", "/api/users/verify-email", { signedIn });
     const { user, router } = renderApp("/confirmar-email?token=token-teste");
     expect(confirm).not.toHaveBeenCalled();
 
@@ -31,8 +30,7 @@ describe("confirmação do cadastro", () => {
 
 describe("login com senha e código", () => {
   it("valida campos obrigatórios sem enviar credenciais", async () => {
-    const request = vi.fn(() => new HttpResponse(null, { status: 204 }));
-    server.use(http.post(origin + "/auth/login", request));
+    const request = mockApi("post", "/auth/login", null, { status: 204 });
     const { user } = renderApp("/entrar");
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     expect(await screen.findByText("Informe seu e-mail.")).toBeInTheDocument();
@@ -77,7 +75,7 @@ describe("login com senha e código", () => {
     [403, { detail: "Confirme seu e-mail." }, "Confirme seu e-mail."],
     [429, {}, "Muitas tentativas. Aguarde 45 s e tente novamente."],
   ])("exibe a falha HTTP %i e mantém o formulário", async (status, body, message) => {
-    server.use(http.post(origin + "/auth/login", () => HttpResponse.json(body, { status, headers: { "Retry-After": "45" } })));
+    mockApi("post", "/auth/login", body, { status, headers: { "Retry-After": "45" } });
     const { user } = renderApp("/entrar");
     await fillCredentials(user);
     expect(await screen.findByRole("alert")).toHaveTextContent(message);
@@ -85,10 +83,8 @@ describe("login com senha e código", () => {
   });
 
   it("valida código obrigatório e permite corrigir código recusado", async () => {
-    server.use(
-      http.post(origin + "/auth/login", () => new HttpResponse(null, { status: 204 })),
-      http.post(origin + "/auth/verify-2fa", () => HttpResponse.json({}, { status: 401 })),
-    );
+    mockApi("post", "/auth/login", null, { status: 204 });
+    mockApi("post", "/auth/verify-2fa", {}, { status: 401 });
     const { user } = renderApp("/entrar");
     await fillCredentials(user);
     await user.click(await screen.findByText("Usar código manualmente"));
@@ -134,8 +130,7 @@ describe("link de acesso recebido por e-mail", () => {
   });
 
   it("oferece novo login quando não há token", async () => {
-    const verify = vi.fn();
-    server.use(http.post(origin + "/auth/verify-2fa", verify));
+    const verify = mockApi("post", "/auth/verify-2fa", null, { status: 204 });
     renderApp("/entrar/link?retorno=%2Fperfil");
     expect(screen.getByRole("alert")).toHaveTextContent("Abra o link enviado por e-mail ou entre novamente");
     expect(screen.getByRole("link", { name: "Voltar para entrar" })).toHaveAttribute("href", "/entrar?retorno=%2Fperfil");
@@ -143,7 +138,7 @@ describe("link de acesso recebido por e-mail", () => {
   });
 
   it("explica a expiração do link sem reenviar o token", async () => {
-    server.use(http.post(origin + "/auth/verify-2fa", () => HttpResponse.json({}, { status: 401 })));
+    mockApi("post", "/auth/verify-2fa", {}, { status: 401 });
     renderApp("/entrar/link#ott=expirado");
     expect(await screen.findByRole("alert")).toHaveTextContent("O link expirou ou não pertence a esta sessão");
     expect(window.location.hash).toBe("");

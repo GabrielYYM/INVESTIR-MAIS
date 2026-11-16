@@ -3,6 +3,8 @@ package com.repositorio.investir_mais.domain.education.DTO;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -19,8 +21,11 @@ public class CourseDTO {
         @Schema(description = "Descrição detalhada sobre o conteúdo do curso", example = "Aprenda os conceitos básicos de renda fixa e variável.")
         @NotBlank(message = "A descrição é obrigatória") 
         @Size(max = 10000)
-        String description
-    ) {}
+        String description,
+        @Size(max = 100) List<QuestionDTO.@NotNull @Valid Request> questions
+    ) {
+        public Request(String name, String description) { this(name, description, null); }
+    }
 
     @Schema(name = "CourseResponse", description = "Resposta com dados do curso")
     public record Response(
@@ -100,6 +105,13 @@ public class CourseDTO {
         long totalLessons,
         long completedLessons,
         double progressPercentage,
-        List<UUID> completedLessonIds
-    ) {}
+        List<UUID> completedLessonIds,
+        long totalQuestions,
+        long passedQuestions
+    ) {
+        public CourseProgressResponse(UUID courseId, boolean enrolled, long totalLessons, long completedLessons,
+                                      double progressPercentage, List<UUID> completedLessonIds) {
+            this(courseId, enrolled, totalLessons, completedLessons, progressPercentage, completedLessonIds, 0, 0);
+        }
+    }
 }

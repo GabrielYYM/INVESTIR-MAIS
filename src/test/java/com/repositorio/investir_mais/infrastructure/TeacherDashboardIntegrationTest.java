@@ -59,6 +59,7 @@ class TeacherDashboardIntegrationTest extends PostgreSqlIntegrationTest {
     @Autowired private JdbcTemplate jdbc;
     @Autowired private EntityManager entityManager;
     @Autowired private UserRepository users;
+    @Autowired private com.repositorio.investir_mais.domain.LegalDocumentsService legal;
     @Autowired private CourseRepository courses;
     @Autowired private LessonRepository lessons;
 
@@ -221,7 +222,9 @@ class TeacherDashboardIntegrationTest extends PostgreSqlIntegrationTest {
         account.setPassword("unused-test-password");
         account.setRole(role);
         account.setEmailVerified(true);
-        return users.saveAndFlush(account);
+        account = users.saveAndFlush(account);
+        legal.accept(account.getEmail(), legal.current().version());
+        return account;
     }
 
     private Course createCourse(User professor, String name) {

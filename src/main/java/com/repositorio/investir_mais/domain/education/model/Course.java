@@ -39,7 +39,12 @@ public class Course {
     private User professor;
 
     @OneToMany(mappedBy = "course", cascade = CascadeType.REMOVE)
+    @OrderBy("position ASC, id ASC")
     private List<Lesson> lessons = new ArrayList<>();
+
+    @OneToMany(mappedBy = "course", cascade = CascadeType.ALL)
+    @OrderBy("afterLesson ASC, position ASC, id ASC")
+    private List<Question> questions = new ArrayList<>();
 
     @CreatedDate
     @Column(updatable = false)

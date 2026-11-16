@@ -2,9 +2,9 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
-import { Field } from "../../components/FormFields.jsx";
-import { CourseCard, Pagination } from "../../components/EducationParts.jsx";
-import { Notice, PendingPage } from "../../components/PageState.jsx";
+import { Field } from "../../components/ui/FormFields.jsx";
+import { CourseCard, Pagination } from "../../components/education/EducationParts.jsx";
+import { Notice, PendingPage } from "../../components/ui/PageState.jsx";
 import { course } from "../fixtures.js";
 
 describe("campos de formulário", () => {
@@ -12,7 +12,7 @@ describe("campos de formulário", () => {
     render(<Field label="E-mail" type="email" hint="Use seu endereço pessoal." />);
     const input = screen.getByRole("textbox", { name: "E-mail" });
     expect(input).toHaveAccessibleDescription("Use seu endereço pessoal.");
-    expect(input).not.toHaveAttribute("aria-invalid");
+    expect(input).toHaveAttribute("aria-invalid", "false");
   });
 
   it("prioriza a mensagem de validação e marca o campo inválido", () => {

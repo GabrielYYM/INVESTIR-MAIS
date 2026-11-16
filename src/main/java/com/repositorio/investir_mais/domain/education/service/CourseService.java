@@ -2,6 +2,7 @@ package com.repositorio.investir_mais.domain.education.service;
 
 import com.repositorio.investir_mais.domain.education.DTO.CourseDTO;
 import com.repositorio.investir_mais.domain.education.mapper.CourseMapper;
+import com.repositorio.investir_mais.domain.education.mapper.QuestionMapper;
 import com.repositorio.investir_mais.domain.education.model.Course;
 import com.repositorio.investir_mais.domain.education.repository.CourseRepository;
 import com.repositorio.investir_mais.domain.education.repository.LessonRepository;
@@ -33,6 +34,7 @@ public class CourseService {
     private final CourseRepository courseRepository;
     private final LessonRepository lessonRepository;
     private final CourseMapper courseMapper;
+    private final QuestionMapper questionMapper;
     private final UserService userService;
 
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
@@ -40,6 +42,10 @@ public class CourseService {
         User professor = userService.findByEmail(principalName);
         Course course = courseMapper.toEntity(request);
         course.setProfessor(professor);
+        if (request.questions() != null) {
+            request.questions().forEach(q -> course.getQuestions().add(
+                    questionMapper.toEntity(course, q)));
+        }
         
         Course savedCourse = courseRepository.save(course);
         log.info("Novo curso criado com sucesso. ID: {}, Professor ID: {}", savedCourse.getId(), professor.getId());
@@ -137,6 +143,9 @@ public class CourseService {
 
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public CourseDTO.Response updateCourse(UUID courseId, CourseDTO.Request request, String principalName) {
+        if (request.questions() != null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Altere perguntas pelas rotas de questions para preservar respostas existentes.");
+        }
         Course course = findCourseOwnedBy(courseId, principalName);
         courseMapper.updateEntity(request, course);
         
@@ -154,11 +163,7 @@ public class CourseService {
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public Course findCourseOwnedBy(UUID courseId, String principalName) {
         User professor = userService.findByEmail(principalName);
-        Course course = courseRepository.findForUpdateById(courseId)
-            .orElseThrow(() -> {
-                log.warn("Tentativa de alterar/excluir curso inexistente. ID: {}", courseId);
-                return new ResponseStatusException(HttpStatus.NOT_FOUND, "Curso não encontrado.");
-            });
+        Course course = findCourseForProgressUpdate(courseId);
 
         if (professor.getRole() != UserRole.ADMIN
                 && !course.getProfessor().getId().equals(professor.getId())) {
@@ -173,19 +178,28 @@ public class CourseService {
         long totalLessons = lessonRepository.countByCourseId(courseId);
         List<UUID> completedLessonIds = lessonRepository.findCompletedLessonIds(studentId, courseId);
         long completedLessons = completedLessonIds.size();
+        long totalQuestions = lessonRepository.countQuestions(courseId);
+        long passedQuestions = lessonRepository.countPassedQuestions(courseId, studentId);
 
         return new CourseDTO.CourseProgressResponse(
                 courseId,
                 enrolled,
                 totalLessons,
                 completedLessons,
-                CourseDTO.CourseStats.completionPercentage(completedLessons, totalLessons),
-                completedLessonIds
+                CourseDTO.CourseStats.completionPercentage(completedLessons + passedQuestions, totalLessons + totalQuestions),
+                completedLessonIds,
+                totalQuestions,
+                passedQuestions
         );
     }
 
     Course findCourseOrThrow(UUID courseId) {
         return courseRepository.findById(courseId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Curso não encontrado."));
+    }
+
+    Course findCourseForProgressUpdate(UUID courseId) {
+        return courseRepository.findForUpdateById(courseId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Curso não encontrado."));
     }
 }

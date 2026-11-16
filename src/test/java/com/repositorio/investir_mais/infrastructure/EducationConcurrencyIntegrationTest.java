@@ -67,7 +67,7 @@ class EducationConcurrencyIntegrationTest extends PostgreSqlIntegrationTest {
 
         try (var executor = Executors.newFixedThreadPool(2)) {
             var creation = executor.submit(new DelegatingSecurityContextCallable<>(() -> lessonService.createLesson(
-                    courseId, new LessonDTO.Request("Aula concorrente", "Descrição", "https://example.test/video",
+                    courseId, new LessonDTO.Request("Aula concorrente", "Descrição", "https://youtu.be/dQw4w9WgXcQ",
                             "https://example.test/thumbnail"), EMAIL)));
             assertTrue(beforeInsert.await(5, TimeUnit.SECONDS));
             var deletionStarted = new CountDownLatch(1);

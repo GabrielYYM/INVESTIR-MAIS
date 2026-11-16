@@ -46,6 +46,7 @@ class LessonConcurrentRequestsIntegrationTest extends PostgreSqlIntegrationTest 
     private static final String EMAIL = "concurrent-lesson@example.test";
     @Autowired private MockMvc mvc;
     @Autowired private UserRepository users;
+    @Autowired private com.repositorio.investir_mais.domain.LegalDocumentsService legal;
     @Autowired private CourseRepository courses;
     @MockitoSpyBean private LessonRepository lessons;
     @MockitoSpyBean private LessonMapper mapper;
@@ -65,6 +66,7 @@ class LessonConcurrentRequestsIntegrationTest extends PostgreSqlIntegrationTest 
             user.setEmailVerified(true);
             return users.saveAndFlush(user);
         });
+        legal.accept(owner.getEmail(), legal.current().version());
         var course = new Course();
         course.setName("Curso de teste");
         course.setDescription("Exclusões e edições concorrentes");
@@ -73,7 +75,7 @@ class LessonConcurrentRequestsIntegrationTest extends PostgreSqlIntegrationTest 
         var lesson = new Lesson();
         lesson.setTitle("Aula de teste");
         lesson.setDescription("Descrição da aula");
-        lesson.setMediaUrl("https://example.test/video");
+        lesson.setMediaUrl("https://youtu.be/dQw4w9WgXcQ");
         lesson.setThumbnailUrl("https://example.test/thumbnail");
         lesson.setCourse(course);
         UUID lessonId = lessons.saveAndFlush(lesson).getId();
@@ -103,7 +105,7 @@ class LessonConcurrentRequestsIntegrationTest extends PostgreSqlIntegrationTest 
                 var request = method.equals("DELETE") ? delete("/api/lessons/{id}", lessonId)
                         : put("/api/lessons/{id}", lessonId).contentType(MediaType.APPLICATION_JSON).content("""
                           {"title":"Aula editada","description":"Descrição atualizada",
-                           "mediaUrl":"https://example.test/video","thumbnailUrl":"https://example.test/thumbnail"}
+                           "mediaUrl":"https://youtu.be/dQw4w9WgXcQ","thumbnailUrl":"https://example.test/thumbnail"}
                           """);
                 return mvc.perform(request.with(csrf())).andReturn();
             }));

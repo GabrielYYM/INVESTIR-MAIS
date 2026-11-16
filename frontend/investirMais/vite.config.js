@@ -8,7 +8,10 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react(), tailwindcss()],
-    server: { port: 5173, proxy },
+    build: { rolldownOptions: { output: { codeSplitting: {
+      groups: [{ name: "framework", test: /node_modules[\\/](?:react|react-dom|react-router|react-router-dom|ra-core|@tanstack)[\\/]/, maxSize: 250_000 }],
+    } } } },
+    server: { port: 5173, proxy, watch: { ignored: ["**/reports/**"] } },
     preview: { proxy },
   };
 });

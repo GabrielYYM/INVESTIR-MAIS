@@ -1,6 +1,7 @@
 package com.repositorio.investir_mais.infrastructure;
 
 import com.repositorio.investir_mais.domain.user.mapper.UserMapper;
+import com.repositorio.investir_mais.domain.user.DTO.UserDTO;
 import com.repositorio.investir_mais.domain.user.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -24,8 +25,7 @@ public class AuthenticationController {
     }
 
     @GetMapping("/auth/me")
-    public Map<String, Object> currentUser(Authentication authentication) {
-        var user = userMapper.toDTO(userService.findByEmail(authentication.getName()));
-        return Map.of("id", user.id(), "email", user.email(), "role", user.role().name(), "name", user.name());
+    public UserDTO.Response currentUser(Authentication authentication) {
+        return userMapper.toDTO(userService.findByEmail(authentication.getName()));
     }
 }

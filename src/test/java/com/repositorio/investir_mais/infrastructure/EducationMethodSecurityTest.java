@@ -4,6 +4,7 @@ import com.repositorio.investir_mais.domain.education.DTO.CourseDTO;
 import com.repositorio.investir_mais.domain.education.DTO.LessonDTO;
 import com.repositorio.investir_mais.domain.education.mapper.CourseMapper;
 import com.repositorio.investir_mais.domain.education.mapper.LessonMapper;
+import com.repositorio.investir_mais.domain.education.mapper.QuestionMapper;
 import com.repositorio.investir_mais.domain.education.model.Course;
 import com.repositorio.investir_mais.domain.education.model.Lesson;
 import com.repositorio.investir_mais.domain.education.repository.CourseRepository;
@@ -41,7 +42,7 @@ class EducationMethodSecurityTest {
     private static final UUID COURSE_ID = UUID.randomUUID();
     private static final UUID LESSON_ID = UUID.randomUUID();
     private static final CourseDTO.Request COURSE = new CourseDTO.Request("Curso", "Descrição");
-    private static final LessonDTO.Request LESSON = new LessonDTO.Request("Aula", "Descrição", "video", "capa");
+    private static final LessonDTO.Request LESSON = new LessonDTO.Request("Aula", "Descrição", "https://youtu.be/dQw4w9WgXcQ", "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg");
 
     @Autowired CourseService courses;
     @Autowired LessonService lessons;
@@ -146,7 +147,11 @@ class EducationMethodSecurityTest {
         @Bean CourseRepository courseRepository() { return mock(CourseRepository.class); }
         @Bean LessonRepository lessonRepository() { return mock(LessonRepository.class); }
         @Bean CourseMapper courseMapper() { return mock(CourseMapper.class); }
+        @Bean QuestionMapper questionMapper() { return mock(QuestionMapper.class); }
         @Bean LessonMapper lessonMapper() { return mock(LessonMapper.class); }
         @Bean UserService users() { return mock(UserService.class); }
+        @Bean com.repositorio.investir_mais.domain.education.service.QuestionService questions() {
+            return mock(com.repositorio.investir_mais.domain.education.service.QuestionService.class);
+        }
     }
 }

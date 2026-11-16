@@ -78,6 +78,8 @@ build/
 ### Data ###
 *.sql
 !src/main/resources/schema-postgresql.sql
+!src/main/resources/legal-history-postgresql.sql
+!src/main/resources/lesson-order-postgresql.sql
 !src/test/resources/account-security-schema.sql
 *.p12
 *.jks
@@ -85,4 +87,4 @@ build/
 ### Draw.io ###
 *.drawio
 *.drawio.*
-
+!docs/diagramas/investir-mais.drawio

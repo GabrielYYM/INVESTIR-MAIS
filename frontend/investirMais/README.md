@@ -16,10 +16,32 @@ Abra [localhost:5173](http://localhost:5173). O proxy do Vite encaminha `/api`, 
 | Comando | Finalidade |
 | --- | --- |
 | `npm ci` | Instala as versões do `package-lock.json`. |
-| `npm run dev` | Gera o cliente de educação e inicia o Vite. |
-| `npm run build` | Gera o cliente de educação e compila o bundle em `dist/`. |
+| `npm run dev` | Gera os clientes da API e inicia o Vite. |
+| `npm run build` | Gera os clientes da API e compila o bundle em `dist/`. |
 | `npm run preview` | Serve localmente o bundle gerado pelo build. |
-| `npm run api:generate` | Regenera apenas o cliente OpenAPI de educação. |
+| `npm run api:generate` | Regenera clientes, hooks e schemas Zod de conta e educação. |
+
+## Testes e cobertura
+
+Os testes usam Vitest, React Testing Library e `user-event`. O MSW intercepta as chamadas HTTP, permitindo testar as rotas, formulários e serviços reais sem iniciar o backend.
+
+```bash
+npm test
+npm run test:watch
+npm run test:coverage
+```
+
+O comando de cobertura mostra um resumo no terminal e gera `reports/coverage/index.html`, ignorado pelo Git. Os mínimos são 85% para linhas, instruções e funções e 80% para ramificações.
+
+O Vitest executa até duas suítes em paralelo para limitar o uso de memória pelo jsdom e pelos componentes Material UI, especialmente durante a cobertura.
+
+Os testes de integração compartilham três helpers:
+
+- `renderApp(rota, { session: usuario })`: monta as rotas reais com o perfil desejado.
+- `mockApi(metodo, caminho, resposta, opcoes)`: simula um endpoint e retorna um spy; aceita `status`, `headers` e `once`.
+- `fillFields(user, campos, escopo)`: preenche os campos pelos rótulos, usando `screen` como escopo padrão.
+
+Reutilize os dados de `src/test/fixtures.js` e as respostas padrão de `src/test/server.js`. O setup limpa o estado de cada teste e rejeita requisições sem handler, evitando chamadas à API real.
 
 ## Rotas e permissões
 
@@ -32,7 +54,8 @@ Abra [localhost:5173](http://localhost:5173). O proxy do Vite encaminha `/api`, 
 | `/` | Sessão completa | Painel com cursos em destaque e métricas conforme o perfil. |
 | `/educacao` | Sessão completa | Catálogo paginado de cursos e criação de curso para perfis autorizados. |
 | `/educacao/:courseId/:lessonId?` | Sessão completa | Detalhe do curso, lista de aulas e reprodução da aula selecionada. |
-| `/perfil` | Sessão completa | Exibe os dados da conta e permite editar o nome com a senha atual. |
+| `/perfil` | Sessão completa | Exibe os dados da conta, permite editar o nome e gerenciar senha e exclusão. |
+| `/admin` | Administrador | Consulta usuários e auditoria e altera papéis autorizados. |
 
 A saída é uma ação em `/sair`, que chama `POST /auth/logout`.
 
@@ -48,7 +71,9 @@ A instância Axios compartilhada envia cookies de sessão. Em escritas, consulta
 
 | Arquivo ou diretório | Papel |
 | --- | --- |
-| [`src/App.jsx`](src/App.jsx) | Rotas, verificação de sessão e tratamento de erros de navegação. |
+| [`src/routes.jsx`](src/routes.jsx) | Rotas, verificação de sessão e tratamento de erros de navegação. |
+| [`src/services/dataProvider.js`](src/services/dataProvider.js) | Adapta o CRUD do React-admin à API Spring e normaliza paginação e erros. |
+| [`src/components/CrudDialog.jsx`](src/components/CrudDialog.jsx) | Editor e confirmação de exclusão compartilhados pelos recursos. |
 | [`src/pages/`](src/pages/) | Telas, formulários e ações dos fluxos da aplicação. |
 | [`src/components/`](src/components/) | Layout, navegação, estados de página, formulários e componentes de educação. |
 | [`src/services/api.js`](src/services/api.js) | Instância Axios, credenciais, CSRF e mensagens de erro. |
@@ -56,7 +81,36 @@ A instância Axios compartilhada envia cookies de sessão. Em escritas, consulta
 | [`src/services/youtube.js`](src/services/youtube.js) | Validação e transformação de endereços de vídeo usados pela interface. |
 | [`education.openapi.json`](education.openapi.json) | Contrato OpenAPI de cursos e aulas usado pelo Orval. |
 
+## Componentes e formulários
+
+A interface preserva o layout anterior à reconstrução: navegação, cartões, espaçamentos, cores e páginas usam os estilos do **Tailwind CSS 4**. Os campos, modais, abas, tabelas e paginação continuam usando **Material UI**, com apresentação ajustada em `UiProvider`. A ordem das camadas CSS é declarada no início de `index.html` para que o reset do Tailwind não sobrescreva os componentes. Ant Design e a integração `react-hook-form-antd` continuam removidos.
+
+O **React-admin** assume os formulários CRUD (`CreateBase`, `EditBase`, `SimpleForm`), as listas dinâmicas de perguntas e alternativas (`ArrayInput`, `SimpleFormIterator`) e as tabelas com filtros, ordenação e paginação (`ListBase`, `DataTable`). `CrudDialog` centraliza envio, validação, falhas e confirmação de exclusão. Os editores, a administração, o painel do professor e os termos são carregados sob demanda.
+
+`dataProvider.js` concentra a adaptação dos recursos `courses`, `lessons`, `questions`, `users` e `audit` aos clientes gerados pelo Orval. Cursos e aulas usam a paginação da API. Usuários e auditoria são paginados e filtrados no cliente porque seus endpoints retornam listas completas. O histórico é produzido pelo Hibernate Envers no backend; o frontend apenas consulta e apresenta os snapshots.
+
+As validações de conta e educação são geradas em `src/generated/*.zod.ts` pelo Orval. Os schemas dos editores acrescentam mensagens em português e as regras de apresentação: posições a partir de um, alternativas com texto e uma única opção correta. O payload continua usando `options: string[]`, `correctOptionIndex` e posições a partir de zero. A aprovação e o bloqueio da próxima aula continuam sob responsabilidade do backend; as respostas marcadas e o número de tentativas não são persistidos pelo frontend.
+
+Os formulários de conta usam `accountSchema.js`, que reaproveita os schemas Zod gerados pelo Orval e acrescenta normalização, mensagens em português, aceite dos termos e confirmação de senha. Nome, e-mail e código são aparados; senhas mantêm seus espaços. `PasswordFields` compartilha os campos de nova senha e confirmação entre cadastro, recuperação e perfil. Os painéis do perfil mantêm as classes visuais originais, sem restaurar os antigos controladores e validações manuais.
+
+Cadastro, recuperação, alteração de senha e atualização do perfil usam os hooks gerados pelo Orval para envio, carregamento, erros e sucesso. Após editar o nome, o perfil revalida a identidade do layout. Uma resposta `401` na atualização só redireciona ao login quando uma nova consulta à sessão confirma sua expiração; senha incorreta e falha de conexão preservam os dados digitados. A exclusão exige confirmação e senha atual, bloqueando fechamento e reenvio durante a operação. O Day.js valida datas reais e o limite de seis meses de calendário do painel.
+
+O nuqs centraliza os parâmetros de período e paginação em `src/services/searchParams.js`, com adaptador do React Router 7 e `shallow: false` para consultar as métricas ao aplicar o período. Os campos em edição não alteram a URL até o envio. A navegação preserva os outros parâmetros e o histórico do navegador.
+
+`ApplicationProviders` configura o React-admin, a tradução brasileira e o cliente TanStack Query em memória. Consultas e mutações sem observadores são descartadas imediatamente, não há tentativas automáticas nem atualização ao focar a janela. Fechar a auditoria cancela a chamada pendente; reabri-la consulta o histórico atualizado. Os loaders do React Router continuam compondo os dados das páginas de aprendizagem, enquanto o CRUD usa o Data Provider.
+
 ## Contrato da API de educação
+
+O Orval também gera `src/generated/account.ts` a partir de `account.openapi.json`, cobrindo usuários, sessão atual, auditoria e métricas, com funções Axios e hooks TanStack Query. Os dois clientes usam a mesma instância Axios, preservando cookies e CSRF. Login, confirmação do segundo fator e logout continuam nos endpoints dos filtros do Spring Security.
+
+Para atualizar o contrato de conta/painel com o backend local em execução:
+
+```bash
+npm run api:export
+npm run api:generate
+```
+
+O exportador apenas lê `/v3/api-docs`, remove o endereço do servidor e inclui os schemas utilizados. A origem padrão é `http://localhost:8080`; `API_DOCS_ORIGIN` permite configurar outro ambiente de desenvolvimento. Versione o contrato, e não os clientes gerados.
 
 O Orval gera o cliente de cursos e aulas antes de `npm run dev` e `npm run build`. O cliente usa a mesma instância Axios dos demais fluxos. O código gerado fica fora do Git. Quando os endpoints ou DTOs mudarem, gere novamente o contrato a partir da raiz do repositório, com Docker disponível:
 

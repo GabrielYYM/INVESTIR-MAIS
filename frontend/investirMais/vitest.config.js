@@ -4,6 +4,11 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   test: {
+    // Keep component/jsdom suites from competing for resources during coverage.
+    maxWorkers: 2,
+    // Nested form interactions also run with V8 coverage instrumentation.
+    testTimeout: 15000,
+    server: { deps: { inline: [/react-admin/, /ra-core/, /ra-ui-materialui/, /ra-i18n-polyglot/, /react-router/] } },
     environment: "jsdom",
     environmentOptions: { jsdom: { url: "http://localhost:5173" } },
     env: { VITE_API_BASE_URL: "" },
@@ -14,9 +19,10 @@ export default defineConfig({
     unstubEnvs: true,
     coverage: {
       provider: "v8",
+      reportsDirectory: "./reports/coverage",
       include: ["src/**/*.{js,jsx,ts}"],
       exclude: ["src/main.jsx", "src/generated/**", "src/test/**"],
-      reporter: ["text", "html", "lcov"],
+      reporter: ["text-summary", "html"],
       thresholds: { statements: 85, branches: 80, functions: 85, lines: 85 },
     },
   },
