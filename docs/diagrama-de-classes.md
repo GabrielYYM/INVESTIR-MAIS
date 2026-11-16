@@ -14,11 +14,11 @@ O diagrama de acesso usa BPMN 2.0 para documentar o processo. [Especificação B
 
 ## Classes de domínio
 
-Cada curso referencia um usuário proprietário e reúne aulas e perguntas. Cada aula e cada pergunta pertencem a um curso. A exclusão lógica se propaga de usuário para cursos e de curso para aulas e perguntas. A senha é armazenada como hash Argon2 e fica fora da auditoria do Hibernate Envers. [User](../src/main/java/com/repositorio/investir_mais/domain/user/model/User.java), [Course](../src/main/java/com/repositorio/investir_mais/domain/education/model/Course.java), [Lesson](../src/main/java/com/repositorio/investir_mais/domain/education/model/Lesson.java), [Question](../src/main/java/com/repositorio/investir_mais/domain/education/model/Question.java)
+Cada curso referencia um usuário proprietário e reúne aulas e perguntas. Cada aula e cada pergunta pertencem a um curso. A exclusão lógica se propaga de usuário para cursos e de curso para aulas e perguntas. A senha é armazenada como hash Argon2id e fica fora da auditoria do Hibernate Envers. [User](../src/main/java/com/repositorio/investir_mais/domain/user/model/User.java), [Course](../src/main/java/com/repositorio/investir_mais/domain/education/model/Course.java), [Lesson](../src/main/java/com/repositorio/investir_mais/domain/education/model/Lesson.java), [Question](../src/main/java/com/repositorio/investir_mais/domain/education/model/Question.java)
 
 Matrículas e progresso pertencem a `User` e são persistidos como coleções de valores embutíveis. A matrícula é indexada por curso e a conclusão por aula. [User](../src/main/java/com/repositorio/investir_mais/domain/user/model/User.java)
 
-As aulas possuem `position`. O professor proprietário e o administrador podem reordenar a lista completa em uma transação; as perguntas vinculadas às posições acompanham as aulas. As perguntas são ordenadas por `afterLesson`, `position` e `id`; `afterLesson = 0` indica uma pergunta anterior à primeira aula. As alternativas ficam em `Question.options`, persistidas como ARRAY, e `correctOptionIndex` identifica a alternativa correta. Não existem entidades separadas de alternativa ou tentativa. [Question](../src/main/java/com/repositorio/investir_mais/domain/education/model/Question.java), [LessonService](../src/main/java/com/repositorio/investir_mais/domain/education/service/LessonService.java)
+As aulas possuem `position`, a partir de 1. O professor proprietário e o administrador podem reordenar a lista completa em uma transação; as perguntas vinculadas às posições acompanham as aulas. As perguntas são ordenadas por `afterLesson`, `position` e `id`; `afterLesson = 0` indica uma pergunta anterior à primeira aula. As alternativas ficam em `Question.options`, persistidas como ARRAY, e `correctOptionIndex` identifica a alternativa correta. Não existem entidades separadas de alternativa ou tentativa. [Question](../src/main/java/com/repositorio/investir_mais/domain/education/model/Question.java), [LessonService](../src/main/java/com/repositorio/investir_mais/domain/education/service/LessonService.java)
 
 `User.birthDate` armazena a data de nascimento; a idade exibida é calculada a partir dela, com `age` mantido como valor legado quando a data não está informada. A promoção a professor exige data cadastrada e idade mínima de 18 anos. [User](../src/main/java/com/repositorio/investir_mais/domain/user/model/User.java), [UserService](../src/main/java/com/repositorio/investir_mais/domain/user/service/UserService.java)
 
@@ -76,4 +76,15 @@ Os ícones de tecnologia estão incorporados ao arquivo editável. [Simple Icons
 
 ## Atualização dos arquivos
 
+Revisão técnica: 15/11/2026. As cinco visões refletem a validação local de links, os aceites no PostgreSQL e as permissões de ordenação para professor responsável e ADMIN. A inicialização de posições antigas está descrita no [guia de perguntas e ordenação](questions.md#inicialização-de-aulas-legadas). O [roteiro dos slides](apresentacao.md) usa a mesma arquitetura.
+
 O arquivo `diagramas/investir-mais.drawio` é a fonte editável das cinco imagens e possui uma exceção no `.gitignore` para poder ser versionado. Ao editar uma aba, exporte novamente seu PNG com o mesmo nome, incluindo uma cópia do diagrama na imagem. As prévias atuais foram exportadas com escala 1,5 e borda de 24 pixels; cada PNG também pode ser aberto no Draw.io para edição.
+
+
+Com o Draw.io Desktop instalado, exporte cada aba usando o índice de 1 a 5. Exemplo no PowerShell para a arquitetura (ajuste o caminho do executável instalado):
+
+```powershell
+& 'C:\Program Files\draw.io\draw.io.exe' --export --page-index 5 --scale 1.5 --border 24 --embed-diagram --output docs/diagramas/arquitetura.png docs/diagramas/investir-mais.drawio
+```
+
+Confira o PNG exportado e se o diagrama incorporado corresponde à aba editável antes de versionar ambos.

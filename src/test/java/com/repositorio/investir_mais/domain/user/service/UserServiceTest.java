@@ -1,41 +1,40 @@
 package com.repositorio.investir_mais.domain.user.service;
 
+import com.repositorio.investir_mais.domain.AccountEmailRequested;
+import com.repositorio.investir_mais.domain.AccountSecurityService;
+import com.repositorio.investir_mais.domain.education.service.CourseService;
 import com.repositorio.investir_mais.domain.user.DTO.AuthDTO;
 import com.repositorio.investir_mais.domain.user.DTO.UserDTO;
+import com.repositorio.investir_mais.domain.user.controller.UserController;
 import com.repositorio.investir_mais.domain.user.mapper.UserMapper;
 import com.repositorio.investir_mais.domain.user.model.User;
 import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.repository.UserRepository;
-import com.repositorio.investir_mais.domain.AccountEmailRequested;
-import org.springframework.context.ApplicationEventPublisher;
-import com.repositorio.investir_mais.domain.AccountSecurityService;
-import com.repositorio.investir_mais.domain.user.controller.UserController;
-import com.repositorio.investir_mais.domain.education.service.CourseService;
 import com.repositorio.investir_mais.infrastructure.exception.GlobalExceptionHandler;
-import org.springframework.security.web.csrf.CsrfTokenRepository;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.http.MediaType;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import java.time.LocalDate;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.ott.DefaultOneTimeToken;
 import org.springframework.security.authentication.ott.OneTimeToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.csrf.CsrfTokenRepository;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -86,7 +85,7 @@ class UserServiceTest {
     void findByEmail_WhenUserDoesNotExist_ShouldThrowNotFound() {
         when(userRepository.findByEmail("inexistente@investir.com")).thenReturn(Optional.empty());
 
-        ResponseStatusException ex = assertThrows(ResponseStatusException.class, 
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
             () -> userService.findByEmail("inexistente@investir.com"));
 
         assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
@@ -94,9 +93,9 @@ class UserServiceTest {
 
     @Test
     void registerUser_WhenRoleIsAdmin_ShouldThrowBadRequest() {
-        UserDTO.Request dto = new UserDTO.Request("Admin", java.time.LocalDate.now().minusYears(30), "admin@investir.com", "password123", UserRole.ADMIN);
+        UserDTO.Request dto = new UserDTO.Request("Admin", LocalDate.now().minusYears(30), "admin@investir.com", "password123", UserRole.ADMIN);
 
-        ResponseStatusException ex = assertThrows(ResponseStatusException.class, 
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
             () -> userService.registerUser(dto));
 
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
@@ -105,7 +104,7 @@ class UserServiceTest {
 
     @Test
     void registerUser_WhenRoleIsTeacher_ShouldThrowBadRequest() {
-        UserDTO.Request dto = new UserDTO.Request("Professor", java.time.LocalDate.now().minusYears(30), "teacher@investir.com", "password123", UserRole.TEACHER);
+        UserDTO.Request dto = new UserDTO.Request("Professor", LocalDate.now().minusYears(30), "teacher@investir.com", "password123", UserRole.TEACHER);
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
             () -> userService.registerUser(dto));
@@ -116,7 +115,7 @@ class UserServiceTest {
 
     @Test
     void registerUser_WhenEmailExists_ShouldRejectWithoutPublishingEmail() {
-        var dto = new UserDTO.Request("Felipe", java.time.LocalDate.now().minusYears(22), user.getEmail(), "password123", UserRole.STUDENT);
+        var dto = new UserDTO.Request("Felipe", LocalDate.now().minusYears(22), user.getEmail(), "password123", UserRole.STUDENT);
         when(userRepository.existsByEmailIncludingDeleted(dto.email())).thenReturn(true);
 
         var exception = assertThrows(ResponseStatusException.class, () -> userService.registerUser(dto));
@@ -127,7 +126,7 @@ class UserServiceTest {
 
     @Test
     void updateProfile_WhenEmailBelongsToAnotherUser_ShouldRejectBeforeChangingProfile() {
-        var dto = new UserDTO.UpdateProfileRequest("Outro nome", "other@investir.com", java.time.LocalDate.now().minusYears(30), "correct-password");
+        var dto = new UserDTO.UpdateProfileRequest("Outro nome", "other@investir.com", LocalDate.now().minusYears(30), "correct-password");
         when(userRepository.findForUpdateByEmail(user.getEmail())).thenReturn(Optional.of(user));
         when(userRepository.existsByEmailAndIdNot(dto.email(), user.getId())).thenReturn(true);
         when(passwordEncoder.matches("correct-password", "encoded_password")).thenReturn(true);
@@ -143,7 +142,7 @@ class UserServiceTest {
 
     @Test
     void updateProfile_WhenConfirmationPasswordIsWrong_ShouldNotChangeAccount() {
-        var dto = new UserDTO.UpdateProfileRequest("Outro nome", "other@investir.com", java.time.LocalDate.now().minusYears(30), "wrong-password");
+        var dto = new UserDTO.UpdateProfileRequest("Outro nome", "other@investir.com", LocalDate.now().minusYears(30), "wrong-password");
         when(userRepository.findForUpdateByEmail(user.getEmail())).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("wrong-password", "encoded_password")).thenReturn(false);
 
@@ -159,7 +158,7 @@ class UserServiceTest {
 
     @Test
     void registerUser_OnSuccess_ShouldSaveAndSendOtt() {
-        UserDTO.Request dto = new UserDTO.Request("Felipe", java.time.LocalDate.now().minusYears(22), "felipe@investir.com", "password123", UserRole.STUDENT);
+        UserDTO.Request dto = new UserDTO.Request("Felipe", LocalDate.now().minusYears(22), "felipe@investir.com", "password123", UserRole.STUDENT);
         OneTimeToken ott = new DefaultOneTimeToken("token-123", "felipe@investir.com", Instant.now().plusSeconds(300));
 
         when(userRepository.existsByEmailIncludingDeleted("felipe@investir.com")).thenReturn(false);
@@ -217,7 +216,7 @@ class UserServiceTest {
         when(userRepository.findForUpdateByEmail(user.getEmail())).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("senhaIncorreta", "encoded_password")).thenReturn(false);
 
-        ResponseStatusException ex = assertThrows(ResponseStatusException.class, 
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
             () -> userService.updatePassword(user.getEmail(), dto));
 
         assertEquals(HttpStatus.UNAUTHORIZED, ex.getStatusCode());
@@ -241,7 +240,7 @@ class UserServiceTest {
     void updateProfile_WhenEmailChanges_ShouldRequireVerificationAndSendLink() {
         UUID userId = user.getId();
         user.setEmailVerified(true);
-        UserDTO.UpdateProfileRequest dto = new UserDTO.UpdateProfileRequest("Felipe", "novo@investir.com", java.time.LocalDate.now().minusYears(22), "correct-password");
+        UserDTO.UpdateProfileRequest dto = new UserDTO.UpdateProfileRequest("Felipe", "novo@investir.com", LocalDate.now().minusYears(22), "correct-password");
         when(passwordEncoder.matches("correct-password", "encoded_password")).thenReturn(true);
         UserDTO.Response response = new UserDTO.Response(
             userId, "Felipe", 22, null, "novo@investir.com", UserRole.STUDENT, false, LocalDateTime.now());
@@ -290,7 +289,7 @@ class UserServiceTest {
         AuthDTO.ResetPasswordRequest dto = new AuthDTO.ResetPasswordRequest("token-invalido", "novaSenha123");
         when(accountSecurity.consumePasswordResetToken("token-invalido")).thenReturn(Optional.empty());
 
-        ResponseStatusException ex = assertThrows(ResponseStatusException.class, 
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
             () -> userService.resetPassword(dto));
 
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
@@ -383,7 +382,7 @@ class UserServiceTest {
     @NullSource
     @ValueSource(ints = {0, 17})
     void updateUserRole_WhenTooYoungOrBirthDateMissing_ShouldNotChangeRole(Integer age) {
-        user.setAge(30); // Legacy age alone must not authorize promotion.
+        user.setAge(30);
         user.setBirthDate(age == null ? null : LocalDate.now().minusYears(age));
         when(userRepository.findForUpdateById(user.getId())).thenReturn(Optional.of(user));
         User admin = new User();

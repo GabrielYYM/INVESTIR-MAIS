@@ -4,9 +4,9 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   test: {
-    // Keep component/jsdom suites from competing for resources during coverage.
+
     maxWorkers: 2,
-    // Nested form interactions also run with V8 coverage instrumentation.
+
     testTimeout: 15000,
     server: { deps: { inline: [/react-admin/, /ra-core/, /ra-ui-materialui/, /ra-i18n-polyglot/, /react-router/] } },
     environment: "jsdom",

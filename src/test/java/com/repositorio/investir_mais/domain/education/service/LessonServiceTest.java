@@ -9,24 +9,24 @@ import com.repositorio.investir_mais.domain.education.repository.LessonRepositor
 import com.repositorio.investir_mais.domain.user.model.User;
 import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.service.UserService;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.Map;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -86,7 +86,7 @@ class LessonServiceTest {
         when(userService.findByEmail("outro@investir.com")).thenReturn(outroUser);
         when(courseRepository.findForUpdateById(courseId)).thenReturn(Optional.of(course));
 
-        ResponseStatusException ex = assertThrows(ResponseStatusException.class, 
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
             () -> lessonService.createLesson(courseId, request, "outro@investir.com"));
 
         assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
@@ -144,7 +144,7 @@ class LessonServiceTest {
 
     @Test
     void getLessonsByCourseId_ShouldReturnPage() {
-        Pageable pageable = PageRequest.of(0, 10, org.springframework.data.domain.Sort.by("position", "id"));
+        Pageable pageable = PageRequest.of(0, 10, Sort.by("position", "id"));
         Page<Lesson> page = new PageImpl<>(List.of(lesson));
         LessonDTO.Response responseDTO = new LessonDTO.Response(lessonId, "Aula 1", "Desc", "https://youtu.be/dQw4w9WgXcQ", "url_thumb", courseId);
 

@@ -1,5 +1,3 @@
--- Idempotent backfill for legacy courses with uninitialized positions.
--- Legacy videos retain alphabetical order; already positioned videos retain their relative order.
 WITH legacy_courses AS (
     SELECT DISTINCT course_id FROM tb_lesson WHERE deleted_at IS NULL AND position <= 0
 ), ranked AS (

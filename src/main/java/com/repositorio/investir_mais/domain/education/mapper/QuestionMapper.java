@@ -5,9 +5,10 @@ import com.repositorio.investir_mais.domain.education.model.*;
 import org.mapstruct.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
+import java.util.List;
 import java.util.Locale;
 
-@Mapper(componentModel = MappingConstants.ComponentModel.SPRING, unmappedTargetPolicy = ReportingPolicy.IGNORE)
+@Mapper(componentModel = MappingConstants.ComponentModel.SPRING, unmappedTargetPolicy = ReportingPolicy.IGNORE, imports = List.class)
 public interface QuestionMapper {
 
     @Mapping(target = "id", ignore = true)
@@ -17,7 +18,7 @@ public interface QuestionMapper {
 
     void updateEntity(QuestionDTO.Request request, @MappingTarget Question question);
 
-    @Mapping(target = "options", expression = "java(java.util.List.copyOf(question.getOptions()))")
+    @Mapping(target = "options", expression = "java(List.copyOf(question.getOptions()))")
     QuestionDTO.TeacherQuestion toDTO(Question question);
 
     @BeforeMapping

@@ -1,6 +1,15 @@
 package com.repositorio.investir_mais.domain;
 
 import com.repositorio.investir_mais.domain.user.repository.UserRepository;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.http.HttpStatus;
@@ -10,15 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.databind.ObjectMapper;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Set;
-
-/** Published releases are immutable; the highest persisted version remains current across rolling deployments. */
 @Service
 public class LegalDocumentsService {
     public record Section(String heading, String content) {}
@@ -42,8 +42,7 @@ public class LegalDocumentsService {
         try {
             var resources = new PathMatchingResourcePatternResolver().getResources("classpath*:legal/v*.json");
             if (resources.length == 0) throw new IllegalStateException("Nenhum documento legal publicado.");
-            // Validate every release before registering any of them.
-            var releases = new java.util.ArrayList<Release>();
+            var releases = new ArrayList<Release>();
             for (var resource : resources) {
                 releases.add(json.readValue(resource.getContentAsString(StandardCharsets.UTF_8), Release.class));
             }
@@ -61,7 +60,7 @@ public class LegalDocumentsService {
     private void validate(Release release) {
         if (release.version() < 1 || release.publishedOn() == null || release.publishedOn().isAfter(LocalDate.now())
                 || release.documents() == null || release.documents().size() != 2
-                || !release.documents().stream().map(Document::id).collect(java.util.stream.Collectors.toSet())
+                || !release.documents().stream().map(Document::id).collect(Collectors.toSet())
                     .equals(Set.of("termos", "privacidade"))) {
             throw new IllegalStateException("Versão legal inválida: " + release.version());
         }
@@ -115,7 +114,6 @@ public class LegalDocumentsService {
 
     @Transactional
     public Status accept(String email, int version) {
-        // Serialize repeated submissions for the same account; the unique key also makes retries idempotent.
         var user = users.findForUpdateByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
         if (version != current().version()) {

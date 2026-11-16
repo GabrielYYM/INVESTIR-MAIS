@@ -1,6 +1,5 @@
 package com.repositorio.investir_mais.domain.user.controller;
 
-import tools.jackson.databind.ObjectMapper;
 import com.repositorio.investir_mais.domain.education.service.CourseService;
 import com.repositorio.investir_mais.domain.user.DTO.AuthDTO;
 import com.repositorio.investir_mais.domain.user.DTO.UserDTO;
@@ -8,8 +7,13 @@ import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.repository.UserRepository;
 import com.repositorio.investir_mais.domain.user.service.UserService;
 import com.repositorio.investir_mais.infrastructure.exception.GlobalExceptionHandler;
-
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -21,11 +25,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.UUID;
+import tools.jackson.databind.ObjectMapper;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
@@ -33,10 +33,10 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -68,7 +68,7 @@ class UserControllerTest {
 
     @Test
     void registerUser_WithValidData_ShouldReturnGenericAcceptance() throws Exception {
-        UserDTO.Request requestDTO = new UserDTO.Request("Felipe", java.time.LocalDate.now().minusYears(22), "felipe@investir.com", "senha12345", UserRole.STUDENT);
+        UserDTO.Request requestDTO = new UserDTO.Request("Felipe", LocalDate.now().minusYears(22), "felipe@investir.com", "senha12345", UserRole.STUDENT);
         when(userService.registerUser(any(UserDTO.Request.class)))
                 .thenReturn(new DefaultOneTimeToken("registration-token", requestDTO.email(), Instant.now().plusSeconds(300)));
 
@@ -103,7 +103,7 @@ class UserControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{}"))
                 .andExpect(status().isBadRequest());
-        org.mockito.Mockito.verifyNoInteractions(userService);
+        Mockito.verifyNoInteractions(userService);
     }
 
     @Test

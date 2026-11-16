@@ -47,19 +47,24 @@ Reutilize os dados de `src/test/fixtures.js` e as respostas padrão de `src/test
 
 | Rota | Acesso | Função |
 | --- | --- | --- |
-| `/cadastro` | Público | Cadastro de aluno e reenvio da confirmação de e-mail. |
+| `/cadastro` | Público | Cadastro de aluno com data de nascimento e reenvio da confirmação de e-mail. |
+| `/confirmar-email` | Público | Confirma o e-mail; o link original pode iniciar a primeira sessão no navegador do cadastro. |
 | `/entrar` | Público | Validação da senha e opção de confirmar o OTT manualmente. |
 | `/entrar/link` | Público | Recebe o token do e-mail e conclui o login na sessão correspondente. |
 | `/recuperar-senha` | Público | Solicita o código e define uma nova senha. |
 | `/` | Sessão completa | Painel com cursos em destaque e métricas conforme o perfil. |
 | `/educacao` | Sessão completa | Catálogo paginado de cursos e criação de curso para perfis autorizados. |
 | `/educacao/:courseId/:lessonId?` | Sessão completa | Detalhe do curso, lista de aulas e reprodução da aula selecionada. |
-| `/perfil` | Sessão completa | Exibe os dados da conta, permite editar o nome e gerenciar senha e exclusão. |
+| `/aceitar-documentos` | Sessão completa | Leitura e confirmação da versão atual dos Termos e da Política de Privacidade. |
+| `/termos`, `/termos-de-uso`, `/politica-de-privacidade` | Público | Textos legais; versões anteriores podem ser abertas pelo histórico do perfil. |
+| `/perfil` | Sessão completa | Nome e nascimento com senha atual, gestão de senha, exclusão e histórico de aceites legais. |
 | `/admin` | Administrador | Consulta usuários e auditoria e altera papéis autorizados. |
 
 A saída é uma ação em `/sair`, que chama `POST /auth/logout`.
 
-O layout autenticado carrega a identidade por `GET /auth/me`. Se o backend responder `401` ou `403`, o React Router envia o usuário ao login com o caminho de retorno. Alunos consultam o catálogo. Professores criam cursos e gerenciam os próprios cursos e aulas. Administradores gerenciam todo o catálogo. As permissões são verificadas também pelo backend.
+O layout autenticado carrega a identidade por `GET /auth/me`. Se o backend responder `401` ou `403`, o React Router envia o usuário ao login com o caminho de retorno. Alunos consultam o catálogo, matriculam-se e avançam ao concluir aulas e acertar perguntas. Professores gerenciam os próprios cursos, aulas, perguntas e ordem das aulas. Administradores gerenciam todo o catálogo e também podem ordenar as aulas. As permissões são verificadas pelo backend. A promoção a professor exige nascimento informado e idade mínima de 18 anos; o painel não concede nem altera o papel ADMIN.
+
+Antes de abrir os recursos da plataforma, o layout consulta `/api/legal/status`. Uma pendência leva a `/aceitar-documentos`, preservando o retorno interno. O backend também aplica a restrição com `428`; o aceite de uma versão que deixou de ser a atual retorna `409` e exige a leitura da nova versão. Perfil, segurança, exclusão, documentos e saída permanecem disponíveis. Os textos, versões e aceites são consultados na API e persistidos no PostgreSQL. Veja o [guia de publicação](../../docs/documentos-legais.md).
 
 ## Sessão e chamadas HTTP
 
@@ -73,13 +78,15 @@ A instância Axios compartilhada envia cookies de sessão. Em escritas, consulta
 | --- | --- |
 | [`src/routes.jsx`](src/routes.jsx) | Rotas, verificação de sessão e tratamento de erros de navegação. |
 | [`src/services/dataProvider.js`](src/services/dataProvider.js) | Adapta o CRUD do React-admin à API Spring e normaliza paginação e erros. |
-| [`src/components/CrudDialog.jsx`](src/components/CrudDialog.jsx) | Editor e confirmação de exclusão compartilhados pelos recursos. |
+| [`src/components/ui/CrudDialog.jsx`](src/components/ui/CrudDialog.jsx) | Editor e confirmação de exclusão compartilhados pelos recursos. |
 | [`src/pages/`](src/pages/) | Telas, formulários e ações dos fluxos da aplicação. |
 | [`src/components/`](src/components/) | Layout, navegação, estados de página, formulários e componentes de educação. |
 | [`src/services/api.js`](src/services/api.js) | Instância Axios, credenciais, CSRF e mensagens de erro. |
 | [`src/services/educationData.js`](src/services/educationData.js) | Loaders, paginação, ações e permissões da interface de educação. |
 | [`src/services/youtube.js`](src/services/youtube.js) | Validação e transformação de endereços de vídeo usados pela interface. |
-| [`education.openapi.json`](education.openapi.json) | Contrato OpenAPI de cursos e aulas usado pelo Orval. |
+| [`education.openapi.json`](education.openapi.json) | Contrato OpenAPI de cursos, aulas e perguntas usado pelo Orval. |
+| [`account.openapi.json`](account.openapi.json) | Contrato de conta, usuários, auditoria e métricas usado pelo Orval. |
+| [`src/services/legalService.js`](src/services/legalService.js) | Consulta de textos, pendência e histórico; registro de aceite da versão atual. |
 
 ## Componentes e formulários
 
@@ -89,17 +96,17 @@ O **React-admin** assume os formulários CRUD (`CreateBase`, `EditBase`, `Simple
 
 `dataProvider.js` concentra a adaptação dos recursos `courses`, `lessons`, `questions`, `users` e `audit` aos clientes gerados pelo Orval. Cursos e aulas usam a paginação da API. Usuários e auditoria são paginados e filtrados no cliente porque seus endpoints retornam listas completas. O histórico é produzido pelo Hibernate Envers no backend; o frontend apenas consulta e apresenta os snapshots.
 
-As validações de conta e educação são geradas em `src/generated/*.zod.ts` pelo Orval. Os schemas dos editores acrescentam mensagens em português e as regras de apresentação: posições a partir de um, alternativas com texto e uma única opção correta. O payload continua usando `options: string[]`, `correctOptionIndex` e posições a partir de zero. A aprovação e o bloqueio da próxima aula continuam sob responsabilidade do backend; as respostas marcadas e o número de tentativas não são persistidos pelo frontend.
+As validações de conta e educação são geradas em `src/generated/*.zod.ts` pelo Orval. Os schemas dos editores acrescentam mensagens em português e regras de apresentação. As alternativas são `options: string[]`, com 2 a 6 textos distintos e um `correctOptionIndex` a partir de zero. A posição da aula começa em 1; `afterLesson: 0` significa antes da primeira aula, e `position` da pergunta ordena perguntas no mesmo ponto a partir de zero. A ordenação envia a lista completa de IDs e preserva o vínculo das perguntas com as aulas. A aprovação e o bloqueio da próxima aula são responsabilidade do backend; as respostas marcadas e o número de tentativas não são persistidos.
 
 Os formulários de conta usam `accountSchema.js`, que reaproveita os schemas Zod gerados pelo Orval e acrescenta normalização, mensagens em português, aceite dos termos e confirmação de senha. Nome, e-mail e código são aparados; senhas mantêm seus espaços. `PasswordFields` compartilha os campos de nova senha e confirmação entre cadastro, recuperação e perfil. Os painéis do perfil mantêm as classes visuais originais, sem restaurar os antigos controladores e validações manuais.
 
-Cadastro, recuperação, alteração de senha e atualização do perfil usam os hooks gerados pelo Orval para envio, carregamento, erros e sucesso. Após editar o nome, o perfil revalida a identidade do layout. Uma resposta `401` na atualização só redireciona ao login quando uma nova consulta à sessão confirma sua expiração; senha incorreta e falha de conexão preservam os dados digitados. A exclusão exige confirmação e senha atual, bloqueando fechamento e reenvio durante a operação. O Day.js valida datas reais e o limite de seis meses de calendário do painel.
+Cadastro, recuperação, alteração de senha e atualização do perfil usam os hooks gerados pelo Orval para envio, carregamento, erros e sucesso. Após editar nome ou nascimento, o perfil revalida a identidade do layout. Uma resposta `401` na atualização só redireciona ao login quando uma nova consulta à sessão confirma sua expiração; senha incorreta e falha de conexão preservam os dados digitados. A exclusão exige confirmação e senha atual, bloqueando fechamento e reenvio durante a operação. O Day.js valida datas reais e o limite de seis meses de calendário do painel.
 
 O nuqs centraliza os parâmetros de período e paginação em `src/services/searchParams.js`, com adaptador do React Router 7 e `shallow: false` para consultar as métricas ao aplicar o período. Os campos em edição não alteram a URL até o envio. A navegação preserva os outros parâmetros e o histórico do navegador.
 
 `ApplicationProviders` configura o React-admin, a tradução brasileira e o cliente TanStack Query em memória. Consultas e mutações sem observadores são descartadas imediatamente, não há tentativas automáticas nem atualização ao focar a janela. Fechar a auditoria cancela a chamada pendente; reabri-la consulta o histórico atualizado. Os loaders do React Router continuam compondo os dados das páginas de aprendizagem, enquanto o CRUD usa o Data Provider.
 
-## Contrato da API de educação
+## Contratos da API
 
 O Orval também gera `src/generated/account.ts` a partir de `account.openapi.json`, cobrindo usuários, sessão atual, auditoria e métricas, com funções Axios e hooks TanStack Query. Os dois clientes usam a mesma instância Axios, preservando cookies e CSRF. Login, confirmação do segundo fator e logout continuam nos endpoints dos filtros do Spring Security.
 
@@ -129,9 +136,11 @@ Versione o contrato atualizado junto com a mudança da API. Depois, rode `npm ru
 
 ## Videoaulas
 
-Para cadastrar uma aula, envie o vídeo pelo YouTube Studio e cole o endereço no formulário da aula. O frontend envia ao Spring a URL do vídeo e a URL derivada da miniatura. O arquivo continua hospedado no YouTube.
+Para cadastrar uma aula, o professor responsável ou ADMIN cola um link de vídeo do YouTube no formulário. São aceitos vídeos de qualquer canal. O arquivo continua hospedado no YouTube; não há upload de arquivos para a plataforma.
 
-O player integrado depende das permissões de incorporação do vídeo. Para um vídeo privado, convide os alunos no YouTube Studio. Na aula, eles podem usar **Abrir no YouTube** e entrar com a conta convidada. O acesso ao curso no Investir Mais e a reprodução no YouTube são permissões separadas.
+O frontend valida o formato do link. O backend valida novamente, normaliza a URL e gera a miniatura pelo ID do vídeo. Não há aprovação de canais, filtro de conteúdo, consulta de disponibilidade nem configuração de `YOUTUBE_API_KEY`. Quem publica deve conferir o conteúdo e a autorização de uso.
+
+O player e a opção **Abrir no YouTube** dependem das condições do vídeo no YouTube, incluindo privacidade, incorporação e restrições de região ou idade. O acesso ao curso no Investir Mais e a reprodução no YouTube são permissões separadas. Veja os [limites da validação](../../docs/video-validation.md) e o [guia de perguntas e ordenação](../../docs/questions.md).
 
 ## Publicação
 

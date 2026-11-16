@@ -1,16 +1,19 @@
 package com.repositorio.investir_mais.infrastructure;
 
+import com.repositorio.investir_mais.domain.AccountSecurityService;
 import com.repositorio.investir_mais.infrastructure.config.WebApplicationProperties;
+import java.time.Duration;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
-import org.springframework.boot.validation.autoconfigure.ValidationAutoConfiguration;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.boot.convert.ApplicationConversionService;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.boot.validation.autoconfigure.ValidationAutoConfiguration;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.modulith.events.FailedEventPublications;
 import org.springframework.web.client.RestClient;
 
-import java.time.Duration;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ConfigurationValidationTest {
@@ -40,11 +43,11 @@ class ConfigurationValidationTest {
             runner.withUserConfiguration(AuthenticationEmailHandler.class)
                     .withInitializer(context -> context.getBeanFactory()
                             .setConversionService(ApplicationConversionService.getSharedInstance()))
-                    .withBean(ResendEmailSender.class, () -> org.mockito.Mockito.mock(ResendEmailSender.class))
-                    .withBean(com.repositorio.investir_mais.domain.AccountSecurityService.class,
-                            () -> org.mockito.Mockito.mock(com.repositorio.investir_mais.domain.AccountSecurityService.class))
-                    .withBean(org.springframework.modulith.events.FailedEventPublications.class,
-                            () -> org.mockito.Mockito.mock(org.springframework.modulith.events.FailedEventPublications.class))
+                    .withBean(ResendEmailSender.class, () -> Mockito.mock(ResendEmailSender.class))
+                    .withBean(AccountSecurityService.class,
+                            () -> Mockito.mock(AccountSecurityService.class))
+                    .withBean(FailedEventPublications.class,
+                            () -> Mockito.mock(FailedEventPublications.class))
                     .withPropertyValues("app.mail.retry-delay=" + delay)
                     .run(context -> assertThat(context).hasFailed()
                             .getFailure().hasRootCauseMessage("app.mail.retry-delay deve ser de pelo menos 1 segundo"));

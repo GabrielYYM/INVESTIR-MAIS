@@ -1,6 +1,6 @@
 # Perguntas do curso
 
-O professor cria, consulta, edita e exclui perguntas diretamente no curso, sem
+O professor responsável ou o administrador cria, consulta, edita e exclui perguntas diretamente no curso, sem
 rascunho ou publicação. Cada `Question` contém o enunciado, as alternativas e o
 índice da alternativa correta. Não existem entidades `QuestionOption` ou `QuestionAnswer`.
 
@@ -69,7 +69,34 @@ contas excluídas ficam preservadas, mas não entram nas métricas ativas. Não 
 restauração nem expurgo neste recurso. A exclusão de aula usada como ponto de uma
 pergunta exige realocar ou remover a pergunta antes.
 
-Não há arquivo SQL deste recurso. O projeto usa `ddl-auto=update` para a estrutura;
-ele não migra nem remove tabelas antigas de implementações anteriores. Aulas antigas
-recebem posição padrão zero e precisam de ordenação antes de perguntas intermediárias.
-Nenhuma alteração foi aplicada ao banco oficial nesta implementação.
+## Ordenação das aulas
+
+O professor responsável e o ADMIN podem consultar e alterar a sequência em
+`GET/PUT /api/lessons/course/{courseId}/order`. A consulta retorna a lista completa
+com `id`, `title` e `position`. Para salvar, envie todos os IDs das aulas ativas,
+uma única vez cada, na ordem desejada:
+
+```json
+{"lessonIds": ["UUID_DA_SEGUNDA_AULA", "UUID_DA_PRIMEIRA_AULA"]}
+```
+
+Substitua os valores ilustrativos por UUIDs reais do curso. As posições persistidas
+começam em 1. A API rejeita IDs repetidos e uma lista que não corresponda às aulas
+ativas do curso; se a lista mudou durante a edição, retorna `409` para atualização
+da página. A alteração usa transação e bloqueios do curso e das aulas. As perguntas
+acompanham a aula à qual estavam vinculadas: `afterLesson` é remapeado para a nova
+posição. Perguntas com `afterLesson: 0` continuam antes da primeira aula.
+
+## Inicialização de aulas legadas
+
+O Hibernate mantém a estrutura com `ddl-auto=update`. Depois da inicialização do
+JPA, `LessonOrderInitialization` executa o script idempotente
+[`lesson-order-postgresql.sql`](../src/main/resources/lesson-order-postgresql.sql).
+Somente cursos com alguma aula ativa de posição menor ou igual a zero recebem o
+preenchimento: a sequência considera posição anterior, título e ID. As aulas já
+posicionadas preservam a ordem relativa; os vínculos das perguntas com posições
+positivas são ajustados junto com as aulas. Cursos já ordenados não são alterados.
+
+Antes de iniciar uma atualização de esquema, faça backup do banco de destino.
+Testes automatizados usam bancos isolados; verificações manuais locais usam o
+banco oficial `investir_mais`, preservando os registros existentes.

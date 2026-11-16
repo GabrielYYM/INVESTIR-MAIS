@@ -11,9 +11,12 @@ import com.repositorio.investir_mais.domain.education.repository.CourseRepositor
 import com.repositorio.investir_mais.domain.education.repository.LessonRepository;
 import com.repositorio.investir_mais.domain.education.service.CourseService;
 import com.repositorio.investir_mais.domain.education.service.LessonService;
+import com.repositorio.investir_mais.domain.education.service.QuestionService;
 import com.repositorio.investir_mais.domain.user.model.User;
 import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.service.UserService;
+import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -28,9 +31,6 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.util.Optional;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -150,8 +150,8 @@ class EducationMethodSecurityTest {
         @Bean QuestionMapper questionMapper() { return mock(QuestionMapper.class); }
         @Bean LessonMapper lessonMapper() { return mock(LessonMapper.class); }
         @Bean UserService users() { return mock(UserService.class); }
-        @Bean com.repositorio.investir_mais.domain.education.service.QuestionService questions() {
-            return mock(com.repositorio.investir_mais.domain.education.service.QuestionService.class);
+        @Bean QuestionService questions() {
+            return mock(QuestionService.class);
         }
     }
 }

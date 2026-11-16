@@ -36,7 +36,7 @@ export default function AcceptLegalDocuments() {
       setError(apiError(failure, "Não foi possível registrar sua confirmação. Tente novamente."));
       if (failure.response?.status === 409) {
         setAccepted(false);
-        try { setRelease(await getLegalDocuments()); } catch { /* Keep the current text and allow retry. */ }
+        try { setRelease(await getLegalDocuments()); } catch {                                              }
       }
       if ([401, 403].includes(failure.response?.status)) await navigate("/entrar", { replace: true });
     } finally {

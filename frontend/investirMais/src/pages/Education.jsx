@@ -4,8 +4,9 @@ import { useLoaderData, useRouteLoaderData } from "react-router";
 import { CourseCard, Pagination } from "../components/education/EducationParts.jsx";
 import PageHeader from "../components/layout/PageHeader.jsx";
 import EmptyState from "../components/ui/EmptyState.jsx";
-const EducationDialog = lazy(() => import("../components/education/EducationDialog.jsx"));
 import { canManageEducation } from "../services/educationData.js";
+
+const EducationDialog = lazy(() => import("../components/education/EducationDialog.jsx"));
 
 export { catalogLoader } from "../services/educationData.js";
 

@@ -6,6 +6,10 @@ import com.repositorio.investir_mais.domain.education.service.LessonService;
 import com.repositorio.investir_mais.domain.user.controller.UserController;
 import com.repositorio.investir_mais.domain.user.service.UserService;
 import com.repositorio.investir_mais.infrastructure.exception.GlobalExceptionHandler;
+import java.sql.SQLException;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.UUID;
 import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,14 +17,11 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.security.authentication.ott.DefaultOneTimeToken;
 import org.springframework.security.web.csrf.CsrfTokenRepository;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-
-import java.sql.SQLException;
-import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -90,6 +91,21 @@ class HttpValidationTest {
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.detail").value("Ocorreu um erro interno no servidor."));
     }
+
+    @Test void auditIdentifierCollisionIsNotReportedAsDuplicateProfileData() throws Exception {
+        var violation = new ConstraintViolationException("private SQL details",
+                new SQLException("duplicate revision", "23505"),
+                ConstraintViolationException.ConstraintKind.UNIQUE, "revinfo_pkey");
+        when(users.updateProfile(any(), any(), any()))
+                .thenThrow(new DataIntegrityViolationException("private details", violation));
+        mvc.perform(put("/api/users/{id}", UUID.randomUUID()).principal(() -> "user@investir.com")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"name":"Teste","email":"user@investir.com","birthDate":"2000-01-15","currentPassword":"Senha1234"}
+                        """))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.detail").value("Ocorreu um erro interno no servidor."));
+    }
     @Test void foreignKeyConflictReturns409() throws Exception {
         var violation = new ConstraintViolationException("private SQL details",
                 new SQLException("foreign key", "23503"),
@@ -103,7 +119,7 @@ class HttpValidationTest {
     }
     @Test
     void missingOrFutureBirthDateIsRejectedBeforeRegistration() throws Exception {
-        for (String date : new String[]{"null", "\"" + java.time.LocalDate.now().plusDays(1) + "\""}) {
+        for (String date : new String[]{"null", "\"" + LocalDate.now().plusDays(1) + "\""}) {
             mvc.perform(post("/api/users/register").contentType(MediaType.APPLICATION_JSON)
                     .content("{\"name\":\"Teste\",\"birthDate\":" + date + ",\"email\":\"test@example.com\",\"password\":\"Senha1234\"}"))
                     .andExpect(status().isBadRequest());
@@ -114,10 +130,10 @@ class HttpValidationTest {
     @Test
     void validBirthDateIsAccepted() throws Exception {
         when(users.registerUser(any())).thenReturn(new DefaultOneTimeToken(
-                "registration-token", "test@example.com", java.time.Instant.now().plusSeconds(300)));
+                "registration-token", "test@example.com", Instant.now().plusSeconds(300)));
         mvc.perform(post("/api/users/register").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\":\"Teste\",\"birthDate\":\"2000-01-15\",\"email\":\"test@example.com\",\"password\":\"Senha1234\"}"))
                 .andExpect(status().isAccepted());
-        verify(users).registerUser(argThat(request -> request.birthDate().equals(java.time.LocalDate.of(2000, 1, 15))));
+        verify(users).registerUser(argThat(request -> request.birthDate().equals(LocalDate.of(2000, 1, 15))));
     }
 }

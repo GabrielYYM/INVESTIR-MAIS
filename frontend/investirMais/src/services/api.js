@@ -25,7 +25,6 @@ function prepareCsrf() {
 apiClient.interceptors.request.use(async (config) => {
   if (safeMethods.has(config.method)) return config;
 
-  // Spring pode renovar o cookie entre as etapas da autenticação.
   const token = await prepareCsrf();
   if (crossOrigin) config.headers.set("X-XSRF-TOKEN", token);
   return config;

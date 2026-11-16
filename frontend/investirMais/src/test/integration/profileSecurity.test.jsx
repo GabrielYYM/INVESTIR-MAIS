@@ -77,7 +77,7 @@ describe("segurança do perfil", () => {
     const { user } = renderApp("/perfil"); const dialog = await openDeletion(user);
     await fillFields(user, { "Senha atual da conta": "senha-atual" }, dialog);
     await user.click(dialog.getByRole("button", { name: "Confirmar e Desativar Conta" }));
-    // jsdom does not navigate via location.href; verify the real HTTP effects instead.
+
     await screen.findByRole("button", { name: "Excluindo conta…" });
     await waitFor(() => expect(logout).toHaveBeenCalledOnce());
     expect(remove).toHaveBeenCalledOnce();

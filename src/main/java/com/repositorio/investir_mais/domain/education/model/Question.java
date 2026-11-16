@@ -1,18 +1,19 @@
 package com.repositorio.investir_mais.domain.education.model;
 
 import jakarta.persistence.*;
-import lombok.*;
-import org.hibernate.annotations.SoftDelete;
-import org.hibernate.annotations.SoftDeleteType;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.SoftDelete;
+import org.hibernate.annotations.SoftDeleteType;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "tb_question")
 @SoftDelete(strategy = SoftDeleteType.TIMESTAMP, columnName = "deleted_at")
-@Getter 
+@Getter
 @Setter @NoArgsConstructor
 public class Question {
     @Id @GeneratedValue
@@ -24,10 +25,10 @@ public class Question {
     private String prompt;
     @Column(nullable = false)
     private int position;
-    // Number of the lesson after which this question appears; zero means before the first lesson.
+
     @Column(nullable = false)
     private int afterLesson;
-    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.ARRAY)
+    @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(nullable = false, length = 2000)
     private List<String> options = new ArrayList<>();
     @Column(nullable = false)

@@ -4,25 +4,28 @@ import com.repositorio.investir_mais.domain.LegalDocumentsService;
 import com.repositorio.investir_mais.domain.user.model.User;
 import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.repository.UserRepository;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.UUID;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.authority.FactorGrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import tools.jackson.databind.ObjectMapper;
-
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
@@ -40,7 +43,7 @@ class LegalDocumentsIntegrationTest extends PostgreSqlIntegrationTest {
     @Autowired UserRepository users;
     @Autowired JdbcTemplate jdbc;
     @Autowired ObjectMapper json;
-    @Autowired org.springframework.security.crypto.password.PasswordEncoder encoder;
+    @Autowired PasswordEncoder encoder;
     User account;
 
     @BeforeEach
@@ -92,8 +95,8 @@ class LegalDocumentsIntegrationTest extends PostgreSqlIntegrationTest {
         var updated = new LegalDocumentsService.Release(2, original.publishedOn(), original.documents());
         String content = json.writeValueAsString(updated);
         jdbc.update("INSERT INTO legal_document_release VALUES (?, ?, ?, ?)", 2, updated.publishedOn(), content,
-                org.apache.commons.codec.digest.DigestUtils.sha256Hex(content));
-        legal.publishBundledReleases(); // An older deployment must not reactivate v1.
+                DigestUtils.sha256Hex(content));
+        legal.publishBundledReleases();
         assertEquals(2, legal.current().version());
         mvc.perform(get("/api/courses").with(signedIn())).andExpect(status().isPreconditionRequired());
         mvc.perform(post("/api/legal/acceptances").with(signedIn()).with(csrf())
@@ -145,7 +148,7 @@ class LegalDocumentsIntegrationTest extends PostgreSqlIntegrationTest {
 
     @Test
     void aPublishedVersionWithDifferentContentCannotBeSilentlyReplaced() {
-        // Simulate a release/content mismatch using privileged operations only in this rollback-only test database.
+
         jdbc.execute("ALTER TABLE legal_document_release DISABLE TRIGGER legal_release_immutable");
         jdbc.update("UPDATE legal_document_release SET content_hash = ? WHERE version = 1", "0".repeat(64));
         jdbc.execute("ALTER TABLE legal_document_release ENABLE TRIGGER legal_release_immutable");
@@ -159,7 +162,7 @@ class LegalDocumentsIntegrationTest extends PostgreSqlIntegrationTest {
         for (String table : new String[]{"legal_document_release", "legal_document_acceptance"}) {
             for (String statement : new String[]{"UPDATE " + table + " SET version = version", "DELETE FROM " + table, "TRUNCATE " + table + " CASCADE"}) {
                 jdbc.execute("SAVEPOINT immutable_check");
-                assertThrows(org.springframework.dao.DataAccessException.class, () -> jdbc.execute(statement));
+                assertThrows(DataAccessException.class, () -> jdbc.execute(statement));
                 jdbc.execute("ROLLBACK TO SAVEPOINT immutable_check");
             }
         }
@@ -170,6 +173,6 @@ class LegalDocumentsIntegrationTest extends PostgreSqlIntegrationTest {
     void exportsOpenApiWhenRequested() throws Exception {
         String output = System.getProperty("account.openapi.output");
         var response = mvc.perform(get("/v3/api-docs")).andExpect(status().isOk()).andReturn().getResponse();
-        if (output != null) Files.writeString(Path.of(output), response.getContentAsString(java.nio.charset.StandardCharsets.UTF_8));
+        if (output != null) Files.writeString(Path.of(output), response.getContentAsString(StandardCharsets.UTF_8));
     }
 }

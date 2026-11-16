@@ -30,7 +30,7 @@ describe("ordem didática das aulas", () => {
     expect(dialog.getByRole("button", { name: "Descer aula Vídeo 12" })).toBeDisabled();
     expect(dialog.getByRole("button", { name: "Salvar ordem" })).toBeDisabled();
     await view.user.click(dialog.getByRole("button", { name: "Subir aula Vídeo 2" }));
-    await view.user.click(dialog.getByRole("button", { name: "Descer aula Vídeo 12" })); // disabled boundary
+    await view.user.click(dialog.getByRole("button", { name: "Descer aula Vídeo 12" }));
     await view.user.click(dialog.getByRole("button", { name: "Salvar ordem" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(save).toHaveBeenCalledOnce();

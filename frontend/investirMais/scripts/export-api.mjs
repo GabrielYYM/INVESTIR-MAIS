@@ -1,6 +1,5 @@
 import { writeFile } from "node:fs/promises";
 
-// Export only the documented account/dashboard API; login/OTT remain Spring Security endpoints.
 const response = await fetch(new URL("/v3/api-docs", process.env.API_DOCS_ORIGIN || "http://localhost:8080"));
 if (!response.ok) throw new Error(`OpenAPI retornou HTTP ${response.status}`);
 const { servers, ...document } = await response.json();

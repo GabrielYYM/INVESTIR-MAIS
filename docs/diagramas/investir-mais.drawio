@@ -14,7 +14,7 @@
         <mxCell id="subtitle" value="Entidades JPA, links de vídeo e tabelas SQL de versões e aceites dos documentos legais." style="html=1;whiteSpace=wrap;text;strokeColor=none;fillColor=none;fontSize=18;fontColor=#405870;fontStyle=0;align=left;verticalAlign=middle;spacing=0;connectable=0;" vertex="1" parent="1">
           <mxGeometry x="42" y="119" width="1516" height="29" as="geometry" />
         </mxCell>
-        <mxCell id="footer" value="Question guarda alternativas em ARRAY. User guarda UUIDs de acertos. Aceites legais usam JDBC; não são entidades JPA." style="html=1;whiteSpace=wrap;text;strokeColor=none;fillColor=none;fontSize=15;fontColor=#405870;fontStyle=0;align=left;verticalAlign=middle;spacing=0;connectable=0;" vertex="1" parent="1">
+        <mxCell id="footer" value="Aulas: posições a partir de 1. Question guarda alternativas em ARRAY; User guarda UUIDs dos acertos. Documentos e aceites usam JDBC." style="html=1;whiteSpace=wrap;text;strokeColor=none;fillColor=none;fontSize=15;fontColor=#405870;fontStyle=0;align=left;verticalAlign=middle;spacing=0;connectable=0;" vertex="1" parent="1">
           <mxGeometry x="42" y="1285" width="1516" height="28" as="geometry" />
         </mxCell>
         <mxCell id="user" value="&lt;b style=&quot;font-size:24px&quot;&gt;User&lt;/b&gt;" style="html=1;whiteSpace=wrap;swimlane;startSize=49;horizontal=1;rounded=0;fillColor=#E7EFFD;swimlaneFillColor=#FFFFFF;strokeColor=#6A7D93;fontColor=#172B43;fontSize=20;align=center;verticalAlign=middle;collapsible=0;container=1;" vertex="1" parent="1">
@@ -222,7 +222,7 @@
         <mxCell id="user-mapper" value="&lt;b style=&quot;font-size:18px;color:#172B43&quot;&gt;UserMapper&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:15px;color:#405870;line-height:1.35&quot;&gt;Conversão de dados da conta&lt;/span&gt;" style="html=1;whiteSpace=wrap;rounded=1;arcSize=13;fillColor=#FFFFFF;strokeColor=#8FA2B6;align=center;verticalAlign=middle;fontColor=#172B43;fontSize=18;spacing=5;" vertex="1" parent="1">
           <mxGeometry x="853" y="311" width="265" height="56" as="geometry" />
         </mxCell>
-        <mxCell id="encoder" value="&lt;b style=&quot;font-size:18px;color:#172B43&quot;&gt;PasswordEncoder&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:15px;color:#405870;line-height:1.35&quot;&gt;Hash Argon2&lt;/span&gt;" style="html=1;whiteSpace=wrap;rounded=1;arcSize=13;fillColor=#FFFFFF;strokeColor=#8FA2B6;align=center;verticalAlign=middle;fontColor=#172B43;fontSize=18;spacing=5;" vertex="1" parent="1">
+        <mxCell id="encoder" value="&lt;b style=&quot;font-size:18px;color:#172B43&quot;&gt;PasswordEncoder&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:15px;color:#405870;line-height:1.35&quot;&gt;Hash Argon2id&lt;/span&gt;" style="html=1;whiteSpace=wrap;rounded=1;arcSize=13;fillColor=#FFFFFF;strokeColor=#8FA2B6;align=center;verticalAlign=middle;fontColor=#172B43;fontSize=18;spacing=5;" vertex="1" parent="1">
           <mxGeometry x="1236" y="263" width="286" height="71" as="geometry" />
         </mxCell>
         <mxCell id="auth-user" value="" edge="1" parent="1" style="html=1;edgeStyle=segmentEdgeStyle;rounded=1;arcSize=12;strokeColor=#6A7D93;strokeWidth=1.7;endArrow=open;startArrow=none;fontSize=14;fontColor=#172B43;labelBackgroundColor=#F8FAFD;exitX=1;exitY=0.7;entryX=0;entryY=0.25;dashed=1;dashPattern=6 5;" source="auth" target="user-service">
@@ -305,10 +305,10 @@
         <mxCell id="question-repo-dep" value="" edge="1" parent="1" style="html=1;edgeStyle=segmentEdgeStyle;rounded=1;arcSize=12;strokeColor=#6A7D93;strokeWidth=1.7;endArrow=open;startArrow=none;fontSize=14;fontColor=#172B43;labelBackgroundColor=#F8FAFD;exitX=1;exitY=0.5;entryX=0;entryY=0.5;dashed=1;dashPattern=6 5;" source="question-service" target="question-deps">
           <mxGeometry relative="1" x="0" y="-12" as="geometry" />
         </mxCell>
-        <mxCell id="education-note" value="&lt;b style=&quot;font-size:18px;color:#725519&quot;&gt;Permissões e consistência&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:15px;color:#405870;line-height:1.35&quot;&gt;Professor: cursos próprios.&lt;br&gt;ADMIN: todo o catálogo.&lt;br&gt;Ordem: lista completa e transação.&lt;br&gt;Perguntas acompanham as aulas.&lt;br&gt;LessonService usa QuestionService.&lt;br&gt;Serviços consultam UserService.&lt;/span&gt;" style="html=1;whiteSpace=wrap;rounded=1;arcSize=13;fillColor=#FFF1D4;strokeColor=#BA9B5D;align=center;verticalAlign=middle;fontColor=#172B43;fontSize=18;spacing=5;" vertex="1" parent="1">
+        <mxCell id="education-note" value="&lt;b style=&quot;font-size:18px;color:#725519&quot;&gt;Permissões e consistência&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:15px;color:#405870;line-height:1.35&quot;&gt;Professor: cursos próprios.&lt;br&gt;ADMIN: todo o catálogo.&lt;br&gt;Ordem: lista completa, transação e bloqueios.&lt;br&gt;Perguntas acompanham as aulas.&lt;br&gt;LessonService usa QuestionService.&lt;br&gt;Serviços consultam UserService.&lt;/span&gt;" style="html=1;whiteSpace=wrap;rounded=1;arcSize=13;fillColor=#FFF1D4;strokeColor=#BA9B5D;align=center;verticalAlign=middle;fontColor=#172B43;fontSize=18;spacing=5;" vertex="1" parent="1">
           <mxGeometry x="1200" y="478" width="318" height="222" as="geometry" />
         </mxCell>
-        <mxCell id="video-url" value="&lt;b style=&quot;font-size:18px&quot;&gt;YouTubeVideoUrl&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:15px&quot;&gt;Valida o endereço e normaliza URL e miniatura&lt;/span&gt;" style="html=1;whiteSpace=wrap;rounded=1;arcSize=13;fillColor=#E1F3EF;strokeColor=#75A9A0;align=center;verticalAlign=middle;fontColor=#172B43;fontSize=18;spacing=5;" vertex="1" parent="1">
+        <mxCell id="video-url" value="&lt;b style=&quot;font-size:18px&quot;&gt;YouTubeVideoUrl&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:15px&quot;&gt;Validação local de URL e miniatura, sem consulta externa&lt;/span&gt;" style="html=1;whiteSpace=wrap;rounded=1;arcSize=13;fillColor=#E1F3EF;strokeColor=#75A9A0;align=center;verticalAlign=middle;fontColor=#172B43;fontSize=18;spacing=5;" vertex="1" parent="1">
           <mxGeometry x="540" y="815" width="440" height="70" as="geometry" />
         </mxCell>
         <mxCell id="video-note" value="Professor e ADMIN conferem o conteúdo e sua autorização de uso. A publicação aceita vídeos de qualquer canal do YouTube." style="html=1;whiteSpace=wrap;text;strokeColor=none;fillColor=none;fontSize=16;fontColor=#405870;fontStyle=0;align=left;verticalAlign=middle;spacing=0;connectable=0;" vertex="1" parent="1">
@@ -522,7 +522,7 @@
         <mxCell id="student" value="&lt;b style=&quot;font-size:18px;color:#175E57&quot;&gt;STUDENT&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:15px;color:#405870;line-height:1.35&quot;&gt;Matrícula, aulas e perguntas liberadas.&lt;br&gt;Assiste a vídeos incorporados do YouTube.&lt;/span&gt;" style="html=1;whiteSpace=wrap;rounded=1;arcSize=13;fillColor=#E1F3EF;strokeColor=#75A9A0;align=center;verticalAlign=middle;fontColor=#172B43;fontSize=18;spacing=5;" vertex="1" parent="1">
           <mxGeometry x="66" y="1080" width="438" height="88" as="geometry" />
         </mxCell>
-        <mxCell id="teacher" value="&lt;b style=&quot;font-size:18px;color:#204884&quot;&gt;TEACHER&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:15px;color:#405870;line-height:1.35&quot;&gt;Gerencia seus cursos e ordena aulas.&lt;br&gt;Publica links de qualquer canal do YouTube.&lt;/span&gt;" style="html=1;whiteSpace=wrap;rounded=1;arcSize=13;fillColor=#E7EFFD;strokeColor=#7B98BF;align=center;verticalAlign=middle;fontColor=#172B43;fontSize=18;spacing=5;" vertex="1" parent="1">
+        <mxCell id="teacher" value="&lt;b style=&quot;font-size:18px;color:#204884&quot;&gt;TEACHER&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:15px;color:#405870;line-height:1.35&quot;&gt;Gerencia cursos próprios, perguntas e ordem.&lt;br&gt;Publica links de qualquer canal do YouTube.&lt;/span&gt;" style="html=1;whiteSpace=wrap;rounded=1;arcSize=13;fillColor=#E7EFFD;strokeColor=#7B98BF;align=center;verticalAlign=middle;fontColor=#172B43;fontSize=18;spacing=5;" vertex="1" parent="1">
           <mxGeometry x="536" y="1080" width="460" height="88" as="geometry" />
         </mxCell>
         <mxCell id="admin" value="&lt;b style=&quot;font-size:18px;color:#725519&quot;&gt;ADMIN&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:15px;color:#405870;line-height:1.35&quot;&gt;Gerencia o catálogo e ordena aulas de qualquer curso.&lt;br&gt;Gerencia usuários e consulta auditoria.&lt;/span&gt;" style="html=1;whiteSpace=wrap;rounded=1;arcSize=13;fillColor=#FFF1D4;strokeColor=#BA9B5D;align=center;verticalAlign=middle;fontColor=#172B43;fontSize=18;spacing=5;" vertex="1" parent="1">
@@ -676,7 +676,7 @@
         <mxCell id="subtitle" value="Uma tentativa de login, da validação das credenciais à conclusão da autenticação com dois fatores." style="html=1;whiteSpace=wrap;text;strokeColor=none;fillColor=none;fontSize=18;fontColor=#405870;fontStyle=0;align=left;verticalAlign=middle;spacing=0;connectable=0;" vertex="1" parent="1">
           <mxGeometry x="42" y="119" width="1516" height="29" as="geometry" />
         </mxCell>
-        <mxCell id="footer" value="Autenticação concluída. O acesso ao catálogo ainda exige o aceite da versão atual; esse desvio aparece no fluxo de navegação." style="html=1;whiteSpace=wrap;text;strokeColor=none;fillColor=none;fontSize=15;fontColor=#405870;fontStyle=0;align=left;verticalAlign=middle;spacing=0;connectable=0;" vertex="1" parent="1">
+        <mxCell id="footer" value="OTT válido conclui a sessão. O catálogo exige também o aceite legal atual; pendência retorna HTTP 428, conforme o fluxo de navegação." style="html=1;whiteSpace=wrap;text;strokeColor=none;fillColor=none;fontSize=15;fontColor=#405870;fontStyle=0;align=left;verticalAlign=middle;spacing=0;connectable=0;" vertex="1" parent="1">
           <mxGeometry x="42" y="910" width="1516" height="24" as="geometry" />
         </mxCell>
         <mxCell id="person-lane" value="" style="html=1;whiteSpace=wrap;swimlane;horizontal=0;startSize=108;rounded=0;fillColor=#E7EFFD;swimlaneFillColor=#F8FAFD;strokeColor=#C0CEDC;fontSize=17;fontStyle=1;fontColor=#172B43;connectable=0;collapsible=0;" vertex="1" parent="1">
@@ -1033,7 +1033,7 @@
         <mxCell id="postgres-label" value="PostgreSQL" style="html=1;whiteSpace=wrap;text;strokeColor=none;fillColor=none;fontSize=16;fontColor=#172B43;fontStyle=1;align=center;verticalAlign=middle;spacing=0;connectable=0;" vertex="1" parent="1">
           <mxGeometry x="1226" y="470" width="142" height="21" as="geometry" />
         </mxCell>
-        <mxCell id="postgres-sub" value="Contas e conteúdo" style="html=1;whiteSpace=wrap;text;strokeColor=none;fillColor=none;fontSize=13;fontColor=#405870;fontStyle=0;align=center;verticalAlign=middle;spacing=0;connectable=0;" vertex="1" parent="1">
+        <mxCell id="postgres-sub" value="Contas e educação" style="html=1;whiteSpace=wrap;text;strokeColor=none;fillColor=none;fontSize=13;fontColor=#405870;fontStyle=0;align=center;verticalAlign=middle;spacing=0;connectable=0;" vertex="1" parent="1">
           <mxGeometry x="1226" y="491" width="142" height="17" as="geometry" />
         </mxCell>
         <mxCell id="redis" value="" style="html=1;whiteSpace=wrap;rounded=1;arcSize=10;fillColor=#FFFFFF;strokeColor=#8FA2B6;" vertex="1" parent="1">
@@ -1048,7 +1048,7 @@
         <mxCell id="redis-sub" value="Sessões e limites" style="html=1;whiteSpace=wrap;text;strokeColor=none;fillColor=none;fontSize=13;fontColor=#405870;fontStyle=0;align=center;verticalAlign=middle;spacing=0;connectable=0;" vertex="1" parent="1">
           <mxGeometry x="1392" y="491" width="144" height="17" as="geometry" />
         </mxCell>
-        <mxCell id="pg-note" value="Também armazena matrículas, progresso, acertos, auditoria, tokens, eventos e versões e aceites legais." style="html=1;whiteSpace=wrap;text;strokeColor=none;fillColor=none;fontSize=15;fontColor=#405870;fontStyle=0;align=left;verticalAlign=middle;spacing=0;connectable=0;" vertex="1" parent="1">
+        <mxCell id="pg-note" value="Também armazena matrículas, progresso, perguntas e acertos, auditoria, tokens, eventos e versões e aceites legais." style="html=1;whiteSpace=wrap;text;strokeColor=none;fillColor=none;fontSize=15;fontColor=#405870;fontStyle=0;align=left;verticalAlign=middle;spacing=0;connectable=0;" vertex="1" parent="1">
           <mxGeometry x="1223" y="522" width="313" height="78" as="geometry" />
         </mxCell>
         <mxCell id="redis-note" value="Sessões indexadas por usuário e limites de autenticação. Inatividade padrão: 30 minutos." style="html=1;whiteSpace=wrap;text;strokeColor=none;fillColor=none;fontSize=15;fontColor=#405870;fontStyle=0;align=left;verticalAlign=middle;spacing=0;connectable=0;" vertex="1" parent="1">
@@ -1063,7 +1063,7 @@
         <mxCell id="youtube-label" value="YouTube" style="html=1;whiteSpace=wrap;text;strokeColor=none;fillColor=none;fontSize=17;fontColor=#172B43;fontStyle=1;align=left;verticalAlign=middle;spacing=0;connectable=0;" vertex="1" parent="1">
           <mxGeometry x="123" y="755" width="246" height="23" as="geometry" />
         </mxCell>
-        <mxCell id="youtube-sub" value="Player de aulas no navegador" style="html=1;whiteSpace=wrap;text;strokeColor=none;fillColor=none;fontSize=14;fontColor=#405870;fontStyle=0;align=left;verticalAlign=middle;spacing=0;connectable=0;" vertex="1" parent="1">
+        <mxCell id="youtube-sub" value="Player no navegador · qualquer canal" style="html=1;whiteSpace=wrap;text;strokeColor=none;fillColor=none;fontSize=14;fontColor=#405870;fontStyle=0;align=left;verticalAlign=middle;spacing=0;connectable=0;" vertex="1" parent="1">
           <mxGeometry x="123" y="777" width="246" height="44" as="geometry" />
         </mxCell>
         <mxCell id="resend" value="" style="html=1;whiteSpace=wrap;rounded=1;arcSize=10;fillColor=#FFF1D4;strokeColor=#BA9B5D;" vertex="1" parent="1">

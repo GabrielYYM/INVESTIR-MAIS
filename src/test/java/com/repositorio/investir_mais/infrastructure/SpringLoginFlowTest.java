@@ -54,7 +54,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppContextSetup;
 
-// Real Spring Security filters and native JDBC token storage, without a running Docker/database server.
 @ExtendWith(SpringExtension.class)
 @WebAppConfiguration
 @ContextConfiguration(classes = {SecurityConfig.class, AuthenticationController.class, UserController.class, SpringLoginFlowTest.Config.class})
@@ -259,7 +258,7 @@ class SpringLoginFlowTest {
 
     @Test
     void browserCanRefreshCsrfBetweenPasswordTokenAndLogout() throws Exception {
-        // Exercise the actual cookie/header protocol used by Axios, without the csrf() test shortcut.
+
         Cookie csrfCookie = csrfCookie(null);
         var passwordResult = mvc.perform(post("/auth/login").cookie(csrfCookie)
                         .header("X-XSRF-TOKEN", csrfCookie.getValue()).param("email", EMAIL).param("password", PASSWORD))
