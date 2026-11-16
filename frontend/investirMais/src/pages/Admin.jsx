@@ -65,6 +65,7 @@ function AuditTable() {
   return <div className="overflow-x-auto"><DataTable resource="audit" bulkActionButtons={false} rowClick={false} empty={<p className="text-muted">Nenhum registro de auditoria encontrado</p>}>
     <DataTable.Col source="timestamp" label="Data/Hora" render={row => formatDate(row.timestamp)} />
     <DataTable.Col source="operation" label="Operação" render={row => <span className={`rounded border px-2 py-0.5 text-xs ${operationBadges[row.operation] ?? "border-line text-muted"}`}>{operations[row.operation] ?? row.operation}</span>} />
+    <DataTable.Col label="Antes" render={row => row.before ? <span className="text-xs text-muted">{row.before.name ?? "—"} {row.before.role ? <RoleBadge role={row.before.role} /> : null}</span> : "—"} />
     <DataTable.Col label="Nome no Snapshot" render={row => row.user?.name ?? "—"} />
     <DataTable.Col label="Papel no Snapshot" render={row => row.user?.role ? <RoleBadge role={row.user.role} /> : "—"} />
   </DataTable><ResourcePagination /></div>;
