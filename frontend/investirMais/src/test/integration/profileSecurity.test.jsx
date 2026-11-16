@@ -22,24 +22,24 @@ describe("segurança do perfil", () => {
     const { user } = renderApp("/perfil"); const form = await passwordForm();
     await user.click(form.getByRole("button", { name: "Atualizar senha" }));
     expect(form.getByText("Informe a senha atual.")).toBeInTheDocument(); expect(update).not.toHaveBeenCalled();
-    await fillFields(user, { "Senha atual": "atual", "Nova senha": "senha-nova", "Confirme a nova senha": "diferente" }, form);
+    await fillFields(user, { "Senha atual": "atual", "Nova senha": "SenhaNova1!", "Confirme a nova senha": "diferente" }, form);
     await user.click(form.getByRole("button", { name: "Atualizar senha" }));
     expect(form.getByText("As senhas não coincidem.")).toBeInTheDocument();
-    await fillFields(user, { "Confirme a nova senha": "senha-nova" }, form);
+    await fillFields(user, { "Confirme a nova senha": "SenhaNova1!" }, form);
     await user.click(form.getByRole("button", { name: "Atualizar senha" }));
     expect(await form.findByRole("status")).toHaveTextContent("Senha atualizada com sucesso");
     expect(form.getByLabelText("Senha atual", { exact: true })).toHaveValue("");
     expect(update).toHaveBeenCalledOnce();
-    expect(await update.mock.calls[0][0].request.clone().json()).toEqual({ currentPassword: "atual", newPassword: "senha-nova" });
+    expect(await update.mock.calls[0][0].request.clone().json()).toEqual({ currentPassword: "atual", newPassword: "SenhaNova1!" });
   });
 
   it("preserva os campos após erro ao atualizar a senha", async () => {
     mockApi("put", "/api/users/update-password", { detail: "Senha atual incorreta." }, { status: 401 });
     const { user } = renderApp("/perfil"); const form = await passwordForm();
-    await fillFields(user, { "Senha atual": "atual", "Nova senha": "senha-nova", "Confirme a nova senha": "senha-nova" }, form);
+    await fillFields(user, { "Senha atual": "atual", "Nova senha": "SenhaNova1!", "Confirme a nova senha": "SenhaNova1!" }, form);
     await user.click(form.getByRole("button", { name: "Atualizar senha" }));
     expect(await form.findByRole("alert")).toHaveTextContent("Senha atual incorreta");
-    expect(form.getByLabelText("Nova senha", { exact: true })).toHaveValue("senha-nova");
+    expect(form.getByLabelText("Nova senha", { exact: true })).toHaveValue("SenhaNova1!");
   });
 
   it.each([204, 503])("solicita recuperação e informa o resultado HTTP %i", async (status) => {

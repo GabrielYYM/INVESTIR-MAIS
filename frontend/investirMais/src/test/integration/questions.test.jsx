@@ -36,9 +36,9 @@ describe("perguntas para professores", () => {
     expect(payloads).toHaveLength(0);
     await fillQuestion(user, dialog);
     await user.click(dialog.getByRole("button", { name: "Salvar pergunta" }));
-    expect(await screen.findByRole("heading", { name: question.prompt })).toBeInTheDocument();
+    await waitFor(() => expect(payloads).toEqual([{ prompt: question.prompt, afterLesson: 1, position: 0, options: question.options, correctOptionIndex: 0 }]));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(payloads).toEqual([{ prompt: question.prompt, afterLesson: 1, position: 0, options: question.options, correctOptionIndex: 0 }]);
+    expect(await screen.findByRole("heading", { name: question.prompt })).toBeInTheDocument();
     expect(screen.getByText("Tesouro Selic").closest("li")).toHaveTextContent("Correta");
   });
 
