@@ -66,8 +66,8 @@ consentimento genérico para qualquer tratamento de dados.
 O aluno consulta os conteúdos e segue os bloqueios de progressão. O professor
 gerencia os próprios cursos, aulas, perguntas e sequência; o ADMIN gerencia
 qualquer curso e também pode reordenar suas aulas. O backend verifica perfil e
-propriedade. O administrador pode promover um aluno a professor somente se houver
-data de nascimento e idade mínima de 18 anos. O painel não concede nem altera o
+propriedade. O administrador pode promover um aluno a professor somente com
+candidatura e documentos aprovados, sem idade mínima. O painel não concede nem altera o
 papel ADMIN. Vídeos de qualquer canal podem ser usados, sem aprovação prévia de
 canais, filtro temático ou verificação de disponibilidade pela plataforma.
 

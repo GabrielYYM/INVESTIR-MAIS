@@ -5,7 +5,6 @@ import com.repositorio.investir_mais.domain.education.model.Lesson;
 import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
-import org.hibernate.validator.constraints.Range;
 
 import lombok.*;
 
@@ -23,8 +22,6 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import org.springframework.modulith.NamedInterface;
 
 import java.time.LocalDateTime;
-import java.time.LocalDate;
-import java.time.Period;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -36,7 +33,7 @@ import java.util.HashSet;
 @NamedInterface("user-model")
 @Entity
 @Table(name = "TB_USER")
-@SQLDelete(sql = "UPDATE tb_user SET deleted_at = CURRENT_TIMESTAMP, name = NULL, age = NULL, birth_date = NULL, email = CONCAT('deleted-', id, '@deleted.invalid'), password = NULL, email_verified = false WHERE id = ? AND deleted_at IS NULL", verify = Expectation.RowCount.class)
+@SQLDelete(sql = "UPDATE tb_user SET deleted_at = CURRENT_TIMESTAMP, name = NULL, email = CONCAT('deleted-', id, '@deleted.invalid'), password = NULL, email_verified = false WHERE id = ? AND deleted_at IS NULL", verify = Expectation.RowCount.class)
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @Setter
@@ -52,16 +49,6 @@ public class User {
     private UUID id;
 
     private String name;
-
-    @Range(min = 0, max = 120)
-    private Integer age;
-
-    private LocalDate birthDate;
-
-    public Integer getAge() {
-        if (birthDate == null) return age;
-        return Period.between(birthDate, LocalDate.now()).getYears();
-    }
 
     @Email
     @Column(nullable = false, unique = true)

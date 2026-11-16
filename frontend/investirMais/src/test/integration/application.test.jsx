@@ -38,7 +38,7 @@ describe("rotas e sessão", () => {
   it("navega pelo menu e encerra a sessão no backend", async () => {
     const logout = mockApi("post", "/auth/logout", null, { status: 204 });
     const { user, router } = renderApp();
-    expect(await screen.findByRole("heading", { name: "Olá, Ana." })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Olá, Ana Teste." })).toBeInTheDocument();
     const menu = within(screen.getByRole("navigation", { name: "Menu principal" }));
     expect(menu.getByRole("link", { name: "Dashboard" })).toHaveAttribute("aria-current", "page");
     await user.click(menu.getByRole("link", { name: "Educação" }));
@@ -68,7 +68,7 @@ describe("painel e catálogo", () => {
       return paged([course]);
     });
     renderApp();
-    expect(await screen.findByRole("heading", { name: "Olá, Ana." })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Olá, Ana Teste." })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Renda fixa" })).toBeInTheDocument();
     expect(query.get("size")).toBe("3");
     expect(query.getAll("sort")).toEqual(["name", "id"]);

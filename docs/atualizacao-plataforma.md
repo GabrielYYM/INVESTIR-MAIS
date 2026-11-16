@@ -8,8 +8,8 @@ administrador analisa os arquivos em **Administração → Candidaturas de profe
 e registra um parecer para aprovar ou reprovar. Uma reprovação permite novo envio;
 uma candidatura pendente não aceita substituição dos documentos.
 
-Não existe idade mínima para conceder o perfil de professor. Nome e data de
-nascimento continuam no cadastro; a alteração não os remove globalmente. O PATCH
+Não existe idade mínima para conceder o perfil de professor. O cadastro solicita
+apelido, e-mail e senha; idade e data de nascimento foram removidas. O PATCH
 de papel exige candidatura aprovada para promover um aluno. Professores existentes
 continuam com seus acessos.
 
@@ -81,7 +81,7 @@ autor e papel. Revisões anteriores podem não ter esses campos. A auditoria das
 entidades educacionais começa após esta atualização; não reconstrói alterações
 anteriores. O histórico antigo de usuários continua disponível.
 
-Excluir uma conta passa a limpar nome, idade, nascimento, senha e confirmação de
+Excluir uma conta passa a limpar apelido, senha e confirmação de
 e-mail do registro principal e substitui seu e-mail por um identificador técnico
 único. A conta permanece excluída logicamente para preservar vínculos. Revisões
 de auditoria anteriores retêm os dados históricos e ficam restritas ao ADMIN.

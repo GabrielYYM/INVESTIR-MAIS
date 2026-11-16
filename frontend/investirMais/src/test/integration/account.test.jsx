@@ -7,7 +7,7 @@ import { fillFields, mockApi } from "../helpers.js";
 
 async function fillSignUp(user) {
   await fillFields(user, {
-    "Nome completo": "  Ana Teste  ", "Data de nascimento": "2000-01-15", "E-mail": student.email,
+    "Apelido": "  Ana Teste  ", "E-mail": student.email,
     Senha: "SenhaTeste1!", "Confirme a senha": "SenhaTeste1!",
   });
   await user.click(screen.getByRole("checkbox"));
@@ -38,12 +38,12 @@ describe("cadastro", () => {
     expect(bodies[0].password).toBe(" SenhaTeste1! ");
   });
 
-  it("valida nome, idade, senha, confirmação e aceite antes de enviar", async () => {
+  it("valida apelido, senha, confirmação e aceite antes de enviar", async () => {
     const register = mockApi("post", "/api/users/register", {});
     const { user } = renderApp("/cadastro");
     await user.click(screen.getByRole("button", { name: "Criar conta" }));
-    expect(await screen.findByText("Informe seu nome.")).toBeInTheDocument();
-    expect(screen.getByText("Informe uma data de nascimento válida.")).toBeInTheDocument();
+    expect(await screen.findByText("Informe seu apelido.")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Data de nascimento")).not.toBeInTheDocument();
     expect(screen.getByRole("alert")).toHaveTextContent("Aceite os termos para continuar.");
     await user.type(screen.getByLabelText("Senha", { exact: true }), "curta");
     await user.type(screen.getByLabelText("Confirme a senha"), "diferente");
@@ -68,7 +68,7 @@ describe("cadastro", () => {
     await fillSignUp(user);
     await user.click(screen.getByRole("button", { name: "Criar conta" }));
     expect(await screen.findByRole("heading", { name: "Confirme seu e-mail" })).toBeInTheDocument();
-    expect(registered).toEqual([{ name: student.name, birthDate: "2000-01-15", email: student.email, password: "SenhaTeste1!" }]);
+    expect(registered).toEqual([{ name: student.name, email: student.email, password: "SenhaTeste1!" }]);
     await user.click(screen.getByRole("button", { name: "Reenviar link de confirmação" }));
     expect(await screen.findByRole("status")).toHaveTextContent("Link de confirmação solicitado novamente.");
     expect(resent).toEqual([{ email: student.email }]);
@@ -176,15 +176,15 @@ describe("edição do perfil", () => {
     const update = mockApi("put", `/api/users/${student.id}`, HttpResponse.error());
     const { user, router } = renderApp("/perfil");
     const form = within((await screen.findByRole("heading", { name: "Alterar informações" })).closest("form"));
-    await fillFields(user, { "Nome completo": "Ana Offline", "Senha atual": "senha-atual" }, form);
+    await fillFields(user, { "Apelido": "Ana Offline", "Senha atual": "senha-atual" }, form);
     await user.click(form.getByRole("button", { name: "Salvar perfil" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Não foi possível salvar.");
-    expect(form.getByLabelText("Nome completo")).toHaveValue("Ana Offline");
+    expect(form.getByLabelText("Apelido")).toHaveValue("Ana Offline");
     expect(form.getByRole("button", { name: "Salvar perfil" })).toBeEnabled();
     expect(router.state.location.pathname).toBe("/perfil");
     expect(update).toHaveBeenCalledOnce();
   });
-  it("exige a senha, salva o nome e atualiza a identidade da sessão", async () => {
+  it("exige a senha, salva o apelido e atualiza a identidade da sessão", async () => {
     let currentUser = { ...student };
     const updates = [];
     mockApi("get", "/auth/me", () => currentUser);
@@ -192,7 +192,7 @@ describe("edição do perfil", () => {
       expect(params.id).toBe(student.id);
       const body = await request.json();
       updates.push(body);
-      currentUser = { ...currentUser, name: body.name, birthDate: body.birthDate };
+      currentUser = { ...currentUser, name: body.name };
       return currentUser;
     });
     const { user } = renderApp("/perfil");
@@ -204,12 +204,12 @@ describe("edição do perfil", () => {
     await user.click(screen.getByRole("button", { name: "Salvar perfil" }));
     expect(await screen.findByText("Informe sua senha atual para confirmar.")).toBeInTheDocument();
     expect(updates).toHaveLength(0);
-    await fillFields(user, { "Nome completo": "  Ana Atualizada  ", "Data de nascimento": "2001-02-03", "Senha atual": "senha-teste" }, profileForm);
+    await fillFields(user, { "Apelido": "  Ana Atualizada  ", "Senha atual": "senha-teste" }, profileForm);
     await user.click(screen.getByRole("button", { name: "Salvar perfil" }));
     expect(await screen.findByRole("status")).toHaveTextContent("Perfil atualizado.");
     expect(await screen.findByRole("heading", { name: "Ana Atualizada" })).toBeInTheDocument();
     await waitFor(() => expect(profileForm.getByLabelText("Senha atual")).toHaveValue(""));
-    expect(updates).toEqual([{ name: "Ana Atualizada", birthDate: "2001-02-03", email: student.email, currentPassword: "senha-teste" }]);
+    expect(updates).toEqual([{ name: "Ana Atualizada", email: student.email, currentPassword: "senha-teste" }]);
   });
 
   it("permanece no perfil se a senha atual for recusada com sessão válida", async () => {

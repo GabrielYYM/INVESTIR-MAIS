@@ -45,7 +45,7 @@ describe("termos e privacidade", () => {
     vi.spyOn(window.history, "length", "get").mockReturnValue(1);
     const { user, router } = renderApp("/termos");
     await user.click(await screen.findByRole("button", { name: "Voltar", exact: true }));
-    expect(await screen.findByRole("heading", { name: "Olá, Ana." })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Olá, Ana Teste." })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/");
   });
 });

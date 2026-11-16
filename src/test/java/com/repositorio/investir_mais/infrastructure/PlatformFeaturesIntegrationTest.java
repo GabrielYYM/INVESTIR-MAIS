@@ -54,7 +54,7 @@ class PlatformFeaturesIntegrationTest extends PostgreSqlIntegrationTest {
     }
     private User account(UserRole role,String email) {
         User user=new User();user.setName("Pessoa teste");user.setEmail(email);user.setRole(role);user.setEmailVerified(true);
-        user.setBirthDate(LocalDate.now().minusYears(17));user.setPassword("unused");return users.saveAndFlush(user);
+        user.setPassword("unused");return users.saveAndFlush(user);
     }
     private RequestPostProcessor as(User account) {
         return user(account.getEmail()).authorities(new SimpleGrantedAuthority("ROLE_"+account.getRole()),
@@ -140,8 +140,6 @@ class PlatformFeaturesIntegrationTest extends PostgreSqlIntegrationTest {
         student.setPassword(encoder.encode("Temporary123!")); users.saveAndFlush(student);
         accounts.deleteAccount(student.getEmail(),student.getId(),new UserDTO.DeleteAccountRequest("Temporary123!"));
         assertNull(jdbc.queryForObject("select name from tb_user where id=?",String.class,student.getId()));
-        assertNull(jdbc.queryForObject("select age from tb_user where id=?",Integer.class,student.getId()));
-        assertNull(jdbc.queryForObject("select birth_date from tb_user where id=?",LocalDate.class,student.getId()));
         assertNotEquals(student.getEmail(),jdbc.queryForObject("select email from tb_user where id=?",String.class,student.getId()));
         assertTrue(jdbc.queryForObject("select count(*) from tb_user_audit where id=? and email=?",Integer.class,student.getId(),student.getEmail())>0);
         assertFalse(applicationRepository.existsById(application.id()));

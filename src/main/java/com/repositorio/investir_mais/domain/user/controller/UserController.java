@@ -109,7 +109,7 @@ public class UserController {
         return userService.getProfile(principal.getName(), id);
     }
 
-    @Operation(summary = "Atualizar dados do perfil", description = "Atualiza nome, idade ou e-mail do usuário autenticado.")
+    @Operation(summary = "Atualizar dados do perfil", description = "Atualiza apelido ou e-mail do usuário autenticado.")
     @PutMapping("/users/{id}")
     public UserDTO.Response updateProfile(Principal principal, @PathVariable UUID id, @Valid @RequestBody UserDTO.UpdateProfileRequest dto) {
         return userService.updateProfile(principal.getName(), id, dto);

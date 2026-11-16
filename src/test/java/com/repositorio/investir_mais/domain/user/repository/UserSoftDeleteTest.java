@@ -15,7 +15,6 @@ import com.repositorio.investir_mais.infrastructure.SecurityConfig;
 import jakarta.persistence.EntityManager;
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
@@ -82,8 +81,6 @@ class UserSoftDeleteTest {
         assertNotNull(jdbc.queryForObject("SELECT deleted_at FROM tb_user WHERE id = ?", Timestamp.class, deleted.getId()));
         assertEquals("deleted-" + deleted.getId() + "@deleted.invalid", jdbc.queryForObject("SELECT email FROM tb_user WHERE id = ?", String.class, deleted.getId()));
         assertNull(jdbc.queryForObject("SELECT name FROM tb_user WHERE id = ?", String.class, deleted.getId()));
-        assertNull(jdbc.queryForObject("SELECT birth_date FROM tb_user WHERE id = ?", LocalDate.class, deleted.getId()));
-        assertNull(jdbc.queryForObject("SELECT age FROM tb_user WHERE id = ?", Integer.class, deleted.getId()));
         assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM tb_user", Integer.class));
         assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM tb_course_enrollment WHERE student_id = ?",
                 Integer.class, deleted.getId()));
@@ -112,7 +109,7 @@ class UserSoftDeleteTest {
         service.resendVerification(deleted.getEmail());
         assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM app_one_time_token", Integer.class));
         assertDoesNotThrow(() -> service.registerUser(
-                new UserDTO.Request("Novo usuário", LocalDate.now().minusYears(25), deleted.getEmail(), PASSWORD, UserRole.STUDENT)));
+                new UserDTO.Request("Novo usuário", deleted.getEmail(), PASSWORD, UserRole.STUDENT)));
     }
 
     @Test

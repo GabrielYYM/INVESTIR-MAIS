@@ -69,9 +69,6 @@ public class UserService {
         }
 
         user.setName(dto.name());
-        if (dto.birthDate() != null) {
-            user.setBirthDate(dto.birthDate());
-        }
         String previousEmail = user.getEmail();
         boolean emailChanged = !previousEmail.equals(dto.email());
         user.setEmail(dto.email());

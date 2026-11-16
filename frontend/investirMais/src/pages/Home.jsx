@@ -223,7 +223,7 @@ export default function Home() {
   const { page, teacherStats, teacherError } = useLoaderData();
   const user = useRouteLoaderData("app");
   const [period, setPeriod] = useQueryStates(periodParams, { shallow: false, history: "push" });
-  const firstName = user.name?.trim().split(/\s+/)[0] || "investidor";
+  const nickname = user.name?.trim() || "investidor";
   const isTeacherOrAdmin = user.role === "TEACHER" || user.role === "ADMIN";
   const showTeacherDashboard = isTeacherOrAdmin && Boolean(teacherStats);
 
@@ -243,7 +243,7 @@ export default function Home() {
       )}
 
       <PageHeader
-        title={`Olá, ${firstName}.`}
+        title={`Olá, ${nickname}.`}
         description={
           showTeacherDashboard
             ? user.role === "ADMIN"

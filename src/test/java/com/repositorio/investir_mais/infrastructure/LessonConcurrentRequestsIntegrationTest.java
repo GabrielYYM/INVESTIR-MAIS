@@ -61,7 +61,7 @@ class LessonConcurrentRequestsIntegrationTest extends PostgreSqlIntegrationTest 
             var user = new User();
             user.setName("Professor de teste");
             user.setEmail(EMAIL);
-            user.setAge(28);
+
             user.setPassword("unused-test-password");
             user.setRole(UserRole.TEACHER);
             user.setEmailVerified(true);

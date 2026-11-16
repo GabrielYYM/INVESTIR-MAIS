@@ -8,7 +8,6 @@ import com.repositorio.investir_mais.domain.user.service.UserService;
 import com.repositorio.investir_mais.infrastructure.exception.GlobalExceptionHandler;
 import java.sql.SQLException;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.UUID;
 import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
@@ -48,7 +47,7 @@ class HttpValidationTest {
         when(users.registerUser(any())).thenReturn(new DefaultOneTimeToken("token", "user@investir.com", Instant.now().plusSeconds(300)));
         mvc.perform(post("/api/users/register").contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                        {"name":"Teste","email":"user@investir.com","birthDate":"2000-01-15","password":"%s"}
+                        {"name":"Teste","email":"user@investir.com","password":"%s"}
                         """.formatted(password)))
                 .andExpect(status().is(length <= 100 ? 202 : 400));
         mvc.perform(post("/api/users/reset-password").contentType(MediaType.APPLICATION_JSON)
@@ -70,7 +69,7 @@ class HttpValidationTest {
     void weakPasswordsAreRejectedInAllCredentialCreationEndpoints(String password) throws Exception {
         mvc.perform(post("/api/users/register").contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                        {"name":"Teste","email":"user@investir.com","birthDate":"2000-01-15","password":"%s"}
+                        {"name":"Teste","email":"user@investir.com","password":"%s"}
                         """.formatted(password)))
                 .andExpect(status().isBadRequest());
         mvc.perform(post("/api/users/reset-password").contentType(MediaType.APPLICATION_JSON)
@@ -125,7 +124,7 @@ class HttpValidationTest {
     @Test void profileUpdateRequiresConfirmationPasswordBeforeCallingService() throws Exception {
         mvc.perform(put("/api/users/{id}", UUID.randomUUID()).principal(() -> "user@investir.com")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\":\"Teste\",\"email\":\"test@example.com\",\"birthDate\":\"2000-01-15\"}"))
+                .content("{\"name\":\"Teste\",\"email\":\"test@example.com\"}"))
                 .andExpect(status().isBadRequest());
         verifyNoInteractions(users);
     }
@@ -143,7 +142,7 @@ class HttpValidationTest {
                 ConstraintViolationException.ConstraintKind.UNIQUE, "private_constraint");
         when(users.registerUser(any())).thenThrow(new DataIntegrityViolationException("private details", violation));
         mvc.perform(post("/api/users/register").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\":\"Teste\",\"birthDate\":\"2000-01-15\",\"email\":\"test@example.com\",\"password\":\"Senha1234!\"}"))
+                .content("{\"name\":\"Teste\",\"email\":\"test@example.com\",\"password\":\"Senha1234!\"}"))
                 .andExpect(status().isAccepted()).andExpect(jsonPath("$.message").isString());
     }
 
@@ -165,7 +164,7 @@ class HttpValidationTest {
         mvc.perform(put("/api/users/{id}", UUID.randomUUID()).principal(() -> "user@investir.com")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                        {"name":"Teste","email":"user@investir.com","birthDate":"2000-01-15","currentPassword":"Senha1234"}
+                        {"name":"Teste","email":"user@investir.com","currentPassword":"Senha1234"}
                         """))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.detail").value("Ocorreu um erro interno no servidor."));
@@ -182,22 +181,12 @@ class HttpValidationTest {
                 .andExpect(jsonPath("$.detail").value("A operação conflita com registros relacionados."));
     }
     @Test
-    void missingOrFutureBirthDateIsRejectedBeforeRegistration() throws Exception {
-        for (String date : new String[]{"null", "\"" + LocalDate.now().plusDays(1) + "\""}) {
-            mvc.perform(post("/api/users/register").contentType(MediaType.APPLICATION_JSON)
-                    .content("{\"name\":\"Teste\",\"birthDate\":" + date + ",\"email\":\"test@example.com\",\"password\":\"Senha1234!\"}"))
-                    .andExpect(status().isBadRequest());
-        }
-        verifyNoInteractions(users);
-    }
-
-    @Test
-    void validBirthDateIsAccepted() throws Exception {
+    void registrationWithoutAgeOrBirthDateIsAccepted() throws Exception {
         when(users.registerUser(any())).thenReturn(new DefaultOneTimeToken(
                 "registration-token", "test@example.com", Instant.now().plusSeconds(300)));
         mvc.perform(post("/api/users/register").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\":\"Teste\",\"birthDate\":\"2000-01-15\",\"email\":\"test@example.com\",\"password\":\"Senha1234!\"}"))
+                .content("{\"name\":\"Teste\",\"email\":\"test@example.com\",\"password\":\"Senha1234!\"}"))
                 .andExpect(status().isAccepted());
-        verify(users).registerUser(argThat(request -> request.birthDate().equals(LocalDate.of(2000, 1, 15))));
+        verify(users).registerUser(argThat(request -> request.name().equals("Teste")));
     }
 }

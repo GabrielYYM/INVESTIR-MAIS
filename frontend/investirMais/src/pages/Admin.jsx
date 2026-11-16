@@ -42,8 +42,8 @@ function UserStats() {
 function UserFilters() {
   const { filterValues, setFilters } = useListContext();
   return <div className="flex flex-wrap items-center gap-3">
-    <FilterLiveForm debounce={0}><TextInput source="q" label={false} fullWidth={false} className="admin-search" placeholder="Buscar por nome ou e-mail..." resettable helperText={false}
-      slotProps={{ htmlInput: { "aria-label": "Buscar por nome ou e-mail" }, input: { startAdornment: <InputAdornment position="start"><Search size={16} /></InputAdornment> } }} /></FilterLiveForm>
+    <FilterLiveForm debounce={0}><TextInput source="q" label={false} fullWidth={false} className="admin-search" placeholder="Buscar por apelido ou e-mail..." resettable helperText={false}
+      slotProps={{ htmlInput: { "aria-label": "Buscar por apelido ou e-mail" }, input: { startAdornment: <InputAdornment position="start"><Search size={16} /></InputAdornment> } }} /></FilterLiveForm>
     <div className="flex items-center gap-1 rounded-xl border border-line bg-canvas p-1 text-xs">
       {[["ALL", "Todos"], ["ADMIN", "Admins"], ["TEACHER", "Professores"], ["STUDENT", "Alunos"]].map(([role, label]) =>
         <button key={role} type="button" aria-pressed={(filterValues.role ?? "ALL") === role} onClick={() => setFilters({ ...filterValues, role: role === "ALL" ? undefined : role })}
@@ -66,7 +66,7 @@ function AuditTable() {
     <DataTable.Col source="timestamp" label="Data/Hora" render={row => formatDate(row.timestamp)} />
     <DataTable.Col source="operation" label="Operação" render={row => <span className={`rounded border px-2 py-0.5 text-xs ${operationBadges[row.operation] ?? "border-line text-muted"}`}>{operations[row.operation] ?? row.operation}</span>} />
     <DataTable.Col label="Antes" render={row => row.before ? <span className="text-xs text-muted">{row.before.name ?? "—"} {row.before.role ? <RoleBadge role={row.before.role} /> : null}</span> : "—"} />
-    <DataTable.Col label="Nome no Snapshot" render={row => row.user?.name ?? "—"} />
+    <DataTable.Col label="Apelido no Snapshot" render={row => row.user?.name ?? "—"} />
     <DataTable.Col label="Papel no Snapshot" render={row => row.user?.role ? <RoleBadge role={row.user.role} /> : "—"} />
   </DataTable><ResourcePagination /></div>;
 }
@@ -82,9 +82,8 @@ export default function Admin() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><h2 id="usuarios-titulo" className="text-lg font-bold">Usuários Cadastrados</h2>
           <p className="text-xs text-muted">Visualize a base de dados, altere papéis e consulte o histórico de auditoria.</p></div><UserFilters /></div>
         <div className="overflow-x-auto"><DataTable bulkActionButtons={false} rowClick={false} sx={{ minWidth: 720 }} empty={<p className="text-muted">Nenhum usuário encontrado com os filtros selecionados.</p>}>
-          <DataTable.Col source="name" label="Usuário" render={user => <><div className="flex items-center gap-2 font-semibold">{user.name} {user.id === currentUser.id && <span className="rounded bg-brand/20 px-1.5 py-0.5 text-xs text-brand">Você</span>}</div><div className="text-xs text-muted">{user.email}</div></>} />
+          <DataTable.Col source="name" label="Apelido" render={user => <><div className="flex items-center gap-2 font-semibold">{user.name} {user.id === currentUser.id && <span className="rounded bg-brand/20 px-1.5 py-0.5 text-xs text-brand">Você</span>}</div><div className="text-xs text-muted">{user.email}</div></>} />
           <DataTable.Col source="role" label="Papel" render={user => <RoleBadge role={user.role} />} />
-          <DataTable.Col source="age" label="Idade" render={user => user.age == null ? "—" : `${user.age} anos`} />
           <DataTable.Col source="createdAt" label="Data de Cadastro" render={user => formatDate(user.createdAt)} />
           <DataTable.Col label="Ações" align="right" render={user => <div className="inline-flex gap-2"><Button size="small" startIcon={<ShieldCheck size={14} />} disabled={user.role === "ADMIN"} onClick={() => setEditor(user)}>Alterar Papel</Button>
             <Button size="small" startIcon={<History size={14} />} onClick={() => setAudited(user)}>Auditoria</Button></div>} />

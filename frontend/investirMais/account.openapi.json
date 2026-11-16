@@ -60,7 +60,7 @@
           "Usuários"
         ],
         "summary": "Atualizar dados do perfil",
-        "description": "Atualiza nome, idade ou e-mail do usuário autenticado.",
+        "description": "Atualiza apelido ou e-mail do usuário autenticado.",
         "operationId": "updateProfile",
         "parameters": [
           {
@@ -1031,8 +1031,8 @@
         "properties": {
           "name": {
             "type": "string",
-            "description": "Nome do usuário",
-            "example": "Usuario da Silva",
+            "description": "Apelido do usuário",
+            "example": "Investidor",
             "maxLength": 100,
             "minLength": 2
           },
@@ -1043,12 +1043,6 @@
             "example": "usuario@gmail.com",
             "maxLength": 254,
             "minLength": 0
-          },
-          "birthDate": {
-            "type": "string",
-            "format": "date",
-            "description": "Data de nascimento do usuário",
-            "example": "2000-01-15"
           },
           "currentPassword": {
             "type": "string",
@@ -1075,20 +1069,8 @@
           },
           "name": {
             "type": "string",
-            "description": "Nome do usuário",
-            "example": "Usuario da Silva"
-          },
-          "age": {
-            "type": "integer",
-            "format": "int32",
-            "description": "Idade do usuário",
-            "example": 22
-          },
-          "birthDate": {
-            "type": "string",
-            "format": "date",
-            "description": "Data de nascimento do usuário, ausente em contas antigas",
-            "example": "2000-01-15"
+            "description": "Apelido do usuário",
+            "example": "Investidor"
           },
           "email": {
             "type": "string",
@@ -1190,16 +1172,10 @@
         "properties": {
           "name": {
             "type": "string",
-            "description": "Nome completo do usuário",
-            "example": "Usuario da Silva",
+            "description": "Apelido do usuário",
+            "example": "Investidor",
             "maxLength": 100,
             "minLength": 2
-          },
-          "birthDate": {
-            "type": "string",
-            "format": "date",
-            "description": "Data de nascimento do usuário",
-            "example": "2000-01-15"
           },
           "email": {
             "type": "string",
@@ -1229,7 +1205,6 @@
           }
         },
         "required": [
-          "birthDate",
           "email",
           "name",
           "password"

@@ -13,21 +13,18 @@ async function userRow(email = student.email) {
 }
 
 describe("gestão de usuários", () => {
-  it.each([
-    [{ ...student, age: 17 }, "A promoção a professor ocorre pela aprovação dos documentos em Candidaturas de professores."],
-    [{ ...student, birthDate: null }, "A promoção a professor ocorre pela aprovação dos documentos em Candidaturas de professores."],
-  ])("explica que a promoção depende da aprovação dos documentos %#", async (account, message) => {
+  it("explica que a promoção depende da aprovação dos documentos", async () => {
     const update = mockApi("patch", `/api/users/${student.id}/role`, {});
-    const { user } = setup([account]);
+    const { user } = setup([student]);
     await user.click((await userRow()).getByRole("button", { name: "Alterar Papel" }));
-    expect(screen.getByText(message)).toBeInTheDocument();
+    expect(screen.getByText("A promoção a professor ocorre pela aprovação dos documentos em Candidaturas de professores.")).toBeInTheDocument();
     await user.click(screen.getByRole("combobox", { name: "Novo Papel" }));
     expect(await screen.findByRole("option", { name: "Professor" })).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByRole("option", { name: "Aluno" })).not.toHaveAttribute("aria-disabled", "true");
     expect(update).not.toHaveBeenCalled();
   });
 
-  it("filtra usuários por nome, e-mail e perfil e protege administradores", async () => {
+  it("filtra usuários por apelido, e-mail e perfil e protege administradores", async () => {
     const { user } = setup();
     const row = await userRow(adminUser.email);
     expect(row.getByRole("button", { name: "Alterar Papel" })).toBeDisabled();
@@ -36,7 +33,7 @@ describe("gestão de usuários", () => {
     await waitFor(() => expect(screen.queryByText(student.email)).not.toBeInTheDocument());
     expect(await screen.findByText(teacherUser.email)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Todos", exact: true }));
-    const search = screen.getByPlaceholderText("Buscar por nome ou e-mail...");
+    const search = screen.getByPlaceholderText("Buscar por apelido ou e-mail...");
     await user.type(search, "ANA@"); expect(await screen.findByText(student.email)).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByText(teacherUser.email)).not.toBeInTheDocument());
     await user.clear(search); await user.type(search, "inexistente");
@@ -85,7 +82,7 @@ describe("gestão de usuários", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
-  it.each([{ users: [] }, { users: [student] }, { users: [{ ...student, role: "CUSTOM", age: null, createdAt: null }] }])("mostra bases vazias e dados incompletos %#", async ({ users }) => {
+  it.each([{ users: [] }, { users: [student] }, { users: [{ ...student, role: "CUSTOM", createdAt: null }] }])("mostra bases vazias e dados incompletos %#", async ({ users }) => {
     setup(users); await screen.findByRole("heading", { name: "Usuários Cadastrados" });
     if (!users.length) expect(screen.getByText(/Nenhum usuário encontrado/)).toBeInTheDocument();
     else expect(screen.getByText(student.email)).toBeInTheDocument();
@@ -112,7 +109,7 @@ describe("gestão de usuários", () => {
     expect(screen.queryByText(students[11].email)).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /página 2/i }));
     expect(await screen.findByText(students[11].email)).toBeInTheDocument();
-    await user.type(screen.getByPlaceholderText("Buscar por nome ou e-mail..."), students[11].email);
+    await user.type(screen.getByPlaceholderText("Buscar por apelido ou e-mail..."), students[11].email);
     expect(screen.getByText(students[11].email)).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByText(students[10].email)).not.toBeInTheDocument());
   });

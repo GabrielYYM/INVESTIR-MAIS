@@ -54,7 +54,7 @@ describe("versões dos documentos e confirmação", () => {
 
   it("cobra nova confirmação quando uma sessão aberta recebe o bloqueio da API", async () => {
     const { router } = renderApp("/");
-    await screen.findByRole("heading", { name: "Olá, Ana." });
+    await screen.findByRole("heading", { name: "Olá, Ana Teste." });
     mockApi("get", "/api/courses", HttpResponse.json({ code: "LEGAL_ACCEPTANCE_REQUIRED" }, { status: 428 }));
     await expect(apiClient.get("/api/courses")).rejects.toMatchObject({ response: { status: 428 } });
     await screen.findByRole("heading", { name: "Confirme os documentos da plataforma" });

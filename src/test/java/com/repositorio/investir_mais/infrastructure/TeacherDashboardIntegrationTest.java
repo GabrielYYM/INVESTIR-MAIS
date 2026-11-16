@@ -218,7 +218,7 @@ class TeacherDashboardIntegrationTest extends PostgreSqlIntegrationTest {
         var account = new User();
         account.setName(name);
         account.setEmail(name + "@example.test");
-        account.setAge(25);
+
         account.setPassword("unused-test-password");
         account.setRole(role);
         account.setEmailVerified(true);

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState } from "react";
-import { Calendar, CheckCircle2, Mail, ShieldCheck, User } from "lucide-react";
+import { CheckCircle2, Mail, ShieldCheck, User } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { Link } from "react-router";
 import { useRegisterUser, useResendVerification } from "../generated/account.ts";
@@ -27,13 +27,11 @@ export default function SignUp() {
   } = form.formState;
   const submit = form.handleSubmit(({
     name,
-    birthDate,
     email,
     password
   }) => registration.mutate({
     data: {
       name,
-      birthDate,
       email,
       password
     }
@@ -52,8 +50,7 @@ export default function SignUp() {
       <SubmitButton variant="secondary" loading={resend.isPending} fullWidth>Reenviar link de confirmação</SubmitButton>
     </form> : <form onSubmit={submit} noValidate className="space-y-4">
       {registration.error && <Notice error>{apiError(registration.error, "Não foi possível criar sua conta. Verifique os dados informados.")}</Notice>}
-      <Field label="Nome completo" icon={User} autoComplete="name" maxLength={100} placeholder="Ex: Maria da Silva" error={errors.name?.message} {...form.register("name")} />
-      <Field label="Data de nascimento" icon={Calendar} type="date" autoComplete="bday" error={errors.birthDate?.message} {...form.register("birthDate")} />
+      <Field label="Apelido" icon={User} autoComplete="nickname" maxLength={100} placeholder="Ex: Investidor" error={errors.name?.message} {...form.register("name")} />
       <Field label="E-mail" icon={Mail} type="email" autoComplete="email" placeholder="seu.email@exemplo.com" error={errors.email?.message} {...form.register("email")} />
       <PasswordFields form={form} creating />
       <label className="flex items-start gap-3 rounded-xl border border-line bg-canvas p-4 text-xs leading-relaxed text-muted">

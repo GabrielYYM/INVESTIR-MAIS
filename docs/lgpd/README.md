@@ -16,7 +16,9 @@ Esta pasta reúne os documentos de conformidade da plataforma **Investir Mais** 
 
 ## Resumo do tratamento de dados
 
-- **Dados coletados:** nome, e-mail, data de nascimento (sem idade mínima para professor), senha com hash irreversível (`Argon2id`), códigos temporários de 2º fator (`OTT`), cookies técnicos (`SESSION` e `XSRF-TOKEN`), registros de acesso (IP e data/hora), progresso nos cursos (matrículas, aulas concluídas e questões aprovadas) e histórico de aceite legal e auditoria cadastral.
+Idade e data de nascimento não são mais solicitadas, persistidas pelo modelo ou retornadas pela API. O campo técnico `name` representa o apelido e preserva os valores das contas existentes. Colunas legadas de bancos existentes e revisões antigas não são apagadas automaticamente; sua remoção física exige backup e migração específica. Documentos legais já publicados permanecem imutáveis: textos que descrevam a coleta anterior devem ser atualizados em uma nova versão pelo painel de documentos legais.
+
+- **Dados coletados:** apelido, e-mail, senha com hash irreversível (`Argon2id`), códigos temporários de 2º fator (`OTT`), cookies técnicos (`SESSION` e `XSRF-TOKEN`), registros de acesso (IP e data/hora), progresso nos cursos (matrículas, aulas concluídas e questões aprovadas) e histórico de aceite legal e auditoria cadastral.
 - **Minimização:** o histórico de respostas passou a registrar alternativa escolhida, resultado e instante para consulta do próprio aluno; os professores recebem métricas agregadas. As candidaturas incluem documentos privados enviados pelo interessado, cujo conteúdo depende dos tipos configurados.
 - **Bases legais principais (Arts. 7º e 11 da LGPD):**
   - *Execução de contrato (Art. 7º, V):* cadastro, login, matrículas, progresso nos cursos e envio de e-mails transacionais.

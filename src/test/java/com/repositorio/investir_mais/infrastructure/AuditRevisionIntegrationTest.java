@@ -15,7 +15,6 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -33,18 +32,17 @@ class AuditRevisionIntegrationTest extends PostgreSqlIntegrationTest {
     void profileUpdatesWorkAcrossMultipleRevisionAllocations() {
         User account = new User();
         account.setName("Conta de regressão");
-        account.setAge(25);
+
         account.setEmail("audit-regression@investir.test");
         account.setRole(UserRole.STUDENT);
         account.setEmailVerified(true);
         account.setPassword(encoder.encode("SenhaTeste123"));
         var saved = users.saveAndFlush(account);
 
-        var birthDate = LocalDate.of(2000, 1, 15);
         var updated = service.updateProfile(account.getEmail(), saved.getId(),
-                new UserDTO.UpdateProfileRequest("Nome atualizado", account.getEmail(), birthDate, "SenhaTeste123"));
+                new UserDTO.UpdateProfileRequest("Nome atualizado", account.getEmail(), "SenhaTeste123"));
         assertEquals("Nome atualizado", updated.name());
-        assertEquals(birthDate, users.findById(saved.getId()).orElseThrow().getBirthDate());
+        assertEquals("Nome atualizado", users.findById(saved.getId()).orElseThrow().getName());
 
         for (int i = 0; i < 55; i++) {
             int revision = i;

@@ -13,7 +13,7 @@ async function fillCredentials(user) {
 
 describe("confirmação do cadastro", () => {
   it.each([
-    [true, "Olá, Ana.", "/"],
+    [true, "Olá, Ana Teste.", "/"],
     [false, "E-mail confirmado!", "/confirmar-email"],
   ])("respeita a sessão retornada pelo servidor (%s)", async (signedIn, heading, path) => {
     const confirm = mockApi("post", "/api/users/verify-email", { signedIn });
