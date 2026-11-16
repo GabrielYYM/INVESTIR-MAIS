@@ -1,31 +1,41 @@
-# Privacidade e dados pessoais: estado técnico
+# Privacidade e Proteção de Dados (LGPD)
 
-Este guia descreve a implementação do repositório em 15/11/2026. Não substitui os textos legais publicados nem uma avaliação jurídica ou da infraestrutura em produção.
+Esta pasta reúne os documentos de conformidade da plataforma **Investir Mais** com a **LGPD (Lei nº 13.709/2018)**, o **Marco Civil da Internet (Lei nº 12.965/2014)** e a **Resolução CD/ANPD nº 2/2022** (Agentes de Tratamento de Pequeno Porte — ATPP).
 
-## Dados identificados no backend
+## Documentos oficiais
 
-A entidade [User](../../src/main/java/com/repositorio/investir_mais/domain/user/model/User.java) contém nome, e-mail, data de nascimento, idade legada, hash da senha, perfil, verificação do e-mail e metadados de auditoria. A idade atual é calculada a partir do nascimento; registros antigos podem manter apenas a idade legada. O backend usa Argon2id para senhas e auditoria Envers para o usuário.
+| Documento | Versão | Descrição |
+| :--- | :---: | :--- |
+| [Registro das Operações de Tratamento (ROPA — ATPP)](./Planilha%20sem%20t%C3%ADtulo%20-%20Modelo%20de%20ROPA%20-%20ATPP.pdf) | `15/11/2026` | Inventário de dados pessoais, bases legais, medidas de segurança, retenção e compartilhamento no modelo da ANPD. |
+| [Política de Privacidade](./Politica_de_privacidade_InvestirMais.pdf) | `v2.0` | Regras de coleta, finalidades, bases legais, retenção, segurança e direitos dos titulares. |
+| [Termos e Condições de Uso](./Termos_e_Condicoes_InvestirMais.pdf) | `v2.0` | Regras de acesso, aviso legal financeiro (*disclaimer*), publicação de conteúdo audiovisual, moderação e responsabilidades. |
 
-O backend armazena cursos, aulas, perguntas, matrículas, conclusão de aulas e IDs das perguntas aprovadas. Não guarda erros, alternativas marcadas, número de tentativas ou notas finais. Veja o [guia de perguntas](../questions.md). O PostgreSQL mantém tokens de uso único e publicações de eventos de e-mail. O Redis mantém sessões e contadores de tentativas. A retenção também depende do armazenamento e dos backups.
+- **Controladora:** Investir Mais (ATPP — Resolução CD/ANPD nº 2/2022)
+- **Encarregado de Dados (DPO):** Gabriel Yukio Yamaguti Minato
+- **Canal de Privacidade, Denúncias e Suporte:** `investirmaisinfo@gmail.com`
 
-`legal_document_release` contém cada versão dos Termos e da Política de Privacidade, data e hash do conteúdo. `legal_document_acceptance` registra usuário, versão e horário do aceite obtidos no servidor. As tabelas usam JDBC e proteção contra atualização, exclusão e truncamento. O perfil oferece histórico com o texto exato de cada versão aceita; uma versão nova exige nova confirmação. O aceite registra concordância com os Termos e ciência da Política, não consentimento genérico para qualquer tratamento. Veja o [guia de documentos legais](../documentos-legais.md).
+## Resumo do tratamento de dados
 
-## Controles técnicos observados
+- **Dados coletados:** nome, e-mail, data de nascimento (verificação de maioridade para perfis `TEACHER` e `ADMIN`), senha com hash irreversível (`Argon2id`), códigos temporários de 2º fator (`OTT`), cookies técnicos (`SESSION` e `XSRF-TOKEN`), registros de acesso (IP e data/hora), progresso nos cursos (matrículas, aulas concluídas e questões aprovadas) e histórico de aceite legal e auditoria cadastral.
+- **Minimização:** não há coleta de dados pessoais sensíveis (art. 5º, II, da LGPD), cookies publicitários ou histórico de alternativas incorretas marcadas pelos alunos.
+- **Bases legais principais (Arts. 7º e 11 da LGPD):**
+  - *Execução de contrato (Art. 7º, V):* cadastro, login, matrículas, progresso nos cursos e envio de e-mails transacionais.
+  - *Prevenção à fraude e segurança (Art. 11, II, "g"):* verificação em duas etapas (2FA / OTT) e proteção de sessão.
+  - *Obrigação legal, exercício regular de direitos e legítimo interesse (Art. 7º, II, VI e IX c/c Art. 15 do MCI):* guarda de logs de acesso, comprovantes de aceite legal, auditoria cadastral e limitação de tentativas (*rate limiting*).
+- **Compartilhamento:** restrito aos operadores essenciais ao funcionamento do sistema — **Resend** (e-mails transacionais), **PostgreSQL** (banco de dados), **Redis** (sessões e *rate limit*) e player incorporado de vídeo (**YouTube**). Os dados jamais são vendidos ou cedidos para fins comerciais.
+- **Retenção e exclusão:**
+  - *Cadastro e progresso:* mantidos enquanto a conta estiver ativa ou até a exclusão pelo usuário em `/perfil` (que desativa a conta, encerra sessões e invalida códigos pendentes).
+  - *Logs de conexão:* mínimo de **6 meses** (Art. 15 do Marco Civil da Internet).
+  - *Aceites legais e auditoria de segurança:* até **5 anos** após o encerramento (Art. 16, I e Art. 7º, VI da LGPD).
+  - *Sessões e tokens:* sessões expiram em **30 minutos** de inatividade e códigos temporários em **5 minutos**.
 
-- O Spring Security usa Argon2id para senhas e exclui o hash das revisões de auditoria.
-- A API usa sessão com senha, código de e-mail e CSRF para gravações. O cookie de sessão usa `HttpOnly` e `SameSite=Lax`. O perfil `prod` exige `Secure`.
-- A tabela de validação armazena o hash dos novos tokens de confirmação e recuperação. O código necessário para envio continua na publicação de e-mail pendente até o processamento.
-- O Redis limita as requisições de autenticação por IP e rota e também por conta no login.
-- O cadastro exige nascimento. A promoção a professor exige nascimento informado e idade mínima de 18 anos; isso não equivale a verificar documentalmente a idade.
-- A exclusão de conta é lógica, exige senha e revoga sessões. Preserva registros; não constitui expurgo dos dados nem implementação de todos os direitos do titular.
+## Segurança e direitos do titular
 
-## Serviços externos
+- **Controles técnicos (Art. 46):** senhas com `Argon2id`, autenticação em duas etapas por e-mail (`OTT` com hash `SHA-256`), tráfego sob HTTPS/TLS, cookies `HttpOnly`/`SameSite=Lax`/`Secure`, proteção CSRF, bloqueio de força bruta no Redis e controle de acesso por papéis (`STUDENT`, `TEACHER`, `ADMIN`).
+- **Direitos do titular (Art. 18):** consulta de dados, progresso e histórico de versões aceitas, edição de perfil e exclusão de conta diretamente em `/perfil`, ou atendimento pelo e-mail `investirmaisinfo@gmail.com`.
 
-O Resend recebe os dados necessários aos e-mails transacionais. O navegador carrega o player diretamente do YouTube. O backend não consulta a YouTube Data API nem exige chave dessa API. Não há aprovação de canais, análise de autoria ou filtro de conteúdo. Veja os [limites dos vídeos](../video-validation.md). Não há integração ativa com Brapi ou carteira de investimentos no escopo atual.
+## Guias técnicos relacionados
 
-## Limites e itens a confirmar
-
-- O modelo contém `birthDate`, mas não `guardianEmail`; não implementa fluxo de consentimento e verificação de responsável por menores.
-- Não foi localizada implementação de criptografia AES-256-GCM para campos pessoais em repouso. A proteção em repouso depende também do banco, do armazenamento e da infraestrutura implantada.
-- Os registros e finalidades de tratamento, bases legais, compartilhamentos, canal de contato, direitos e prazos de retenção precisam ser definidos pelo controlador e confirmados com a operação real do serviço.
-- Os textos legais publicados devem ser revisados conforme o produto implantado e a orientação jurídica adequada. Mudanças exigem nova versão, preservando os textos e aceites anteriores. Os controles descritos aqui não comprovam conformidade integral com a LGPD.
+- [Publicação e versionamento de documentos legais](../documentos-legais.md)
+- [Validação de vídeos do YouTube](../video-validation.md)
+- [Perguntas e progressão de aulas](../questions.md)
