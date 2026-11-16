@@ -10,13 +10,22 @@ import org.springframework.security.core.context.SecurityContextHolder;
 @RevisionEntity(AuditRevision.ActorListener.class)
 @Getter @Setter
 public class AuditRevision {
-    @Id @RevisionNumber
+    @Id 
+    @RevisionNumber
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "auditRevision")
     @SequenceGenerator(name = "auditRevision", sequenceName = "revinfo_seq", allocationSize = 50)
-    @Column(name = "rev") private int id;
-    @RevisionTimestamp @Column(name = "revtstmp") private long timestamp;
-    @Column(length = 254) private String actor;
-    @Column(length = 32) private String actorRole;
+    @Column(name = "rev") 
+    private int id;
+    
+    @RevisionTimestamp 
+    @Column(name = "revtstmp") 
+    private long timestamp;
+
+    @Column(length = 254) 
+    private String actor;
+
+    @Column(length = 32) 
+    private String actorRole;
 
     public static class ActorListener implements RevisionListener {
         public void newRevision(Object entity) {

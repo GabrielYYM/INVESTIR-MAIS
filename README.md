@@ -106,6 +106,7 @@ O [arquivo editável do Draw.io](docs/diagramas/investir-mais.drawio) reúne cin
 - `LessonService` usa `LessonVideo` para validar vídeos do YouTube ou Cloudinary e gerar a miniatura. Não há aprovação de canais, filtro de conteúdo nem dependência de chave da API do YouTube.
 - `LegalDocumentsService` publica e consulta versões imutáveis e registra os aceites. O interceptor de aceite retorna HTTP 428 quando há pendência para acessar os recursos da plataforma.
 - O `AuthenticationEmailHandler` envia os e-mails transacionais pela API do Resend.
+- O envio local também usa exclusivamente o Resend; não há transporte SMTP ou Mailpit. Os testes automatizados simulam o provedor.
 
 [![Classes da aplicação para conta, educação e envio de e-mails](docs/diagramas/classes-da-aplicacao.png)](docs/diagramas/classes-da-aplicacao.png)
 
@@ -210,7 +211,9 @@ Use o perfil `prod` com PostgreSQL, Redis e HTTPS. Configure `RESEND_API_KEY` e 
 
 Configure `APP_PUBLIC_BASE_URL` como a origem pública do backend e `APP_CORS_ALLOWED_ORIGIN` como a origem pública da SPA quando forem diferentes. O perfil ativa cookies `Secure`, habilita TLS no Redis por padrão e desativa Swagger e `/v3/api-docs`.
 
-O esquema das entidades usa `ddl-auto=update`. A inicialização também executa o [SQL auxiliar](src/main/resources/schema-postgresql.sql), a [estrutura imutável dos documentos legais](src/main/resources/legal-history-postgresql.sql) e a [ordenação das aulas legadas](src/main/resources/lesson-order-postgresql.sql). Faça backup antes de mudanças de esquema e preserve os dados existentes. Veja os guias de [documentos legais](docs/documentos-legais.md) e [ordenação e perguntas](docs/questions.md). As opções de publicação da SPA e do proxy estão no [README do frontend](frontend/investirMais/README.md#publicação).
+O esquema das entidades usa `ddl-auto=update`. A inicialização também executa o [SQL auxiliar](src/main/resources/schema-postgresql.sql) e a [estrutura imutável dos documentos legais](src/main/resources/legal-history-postgresql.sql). Faça backup antes de mudanças de esquema e preserve os dados existentes. Veja os guias de [documentos legais](docs/documentos-legais.md) e [ordenação e perguntas](docs/questions.md). As opções de publicação da SPA e do proxy estão no [README do frontend](frontend/investirMais/README.md#publicação).
+
+A inicialização não adapta esquemas legados nem realinha sequências antigas. Para reutilizar um banco existente, faça backup e prepare a migração necessária antes de executar esta versão; recrie o banco somente quando seus dados puderem ser descartados.
 
 ## Testes e verificações
 
@@ -231,7 +234,7 @@ A suíte inclui testes do fluxo de login com H2 e Redis simulado, além de teste
 - [Perguntas, progressão e ordem das aulas](docs/questions.md)
 - [Vídeos do YouTube e limites da validação](docs/video-validation.md)
 - [Publicação e versionamento dos documentos legais](docs/documentos-legais.md)
-- [Correção de identificadores da auditoria em bancos existentes](docs/auditoria-revisoes.md)
+- [Identificadores das revisões de auditoria](docs/auditoria-revisoes.md)
 - [Apresentação e roteiro dos slides](docs/apresentacao.md)
 - [Auditoria histórica de frontend e segurança](docs/auditoria-frontend-seguranca.md)
 - [Privacidade e dados pessoais](docs/lgpd/README.md)

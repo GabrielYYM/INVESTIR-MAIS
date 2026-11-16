@@ -85,15 +85,9 @@ da página. A alteração usa transação e bloqueios do curso e das aulas. As p
 acompanham a aula à qual estavam vinculadas: `afterLesson` é remapeado para a nova
 posição. Perguntas com `afterLesson: 0` continuam antes da primeira aula.
 
-## Inicialização de aulas legadas
+## Criação do banco
 
-O Hibernate mantém a estrutura com `ddl-auto=update`. Depois da inicialização do
-JPA, `LessonOrderInitialization` executa o script idempotente
-[`lesson-order-postgresql.sql`](../src/main/resources/lesson-order-postgresql.sql).
-Somente cursos com alguma aula ativa de posição menor ou igual a zero recebem o
-preenchimento: a sequência considera posição anterior, título e ID. As aulas já
-posicionadas preservam a ordem relativa; os vínculos das perguntas com posições
-positivas são ajustados junto com as aulas. Cursos já ordenados não são alterados.
+As posições das novas aulas são atribuídas pelo serviço. A inicialização não corrige posições de bancos antigos. Antes de reutilizar um banco legado, adapte seus dados separadamente.
 
 Antes de iniciar uma atualização de esquema, faça backup do banco de destino.
 Testes automatizados usam bancos isolados; verificações manuais locais usam o

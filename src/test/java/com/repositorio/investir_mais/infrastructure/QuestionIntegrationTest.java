@@ -15,17 +15,14 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import javax.sql.DataSource;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.context.ActiveProfiles;
@@ -53,7 +50,6 @@ class QuestionIntegrationTest extends PostgreSqlIntegrationTest {
     @Autowired CourseRepository courses;
     @Autowired LessonRepository lessons;
     @Autowired QuestionRepository questions;
-    @Autowired DataSource dataSource;
     @Autowired EntityManager em;
     @Autowired JdbcTemplate jdbc;
     @Autowired LegalDocumentsService legal;
@@ -266,29 +262,6 @@ class QuestionIntegrationTest extends PostgreSqlIntegrationTest {
         assertEquals(2, lessons.findById(second.getId()).orElseThrow().getPosition());
     }
 
-    @Test
-    void legacyMigrationBackfillsAlphabeticallyAndDoesNotResetSavedOrder() throws Exception {
-        first.setTitle("Zulu"); first.setPosition(0);
-        second.setTitle("Alpha"); second.setPosition(0);
-        var third = lesson(1);
-        var question = create(1, 1);
-        em.flush();
-        var migration = new ResourceDatabasePopulator(
-                new ClassPathResource("lesson-order-postgresql.sql"));
-        migration.execute(dataSource); em.clear();
-        assertEquals(List.of(second.getId(), first.getId(), third.getId()),
-                lessons.findAllByCourseIdOrderByPositionAscIdAsc(course.getId()).stream().map(Lesson::getId).toList());
-        assertEquals(3, questions.findById(question.id()).orElseThrow().getAfterLesson());
-
-        String orderPath = "/api/lessons/course/" + course.getId() + "/order";
-        mvc.perform(put(orderPath).with(as(teacher)).with(csrf()).contentType(MediaType.APPLICATION_JSON)
-                .content(json.writeValueAsString(new LessonDTO.OrderRequest(List.of(third.getId(), second.getId(), first.getId())))))
-                .andExpect(status().isNoContent());
-        em.flush(); em.clear(); migration.execute(dataSource); em.clear();
-        assertEquals(List.of(third.getId(), second.getId(), first.getId()),
-                lessons.findAllByCourseIdOrderByPositionAscIdAsc(course.getId()).stream().map(Lesson::getId).toList());
-        assertEquals(1, questions.findById(question.id()).orElseThrow().getAfterLesson());
-    }
     private QuestionDTO.TeacherQuestion create(int afterLesson, int position) throws Exception {
         var response = mvc.perform(post(base()).with(as(teacher)).with(csrf()).contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(request(afterLesson, position)))).andExpect(status().isCreated()).andReturn().getResponse();

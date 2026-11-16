@@ -22,13 +22,13 @@ import java.time.Duration;
 public class AuthenticationEmailHandler {
     private static final String RETRY_DELAY_PROPERTY = "${app.mail.retry-delay:30s}";
 
-    private final AccountEmailSender resend;
+    private final ResendEmailSender resend;
     private final WebApplicationProperties properties;
     private final AccountSecurityService accountSecurity;
     private final FailedEventPublications publications;
     private final Duration retryDelay;
 
-    public AuthenticationEmailHandler(AccountEmailSender resend, WebApplicationProperties properties,
+    public AuthenticationEmailHandler(ResendEmailSender resend, WebApplicationProperties properties,
             AccountSecurityService accountSecurity, FailedEventPublications publications,
             @Value(RETRY_DELAY_PROPERTY) Duration retryDelay) {
         Assert.isTrue(retryDelay.compareTo(Duration.ofSeconds(1)) >= 0,

@@ -11,8 +11,7 @@ import org.springframework.web.client.RestClientException;
 import java.util.List;
 
 @Component
-@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = "app.mail.transport", havingValue = "resend", matchIfMissing = true)
-class ResendEmailSender implements AccountEmailSender {
+class ResendEmailSender {
     private final RestClient client;
     private final String sender;
 

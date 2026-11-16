@@ -76,7 +76,7 @@ Os ícones de tecnologia estão incorporados ao arquivo editável. [Simple Icons
 
 ## Atualização dos arquivos
 
-Revisão técnica: 15/11/2026. As cinco visões refletem a validação local de links, os aceites no PostgreSQL e as permissões de ordenação para professor responsável e ADMIN. A inicialização de posições antigas está descrita no [guia de perguntas e ordenação](questions.md#inicialização-de-aulas-legadas). O [roteiro dos slides](apresentacao.md) usa a mesma arquitetura.
+Revisão técnica: 15/11/2026. As cinco visões refletem a validação local de links, os aceites no PostgreSQL e as permissões de ordenação para professor responsável e ADMIN. A atribuição e alteração de posições estão descritas no [guia de perguntas e ordenação](questions.md). O [roteiro dos slides](apresentacao.md) usa a mesma arquitetura.
 
 O arquivo `diagramas/investir-mais.drawio` é a fonte editável das cinco imagens e possui uma exceção no `.gitignore` para poder ser versionado. Ao editar uma aba, exporte novamente seu PNG com o mesmo nome, incluindo uma cópia do diagrama na imagem. As prévias atuais foram exportadas com escala 1,5 e borda de 24 pixels; cada PNG também pode ser aberto no Draw.io para edição.
 
