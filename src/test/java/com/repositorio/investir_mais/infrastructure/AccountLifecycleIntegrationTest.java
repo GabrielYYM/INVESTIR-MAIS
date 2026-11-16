@@ -79,7 +79,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
     private static final String EMAIL = "account@investir.com";
-    private static final String PASSWORD = "SenhaSegura123";
+    private static final String PASSWORD = "SenhaSegura123!";
     @Autowired private MockMvc mvc;
     @Autowired private UserService service;
     @Autowired private AccountSecurityService accountSecurity;
@@ -341,7 +341,7 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
         assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM app_one_time_token WHERE username = ?", Integer.class, EMAIL));
         assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM one_time_tokens WHERE username = ?", Integer.class, EMAIL));
         assertThrows(ResponseStatusException.class,
-                () -> service.resetPassword(new AuthDTO.ResetPasswordRequest(resetToken, "NovaSenha123")));
+                () -> service.resetPassword(new AuthDTO.ResetPasswordRequest(resetToken, "NovaSenha123!")));
     }
 
     @Test
@@ -368,11 +368,11 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
         service.forgotPassword(new AuthDTO.ForgotPasswordRequest(EMAIL));
         String current = accountToken("PASSWORD_RESET");
         assertNotEquals(old, current);
-        assertThrows(Exception.class, () -> service.resetPassword(new AuthDTO.ResetPasswordRequest(old, "NovaSenha123")));
-        service.resetPassword(new AuthDTO.ResetPasswordRequest(current, "NovaSenha123"));
+        assertThrows(Exception.class, () -> service.resetPassword(new AuthDTO.ResetPasswordRequest(old, "NovaSenha123!")));
+        service.resetPassword(new AuthDTO.ResetPasswordRequest(current, "NovaSenha123!"));
         assertEquals(401, first.read(get("/auth/me")).getResponse().getStatus());
         assertEquals(401, second.read(get("/auth/me")).getResponse().getStatus());
-        assertTrue(encoder.matches("NovaSenha123", users.findByEmail(EMAIL).orElseThrow().getPassword()));
+        assertTrue(encoder.matches("NovaSenha123!", users.findByEmail(EMAIL).orElseThrow().getPassword()));
         assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM app_one_time_token", Integer.class));
     }
 
@@ -399,13 +399,13 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
                     .when(sessions).findByPrincipalName(EMAIL);
         }
         assertThrows(RedisConnectionFailureException.class,
-                () -> service.resetPassword(new AuthDTO.ResetPasswordRequest(token, "NovaSenha123")));
+                () -> service.resetPassword(new AuthDTO.ResetPasswordRequest(token, "NovaSenha123!")));
         reset(sessions);
         assertEquals(200, first.read(get("/auth/me")).getResponse().getStatus());
         assertTrue(encoder.matches(PASSWORD, users.findByEmail(EMAIL).orElseThrow().getPassword()),
                 "A failed revocation must not commit a new password while an old session still works");
-        service.resetPassword(new AuthDTO.ResetPasswordRequest(token, "NovaSenha123"));
-        assertTrue(encoder.matches("NovaSenha123", users.findByEmail(EMAIL).orElseThrow().getPassword()));
+        service.resetPassword(new AuthDTO.ResetPasswordRequest(token, "NovaSenha123!"));
+        assertTrue(encoder.matches("NovaSenha123!", users.findByEmail(EMAIL).orElseThrow().getPassword()));
         assertEquals(401, first.read(get("/auth/me")).getResponse().getStatus());
         assertEquals(401, second.read(get("/auth/me")).getResponse().getStatus());
     }
@@ -415,7 +415,7 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
         createVerifiedUser();
         Browser browser = authenticatedBrowser();
         assertEquals(200, browser.write(put("/api/users/update-password").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"currentPassword\":\"" + PASSWORD + "\",\"newPassword\":\"NovaSenha123\"}"))
+                .content("{\"currentPassword\":\"" + PASSWORD + "\",\"newPassword\":\"NovaSenha123!\"}"))
                 .getResponse().getStatus());
         assertEquals(401, browser.read(get("/auth/me")).getResponse().getStatus());
     }
@@ -425,9 +425,9 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
         createVerifiedUser();
         service.forgotPassword(new AuthDTO.ForgotPasswordRequest(EMAIL));
         String token = accountToken("PASSWORD_RESET");
-        doReturn("x".repeat(256)).when(encoder).encode("NovaSenha123");
+        doReturn("x".repeat(256)).when(encoder).encode("NovaSenha123!");
         assertThrows(DataIntegrityViolationException.class,
-                () -> service.resetPassword(new AuthDTO.ResetPasswordRequest(token, "NovaSenha123")));
+                () -> service.resetPassword(new AuthDTO.ResetPasswordRequest(token, "NovaSenha123!")));
         assertEquals(token, accountToken("PASSWORD_RESET"));
         assertTrue(encoder.matches(PASSWORD, users.findByEmail(EMAIL).orElseThrow().getPassword()));
     }

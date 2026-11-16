@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.time.Instant;
@@ -33,9 +34,10 @@ public class UserDTO {
         @Size(max = 254)
         String email,
 
-        @Schema(description = "Senha de acesso do usuário", example = "SenhaSegura123")
+        @Schema(description = "Senha com minúscula, maiúscula, número e caractere especial", example = "SenhaSegura123!")
         @NotBlank(message = "A senha é obrigatória")
-        @Size(min = 8, max = 4096, message = "A senha deve ter entre 8 e 4096 caracteres")
+        @Size(min = 8, max = 100, message = "A senha deve ter entre 8 e 100 caracteres")
+        @Pattern(regexp = AuthDTO.PASSWORD_PATTERN, message = AuthDTO.PASSWORD_REQUIREMENTS)
         String password,
 
         @Schema(description = "Perfil de acesso no sistema. O cadastro público aceita apenas STUDENT.", example = "STUDENT")

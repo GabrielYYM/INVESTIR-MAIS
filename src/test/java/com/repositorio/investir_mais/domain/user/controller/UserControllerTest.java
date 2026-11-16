@@ -68,7 +68,7 @@ class UserControllerTest {
 
     @Test
     void registerUser_WithValidData_ShouldReturnGenericAcceptance() throws Exception {
-        UserDTO.Request requestDTO = new UserDTO.Request("Felipe", LocalDate.now().minusYears(22), "felipe@investir.com", "senha12345", UserRole.STUDENT);
+        UserDTO.Request requestDTO = new UserDTO.Request("Felipe", LocalDate.now().minusYears(22), "felipe@investir.com", "SenhaTeste1!", UserRole.STUDENT);
         when(userService.registerUser(any(UserDTO.Request.class)))
                 .thenReturn(new DefaultOneTimeToken("registration-token", requestDTO.email(), Instant.now().plusSeconds(300)));
 
@@ -108,7 +108,7 @@ class UserControllerTest {
 
     @Test
     void updatePassword_WithValidData_ShouldReturnOk() throws Exception {
-        AuthDTO.UpdatePasswordRequest dto = new AuthDTO.UpdatePasswordRequest("senhaAntiga123", "novaSenha123");
+        AuthDTO.UpdatePasswordRequest dto = new AuthDTO.UpdatePasswordRequest("senhaAntiga123", "NovaSenha123!");
 
         mockMvc.perform(put("/api/users/update-password")
             .principal(() -> "felipe@investir.com")
@@ -137,7 +137,7 @@ class UserControllerTest {
 
     @Test
     void resetPassword_WithValidData_ShouldReturnOk() throws Exception {
-        AuthDTO.ResetPasswordRequest dto = new AuthDTO.ResetPasswordRequest("token-123", "novaSenha123");
+        AuthDTO.ResetPasswordRequest dto = new AuthDTO.ResetPasswordRequest("token-123", "NovaSenha123!");
 
         mockMvc.perform(post("/api/users/reset-password")
                 .with(csrf())
