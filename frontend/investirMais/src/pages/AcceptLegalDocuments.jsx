@@ -55,7 +55,7 @@ export default function AcceptLegalDocuments() {
     <header className="space-y-2">
       <p className="text-sm font-semibold text-brand">INVESTIR MAIS</p>
       <h1 className="text-2xl font-bold">Confirme os documentos da plataforma</h1>
-      <p className="text-sm text-muted">Leia a versão vigente dos Termos de Uso e da Política de Privacidade para continuar. Uma nova confirmação será solicitada sempre que publicarmos uma nova versão.</p>
+      <p className="text-sm text-muted">Leia todos os documentos da versão vigente para continuar. Uma nova confirmação será solicitada sempre que publicarmos uma nova versão.</p>
     </header>
     <section className="panel p-5 sm:p-8" aria-label="Documentos para leitura">
       <TermsContent release={release} />
@@ -64,7 +64,7 @@ export default function AcceptLegalDocuments() {
       {error && <Notice error>{error}</Notice>}
       <label className="flex items-start gap-3 text-sm">
         <input type="checkbox" className="mt-1 size-4 shrink-0 accent-amber-500" checked={accepted} onChange={event => setAccepted(event.target.checked)} disabled={busy} />
-        <span>Aceito os Termos de Uso e confirmo que li a Política de Privacidade, versão {release.version}.</span>
+        <span>Aceito os Termos de Uso e confirmo que li todos os documentos apresentados, versão {release.version}.</span>
       </label>
       <p className="text-xs text-muted">Esta confirmação registra os documentos apresentados. Ela não autoriza finalidades opcionais, como marketing.</p>
       <button type="submit" disabled={!accepted || busy} className="button-primary">{busy ? "Registrando…" : "Confirmar e continuar"}</button>

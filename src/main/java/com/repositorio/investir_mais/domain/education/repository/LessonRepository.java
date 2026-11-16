@@ -29,12 +29,6 @@ public interface LessonRepository extends JpaRepository<Lesson, UUID> {
             join tb_lesson l on l.id = p.lesson_id
             where p.student_id = :studentId and l.course_id = :courseId
               and l.deleted_at is null and p.completed = true
-              and not exists (
-                  select 1 from tb_question q
-                  where q.course_id = l.course_id and q.deleted_at is null and q.after_lesson < l.position
-                    and not exists (select 1 from tb_question_pass a
-                                    where a.question_id = q.id and a.student_id = p.student_id)
-              )
             """, nativeQuery = true)
     List<UUID> findCompletedLessonIds(UUID studentId, UUID courseId);
 

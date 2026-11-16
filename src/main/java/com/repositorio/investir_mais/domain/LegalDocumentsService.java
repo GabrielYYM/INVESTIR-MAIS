@@ -15,6 +15,7 @@ import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.databind.ObjectMapper;
@@ -59,9 +60,11 @@ public class LegalDocumentsService {
 
     private void validate(Release release) {
         if (release.version() < 1 || release.publishedOn() == null || release.publishedOn().isAfter(LocalDate.now())
-                || release.documents() == null || release.documents().size() != 2
+                || release.documents() == null || release.documents().size() < 2 || release.documents().size() > 20
+                || release.documents().stream().anyMatch(d -> d == null || d.id() == null || !d.id().matches("[a-z][a-z0-9-]{0,63}"))
+                || release.documents().stream().map(Document::id).distinct().count() != release.documents().size()
                 || !release.documents().stream().map(Document::id).collect(Collectors.toSet())
-                    .equals(Set.of("termos", "privacidade"))) {
+                    .containsAll(Set.of("termos", "privacidade"))) {
             throw new IllegalStateException("Versão legal inválida: " + release.version());
         }
         for (var document : release.documents()) {
@@ -86,6 +89,31 @@ public class LegalDocumentsService {
         if (!hash.equals(persistedHash)) {
             throw new IllegalStateException("A versão legal " + release.version() + " já foi publicada. Crie uma nova versão.");
         }
+    }
+
+    @Transactional
+    @PreAuthorize("hasRole('ADMIN')")
+    public Release publishNewRelease(Release release) {
+        try { validate(release); }
+        catch (IllegalStateException | NullPointerException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Preencha a versão, data, termos, privacidade e seções dos documentos.");
+        }
+        jdbc.sql("LOCK TABLE legal_document_release IN EXCLUSIVE MODE").update();
+        if (release.version() != current().version() + 1) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Publique a próxima versão sequencial. Versões anteriores são imutáveis.");
+        }
+        if (json.writeValueAsString(release).length() > 1_000_000) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Os documentos excedem o limite de 1 MB.");
+        }
+        publish(release);
+        return release;
+    }
+
+    @Transactional(readOnly = true)
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<Release> releases() {
+        return jdbc.sql("SELECT content FROM legal_document_release ORDER BY version DESC")
+                .query(String.class).list().stream().map(content -> json.readValue(content, Release.class)).toList();
     }
 
     @Transactional(readOnly = true)

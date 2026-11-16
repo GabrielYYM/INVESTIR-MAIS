@@ -83,6 +83,7 @@ export default function Perfil() {
         description="Consulte seus dados, gerencie suas credenciais e configurações de segurança."
       />
 
+    {user.role === "STUDENT" && <Link className="button-secondary" to="/cadastro-professor">Quero ser professor</Link>}
     <section className="panel p-6 shadow-xl">
       <h2 className="text-lg font-bold break-words">{user.name}</h2>
       <p className="text-sm break-words text-muted">{user.email}</p>

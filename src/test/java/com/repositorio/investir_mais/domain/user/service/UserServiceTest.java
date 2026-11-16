@@ -56,6 +56,8 @@ class UserServiceTest {
     @Mock
     private ApplicationEventPublisher events;
 
+    @Mock private com.repositorio.investir_mais.domain.user.repository.TeacherApplicationRepository teacherApplications;
+
     @InjectMocks
     private UserService userService;
 
@@ -354,7 +356,7 @@ class UserServiceTest {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {18, 25})
+    @ValueSource(ints = {0, 17, 18, 25})
     void updateUserRole_WhenValid_ShouldUpdateRoleAndRevokeSessions(int age) {
         user.setBirthDate(LocalDate.now().minusYears(age));
         UUID targetId = user.getId();
@@ -371,6 +373,7 @@ class UserServiceTest {
         );
         when(userMapper.toDTO(user)).thenReturn(response);
 
+        when(teacherApplications.existsByUserIdAndStatus(targetId, "APPROVED")).thenReturn(true);
         UserDTO.Response result = userService.updateUserRole("admin@investir.com", targetId, UserRole.TEACHER);
 
         assertEquals(UserRole.TEACHER, user.getRole());
@@ -381,7 +384,7 @@ class UserServiceTest {
     @ParameterizedTest
     @NullSource
     @ValueSource(ints = {0, 17})
-    void updateUserRole_WhenTooYoungOrBirthDateMissing_ShouldNotChangeRole(Integer age) {
+    void updateUserRole_WithoutApprovedApplication_ShouldNotChangeRole(Integer age) {
         user.setAge(30);
         user.setBirthDate(age == null ? null : LocalDate.now().minusYears(age));
         when(userRepository.findForUpdateById(user.getId())).thenReturn(Optional.of(user));
@@ -393,16 +396,14 @@ class UserServiceTest {
                 () -> userService.updateUserRole("admin@investir.com", user.getId(), UserRole.TEACHER));
 
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
-        assertEquals(age == null
-                ? "Este usuário não tem data de nascimento cadastrada. Não é possível verificar a idade mínima para professor."
-                : "Este usuário não pode ser promovido a professor porque tem menos de 18 anos.", ex.getReason());
+        assertEquals("Aprove a candidatura e os documentos antes de conceder o perfil de professor.", ex.getReason());
         assertEquals(UserRole.STUDENT, user.getRole());
         verify(userRepository, never()).save(any());
         verifyNoInteractions(accountSecurity);
     }
 
     @Test
-    void updateUserRole_OneDayBeforeEighteenthBirthday_ShouldRejectPromotion() {
+    void updateUserRole_WithoutDocuments_ShouldRejectPromotion() {
         user.setBirthDate(LocalDate.now().minusYears(18).plusDays(1));
         when(userRepository.findForUpdateById(user.getId())).thenReturn(Optional.of(user));
         when(userRepository.findByEmail("admin@investir.com")).thenReturn(Optional.of(new User()));
@@ -424,7 +425,7 @@ class UserServiceTest {
     }
 
     @Test
-    void updateUserRole_DirectHttpRequestForMinor_ShouldReturnBadRequest() throws Exception {
+    void updateUserRole_DirectHttpRequestWithoutApprovedDocuments_ShouldReturnBadRequest() throws Exception {
         user.setBirthDate(LocalDate.now().minusYears(17));
         when(userRepository.findForUpdateById(user.getId())).thenReturn(Optional.of(user));
         when(userRepository.findByEmail("admin@investir.com")).thenReturn(Optional.of(new User()));
@@ -435,7 +436,7 @@ class UserServiceTest {
         mvc.perform(patch("/api/users/{id}/role", user.getId()).principal(() -> "admin@investir.com")
                 .contentType(MediaType.APPLICATION_JSON).content("{\"role\":\"TEACHER\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail").value("Este usuário não pode ser promovido a professor porque tem menos de 18 anos."));
+                .andExpect(jsonPath("$.detail").value("Aprove a candidatura e os documentos antes de conceder o perfil de professor."));
         verify(userRepository, never()).save(any());
         verifyNoInteractions(accountSecurity);
     }

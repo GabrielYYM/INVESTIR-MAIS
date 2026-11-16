@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button, CircularProgress, InputAdornment } from "@mui/material";
 import { History, Search, ShieldCheck, UserCheck, Users } from "lucide-react";
 import { DataTable, FilterLiveForm, ListBase, SelectInput, TextInput, useListContext, useRefresh } from "react-admin";
-import { Navigate, redirect, useLoaderData } from "react-router";
+import { Link, Navigate, redirect, useLoaderData } from "react-router";
 import { UpdateUserRoleBody } from "../generated/account.zod.ts";
 import { getCurrentUser } from "../services/authService.js";
 import { roleNames } from "../services/dataProvider.js";
@@ -73,11 +73,7 @@ export default function Admin() {
   const { currentUser } = useLoaderData();
   const [editor, setEditor] = useState(null), [audited, setAudited] = useState(null), [feedback, setFeedback] = useState("");
   const refresh = useRefresh();
-  const promotionBlock = !editor?.birthDate
-    ? "Este usuário não tem data de nascimento cadastrada. Não é possível verificar a idade mínima para professor."
-    : editor.age < 18
-    ? "Este usuário não pode ser promovido a professor porque tem menos de 18 anos."
-    : "";
+  const promotionBlock = "A promoção a professor ocorre pela aprovação dos documentos em Candidaturas de professores.";
   return <div className="space-y-8"><h1 className="sr-only">Administração</h1>
     <ListBase resource="users" perPage={10} sort={{ field: "name", order: "ASC" }} disableAuthentication><UserListState>
       <UserStats />{feedback && <Notice>{feedback}</Notice>}
@@ -100,6 +96,7 @@ export default function Admin() {
       {promotionBlock && <Notice>{promotionBlock}</Notice>}
       <SelectInput source="role" label="Novo Papel" choices={[{ id: "STUDENT", name: "Aluno" }, { id: "TEACHER", name: "Professor", disabled: Boolean(promotionBlock) }]} />
     </CrudDialog>}
+    <nav className="flex flex-wrap gap-3" aria-label="Gestão da plataforma"><Link className="button-secondary" to="/admin/auditoria">Auditoria geral</Link><Link className="button-secondary" to="/admin/documentos">Documentos legais</Link><Link className="button-secondary" to="/admin/professores">Candidaturas de professores</Link></nav>
     {audited && <AuditDialog user={audited} onClose={() => setAudited(null)} />}
   </div>;
 }

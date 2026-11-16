@@ -13,7 +13,7 @@ class LessonQuestionOrderTest {
     @Test
     void questionsFollowTheirLessonAndIntroductoryQuestionsStayBeforeTheFirstLesson() {
         var repository = mock(QuestionRepository.class);
-        var service = new QuestionService(repository, null, null, null, null, null);
+        var service = new QuestionService(repository, null, null, null, null, null, null);
         var before = new Question(); before.setAfterLesson(0);
         var afterFirst = new Question(); afterFirst.setAfterLesson(1);
         var afterSecond = new Question(); afterSecond.setAfterLesson(2);

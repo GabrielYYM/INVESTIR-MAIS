@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface CourseRepository extends JpaRepository<Course, UUID> {
+public interface CourseRepository extends JpaRepository<Course, UUID>, org.springframework.data.jpa.repository.JpaSpecificationExecutor<Course> {
     Page<Course> findAllByProfessorId(UUID professorId, Pageable pageable);
 
 
@@ -41,12 +41,6 @@ public interface CourseRepository extends JpaRepository<Course, UUID> {
                 join visible_courses c on c.id = l.course_id
                 join tb_user u on u.id = p.student_id and u.deleted_at is null
                 where l.deleted_at is null and p.completed = true and p.completed_at between :start and :end
-                  and not exists (
-                      select 1 from tb_question q
-                      where q.course_id = l.course_id and q.deleted_at is null and q.after_lesson < l.position
-                        and not exists (select 1 from tb_question_pass a
-                                        where a.question_id = q.id and a.student_id = p.student_id)
-                  )
                 group by l.course_id
             )
             select c.id as "courseId", c.name as "courseName", coalesce(l.total, 0) as "totalLessons",

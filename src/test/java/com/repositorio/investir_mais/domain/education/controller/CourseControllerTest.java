@@ -73,7 +73,7 @@ class CourseControllerTest {
 
     @Test
     void getAllCourses_ShouldReturnOkAndPage() throws Exception {
-        when(courseService.getAllCourses(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
+        when(courseService.search(eq(null), eq(null), any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
 
         mockMvc.perform(get("/api/courses")
                 .with(user("user@investir.com").roles("STUDENT")))

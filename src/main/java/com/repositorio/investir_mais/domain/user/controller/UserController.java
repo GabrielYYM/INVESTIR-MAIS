@@ -149,7 +149,7 @@ public class UserController {
         return userService.listAllUsers();
     }
 
-    @Operation(summary = "Alterar perfil (role) do usuário", description = "Altera o perfil para TEACHER ou STUDENT. Exige ADMIN. Para TEACHER, exige data de nascimento cadastrada e idade mínima de 18 anos.")
+    @Operation(summary = "Alterar perfil (role) do usuário", description = "Altera o perfil para TEACHER ou STUDENT. Exige ADMIN.")
     @PatchMapping("/users/{id}/role")
     public UserDTO.Response updateUserRole(Principal principal, @PathVariable UUID id, @Valid @RequestBody UserDTO.UpdateRoleRequest dto) {
         return userService.updateUserRole(principal.getName(), id, dto.role());

@@ -74,6 +74,7 @@ export default function SignUp() {
       <p className="text-xs text-muted">Após verificar seu e-mail, você confirmará a versão vigente dos documentos. Essa confirmação ficará disponível no seu perfil.</p>
       <SubmitButton loading={registration.isPending} loadingText="Criando conta…" fullWidth>Criar conta</SubmitButton>
     </form>}
+    <p className="text-xs text-muted">Quer ser professor? Crie e confirme sua conta e envie seus documentos em <Link className="text-brand underline" to="/cadastro-professor">Cadastro de professor</Link>.</p>
     <Link to="/entrar" className="block text-center text-sm font-semibold text-brand hover:underline">Voltar para entrar</Link>
     {termsModalTab && <Suspense fallback={null}><TermsModal initialTab={termsModalTab} onClose={() => setTermsModalTab(null)} /></Suspense>}
   </AuthCard>;

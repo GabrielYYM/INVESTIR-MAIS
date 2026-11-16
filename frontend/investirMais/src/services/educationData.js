@@ -27,7 +27,12 @@ export async function dashboardCourses(signal) {
 export async function catalogLoader({ request }) {
   const url = new URL(request.url);
   const { pagina: requested } = loadPagination(url.searchParams);
-  const page = readPage(await getAllCourses({ page: requested, size: 9, sort: ["name", "id"] }, { signal: request.signal }));
+  const params = { page: requested, size: 9, sort: ["name", "id"] };
+  if (url.searchParams.get("busca")) params.query = url.searchParams.get("busca");
+  if (url.searchParams.get("categoria")) params.category = url.searchParams.get("categoria");
+  if (url.searchParams.get("ordem") === "newest") params.sort = ["createdAt,desc", "id,asc"];
+  if (url.searchParams.get("ordem") === "oldest") params.sort = ["createdAt,asc", "id,asc"];
+  const page = readPage(await getAllCourses(params, { signal: request.signal }));
   validatePage(url, requested, page);
   return page;
 }
@@ -42,10 +47,7 @@ export async function courseLoader({ request, params: { courseId, lessonId } }) 
   const [course, result, selected, progress, user] = await Promise.all([
     getCourseById(courseId, { signal }),
     getLessonsByCourse(courseId, { page: requested, size: 10, sort: ["position", "id"] }, { signal }),
-    lessonId ? getLessonById(lessonId, { signal }).catch((error) => {
-      if (error.response?.status === 409) return { id: lessonId, courseId, title: "Aula bloqueada", locked: true };
-      throw error;
-    }) : null,
+    lessonId ? getLessonById(lessonId, { signal }) : null,
     getCourseProgress(courseId, signal).catch((error) => {
       if (signal.aborted || error.response?.status === 401) throw error;
       progressError = "Não foi possível carregar seu progresso. Tente novamente.";
@@ -69,8 +71,7 @@ export async function courseLoader({ request, params: { courseId, lessonId } }) 
       questionsError = apiError(error, "Não foi possível carregar as perguntas. Tente novamente.");
     }
   }
-  const currentLesson = selected?.locked ? { ...(page.items.find((item) => item.id === selected.id) ?? selected), locked: true } : selected;
-  return { course, page, lesson: currentLesson ?? page.items.find((item) => !item.locked) ?? page.items[0], progress,
+  return { course, page, lesson: selected ?? page.items[0], progress,
     questions, questionsError, progressError, needsEnrollment: !canManage && progress?.totalQuestions > 0 && !progress.enrolled };
 }
 

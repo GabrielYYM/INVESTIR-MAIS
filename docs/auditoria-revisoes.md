@@ -53,3 +53,11 @@ com `ddl-auto=update`. O teste cria uma conta, atualiza nome e nascimento pelo
 serviço e atravessa mais de um bloco de 50 IDs. Verifica a preservação das revisões
 antigas e a idempotência do ajuste. `HttpValidationTest` cobre a resposta HTTP sem
 atribuir uma colisão interna aos dados do perfil.
+
+## Consulta geral
+
+A tela `/admin/auditoria` e `GET /api/audit` permitem filtrar revisões de usuários,
+cursos, aulas e questões por entidade, ID, revisão, datas, autor e papel do autor.
+A entidade `AuditRevision` mantém a tabela `revinfo`, os nomes `rev`/`revtstmp` e a
+sequência `revinfo_seq`, acrescentando `actor` e `actor_role`. Revisões antigas
+não recebem um autor inventado. Consulte a [descrição dos filtros e snapshots](atualizacao-plataforma.md#auditoria-e-exclusão).

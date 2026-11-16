@@ -11,7 +11,8 @@ import org.springframework.web.client.RestClientException;
 import java.util.List;
 
 @Component
-class ResendEmailSender {
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = "app.mail.transport", havingValue = "resend", matchIfMissing = true)
+class ResendEmailSender implements AccountEmailSender {
     private final RestClient client;
     private final String sender;
 
@@ -25,7 +26,7 @@ class ResendEmailSender {
                 .build();
     }
 
-    void send(String recipient, String subject, String text, String html, String idempotencyKey) {
+    public void send(String recipient, String subject, String text, String html, String idempotencyKey) {
         var request = client.post().uri("/emails").contentType(MediaType.APPLICATION_JSON);
         if (idempotencyKey != null) {
             request.header("Idempotency-Key", idempotencyKey);

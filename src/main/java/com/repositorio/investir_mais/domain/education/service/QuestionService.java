@@ -5,7 +5,6 @@ import com.repositorio.investir_mais.domain.education.mapper.QuestionMapper;
 import com.repositorio.investir_mais.domain.education.model.*;
 import com.repositorio.investir_mais.domain.education.repository.*;
 import com.repositorio.investir_mais.domain.user.model.User;
-import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.repository.UserRepository;
 import com.repositorio.investir_mais.domain.user.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -27,10 +26,12 @@ public class QuestionService {
     private final CourseService courseService;
     private final UserService users;
     private final UserRepository userRepository;
+    private final QuestionAttemptRepository attempts;
 
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public QuestionDTO.TeacherQuestion create(UUID courseId, QuestionDTO.Request request, String email) {
         Course course = courseService.findCourseOwnedBy(courseId, email);
+        validateLesson(courseId, request.afterLesson());
         return questionMapper.toDTO(questions.saveAndFlush(questionMapper.toEntity(course, request)));
     }
 
@@ -38,6 +39,7 @@ public class QuestionService {
     public QuestionDTO.TeacherQuestion update(UUID courseId, UUID questionId, QuestionDTO.Request request, String email) {
         courseService.findCourseOwnedBy(courseId, email);
         Question question = find(courseId, questionId);
+        validateLesson(courseId, request.afterLesson());
         questionMapper.updateEntity(request, question);
         questions.flush();
 
@@ -74,6 +76,7 @@ public class QuestionService {
         User student = users.findByEmailForUpdate(email);
         Course course = courseService.findCourseForProgressUpdate(courseId);
         if (!student.isEnrolledIn(course)) throw error(HttpStatus.FORBIDDEN, "Matricule-se no curso para responder.");
+        if (course.getProfessor().getId().equals(student.getId())) throw error(HttpStatus.FORBIDDEN, "O professor não pode responder às próprias questões.");
         Question question = find(courseId, questionId);
         if (request.optionIndex() >= question.getOptions().size()) {
             throw error(HttpStatus.BAD_REQUEST, "Alternativa inválida para esta pergunta.");
@@ -86,35 +89,15 @@ public class QuestionService {
             throw error(HttpStatus.CONFLICT, "Conclua o conteúdo anterior e acerte as perguntas anteriores para avançar.");
         }
         boolean correct = request.optionIndex() == question.getCorrectOptionIndex();
+        var attempt = new QuestionAttempt();
+        attempt.setStudentId(student.getId()); attempt.setCourseId(courseId); attempt.setQuestionId(questionId);
+        attempt.setPrompt(question.getPrompt()); attempt.setSelectedAnswer(question.getOptions().get(request.optionIndex()));
+        attempt.setCorrect(correct); attempt.setAnsweredAt(java.time.Instant.now()); attempts.save(attempt);
         if (correct) {
             student.passQuestion(questionId);
             userRepository.flush();
         }
         return new QuestionDTO.AnswerResponse(questionId, correct);
-    }
-
-    @Transactional(readOnly = true)
-    public boolean canAccessLesson(Lesson lesson, User student) {
-        List<Question> all = ordered(lesson.getCourse().getId());
-        if (all.isEmpty()) return true;
-        if (!student.isEnrolledIn(lesson.getCourse())) return false;
-        Set<UUID> passed = student.getPassedQuestionIds();
-        Set<UUID> completed = new HashSet<>(lessons.findCompletedLessonIds(student.getId(), lesson.getCourse().getId()));
-        return all.stream().filter(q -> q.getAfterLesson() < lesson.getPosition()).allMatch(q -> passed.contains(q.getId()))
-                && lessons.findAllByCourseIdOrderByPositionAscIdAsc(lesson.getCourse().getId()).stream()
-                .filter(l -> l.getPosition() < lesson.getPosition()).allMatch(l -> completed.contains(l.getId()));
-    }
-
-    @Transactional(readOnly = true)
-    public void assertCanAccessLesson(Lesson lesson, User student) {
-        if (!canAccessLesson(lesson, student)) throw error(HttpStatus.CONFLICT, "Conclua o conteúdo anterior e acerte as perguntas para avançar.");
-    }
-
-    @Transactional(readOnly = true)
-    public boolean canPreview(Lesson lesson, String email) {
-        User user = users.findByEmail(email);
-        return user.getRole() == UserRole.ADMIN || lesson.getCourse().getProfessor().getId().equals(user.getId())
-                || canAccessLesson(lesson, user);
     }
 
     @Transactional(readOnly = true)
@@ -132,6 +115,12 @@ public class QuestionService {
             if (!passed.contains(previous.getId())) return true;
         }
         return false;
+    }
+
+    private void validateLesson(UUID courseId, int position) {
+        if (position > 0 && lessons.findAllByCourseIdOrderByPositionAscIdAsc(courseId).stream().noneMatch(l -> l.getPosition() == position)) {
+            throw error(HttpStatus.BAD_REQUEST, "Selecione uma aula existente neste curso.");
+        }
     }
 
     private List<Question> ordered(UUID courseId) { return questions.findAllByCourseIdOrderByAfterLessonAscPositionAscIdAsc(courseId); }

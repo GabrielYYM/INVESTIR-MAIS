@@ -19,6 +19,15 @@ import java.util.List;
 public class LegalDocumentsController {
     private final LegalDocumentsService legal;
 
+    @PostMapping("/versions")
+    @ResponseStatus(org.springframework.http.HttpStatus.CREATED)
+    public LegalDocumentsService.Release publish(@RequestBody LegalDocumentsService.Release release) {
+        return legal.publishNewRelease(release);
+    }
+
+    @GetMapping("/versions")
+    public List<LegalDocumentsService.Release> releases() { return legal.releases(); }
+
     public record AcceptanceRequest(@Min(1) int version,
             @NotNull @AssertTrue(message = "Confirme a leitura dos documentos.") Boolean accepted) {}
 

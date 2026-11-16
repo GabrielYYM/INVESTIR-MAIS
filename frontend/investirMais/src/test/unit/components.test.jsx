@@ -1,9 +1,10 @@
+import { renderApp } from "../renderApp.jsx";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { Field } from "../../components/ui/FormFields.jsx";
-import { CourseCard, Pagination } from "../../components/education/EducationParts.jsx";
+import { Pagination } from "../../components/education/EducationParts.jsx";
 import { Notice, PendingPage } from "../../components/ui/PageState.jsx";
 import { course } from "../fixtures.js";
 
@@ -38,9 +39,9 @@ describe("campos de formulário", () => {
 });
 
 describe("componentes de navegação e estado", () => {
-  it("cria o link de detalhe com os dados do curso", () => {
-    render(<MemoryRouter><CourseCard course={course} /></MemoryRouter>);
-    expect(screen.getByRole("link", { name: /Renda fixa/ })).toHaveAttribute("href", "/educacao/" + course.id);
+  it("cria o link de detalhe com os dados do curso", async () => {
+    renderApp("/educacao");
+    expect(await screen.findByRole("link", { name: /Renda fixa/ })).toHaveAttribute("href", "/educacao/" + course.id);
     expect(screen.getByText(course.description)).toBeInTheDocument();
   });
 

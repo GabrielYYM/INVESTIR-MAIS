@@ -1,5 +1,6 @@
 package com.repositorio.investir_mais.domain.user.service;
 
+import com.repositorio.investir_mais.domain.user.repository.TeacherApplicationRepository;
 import com.repositorio.investir_mais.domain.AccountEmailRequested;
 import com.repositorio.investir_mais.domain.AccountSecurityService;
 import com.repositorio.investir_mais.domain.user.DTO.AuthDTO;
@@ -31,6 +32,7 @@ import org.springframework.web.server.ResponseStatusException;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final TeacherApplicationRepository teacherApplications;
     private final PasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
     private final AccountSecurityService accountSecurity;
@@ -109,6 +111,7 @@ public class UserService {
         }
         verifyCurrentPassword(user, dto.currentPassword());
 
+        teacherApplications.findByUserId(user.getId()).ifPresent(teacherApplications::delete);
         userRepository.delete(user);
         userRepository.flush();
         accountSecurity.invalidateAll(user.getEmail());
@@ -197,19 +200,9 @@ public class UserService {
 
         User admin = findByEmail(principalName);
 
-        if (newRole == UserRole.TEACHER) {
-            String reason = targetUser.getBirthDate() == null
-                    ? "Este usuário não tem data de nascimento cadastrada. Não é possível verificar a idade mínima para professor."
-                    : targetUser.getAge() < 18
-                    ? "Este usuário não pode ser promovido a professor porque tem menos de 18 anos."
-                    : null;
-            if (reason != null) {
-                log.warn("Promoção a professor bloqueada: admin={}, usuário={}, data={}, motivo={}",
-                        admin.getId(), targetUser.getId(), Instant.now(), reason);
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, reason);
-            }
+        if (newRole == UserRole.TEACHER && !teacherApplications.existsByUserIdAndStatus(userId, "APPROVED")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Aprove a candidatura e os documentos antes de conceder o perfil de professor.");
         }
-
         targetUser.setRole(newRole);
         User saved = userRepository.save(targetUser);
 

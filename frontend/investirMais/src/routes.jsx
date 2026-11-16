@@ -34,6 +34,10 @@ async function requireSession({ request }) {
   }
 }
 
+const adminWorkspace = kind => async () => {
+  const { default: Workspace } = await import("./pages/AdminWorkspace.jsx");
+  return { Component: () => <Workspace kind={kind} /> };
+};
 const termsRoute = async () => ({ Component: (await import("./pages/Terms.jsx")).default });
 
 export const appRoutes = [{ Component: ApplicationProviders, children: [
@@ -50,6 +54,10 @@ export const appRoutes = [{ Component: ApplicationProviders, children: [
       { path: "educacao", Component: Education, loader: catalogLoader, ErrorBoundary: PageError },
       { path: "educacao/:courseId/:lessonId?", Component: Course, loader: courseLoader, action: courseAction, ErrorBoundary: PageError },
       { path: "perfil", Component: Perfil },
+      { path: "cadastro-professor", lazy: async () => ({ Component: (await import("./pages/TeacherApplication.jsx")).default }), ErrorBoundary: PageError },
+      { path: "admin/auditoria", lazy: adminWorkspace("audit"), ErrorBoundary: PageError },
+      { path: "admin/documentos", lazy: adminWorkspace("legal"), ErrorBoundary: PageError },
+      { path: "admin/professores", lazy: adminWorkspace("teachers"), ErrorBoundary: PageError },
       { path: "admin", lazy: async () => {
         const { default: Component, adminLoader: loader } = await import("./pages/Admin.jsx");
         return { Component, loader };

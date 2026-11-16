@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw/http";
 import { describe, expect, it, vi } from "vitest";
 import { admin, course, lesson, otherLesson, paged, student, teacher } from "../fixtures.js";
@@ -64,10 +64,27 @@ describe("catálogo e aulas", () => {
     await user.click(screen.getByRole("button", { name: "Abrir player" }));
     expect(screen.getByTitle("Vídeo da aula " + lesson.title)).toHaveAttribute("src", "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ");
     await user.click(screen.getByRole("link", { name: otherLesson.title }));
-    expect(await screen.findByRole("heading", { name: otherLesson.title })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: otherLesson.title }, { timeout: 5000 })).toBeInTheDocument();
     expect(screen.queryByTitle("Vídeo da aula " + otherLesson.title)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Abrir player" })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe(coursePath + "/" + otherLesson.id);
+  });
+
+  it("mostra a capa do Cloudinary e volta ao início ao terminar, sem marcar progresso do professor", async () => {
+    const cloudinaryLesson = { ...lesson, mediaUrl: "https://res.cloudinary.com/demo/video/upload/dog.mp4", thumbnailUrl: "https://res.cloudinary.com/demo/video/upload/dog.jpg" };
+    const progress = vi.fn(() => new HttpResponse(null, { status: 204 }));
+    server.use(
+      http.get(origin + "/api/lessons/course/:id", () => HttpResponse.json(paged([cloudinaryLesson]))),
+      http.post(origin + "/api/lessons/:courseId/:lessonId/progress", progress),
+    );
+    renderApp(coursePath, { session: teacher });
+    const player = await screen.findByLabelText("Vídeo da aula " + lesson.title);
+    expect(player).toHaveAttribute("poster", cloudinaryLesson.thumbnailUrl);
+    player.currentTime = 13;
+    fireEvent.ended(player);
+    expect(player.currentTime).toBe(0);
+    fireEvent.play(player);
+    expect(progress).not.toHaveBeenCalled();
   });
 
   it.each([[student, false], [{ ...teacher, id: "outro-professor" }, false], [teacher, true], [{ ...admin, id: "outro-admin" }, true]])("aplica propriedade do curso aos controles de gestão %#", async (user, canManage) => {
@@ -142,7 +159,7 @@ describe("gestão de cursos", () => {
     await fillFields(user, { "Nome do curso": "  Renda fixa  ", Descrição: "  Aprenda sobre investimentos.  " }, dialog);
     await waitFor(() => expect(dialog.getByRole("button", { name: "Salvar curso" })).toBeEnabled());
     await user.click(dialog.getByRole("button", { name: "Salvar curso" }));
-    await waitFor(() => expect(payloads).toEqual([{ name: "Renda fixa", description: "Aprenda sobre investimentos." }]));
+    await waitFor(() => expect(payloads).toEqual([{ name: "Renda fixa", description: "Aprenda sobre investimentos.", category: "", keywords: "" }]));
     expect(await screen.findByRole("heading", { name: course.name, level: 1 }, { timeout: 5000 })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe(coursePath);
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
@@ -211,7 +228,10 @@ describe("gestão de cursos", () => {
 });
 
 describe("gestão de aulas", () => {
-  it("valida a URL e cria uma aula com vídeo e miniatura normalizados", async () => {
+  it.each([
+    ["YouTube", "  https://youtu.be/dQw4w9WgXcQ?t=10  ", lesson.mediaUrl, lesson.thumbnailUrl],
+    ["Cloudinary", "https://res.cloudinary.com/demo/video/upload/dog.mp4", "https://res.cloudinary.com/demo/video/upload/dog.mp4", "https://res.cloudinary.com/demo/video/upload/dog.jpg"],
+  ])("valida a URL e cria uma aula do %s com vídeo e miniatura normalizados", async (_provider, inputUrl, mediaUrl, thumbnailUrl) => {
     const payloads = [];
     server.use(
       http.post(origin + "/api/lessons/course/:id", async ({ params, request }) => {
@@ -225,17 +245,17 @@ describe("gestão de aulas", () => {
     await user.click(await screen.findByRole("button", { name: "Nova aula" }));
     await fillFields(user, {
       "Título da aula": "  Reserva de emergência  ", Descrição: "  Aprenda a criar sua reserva.  ",
-      "URL do vídeo no YouTube": "https://evil.example.test/video",
+      "URL do vídeo (YouTube ou Cloudinary)": "https://evil.example.test/video",
     });
     await user.click(screen.getByRole("button", { name: "Salvar aula" }));
-    expect(await screen.findByText("Informe o link de um vídeo do YouTube.")).toBeInTheDocument();
+    expect(await screen.findByText("Informe um vídeo do YouTube ou Cloudinary.")).toBeInTheDocument();
     expect(payloads).toHaveLength(0);
-    await fillFields(user, { "URL do vídeo no YouTube": "  https://youtu.be/dQw4w9WgXcQ?t=10  " });
+    await fillFields(user, { "URL do vídeo (YouTube ou Cloudinary)": inputUrl });
     await user.click(screen.getByRole("button", { name: "Salvar aula" }));
-    expect(await screen.findByRole("heading", { name: otherLesson.title })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: otherLesson.title }, { timeout: 5000 })).toBeInTheDocument();
     expect(payloads).toEqual([{
       title: "Reserva de emergência", description: "Aprenda a criar sua reserva.",
-      mediaUrl: lesson.mediaUrl, thumbnailUrl: lesson.thumbnailUrl,
+      mediaUrl, thumbnailUrl,
     }]);
     expect(router.state.location.pathname).toBe(coursePath + "/" + otherLesson.id);
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
@@ -259,9 +279,9 @@ describe("gestão de aulas", () => {
     const dialog = within(await screen.findByRole("dialog", { name: "Editar aula" }));
     await fillFields(user, { "Título da aula": "Aula atualizada" }, dialog);
     await user.click(dialog.getByRole("button", { name: "Salvar aula" }));
-    expect(await dialog.findByText("Informe o link de um vídeo do YouTube.")).toBeInTheDocument();
+    expect(await dialog.findByText("Informe um vídeo do YouTube ou Cloudinary.")).toBeInTheDocument();
     expect(payloads).toEqual([]);
-    await fillFields(user, { "URL do vídeo no YouTube": lesson.mediaUrl }, dialog);
+    await fillFields(user, { "URL do vídeo (YouTube ou Cloudinary)": lesson.mediaUrl }, dialog);
     await user.click(dialog.getByRole("button", { name: "Salvar aula" }));
     await waitFor(() => expect(payloads).toEqual([{ title: "Aula atualizada", description: lesson.description, mediaUrl: lesson.mediaUrl, thumbnailUrl: lesson.thumbnailUrl }]));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());

@@ -14,9 +14,9 @@ async function userRow(email = student.email) {
 
 describe("gestão de usuários", () => {
   it.each([
-    [{ ...student, age: 17 }, "Este usuário não pode ser promovido a professor porque tem menos de 18 anos."],
-    [{ ...student, birthDate: null }, "Este usuário não tem data de nascimento cadastrada. Não é possível verificar a idade mínima para professor."],
-  ])("explica e desabilita a promoção sem idade mínima comprovada %#", async (account, message) => {
+    [{ ...student, age: 17 }, "A promoção a professor ocorre pela aprovação dos documentos em Candidaturas de professores."],
+    [{ ...student, birthDate: null }, "A promoção a professor ocorre pela aprovação dos documentos em Candidaturas de professores."],
+  ])("explica que a promoção depende da aprovação dos documentos %#", async (account, message) => {
     const update = mockApi("patch", `/api/users/${student.id}/role`, {});
     const { user } = setup([account]);
     await user.click((await userRow()).getByRole("button", { name: "Alterar Papel" }));
@@ -53,23 +53,20 @@ describe("gestão de usuários", () => {
     });
   });
 
-  it("altera o papel, envia apenas o novo perfil e revalida a listagem", async () => {
+  it("altera o professor para aluno e revalida a listagem", async () => {
     let users = [adminUser, student, teacherUser];
     mockApi("get", "/api/users", () => users);
-    const update = mockApi("patch", `/api/users/${student.id}/role`, async ({ request }) => {
-      const body = await request.json(); expect(body).toEqual({ role: "TEACHER" });
-      const updated = { ...student, role: body.role }; users = users.map((u) => u.id === student.id ? updated : u); return updated;
+    const update = mockApi("patch", `/api/users/${teacherUser.id}/role`, async ({ request }) => {
+      const body = await request.json(); expect(body).toEqual({ role: "STUDENT" });
+      const updated = { ...teacherUser, role: body.role }; users = users.map(u => u.id === teacherUser.id ? updated : u); return updated;
     });
     const { user } = renderApp("/admin", { session: adminUser });
-    await user.click((await userRow()).getByRole("button", { name: "Alterar Papel" }));
-    const dialog = within(screen.getByRole("dialog"));
-    expect(dialog.getByRole("button", { name: "Salvar Alteração" })).toBeDisabled();
-    await user.click(dialog.getByRole("combobox", { name: "Novo Papel" }));
-    await user.click(await screen.findByRole("option", { name: "Professor" }));
-    await user.click(dialog.getByRole("button", { name: "Salvar Alteração" }));
-    expect(await screen.findByRole("status")).toHaveTextContent(/alterado com sucesso para Professor/);
+    await user.click((await userRow(teacherUser.email)).getByRole("button", { name: "Alterar Papel" }));
+    await user.click(screen.getByRole("combobox", { name: "Novo Papel" }));
+    await user.click(await screen.findByRole("option", { name: "Aluno" }));
+    await user.click(screen.getByRole("button", { name: "Salvar Alteração" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect((await userRow()).getByText("Professor")).toBeInTheDocument(); expect(update).toHaveBeenCalledOnce();
+    expect((await userRow(teacherUser.email)).getByText("Aluno")).toBeInTheDocument(); expect(update).toHaveBeenCalledOnce();
   });
 
   it("preserva o diálogo e a escolha quando a atualização falha", async () => {

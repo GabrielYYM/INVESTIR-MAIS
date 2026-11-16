@@ -200,6 +200,6 @@ class CourseServiceTest {
             () -> courseService.deleteCourse(courseId, "outro@investir.com"));
 
         assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
-        verify(courseRepository, never()).delete(any());
+        verify(courseRepository, never()).delete(any(Course.class));
     }
 }

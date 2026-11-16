@@ -100,6 +100,25 @@ class QuestionIntegrationTest extends PostgreSqlIntegrationTest {
     }
 
     @Test
+    void videosCanBeOpenedAndCompletedOutOfOrderWhileQuestionsRemainRequired() throws Exception {
+        var question = create(1, 0);
+        mvc.perform(get("/api/lessons/" + second.getId()).with(as(student)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.locked").value(false))
+                .andExpect(jsonPath("$.mediaUrl").isNotEmpty());
+        mvc.perform(get("/api/lessons/course/" + course.getId()).with(as(student)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.content[0].locked").value(false))
+                .andExpect(jsonPath("$.content[1].locked").value(false))
+                .andExpect(jsonPath("$.content[1].mediaUrl").isNotEmpty());
+        progress(second, 200);
+        mvc.perform(get("/api/courses/" + course.getId() + "/progress").with(as(student)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.completedLessons").value(1))
+                .andExpect(jsonPath("$.totalQuestions").value(1)).andExpect(jsonPath("$.passedQuestions").value(0));
+        answer(question.id(), 0, 409);
+        mvc.perform(get(base()).with(as(student))).andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(question.id().toString()));
+    }
+
+    @Test
     void wrongAnswerStoresNothingAndCorrectAnswerStoresOnlyStudentAndQuestion() throws Exception {
         var q = create(1, 0);
         answer(q.id(), 0, 409);
@@ -107,8 +126,8 @@ class QuestionIntegrationTest extends PostgreSqlIntegrationTest {
         assertFalse(answer(q.id(), 1, 200).passed());
         assertFalse(answer(q.id(), 1, 200).passed());
         assertEquals(0, passCount());
-        progress(second, 409);
-        mvc.perform(get("/api/lessons/" + second.getId()).with(as(student))).andExpect(status().isConflict());
+        progress(second, 200);
+        mvc.perform(get("/api/lessons/" + second.getId()).with(as(student))).andExpect(status().isOk()).andExpect(jsonPath("$.locked").value(false)).andExpect(jsonPath("$.mediaUrl").isNotEmpty());
         mvc.perform(get(base()).with(as(student))).andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].correctOptionIndex").doesNotExist())
                 .andExpect(jsonPath("$[0].options[0]").value("Certa"));
@@ -129,7 +148,7 @@ class QuestionIntegrationTest extends PostgreSqlIntegrationTest {
         mvc.perform(put(base() + "/" + q.id()).with(as(teacher)).with(csrf()).contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(new QuestionDTO.Request("Pergunta alterada", 0, 0, List.of("A", "B"), 1))))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.correctOptionIndex").value(1));
-        assertEquals(1, passCount()); progress(first, 409);
+        assertEquals(1, passCount()); progress(first, 200);
         assertFalse(answer(q.id(), 0, 200).passed()); assertTrue(answer(q.id(), 1, 200).passed());
         progress(first, 200);
         mvc.perform(delete(base() + "/" + q.id()).with(as(teacher)).with(csrf())).andExpect(status().isNoContent());
