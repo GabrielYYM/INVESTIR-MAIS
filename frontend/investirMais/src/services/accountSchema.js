@@ -4,6 +4,7 @@ import { ForgotPasswordBody, RegisterUserBody, ResetPasswordBody, UpdatePassword
 
 const trimmed = schema => z.string().trim().pipe(schema);
 const password = schema => schema.refine(value => Boolean(value.trim()), "A senha não pode conter apenas espaços.");
+export const passwordRequirements = "Use de 8 a 100 caracteres, com uma letra minúscula, uma maiúscula, um número e um caractere especial.";
 const confirmed = (schema, field, required = "Confirme a senha.") => schema
   .extend({ confirmPassword: z.string().min(1, required) })
   .refine(values => values.confirmPassword === values[field], {
@@ -47,7 +48,13 @@ function validationMessage(issue) {
     case "birthDate": return "Informe uma data de nascimento válida.";
     case "email": return !issue.input ? "Informe seu e-mail." : issue.input.length > 254 ? "O e-mail deve ter no máximo 254 caracteres." : "Informe um e-mail válido.";
     case "password":
-    case "newPassword": return !issue.input ? "Informe a senha." : `A senha deve ter no ${issue.code === "too_big" ? `máximo ${issue.maximum}` : `mínimo ${issue.minimum}`} caracteres.`;
+    case "newPassword": {
+      if (typeof issue.input !== "string" || !issue.input) return "Informe a senha.";
+      if (!issue.input.trim()) return "A senha não pode conter apenas espaços.";
+      if (issue.input.length < 8) return "A senha deve ter no mínimo 8 caracteres.";
+      if (issue.input.length > 100) return "A senha deve ter no máximo 100 caracteres.";
+      return passwordRequirements;
+    }
     case "currentPassword": return `A senha atual deve ter no máximo ${issue.maximum} caracteres.`;
     case "token": return issue.code === "too_big" ? `O código deve ter no máximo ${issue.maximum} caracteres.` : "Informe o código recebido.";
   }

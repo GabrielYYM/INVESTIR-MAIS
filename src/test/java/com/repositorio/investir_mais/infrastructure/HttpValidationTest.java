@@ -12,6 +12,8 @@ import java.time.LocalDate;
 import java.util.UUID;
 import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -38,6 +40,68 @@ class HttpValidationTest {
     @MockitoBean UserService users;
     @MockitoBean CourseService courses;
     @MockitoBean CsrfTokenRepository csrfTokens;
+
+    @ParameterizedTest
+    @ValueSource(ints = {8, 100, 101})
+    void newPasswordsHaveAMaximumOfOneHundredCharacters(int length) throws Exception {
+        String password = "Aa1!" + "x".repeat(length - 4);
+        when(users.registerUser(any())).thenReturn(new DefaultOneTimeToken("token", "user@investir.com", Instant.now().plusSeconds(300)));
+        mvc.perform(post("/api/users/register").contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"name":"Teste","email":"user@investir.com","birthDate":"2000-01-15","password":"%s"}
+                        """.formatted(password)))
+                .andExpect(status().is(length <= 100 ? 202 : 400));
+        mvc.perform(post("/api/users/reset-password").contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"token":"codigo","newPassword":"%s"}
+                        """.formatted(password)))
+                .andExpect(status().is(length <= 100 ? 200 : 400));
+        mvc.perform(put("/api/users/update-password").principal(() -> "user@investir.com")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"currentPassword":"antiga","newPassword":"%s"}
+                        """.formatted(password)))
+                .andExpect(status().is(length <= 100 ? 200 : 400));
+        if (length > 100) verifyNoInteractions(users);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"SENHAFORTE1!", "senhaforte1!", "SenhaForte!!", "SenhaForte12", "SenhaForte1 ", "SenhaForte1á", "Aa1!"})
+    void weakPasswordsAreRejectedInAllCredentialCreationEndpoints(String password) throws Exception {
+        mvc.perform(post("/api/users/register").contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"name":"Teste","email":"user@investir.com","birthDate":"2000-01-15","password":"%s"}
+                        """.formatted(password)))
+                .andExpect(status().isBadRequest());
+        mvc.perform(post("/api/users/reset-password").contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"token":"codigo","newPassword":"%s"}
+                        """.formatted(password)))
+                .andExpect(status().isBadRequest());
+        mvc.perform(put("/api/users/update-password").principal(() -> "user@investir.com")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"currentPassword":"antiga","newPassword":"%s"}
+                        """.formatted(password)))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(users);
+    }
+
+    @Test void strongNewPasswordsDoNotRequireTheCurrentPasswordToMeetTheNewPolicy() throws Exception {
+        mvc.perform(put("/api/users/update-password").principal(() -> "user@investir.com")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"currentPassword":"antiga","newPassword":"SenhaNova1!"}
+                        """))
+                .andExpect(status().isOk());
+        mvc.perform(post("/api/users/reset-password").contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"token":"codigo","newPassword":"SenhaNova1!"}
+                        """))
+                .andExpect(status().isOk());
+        verify(users).updatePassword(any(), argThat(request -> request.currentPassword().equals("antiga")));
+        verify(users).resetPassword(argThat(request -> request.newPassword().equals("SenhaNova1!")));
+    }
 
     @Test void malformedJsonAndInvalidUuidKeepTheirNativeBadRequestStatus() throws Exception {
         mvc.perform(post("/api/users/register").contentType(MediaType.APPLICATION_JSON).content("{"))
@@ -79,7 +143,7 @@ class HttpValidationTest {
                 ConstraintViolationException.ConstraintKind.UNIQUE, "private_constraint");
         when(users.registerUser(any())).thenThrow(new DataIntegrityViolationException("private details", violation));
         mvc.perform(post("/api/users/register").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\":\"Teste\",\"birthDate\":\"2000-01-15\",\"email\":\"test@example.com\",\"password\":\"Senha1234\"}"))
+                .content("{\"name\":\"Teste\",\"birthDate\":\"2000-01-15\",\"email\":\"test@example.com\",\"password\":\"Senha1234!\"}"))
                 .andExpect(status().isAccepted()).andExpect(jsonPath("$.message").isString());
     }
 
@@ -101,7 +165,7 @@ class HttpValidationTest {
         mvc.perform(put("/api/users/{id}", UUID.randomUUID()).principal(() -> "user@investir.com")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                        {"name":"Teste","email":"user@investir.com","birthDate":"2000-01-15","currentPassword":"Senha1234"}
+                        {"name":"Teste","email":"user@investir.com","birthDate":"2000-01-15","currentPassword":"Senha1234!"}
                         """))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.detail").value("Ocorreu um erro interno no servidor."));
@@ -121,7 +185,7 @@ class HttpValidationTest {
     void missingOrFutureBirthDateIsRejectedBeforeRegistration() throws Exception {
         for (String date : new String[]{"null", "\"" + LocalDate.now().plusDays(1) + "\""}) {
             mvc.perform(post("/api/users/register").contentType(MediaType.APPLICATION_JSON)
-                    .content("{\"name\":\"Teste\",\"birthDate\":" + date + ",\"email\":\"test@example.com\",\"password\":\"Senha1234\"}"))
+                    .content("{\"name\":\"Teste\",\"birthDate\":" + date + ",\"email\":\"test@example.com\",\"password\":\"Senha1234!\"}"))
                     .andExpect(status().isBadRequest());
         }
         verifyNoInteractions(users);
@@ -132,7 +196,7 @@ class HttpValidationTest {
         when(users.registerUser(any())).thenReturn(new DefaultOneTimeToken(
                 "registration-token", "test@example.com", Instant.now().plusSeconds(300)));
         mvc.perform(post("/api/users/register").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\":\"Teste\",\"birthDate\":\"2000-01-15\",\"email\":\"test@example.com\",\"password\":\"Senha1234\"}"))
+                .content("{\"name\":\"Teste\",\"birthDate\":\"2000-01-15\",\"email\":\"test@example.com\",\"password\":\"Senha1234!\"}"))
                 .andExpect(status().isAccepted());
         verify(users).registerUser(argThat(request -> request.birthDate().equals(LocalDate.of(2000, 1, 15))));
     }

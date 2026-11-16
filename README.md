@@ -24,6 +24,11 @@ O cadastro público aceita apenas `STUDENT`. A interface exibe as ações dispon
 
 As aulas aceitam links de qualquer canal do YouTube. A validação é local e verifica o formato da URL; não há filtro temático, aprovação de canais, verificação de disponibilidade ou uso de `YOUTUBE_API_KEY`. Quem publica deve conferir o material e sua reprodução. Veja o [guia dos vídeos](docs/video-validation.md).
 
+O cadastro, a troca e a recuperação de senha exigem de 8 a 100 caracteres, com ao
+menos uma letra minúscula, uma maiúscula, um número e um caractere especial. A API
+e os formulários aplicam a mesma regra. Senhas existentes continuam aceitas no
+login e na confirmação de operações; uma nova senha deve cumprir os requisitos.
+
 ## Arquitetura
 
 | Componente | Responsabilidade |

@@ -8,7 +8,7 @@ import { fillFields, mockApi } from "../helpers.js";
 async function fillSignUp(user) {
   await fillFields(user, {
     "Nome completo": "  Ana Teste  ", "Data de nascimento": "2000-01-15", "E-mail": student.email,
-    Senha: "senha-teste", "Confirme a senha": "senha-teste",
+    Senha: "SenhaTeste1!", "Confirme a senha": "SenhaTeste1!",
   });
   await user.click(screen.getByRole("checkbox"));
 }
@@ -31,11 +31,11 @@ describe("cadastro", () => {
     expect(await screen.findByText("A senha não pode conter apenas espaços.")).toBeInTheDocument();
     expect(register).not.toHaveBeenCalled();
 
-    fireEvent.change(password, { target: { value: " senha teste " } });
-    fireEvent.change(confirmation, { target: { value: " senha teste " } });
+    fireEvent.change(password, { target: { value: " SenhaTeste1! " } });
+    fireEvent.change(confirmation, { target: { value: " SenhaTeste1! " } });
     await user.click(screen.getByRole("button", { name: "Criar conta" }));
     expect(await screen.findByRole("heading", { name: "Confirme seu e-mail" })).toBeInTheDocument();
-    expect(bodies[0].password).toBe(" senha teste ");
+    expect(bodies[0].password).toBe(" SenhaTeste1! ");
   });
 
   it("valida nome, idade, senha, confirmação e aceite antes de enviar", async () => {
@@ -68,7 +68,7 @@ describe("cadastro", () => {
     await fillSignUp(user);
     await user.click(screen.getByRole("button", { name: "Criar conta" }));
     expect(await screen.findByRole("heading", { name: "Confirme seu e-mail" })).toBeInTheDocument();
-    expect(registered).toEqual([{ name: student.name, birthDate: "2000-01-15", email: student.email, password: "senha-teste" }]);
+    expect(registered).toEqual([{ name: student.name, birthDate: "2000-01-15", email: student.email, password: "SenhaTeste1!" }]);
     await user.click(screen.getByRole("button", { name: "Reenviar link de confirmação" }));
     expect(await screen.findByRole("status")).toHaveTextContent("Link de confirmação solicitado novamente.");
     expect(resent).toEqual([{ email: student.email }]);
@@ -116,12 +116,12 @@ describe("recuperação de senha", () => {
     await user.click(screen.getByRole("button", { name: "Solicitar outro código" }));
     expect(await screen.findByRole("status")).toHaveTextContent("Solicitamos um novo código");
     await user.type(screen.getByLabelText("Código de recuperação"), "  codigo-recuperacao  ");
-    await user.type(screen.getByLabelText("Nova senha", { exact: true }), "senha-nova");
-    await user.type(screen.getByLabelText("Confirme a nova senha"), "senha-nova");
+    await user.type(screen.getByLabelText("Nova senha", { exact: true }), "SenhaNova1!");
+    await user.type(screen.getByLabelText("Confirme a nova senha"), "SenhaNova1!");
     await user.click(screen.getByRole("button", { name: "Redefinir senha" }));
     expect(await screen.findByRole("heading", { name: "Senha atualizada" })).toBeInTheDocument();
     expect(requests).toEqual([{ email: student.email }, { email: student.email }]);
-    expect(resets).toEqual([{ token: "codigo-recuperacao", newPassword: "senha-nova" }]);
+    expect(resets).toEqual([{ token: "codigo-recuperacao", newPassword: "SenhaNova1!" }]);
     expect(screen.queryByLabelText("Nova senha", { exact: true })).not.toBeInTheDocument();
   });
 
@@ -142,8 +142,8 @@ describe("recuperação de senha", () => {
     await user.click(screen.getByRole("button", { name: "Enviar código" }));
     await user.type(await screen.findByLabelText("Código de recuperação"), "expirado");
     expect(screen.queryByLabelText("Senha atual")).not.toBeInTheDocument();
-    await user.type(screen.getByLabelText("Nova senha", { exact: true }), "senha-nova");
-    await user.type(screen.getByLabelText("Confirme a nova senha"), "senha-nova");
+    await user.type(screen.getByLabelText("Nova senha", { exact: true }), "SenhaNova1!");
+    await user.type(screen.getByLabelText("Confirme a nova senha"), "SenhaNova1!");
     await user.click(screen.getByRole("button", { name: "Redefinir senha" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Código inválido ou expirado.");
     expect(screen.getByLabelText("Código de recuperação")).toHaveValue("expirado");
