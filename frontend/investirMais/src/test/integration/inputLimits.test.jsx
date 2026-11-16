@@ -40,7 +40,7 @@ describe("limites de entrada compatíveis com a API", () => {
     expect(send).toHaveBeenCalledOnce();
   });
 
-  it("valida o limite da nova senha e aceita 4096 caracteres", async () => {
+  it("valida o limite da nova senha e aceita 100 caracteres", async () => {
     mockApi("post", "/api/users/forgot-password", {});
     const reset = mockApi("post", "/api/users/reset-password", {});
     const { user } = renderApp("/recuperar-senha");
@@ -49,14 +49,16 @@ describe("limites de entrada compatíveis com a API", () => {
     await user.type(await screen.findByLabelText("Código de recuperação"), "codigo-teste");
     const password = screen.getByLabelText("Nova senha", { exact: true });
     const confirmation = screen.getByLabelText("Confirme a nova senha");
-    fireEvent.change(password, { target: { value: "x".repeat(4097) } });
-    fireEvent.change(confirmation, { target: { value: "x".repeat(4097) } });
+    const tooLong = "Aa1!" + "x".repeat(97);
+    const maxAllowed = "Aa1!" + "x".repeat(96);
+    fireEvent.change(password, { target: { value: tooLong } });
+    fireEvent.change(confirmation, { target: { value: tooLong } });
     await user.click(screen.getByRole("button", { name: "Redefinir senha" }));
-    expect(await screen.findByText("A senha deve ter no máximo 4096 caracteres.")).toBeInTheDocument();
+    expect(await screen.findByText("A senha deve ter no máximo 100 caracteres.")).toBeInTheDocument();
     expect(reset).not.toHaveBeenCalled();
 
-    fireEvent.change(password, { target: { value: "x".repeat(4096) } });
-    fireEvent.change(confirmation, { target: { value: "x".repeat(4096) } });
+    fireEvent.change(password, { target: { value: maxAllowed } });
+    fireEvent.change(confirmation, { target: { value: maxAllowed } });
     await user.click(screen.getByRole("button", { name: "Redefinir senha" }));
     expect(await screen.findByRole("heading", { name: "Senha atualizada" })).toBeInTheDocument();
     expect(reset).toHaveBeenCalledOnce();
