@@ -9,6 +9,7 @@ import com.repositorio.investir_mais.domain.user.model.User;
 import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.repository.UserRepository;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -224,14 +225,20 @@ public class UserService {
         if (!userRepository.existsByIdIncludingDeleted(userId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado.");
         }
-        return userRepository.findRevisions(userId).stream()
-                .map(rev -> new UserDTO.AuditResponse(
-                        rev.getRequiredRevisionNumber(),
-                        rev.getRequiredRevisionInstant(),
-                        rev.getMetadata().getRevisionType().name(),
-                        userMapper.toDTO(rev.getEntity())
-                ))
-                .toList();
+        List<UserDTO.AuditResponse> history = new ArrayList<>();
+        User previous = null;
+        for (var rev : userRepository.findRevisions(userId)) {
+            User current = rev.getEntity();
+            history.add(new UserDTO.AuditResponse(
+                    rev.getRequiredRevisionNumber(),
+                    rev.getRequiredRevisionInstant(),
+                    rev.getMetadata().getRevisionType().name(),
+                    previous != null ? userMapper.toDTO(previous) : null,
+                    userMapper.toDTO(current)
+            ));
+            previous = current;
+        }
+        return history;
     }
 
     public User findByEmailForUpdate(String email) {

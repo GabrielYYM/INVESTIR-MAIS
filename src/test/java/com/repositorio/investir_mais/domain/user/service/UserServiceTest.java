@@ -439,4 +439,64 @@ class UserServiceTest {
         verify(userRepository, never()).save(any());
         verifyNoInteractions(accountSecurity);
     }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void getUserAuditHistory_ShouldPopulateBeforeAndAfterSnapshots() {
+        UUID userId = user.getId();
+        when(userRepository.existsByIdIncludingDeleted(userId)).thenReturn(true);
+
+        User user1 = new User();
+        user1.setId(userId);
+        user1.setName("Carlos");
+        user1.setRole(UserRole.STUDENT);
+
+        User user2 = new User();
+        user2.setId(userId);
+        user2.setName("Carlos Silva");
+        user2.setRole(UserRole.TEACHER);
+
+        UserDTO.Response dto1 = new UserDTO.Response(userId, "Carlos", 20, null, "carlos@test.com", UserRole.STUDENT, true, LocalDateTime.now());
+        UserDTO.Response dto2 = new UserDTO.Response(userId, "Carlos Silva", 20, null, "carlos@test.com", UserRole.TEACHER, true, LocalDateTime.now());
+
+        when(userMapper.toDTO(user1)).thenReturn(dto1);
+        when(userMapper.toDTO(user2)).thenReturn(dto2);
+
+        org.springframework.data.history.Revision<Integer, User> rev1 = mock(org.springframework.data.history.Revision.class);
+        org.springframework.data.history.Revision<Integer, User> rev2 = mock(org.springframework.data.history.Revision.class);
+        org.springframework.data.history.RevisionMetadata<Integer> meta1 = mock(org.springframework.data.history.RevisionMetadata.class);
+        org.springframework.data.history.RevisionMetadata<Integer> meta2 = mock(org.springframework.data.history.RevisionMetadata.class);
+
+        when(rev1.getRequiredRevisionNumber()).thenReturn(1);
+        when(rev1.getRequiredRevisionInstant()).thenReturn(Instant.ofEpochMilli(1000));
+        when(rev1.getMetadata()).thenReturn(meta1);
+        when(meta1.getRevisionType()).thenReturn(org.springframework.data.history.RevisionMetadata.RevisionType.INSERT);
+        when(rev1.getEntity()).thenReturn(user1);
+
+        when(rev2.getRequiredRevisionNumber()).thenReturn(2);
+        when(rev2.getRequiredRevisionInstant()).thenReturn(Instant.ofEpochMilli(2000));
+        when(rev2.getMetadata()).thenReturn(meta2);
+        when(meta2.getRevisionType()).thenReturn(org.springframework.data.history.RevisionMetadata.RevisionType.UPDATE);
+        when(rev2.getEntity()).thenReturn(user2);
+
+        org.springframework.data.history.Revisions<Integer, User> revisionsMock = mock(org.springframework.data.history.Revisions.class);
+        when(revisionsMock.iterator()).thenReturn(List.of(rev1, rev2).iterator());
+        when(userRepository.findRevisions(userId)).thenReturn(revisionsMock);
+
+        List<UserDTO.AuditResponse> history = userService.getUserAuditHistory(userId);
+
+        assertEquals(2, history.size());
+
+        // Revisão 1 (INSERT): antes deve ser null, depois deve ser user1
+        assertEquals(1, history.get(0).revisionNumber());
+        assertEquals("INSERT", history.get(0).operation());
+        assertNull(history.get(0).before());
+        assertEquals(dto1, history.get(0).user());
+
+        // Revisão 2 (UPDATE): antes deve ser user1, depois deve ser user2
+        assertEquals(2, history.get(1).revisionNumber());
+        assertEquals("UPDATE", history.get(1).operation());
+        assertEquals(dto1, history.get(1).before());
+        assertEquals(dto2, history.get(1).user());
+    }
 }
