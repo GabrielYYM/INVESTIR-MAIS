@@ -120,7 +120,14 @@ public class UserDTO {
         @Schema(description = "Tipo de operação: INSERT, UPDATE ou DELETE", example = "UPDATE")
         String operation,
 
+        @Schema(description = "Estado anterior do usuário (antes da alteração)")
+        UserDTO.Response before,
+
         @Schema(description = "Estado do usuário no momento desta revisão")
         UserDTO.Response user
-    ) {}
+    ) {
+        public AuditResponse(Integer revisionNumber, Instant timestamp, String operation, UserDTO.Response user) {
+            this(revisionNumber, timestamp, operation, null, user);
+        }
+    }
 }
