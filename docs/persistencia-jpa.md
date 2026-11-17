@@ -4,7 +4,7 @@ As operações comuns usam repositórios Spring Data JPA. Consultas simples são
 
 ## Áreas migradas
 
-- `AccountSecurityService`: emissão, consulta, consumo, revogação e limpeza de tokens. O bloqueio pessimista por conta serializa emissão e consumo; a transação preserva rollback quando a revogação das sessões falha. `TokenAccount` é um mapeamento somente de leitura para bloquear inclusive contas excluídas logicamente.
+- `AccountSecurityService`: emissão, consulta, consumo, revogação e limpeza de tokens. O bloqueio pessimista por conta serializa emissão e consumo; a transação preserva rollback quando a revogação das sessões falha. `UserRepository.lockByEmailIncludingDeleted` bloqueia a própria linha do usuário, inclusive quando a conta está excluída logicamente.
 - `LegalDocumentsService`: leitura de versões, estado de aceite e histórico por repositórios JPA. O aceite bloqueia a conta antes de verificar a existência e inserir um registro imutável.
 - `CourseRepository`: indicadores por curso e contagem de alunos no período.
 - `LessonRepository`: aulas concluídas e contagem de questões e aprovações. A junção explícita com `Lesson` aplica a exclusão lógica também às chaves do mapa de progresso.
@@ -16,7 +16,8 @@ Os novos mapeamentos usam as tabelas existentes. Esta refatoração não exige u
 
 | Local | Motivo |
 | --- | --- |
-| `UserRepository` — consultas `IncludingDeleted` e unicidade | Precisam consultar também usuários ocultos pela restrição global de exclusão lógica. |
+| `AccountSecurityService.revokeAllSessions` | Revoga por usuário os códigos na tabela nativa do Spring Security, que não oferece uma operação de revogação por conta. |
+| `UserRepository` — consultas `IncludingDeleted`, bloqueio por e-mail e unicidade | Precisam consultar ou bloquear também usuários ocultos pela restrição global de exclusão lógica. O bloqueio retorna somente o ID, sem um segundo mapeamento de usuário. |
 | `UserRepository.clearQuestionPasses` | Limpeza em lote de uma coleção de valores, incluindo registros de usuários excluídos. JPQL não permite excluir diretamente de uma tabela de `@ElementCollection`. |
 | `LessonRepository.nextPosition` | Considera posições de aulas excluídas para impedir reutilização. O filtro global de `@SoftDelete` esconderia essas aulas. |
 | `LegalReleaseRepository.insertIfAbsent` | `ON CONFLICT DO NOTHING` mantém a publicação idempotente entre instâncias concorrentes sem atualizar versões protegidas por triggers. |
@@ -25,7 +26,7 @@ Os novos mapeamentos usam as tabelas existentes. Esta refatoração não exige u
 | `User.@SQLDelete` / `@SQLRestriction` | Exclusão lógica com anonimização e filtragem automática dos usuários. |
 | `schema-postgresql.sql` e `legal-history-postgresql.sql` | Estrutura, índices e triggers de imutabilidade são responsabilidades do banco. |
 
-O `LoginTokenService` implementa `OneTimeTokenService` do Spring Security e usa JPA para emissão, consumo atômico, revogação e limpeza. Os filtros do Spring Security continuam validando os fatores e o vínculo com a sessão do navegador.
+O login usa o `JdbcOneTimeTokenService` nativo do Spring Security para emissão, consumo e limpeza dos códigos. Não há entidade, repositório ou implementação própria para os códigos de login. Os filtros do Spring Security continuam validando os fatores e o vínculo com a sessão do navegador. A revogação por conta usa uma exclusão SQL na tabela nativa `one_time_tokens`, dentro da transação de alteração da conta; a tarefa existente de limpeza chama o serviço nativo.
 
 ## Verificação
 

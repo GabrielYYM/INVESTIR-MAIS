@@ -6,6 +6,7 @@ import com.repositorio.investir_mais.domain.education.service.CourseService;
 import com.repositorio.investir_mais.domain.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
 import com.repositorio.investir_mais.domain.education.repository.LearningDashboardRepository;
@@ -29,7 +30,7 @@ public class LearningDashboardController {
     @GetMapping("/answers")
     public Page<QuestionAttempt> myLearningAnswers(Principal principal, @org.springdoc.core.annotations.ParameterObject Pageable pageable) {
         return attempts.findByStudentIdOrderByAnsweredAtDesc(users.findByEmail(principal.getName()).getId(),
-                PageRequest.of(pageable.getPageNumber(), Math.min(100, pageable.getPageSize())));
+                PageRequest.of(pageable.getPageNumber(), pageable.getPageSize()));
     }
 
     @GetMapping("/courses")
@@ -42,10 +43,10 @@ public class LearningDashboardController {
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public Map<String,Object> teachingCourses(Principal principal, @org.springdoc.core.annotations.ParameterObject Pageable pageable) {
         var teacher=users.findByEmail(principal.getName());
-        int size=Math.min(100,pageable.getPageSize());
         long total=dashboard.countByProfessorId(teacher.getId());
-        var items=dashboard.findTeachingCourses(teacher.getId(), PageRequest.of(pageable.getPageNumber(), size));
-        return Map.of("items",items,"totalItems",total,"totalPages",(total+size-1)/size,"page",pageable.getPageNumber());
+        var pagination=PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
+        var page=new PageImpl<>(dashboard.findTeachingCourses(teacher.getId(), pagination), pagination, total);
+        return Map.of("items",page.getContent(),"totalItems",page.getTotalElements(),"totalPages",page.getTotalPages(),"page",page.getNumber());
     }
 
     @GetMapping("/courses/{courseId}/students")

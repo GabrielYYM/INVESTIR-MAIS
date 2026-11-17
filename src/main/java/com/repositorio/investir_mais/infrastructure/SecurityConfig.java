@@ -1,7 +1,7 @@
 package com.repositorio.investir_mais.infrastructure;
 
 import com.repositorio.investir_mais.domain.user.repository.UserRepository;
-import com.repositorio.investir_mais.infrastructure.config.WebApplicationProperties;
+import com.repositorio.investir_mais.config.WebApplicationProperties;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,6 +11,8 @@ import org.springframework.core.env.Environment;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.authentication.ott.JdbcOneTimeTokenService;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.ott.GenerateOneTimeTokenRequest;
 import org.springframework.security.authentication.ott.OneTimeTokenAuthenticationToken;
@@ -39,7 +41,15 @@ import org.springframework.security.web.authentication.logout.HttpStatusReturnin
 import org.springframework.security.web.authentication.ott.GenerateOneTimeTokenFilter;
 import org.springframework.security.web.authentication.ott.GenerateOneTimeTokenRequestResolver;
 import org.springframework.security.web.authentication.ott.OneTimeTokenGenerationSuccessHandler;
+import org.springframework.security.web.authentication.session.ChangeSessionIdAuthenticationStrategy;
+import org.springframework.security.web.authentication.session.CompositeSessionAuthenticationStrategy;
+import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
+import org.springframework.security.web.context.DelegatingSecurityContextRepository;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.context.RequestAttributeSecurityContextRepository;
+import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfAuthenticationStrategy;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -71,6 +81,15 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new Argon2PasswordEncoder(16, 32, 1, 19 * 1024, 2);
+    }
+
+    @Bean
+    public JdbcOneTimeTokenService loginOneTimeTokenService(JdbcTemplate jdbcTemplate) throws Exception {
+        var tokens = new JdbcOneTimeTokenService(jdbcTemplate);
+        // The account cleanup job handles both token stores in a single transaction.
+        tokens.destroy();
+        tokens.setCleanupCron(null);
+        return tokens;
     }
 
     @Bean
@@ -127,6 +146,28 @@ public class SecurityConfig {
     }
 
     @Bean
+    public SecurityContextRepository securityContextRepository() {
+        return new DelegatingSecurityContextRepository(new RequestAttributeSecurityContextRepository(),
+                new HttpSessionSecurityContextRepository());
+    }
+
+    @Bean
+    public ChangeSessionIdAuthenticationStrategy sessionFixationStrategy() {
+        return new ChangeSessionIdAuthenticationStrategy();
+    }
+
+    @Bean
+    public CsrfAuthenticationStrategy csrfAuthenticationStrategy(CookieCsrfTokenRepository repository) {
+        return new CsrfAuthenticationStrategy(repository);
+    }
+
+    @Bean
+    public SessionAuthenticationStrategy registrationSessionAuthenticationStrategy(
+            ChangeSessionIdAuthenticationStrategy sessionFixationStrategy, CsrfAuthenticationStrategy csrfAuthenticationStrategy) {
+        return new CompositeSessionAuthenticationStrategy(List.of(sessionFixationStrategy, csrfAuthenticationStrategy));
+    }
+
+    @Bean
     public CorsConfigurationSource corsConfigurationSource(WebApplicationProperties properties, Environment environment) {
         if (environment.matchesProfiles("prod") && (!isHttpsOrigin(properties.publicBaseUrl())
                 || !isHttpsOrigin(properties.cors().allowedOrigin()))) {
@@ -150,11 +191,16 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http, StringRedisTemplate redis, CookieCsrfTokenRepository csrfRepository, AuthenticationSuccessHandler passwordLoginSuccess, WebApplicationProperties properties) throws Exception {
+    public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http, StringRedisTemplate redis,
+            CookieCsrfTokenRepository csrfRepository, AuthenticationSuccessHandler passwordLoginSuccess,
+            WebApplicationProperties properties, SecurityContextRepository securityContexts,
+            ChangeSessionIdAuthenticationStrategy sessionFixationStrategy, CsrfAuthenticationStrategy csrfAuthenticationStrategy) throws Exception {
         http.cors(Customizer.withDefaults())
             .addFilterBefore(new SecurityFilter(redis, properties.security().rateLimit()), GenerateOneTimeTokenFilter.class)
             .requestCache(AbstractHttpConfigurer::disable)
-            .csrf(csrf -> csrf.spa().csrfTokenRepository(csrfRepository))
+            .securityContext(context -> context.securityContextRepository(securityContexts))
+            .sessionManagement(session -> session.sessionAuthenticationStrategy(sessionFixationStrategy))
+            .csrf(csrf -> csrf.spa().csrfTokenRepository(csrfRepository).sessionAuthenticationStrategy(csrfAuthenticationStrategy))
             .exceptionHandling(exceptions -> exceptions
                 .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
                 .accessDeniedHandler(new HttpStatusAccessDeniedHandler(HttpStatus.FORBIDDEN)))

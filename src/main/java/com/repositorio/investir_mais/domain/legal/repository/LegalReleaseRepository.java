@@ -10,7 +10,6 @@ public interface LegalReleaseRepository extends JpaRepository<LegalRelease,Integ
     Optional<LegalRelease> findFirstByOrderByVersionDesc();
     List<LegalRelease> findAllByOrderByVersionDesc();
 
-    // An atomic insert preserves immutable versions even when multiple instances start together.
     @Modifying
     @Query(value="insert into legal_document_release(version,published_on,content,content_hash) values (:version,:publishedOn,:content,:hash) on conflict(version) do nothing", nativeQuery=true)
     void insertIfAbsent(int version, LocalDate publishedOn, String content, String hash);

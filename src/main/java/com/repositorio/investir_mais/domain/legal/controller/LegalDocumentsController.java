@@ -19,7 +19,7 @@ public class LegalDocumentsController {
 
     @PostMapping("/versions")
     @ResponseStatus(org.springframework.http.HttpStatus.CREATED)
-    public LegalDocumentDTO.Release publish(@RequestBody LegalDocumentDTO.Release release) {
+    public LegalDocumentDTO.Release publish(@Valid @RequestBody LegalDocumentDTO.Release release) {
         return legal.publishNewRelease(release);
     }
 

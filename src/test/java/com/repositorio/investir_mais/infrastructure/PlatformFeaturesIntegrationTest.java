@@ -74,6 +74,23 @@ class PlatformFeaturesIntegrationTest extends PostgreSqlIntegrationTest {
     private TeacherApplicationService.ApplicationView apply() {
         return applications.submit(student.getEmail(),applications.types(),List.of(new MockMultipartFile("files","qualificacao.pdf","application/pdf","%PDF-1.7\ntest".getBytes())));
     }
+
+    @Test void teachingPaginationPreservesItsEnvelopeAndUsesTheGlobalPageLimit() throws Exception {
+        course();
+        course();
+        course();
+        mvc.perform(get("/api/learning/teaching/courses").param("size", "2").param("page", "1").with(as(teacher)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.totalItems").value(3)).andExpect(jsonPath("$.totalPages").value(2))
+                .andExpect(jsonPath("$.page").value(1));
+        mvc.perform(get("/api/learning/teaching/courses").param("size", "1000").with(as(teacher)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalItems").value(3))
+                .andExpect(jsonPath("$.totalPages").value(1));
+        mvc.perform(get("/api/learning/answers").param("size", "1000").with(as(student)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.page.size").value(100));
+        mvc.perform(get("/api/teacher-applications").param("size", "1000").with(as(admin)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.page.size").value(100));
+    }
     @Test void applicationRequiresPrivateDocumentsAndApprovalWithoutMinimumAge() throws Exception {
         var application=apply();
         mvc.perform(get("/api/teacher-applications").with(as(student))).andExpect(status().isForbidden());

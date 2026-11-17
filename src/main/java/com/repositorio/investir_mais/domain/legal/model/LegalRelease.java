@@ -10,7 +10,10 @@ import org.hibernate.annotations.Immutable;
 @Getter @NoArgsConstructor(access=AccessLevel.PROTECTED)
 public class LegalRelease {
     @Id private int version;
-    @Column(name="published_on", nullable=false) private LocalDate publishedOn;
-    @Column(nullable=false, columnDefinition="text") private String content;
-    @Column(name="content_hash", nullable=false, length=64) private String contentHash;
+    @Column(name="published_on", nullable=false) 
+    private LocalDate publishedOn;
+    @Column(nullable=false, columnDefinition="text") 
+    private String content;
+    @Column(name="content_hash", nullable=false, length=64) 
+    private String contentHash;
 }

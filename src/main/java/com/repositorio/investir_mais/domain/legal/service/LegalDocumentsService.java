@@ -5,11 +5,11 @@ import com.repositorio.investir_mais.domain.legal.model.*;
 import com.repositorio.investir_mais.domain.legal.repository.*;
 import com.repositorio.investir_mais.domain.legal.DTO.LegalDocumentDTO.*;
 import com.repositorio.investir_mais.domain.legal.mapper.LegalDocumentMapper;
+import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -33,6 +33,7 @@ public class LegalDocumentsService {
     private final LegalAcceptanceRepository acceptances;
     private final UserRepository users;
     private final LegalDocumentMapper mapper;
+    private final Validator validator;
 
     @Transactional
     public void publishBundledReleases() {
@@ -55,21 +56,13 @@ public class LegalDocumentsService {
     }
 
     private void validate(Release release) {
-        if (release.version() < 1 || release.publishedOn() == null || release.publishedOn().isAfter(LocalDate.now())
-                || release.documents() == null || release.documents().size() < 2 || release.documents().size() > 20
-                || release.documents().stream().anyMatch(d -> d == null || d.id() == null || !d.id().matches("[a-z][a-z0-9-]{0,63}"))
-                || release.documents().stream().map(Document::id).distinct().count() != release.documents().size()
+        if (release == null || !validator.validate(release).isEmpty()) {
+            throw new IllegalStateException("Versão legal inválida.");
+        }
+        if (release.documents().stream().map(Document::id).distinct().count() != release.documents().size()
                 || !release.documents().stream().map(Document::id).collect(Collectors.toSet())
                     .containsAll(Set.of("termos", "privacidade"))) {
             throw new IllegalStateException("Versão legal inválida: " + release.version());
-        }
-        for (var document : release.documents()) {
-            if (document.label() == null || document.label().isBlank() || document.title() == null || document.title().isBlank()
-                    || document.sections() == null || document.sections().isEmpty()
-                    || document.sections().stream().anyMatch(section -> section.heading() == null || section.heading().isBlank()
-                        || section.content() == null || section.content().isBlank())) {
-                throw new IllegalStateException("Documento legal incompleto: " + document.id());
-            }
         }
     }
 
@@ -87,7 +80,7 @@ public class LegalDocumentsService {
     @PreAuthorize("hasRole('ADMIN')")
     public Release publishNewRelease(Release release) {
         try { validate(release); }
-        catch (IllegalStateException | NullPointerException exception) {
+        catch (IllegalStateException exception) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Preencha a versão, data, termos, privacidade e seções dos documentos.");
         }
         jdbc.sql("LOCK TABLE legal_document_release IN EXCLUSIVE MODE").update();

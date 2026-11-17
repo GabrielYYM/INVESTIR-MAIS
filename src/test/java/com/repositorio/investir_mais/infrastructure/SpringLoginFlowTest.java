@@ -11,7 +11,7 @@ import com.repositorio.investir_mais.domain.user.model.User;
 import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.repository.UserRepository;
 import com.repositorio.investir_mais.domain.user.service.UserService;
-import com.repositorio.investir_mais.infrastructure.config.WebApplicationProperties;
+import com.repositorio.investir_mais.config.WebApplicationProperties;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -338,7 +338,7 @@ class SpringLoginFlowTest {
 
     @Configuration
     @EnableWebMvc
-    @org.springframework.context.annotation.Import({TokenJpaTestConfiguration.class, AuthenticationService.class})
+    @org.springframework.context.annotation.Import(AuthenticationService.class)
     @EnableConfigurationProperties(WebApplicationProperties.class)
     static class Config {
         @Bean UserMapper userMapper() {

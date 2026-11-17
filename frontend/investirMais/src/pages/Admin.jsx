@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button, CircularProgress, InputAdornment } from "@mui/material";
 import { History, Search, ShieldCheck, UserCheck, Users } from "lucide-react";
-import { DataTable, FilterLiveForm, ListBase, SelectInput, TextInput, useListContext, useRefresh } from "react-admin";
+import { DataTable, FilterLiveForm, ListBase, SelectInput, TextInput, useInput, useListContext, useRefresh } from "react-admin";
 import { Link, Navigate, redirect, useLoaderData } from "react-router";
 import { UpdateUserRoleBody } from "../generated/account.zod.ts";
 import { getCurrentUser } from "../services/authService.js";
@@ -40,15 +40,19 @@ function UserStats() {
   </section>;
 }
 function UserFilters() {
-  const { filterValues, setFilters } = useListContext();
-  return <div className="flex flex-wrap items-center gap-3">
-    <FilterLiveForm debounce={0}><TextInput source="q" label={false} fullWidth={false} className="admin-search" placeholder="Buscar por apelido ou e-mail..." resettable helperText={false}
-      slotProps={{ htmlInput: { "aria-label": "Buscar por apelido ou e-mail" }, input: { startAdornment: <InputAdornment position="start"><Search size={16} /></InputAdornment> } }} /></FilterLiveForm>
-    <div className="flex items-center gap-1 rounded-xl border border-line bg-canvas p-1 text-xs">
-      {[["ALL", "Todos"], ["ADMIN", "Admins"], ["TEACHER", "Professores"], ["STUDENT", "Alunos"]].map(([role, label]) =>
-        <button key={role} type="button" aria-pressed={(filterValues.role ?? "ALL") === role} onClick={() => setFilters({ ...filterValues, role: role === "ALL" ? undefined : role })}
-          className={`rounded-lg px-2.5 py-1.5 transition-colors ${(filterValues.role ?? "ALL") === role ? "bg-brand font-semibold text-zinc-900" : "text-muted hover:text-zinc-200"}`}>{label}</button>)}
-    </div>
+  return <FilterLiveForm debounce={false}><div className="flex flex-wrap items-center gap-3">
+    <TextInput source="q" label={false} fullWidth={false} className="admin-search" placeholder="Buscar por apelido ou e-mail..." resettable helperText={false}
+      slotProps={{ htmlInput: { "aria-label": "Buscar por apelido ou e-mail" }, input: { startAdornment: <InputAdornment position="start"><Search size={16} /></InputAdornment> } }} />
+    <UserRoleFilter />
+  </div></FilterLiveForm>;
+}
+function UserRoleFilter() {
+  const { field } = useInput({ source: "role", defaultValue: "" });
+  const selectedRole = field.value || "ALL";
+  return <div className="flex items-center gap-1 rounded-xl border border-line bg-canvas p-1 text-xs">
+    {[["ALL", "Todos"], ["ADMIN", "Admins"], ["TEACHER", "Professores"], ["STUDENT", "Alunos"]].map(([role, label]) =>
+      <button key={role} type="button" aria-pressed={selectedRole === role} onClick={() => field.onChange(role === "ALL" ? "" : role)}
+        className={`rounded-lg px-2.5 py-1.5 transition-colors ${selectedRole === role ? "bg-brand font-semibold text-zinc-900" : "text-muted hover:text-zinc-200"}`}>{label}</button>)}
   </div>;
 }
 function AuditDialog({ user, onClose }) {

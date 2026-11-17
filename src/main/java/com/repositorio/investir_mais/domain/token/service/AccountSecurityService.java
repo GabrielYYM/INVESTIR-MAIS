@@ -3,6 +3,7 @@ package com.repositorio.investir_mais.domain.token.service;
 import com.repositorio.investir_mais.domain.AccountEmailRequested;
 import com.repositorio.investir_mais.domain.token.DTO.TokenDTO;
 import com.repositorio.investir_mais.domain.token.mapper.TokenMapper;
+import com.repositorio.investir_mais.config.WebApplicationProperties;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
@@ -11,11 +12,12 @@ import java.util.regex.Pattern;
 
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.convert.DurationStyle;
 import com.repositorio.investir_mais.domain.token.model.*;
-import com.repositorio.investir_mais.domain.token.repository.*;
+import com.repositorio.investir_mais.domain.token.repository.AccountTokenRepository;
+import com.repositorio.investir_mais.domain.user.repository.UserRepository;
 import org.springframework.security.authentication.ott.OneTimeToken;
+import org.springframework.security.authentication.ott.JdbcOneTimeTokenService;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.session.FindByIndexNameSessionRepository;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -32,30 +34,23 @@ public class AccountSecurityService {
     private static final Pattern TOKEN_FORMAT = Pattern.compile("[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}");
 
     private final AccountTokenRepository tokens;
-    private final LoginTokenService loginTokens;
+    private final JdbcOneTimeTokenService loginTokens;
+    private final JdbcClient jdbc;
     private final TokenMapper mapper;
-    private final TokenAccountRepository accounts;
+    private final UserRepository users;
     private final FindByIndexNameSessionRepository<?> sessions;
-    private Duration emailCooldown;
-
-    @Value("${app.security.email-cooldown:30s}")
-    void setEmailCooldown(String value) {
-        emailCooldown = DurationStyle.detectAndParse(value);
-        if (emailCooldown.isNegative() || emailCooldown.compareTo(TOKEN_TTL) > 0) {
-            throw new IllegalArgumentException("O intervalo de reenvio deve estar entre zero e cinco minutos.");
-        }
-    }
+    private final WebApplicationProperties properties;
 
     public OneTimeToken generateEmailVerificationToken(String email) {
         return generate(email, EMAIL_VERIFICATION, Duration.ZERO).orElseThrow();
     }
 
     public Optional<OneTimeToken> requestEmailVerificationToken(String email) {
-        return generate(email, EMAIL_VERIFICATION, emailCooldown);
+        return generate(email, EMAIL_VERIFICATION, properties.security().emailCooldown());
     }
 
     public Optional<String> requestPasswordResetToken(String email) {
-        return generate(email, PASSWORD_RESET, emailCooldown).map(OneTimeToken::getTokenValue);
+        return generate(email, PASSWORD_RESET, properties.security().emailCooldown()).map(OneTimeToken::getTokenValue);
     }
 
     public Optional<String> consumeEmailVerificationToken(String token) {
@@ -71,7 +66,7 @@ public class AccountSecurityService {
     }
 
     public void revokeAllSessions(String email) {
-        loginTokens.invalidateAll(email);
+        jdbc.sql("DELETE FROM one_time_tokens WHERE username = ?").param(email).update();
         sessions.findByPrincipalName(email).keySet().forEach(sessions::deleteById);
     }
 
@@ -79,7 +74,7 @@ public class AccountSecurityService {
     public void cleanupExpiredTokens() {
         Instant now = Instant.now();
         tokens.deleteExpired(now);
-        loginTokens.cleanupExpired(now);
+        loginTokens.cleanupExpiredTokens();
     }
 
     @Transactional(readOnly = true)
@@ -125,6 +120,6 @@ public class AccountSecurityService {
     }
 
     private void lockAccount(String email) {
-        accounts.findByEmail(email);
+        users.lockByEmailIncludingDeleted(email);
     }
 }

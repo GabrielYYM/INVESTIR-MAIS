@@ -25,6 +25,10 @@ números e hífens. Não são permitidas data futura ou lacunas na sequência de
 O POST de publicação recebe `version`, `publishedOn` e `documents`. Cada documento
 tem `id`, `label`, `title` e `sections`, cujas entradas têm `heading` e `content`.
 O conjunto aceita até 20 documentos e até 1 milhão de caracteres serializados.
+Bean Validation verifica versão positiva, data não futura, campos obrigatórios e
+seções dos documentos, tanto nas requisições HTTP quanto nos arquivos carregados
+na inicialização. IDs únicos, presença de termos e privacidade, sequência e
+imutabilidade das versões continuam sendo regras do serviço.
 Publicações concorrentes são serializadas no banco; uma versão que deixou de ser
 a próxima recebe 409. O histórico continua imutável.
 

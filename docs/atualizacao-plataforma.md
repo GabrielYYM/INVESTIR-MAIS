@@ -107,6 +107,23 @@ provedor e não publica arquivos reais.
 
 ## Aplicação e validação
 
+`WebApplicationProperties` concentra a configuração tipada de CORS, limites de
+autenticação, intervalo de reenvio de e-mail, repetição de envios e documentos
+exigidos para professores. O Spring converte durações e listas e valida os
+limites na inicialização: reenvio entre zero e cinco minutos, repetição a partir
+de um segundo e de um a quatro tipos de documento. As variáveis de ambiente
+existentes continuam válidas.
+
+A paginação HTTP usa o limite global de 100 itens do Spring Data. O painel de
+cursos do professor calcula os metadados com `PageImpl`, mantendo o envelope
+`items`, `totalItems`, `totalPages` e `page`. A auditoria valida os parâmetros
+diretamente pelo Spring MVC.
+
+A confirmação do cadastro e o login compartilham os componentes configurados de
+troca do identificador da sessão, renovação do CSRF e persistência do contexto
+de segurança. O acesso automático após o cadastro continua restrito à conta de
+aluno e ao navegador vinculado ao token original.
+
 Antes de iniciar esta versão em um banco existente, faça e confira um backup fora
 do Git. O projeto ainda usa `ddl-auto=update`: serão adicionadas tabelas de
 candidaturas, documentos, tentativas, auditorias educacionais, metadados de curso

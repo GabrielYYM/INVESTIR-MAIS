@@ -3,7 +3,7 @@ package com.repositorio.investir_mais.domain.user.service;
 import com.repositorio.investir_mais.domain.user.model.*;
 import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.repository.TeacherApplicationRepository;
-import org.springframework.beans.factory.annotation.Value;
+import com.repositorio.investir_mais.config.WebApplicationProperties;
 import org.springframework.data.domain.*;
 import org.springframework.http.*;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -21,10 +21,9 @@ public class TeacherApplicationService {
     private final UserService users;
     private final List<String> requiredTypes;
     public TeacherApplicationService(TeacherApplicationRepository applications, UserService users,
-            @Value("${app.teacher.required-documents:comprovante-de-qualificacao}") String requiredTypes) {
+            WebApplicationProperties properties) {
         this.applications=applications; this.users=users;
-        this.requiredTypes=Arrays.stream(requiredTypes.split(",")).map(String::trim).filter(s -> !s.isEmpty()).distinct().toList();
-        if (this.requiredTypes.isEmpty() || this.requiredTypes.size()>4 || this.requiredTypes.stream().anyMatch(s -> !s.matches("[a-z0-9-]{1,100}"))) throw new IllegalArgumentException("Configure de 1 a 4 tipos de documentos.");
+        this.requiredTypes=properties.teacher().requiredDocuments();
     }
     public List<String> types() { return requiredTypes; }
     public record DocumentView(UUID id, String type, String mediaType) {}
@@ -59,7 +58,7 @@ public class TeacherApplicationService {
         return view(applications.saveAndFlush(a));
     }
     @PreAuthorize("hasRole('ADMIN')")
-    public Page<ApplicationView> list(Pageable pageable) { return applications.findAll(PageRequest.of(pageable.getPageNumber(),Math.min(100,pageable.getPageSize()),Sort.by("submittedAt").descending())).map(this::view); }
+    public Page<ApplicationView> list(Pageable pageable) { return applications.findAll(PageRequest.of(pageable.getPageNumber(),pageable.getPageSize(),Sort.by("submittedAt").descending())).map(this::view); }
     @PreAuthorize("hasRole('ADMIN')")
     public ApplicationView review(UUID id, boolean approve, String reason, String email) {
         var a=applications.findForUpdateById(id).orElseThrow(() -> error(HttpStatus.NOT_FOUND,"Candidatura não encontrada."));

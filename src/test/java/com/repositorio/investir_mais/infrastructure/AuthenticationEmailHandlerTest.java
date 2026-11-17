@@ -1,7 +1,7 @@
 package com.repositorio.investir_mais.infrastructure;
 
 import com.repositorio.investir_mais.domain.token.service.AccountSecurityService;
-import com.repositorio.investir_mais.infrastructure.config.WebApplicationProperties;
+import com.repositorio.investir_mais.config.WebApplicationProperties;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -46,11 +46,14 @@ class AuthenticationEmailHandlerTest {
     void setUp() {
         var rateLimit = new WebApplicationProperties.RateLimit(10, Duration.ofMinutes(1), "investir-mais:rate-limit");
         var properties = new WebApplicationProperties("http://localhost:8080",
-                new WebApplicationProperties.Cors("http://localhost:5173"), new WebApplicationProperties.Security(rateLimit));
+                new WebApplicationProperties.Cors("http://localhost:5173"),
+                new WebApplicationProperties.Security(rateLimit, Duration.ofSeconds(30)),
+                new WebApplicationProperties.Teacher(java.util.List.of("comprovante-de-qualificacao")),
+                new WebApplicationProperties.Mail(Duration.ofSeconds(30)));
         var builder = RestClient.builder();
         server = MockRestServiceServer.bindTo(builder).build();
         var resend = new ResendEmailSender(builder, "test-key", "Investir Mais <conta@example.test>");
-        handler = new AuthenticationEmailHandler(resend, properties, accountSecurity, publications, Duration.ofSeconds(30));
+        handler = new AuthenticationEmailHandler(resend, properties, accountSecurity, publications);
     }
 
     @Test

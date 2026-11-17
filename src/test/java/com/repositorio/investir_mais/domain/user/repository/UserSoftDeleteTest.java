@@ -210,11 +210,15 @@ class UserSoftDeleteTest {
 
     @Configuration(proxyBeanMethods = false)
     @EnableJpaAuditing
+    @org.springframework.boot.context.properties.EnableConfigurationProperties(com.repositorio.investir_mais.config.WebApplicationProperties.class)
     @EntityScan(basePackageClasses = {Course.class, User.class, com.repositorio.investir_mais.domain.token.model.AccountToken.class})
     @EnableEnversRepositories(basePackageClasses = {CourseRepository.class, UserRepository.class, com.repositorio.investir_mais.domain.token.repository.AccountTokenRepository.class})
-    @Import({UserService.class, AccountSecurityService.class, com.repositorio.investir_mais.domain.token.service.LoginTokenService.class})
+    @Import({UserService.class, AccountSecurityService.class})
     static class JpaConfig {
         @Bean com.repositorio.investir_mais.domain.token.mapper.TokenMapper tokenMapper() { return Mappers.getMapper(com.repositorio.investir_mais.domain.token.mapper.TokenMapper.class); }
+        @Bean org.springframework.security.authentication.ott.JdbcOneTimeTokenService loginTokens(JdbcTemplate jdbc) throws Exception {
+            return new SecurityConfig().loginOneTimeTokenService(jdbc);
+        }
         @Bean UserMapper userMapper() { return Mappers.getMapper(UserMapper.class); }
         @Bean PasswordEncoder passwordEncoder() { return new SecurityConfig().passwordEncoder(); }
     }

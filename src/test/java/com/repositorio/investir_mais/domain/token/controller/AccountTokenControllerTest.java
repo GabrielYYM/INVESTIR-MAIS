@@ -19,7 +19,8 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.ott.DefaultOneTimeToken;
-import org.springframework.security.web.csrf.CsrfTokenRepository;
+import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
+import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -56,8 +57,10 @@ class AccountTokenControllerTest {
     private UserService userService;
     @MockitoBean
     private CourseService courseService;
+    @MockitoBean(name = "registrationSessionAuthenticationStrategy")
+    private SessionAuthenticationStrategy sessionAuthentication;
     @MockitoBean
-    private CsrfTokenRepository csrfTokens;
+    private SecurityContextRepository securityContexts;
 
     @MockitoBean
     private UserRepository userRepository;

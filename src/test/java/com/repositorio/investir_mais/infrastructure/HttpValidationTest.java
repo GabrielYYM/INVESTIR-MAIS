@@ -5,6 +5,8 @@ import com.repositorio.investir_mais.domain.education.service.CourseService;
 import com.repositorio.investir_mais.domain.education.service.LessonService;
 import com.repositorio.investir_mais.domain.user.controller.UserController;
 import com.repositorio.investir_mais.domain.token.controller.AccountTokenController;
+import com.repositorio.investir_mais.domain.legal.controller.LegalDocumentsController;
+import com.repositorio.investir_mais.domain.legal.service.LegalDocumentsService;
 import com.repositorio.investir_mais.domain.user.service.UserService;
 import com.repositorio.investir_mais.infrastructure.exception.GlobalExceptionHandler;
 import java.sql.SQLException;
@@ -20,7 +22,8 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.ott.DefaultOneTimeToken;
-import org.springframework.security.web.csrf.CsrfTokenRepository;
+import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
+import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -31,15 +34,37 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@ContextConfiguration(classes = {UserController.class, AccountTokenController.class, LessonController.class, GlobalExceptionHandler.class})
-@WebMvcTest({UserController.class, AccountTokenController.class, LessonController.class})
+@ContextConfiguration(classes = {UserController.class, AccountTokenController.class, LessonController.class, LegalDocumentsController.class, AuditController.class, GlobalExceptionHandler.class})
+@WebMvcTest({UserController.class, AccountTokenController.class, LessonController.class, LegalDocumentsController.class, AuditController.class})
 @AutoConfigureMockMvc(addFilters = false)
 class HttpValidationTest {
     @Autowired MockMvc mvc;
     @MockitoBean LessonService lessons;
     @MockitoBean UserService users;
     @MockitoBean CourseService courses;
-    @MockitoBean CsrfTokenRepository csrfTokens;
+    @MockitoBean(name = "registrationSessionAuthenticationStrategy") SessionAuthenticationStrategy sessionAuthentication;
+    @MockitoBean SecurityContextRepository securityContexts;
+    @MockitoBean LegalDocumentsService legal;
+    @MockitoBean org.springframework.jdbc.core.simple.JdbcClient jdbc;
+
+    @ParameterizedTest
+    @ValueSource(strings = {"{}", "{\"version\":0,\"publishedOn\":\"2020-01-01\",\"documents\":[]}",
+            "{\"version\":2,\"publishedOn\":\"2020-01-01\",\"documents\":[null,null]}",
+            "{\"version\":2,\"publishedOn\":\"2020-01-01\",\"documents\":[{\"id\":\"termos\",\"label\":\"Termos\",\"title\":\"Termos\",\"sections\":[null]},{\"id\":\"privacidade\",\"label\":\"Privacidade\",\"title\":\"Privacidade\",\"sections\":[{\"heading\":\"Título\",\"content\":\" \"}]}]}"})
+    void invalidLegalDocumentsAreRejectedBeforeCallingService(String body) throws Exception {
+        mvc.perform(post("/api/legal/versions").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400));
+        verifyNoInteractions(legal);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"page=-1", "size=0", "size=101"})
+    void auditBoundsUseNativeMvcValidation(String query) throws Exception {
+        var parameter = query.split("=");
+        mvc.perform(get("/api/audit").param(parameter[0], parameter[1]))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400));
+        verifyNoInteractions(jdbc);
+    }
 
     @ParameterizedTest
     @ValueSource(ints = {8, 100, 101})

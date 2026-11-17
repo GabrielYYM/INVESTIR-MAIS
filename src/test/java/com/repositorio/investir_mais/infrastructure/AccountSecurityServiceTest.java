@@ -38,7 +38,7 @@ import static org.mockito.Mockito.*;
 class AccountSecurityServiceTest {
     private static final String EMAIL = "user@investir.com";
     @Autowired AccountSecurityService service;
-    @Autowired com.repositorio.investir_mais.domain.token.service.LoginTokenService loginTokens;
+    @Autowired org.springframework.security.authentication.ott.JdbcOneTimeTokenService loginTokens;
     @Autowired JdbcTemplate jdbc;
     @Autowired PlatformTransactionManager transactionManager;
     @Autowired FindByIndexNameSessionRepository<MapSession> sessions;
@@ -117,8 +117,10 @@ class AccountSecurityServiceTest {
         }
     }
 
-    @Test
-    void concurrentIssuanceLeavesOneTokenPerPurpose() throws Exception {
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(booleans = {false, true})
+    void concurrentIssuanceLeavesOneTokenPerPurpose(boolean deleted) throws Exception {
+        if (deleted) jdbc.update("UPDATE tb_user SET deleted_at = CURRENT_TIMESTAMP WHERE email = ?", EMAIL);
         var start = new CountDownLatch(1);
         try (var executor = Executors.newFixedThreadPool(8)) {
             var futures = new ArrayList<Future<Optional<String>>>();
@@ -226,6 +228,7 @@ class AccountSecurityServiceTest {
 
     @Configuration(proxyBeanMethods = false)
     @EnableTransactionManagement
+    @org.springframework.boot.context.properties.EnableConfigurationProperties(com.repositorio.investir_mais.config.WebApplicationProperties.class)
     @Import({AccountSecurityService.class, TokenJpaTestConfiguration.class})
     static class Config {
         @Bean(destroyMethod = "shutdown") DataSource dataSource() {
@@ -233,6 +236,12 @@ class AccountSecurityServiceTest {
                     .addScript("classpath:account-security-schema.sql").addScript("classpath:schema-postgresql.sql").build();
         }
         @Bean JdbcTemplate jdbc(DataSource source) { return new JdbcTemplate(source); }
+        @Bean org.springframework.jdbc.core.simple.JdbcClient jdbcClient(JdbcTemplate jdbc) {
+            return org.springframework.jdbc.core.simple.JdbcClient.create(jdbc);
+        }
+        @Bean org.springframework.security.authentication.ott.JdbcOneTimeTokenService loginTokens(JdbcTemplate jdbc) throws Exception {
+            return new SecurityConfig().loginOneTimeTokenService(jdbc);
+        }
         @Bean @SuppressWarnings("unchecked") FindByIndexNameSessionRepository<MapSession> sessions() {
             return mock(FindByIndexNameSessionRepository.class);
         }

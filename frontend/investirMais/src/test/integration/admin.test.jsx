@@ -50,6 +50,28 @@ describe("gestão de usuários", () => {
     });
   });
 
+  it("mantém a busca ao trocar de perfil e limpa o texto sem perder o perfil selecionado", async () => {
+    const { user } = setup();
+    await userRow();
+    const search = screen.getByPlaceholderText("Buscar por apelido ou e-mail...");
+    await user.type(search, "ANA@");
+    await waitFor(() => expect(screen.queryByText(adminUser.email)).not.toBeInTheDocument());
+    await user.click(screen.getByRole("button", { name: "Admins", exact: true }));
+    expect(await screen.findByText(/Nenhum usuário encontrado/)).toBeInTheDocument();
+    expect(search).toHaveValue("ANA@");
+
+    await user.clear(search);
+    expect(await screen.findByText(adminUser.email)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Admins", exact: true })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByText(student.email)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Todos", exact: true }));
+    expect(await screen.findByText(student.email)).toBeInTheDocument();
+    expect(await screen.findByText(teacherUser.email)).toBeInTheDocument();
+    expect(screen.getByText(adminUser.email)).toBeInTheDocument();
+    expect(search).toHaveValue("");
+  });
+
   it("altera o professor para aluno e revalida a listagem", async () => {
     let users = [adminUser, student, teacherUser];
     mockApi("get", "/api/users", () => users);

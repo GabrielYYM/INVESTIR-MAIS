@@ -6,7 +6,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import java.time.Instant;
@@ -14,7 +13,7 @@ import java.util.*;
 
 @RestController @RequestMapping("/api/audit")
 @PreAuthorize("hasRole('ADMIN')")
-@RequiredArgsConstructor @Validated
+@RequiredArgsConstructor
 public class AuditController {
     private final JdbcClient jdbc;
     private static final Map<String, String> TABLES = Map.of("users", "tb_user_audit", "courses", "tb_course_aud", "lessons", "tb_lesson_aud", "questions", "tb_question_aud");

@@ -12,31 +12,36 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.sql.SQLException;
 import java.util.List;
-import lombok.RequiredArgsConstructor;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.FactorGrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
-import org.springframework.security.web.csrf.CsrfAuthenticationStrategy;
-import org.springframework.security.web.csrf.CsrfTokenRepository;
+import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api")
-@RequiredArgsConstructor
 @Tag(name = "Usuários", description = "Endpoints para gerenciamento de perfis, cadastros e redefinição de senhas")
 public class AccountTokenController {
-    // Preserve the session attribute used by registrations already in progress.
     private static final String PENDING_REGISTRATION_TOKEN = "com.repositorio.investir_mais.domain.user.controller.UserController.pendingRegistrationToken";
     private final UserService userService;
-    private final CsrfTokenRepository csrfTokens;
-    private final HttpSessionSecurityContextRepository securityContexts = new HttpSessionSecurityContextRepository();
+    private final SessionAuthenticationStrategy sessionAuthentication;
+    private final SecurityContextRepository securityContexts;
+
+    public AccountTokenController(UserService userService,
+            @Qualifier("registrationSessionAuthenticationStrategy") SessionAuthenticationStrategy sessionAuthentication,
+            SecurityContextRepository securityContexts) {
+        this.userService = userService;
+        this.sessionAuthentication = sessionAuthentication;
+        this.securityContexts = securityContexts;
+    }
 
     @Operation(summary = "Cadastrar novo usuário", description = "Registra um novo usuário no sistema e envia um e-mail com o link de ativação.")
     @PostMapping("/users/register")
@@ -80,8 +85,7 @@ public class AccountTokenController {
                 new SimpleGrantedAuthority("ROLE_STUDENT"),
                 FactorGrantedAuthority.fromAuthority(FactorGrantedAuthority.PASSWORD_AUTHORITY),
                 FactorGrantedAuthority.fromAuthority(FactorGrantedAuthority.OTT_AUTHORITY)));
-        request.changeSessionId();
-        new CsrfAuthenticationStrategy(csrfTokens).onAuthentication(authentication, request, response);
+        sessionAuthentication.onAuthentication(authentication, request, response);
         var context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(authentication);
         SecurityContextHolder.setContext(context);
