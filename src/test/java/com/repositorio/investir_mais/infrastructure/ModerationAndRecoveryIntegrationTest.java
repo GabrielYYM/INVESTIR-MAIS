@@ -49,6 +49,9 @@ class ModerationAndRecoveryIntegrationTest extends PostgreSqlIntegrationTest {
     @Autowired LegalDocumentsService legal;
     @Autowired PasswordEncoder encoder;
     @Autowired JdbcTemplate jdbc;
+    @Autowired AdminPendingRepository pending;
+    @Autowired ContentReportService reportService;
+    @Autowired com.repositorio.investir_mais.domain.user.repository.TeacherApplicationRepository applications;
     User admin, teacher, student;
 
     // The optional native PostgreSQL server is used only for automated tests; the official database is never a fallback.
@@ -177,7 +180,50 @@ class ModerationAndRecoveryIntegrationTest extends PostgreSqlIntegrationTest {
     @Test void exposesTheNewEndpointsInTheApiContract() throws Exception {
         String contract = mvc.perform(get("/v3/api-docs").with(as(admin))).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertTrue(contract.contains("/api/reports")); assertTrue(contract.contains("/api/trash/accounts/{id}/restore"));
+        assertTrue(contract.contains("/api/admin/pending"));
         Files.createDirectories(Path.of("target")); Files.writeString(Path.of("target/moderation-openapi.json"), contract);
+    }
+
+    @Test @org.springframework.transaction.annotation.Transactional
+    void adminPendingSummaryCountsOnlyActionableItemsAndEnforcesAccess() throws Exception {
+        Instant now = Instant.now();
+        var before = pending.summarize(now);
+        var course = course(); var lesson = lesson(course.id());
+        var report = reportService.submit(student.getEmail(), new ContentReportDTO.Submit(Target.LESSON, lesson.id(), course.id(), Reason.OTHER, "Revisar conteúdo"));
+        var candidate = account(UserRole.STUDENT, UUID.randomUUID() + "@recovery.test");
+        legal.accept(candidate.getEmail(), legal.current().version());
+        for (var user : List.of(student, candidate)) {
+            var application = new com.repositorio.investir_mais.domain.user.model.TeacherApplication();
+            application.setUserId(user.getId()); application.setStatus("PENDING"); application.setSubmittedAt(now);
+            applications.saveAndFlush(application);
+        }
+        var distant = account(UserRole.STUDENT, UUID.randomUUID() + "@recovery.test");
+        for (var user : List.of(student, teacher, distant)) {
+            accounts.deleteAccount(user.getEmail(), user.getId(), new UserDTO.DeleteAccountRequest("Temporary123!"));
+        }
+        jdbc.update("UPDATE account_deletion SET purge_after=? WHERE user_id=? AND status='PENDING'", java.sql.Timestamp.from(now.plus(7, java.time.temporal.ChronoUnit.DAYS)), student.getId());
+        jdbc.update("UPDATE account_deletion SET purge_after=? WHERE user_id=? AND status='PENDING'", java.sql.Timestamp.from(now), teacher.getId());
+
+        var summary = pending.summarize(now);
+        assertEquals(before.openReports() + 1, summary.openReports());
+        assertEquals(before.pendingTeacherApplications() + 1, summary.pendingTeacherApplications());
+        assertEquals(before.recoverableAccounts() + 2, summary.recoverableAccounts());
+        assertEquals(before.expiringAccounts() + 1, summary.expiringAccounts());
+        assertEquals(before.expiredAccounts() + 1, summary.expiredAccounts());
+        mvc.perform(get("/api/admin/pending").with(as(admin))).andExpect(status().isOk())
+            .andExpect(header().string("Cache-Control", org.hamcrest.Matchers.containsString("no-store")))
+            .andExpect(jsonPath("$.openReports").value((int) summary.openReports()))
+            .andExpect(jsonPath("$.pendingTeacherApplications").value((int) summary.pendingTeacherApplications()))
+            .andExpect(jsonPath("$.expiringAccounts").value((int) summary.expiringAccounts()))
+            .andExpect(jsonPath("$.expiredAccounts").value((int) summary.expiredAccounts()))
+            .andExpect(jsonPath("$.nextRecoveryDeadline").isString()).andExpect(jsonPath("$.items").doesNotExist());
+        mvc.perform(get("/api/admin/pending").with(as(candidate))).andExpect(status().isForbidden());
+        mvc.perform(get("/api/admin/pending").with(anonymous())).andExpect(status().isUnauthorized());
+
+        var reviewed = reports.findById(report.id()).orElseThrow(); reviewed.setStatus(Status.RESOLVED); reports.saveAndFlush(reviewed);
+        var approved = applications.findByUserId(candidate.getId()).orElseThrow(); approved.setStatus("APPROVED"); applications.saveAndFlush(approved);
+        assertEquals(before.openReports(), pending.summarize(now).openReports());
+        assertEquals(before.pendingTeacherApplications(), pending.summarize(now).pendingTeacherApplications());
     }
 
     @Test void legalEvidenceCannotBeChangedOrErasedForAnotherSubject() {

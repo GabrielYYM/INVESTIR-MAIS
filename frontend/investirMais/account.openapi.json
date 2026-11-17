@@ -1044,6 +1044,28 @@
           }
         }
       }
+    },
+    "/api/admin/pending": {
+      "get": {
+        "tags": [
+          "admin-pending-controller"
+        ],
+        "summary": "Consultar pendências administrativas",
+        "description": "Contadores de denúncias, candidaturas de contas ativas e prazos de recuperação. Não inclui dados pessoais.",
+        "operationId": "getAdminPendingSummary",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPendingSummary"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1630,6 +1652,43 @@
             "format": "int32"
           },
           "acceptedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AdminPendingSummary": {
+        "type": "object",
+        "properties": {
+          "openReports": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "pendingTeacherApplications": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "recoverableAccounts": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expiringAccounts": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expiredAccounts": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "nextRecoveryDeadline": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiringWithinDays": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "checkedAt": {
             "type": "string",
             "format": "date-time"
           }

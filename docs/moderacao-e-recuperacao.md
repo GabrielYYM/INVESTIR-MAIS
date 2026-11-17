@@ -15,10 +15,19 @@ O cadastro inicial apresenta links para leitura dos documentos. Há um único ac
 - Contas desativadas mantêm dados por 30 dias a partir da solicitação. A recuperação exige registro do pedido verificado do titular. Também recupera o progresso e os itens de autoria ocultados pela mesma solicitação, preservando exclusões anteriores.
 - A opção de eliminação definitiva exige senha e não cria janela recuperável. A rotina horária processa solicitações vencidas. Veja os limites e a matriz legal em [retenção e eliminação](../.lgpd/retention.md).
 
+## Painel de pendências
+
+A página `/admin` reúne denúncias abertas, candidaturas pendentes de usuários com conta ativa, contas ainda recuperáveis e contas cujo prazo já terminou e aguardam processamento da eliminação. Um alerta destaca os prazos de recuperação que vencem nos próximos sete dias e informa o próximo vencimento. Contas com prazo encerrado não entram no contador de recuperáveis.
+
+Os atalhos abrem as áreas de análise; a lixeira é aberta diretamente nas contas por `/admin/lixeira?tipo=contas`. O botão **Atualizar pendências** consulta novamente o resumo sem reiniciar a lista ou os filtros de usuários. A data exibida corresponde ao instante da consulta no servidor. O painel informa pendências; não executa restauração ou eliminação.
+
+O resumo é calculado em uma consulta ao banco, protegido por perfil ADMIN e enviado sem dados pessoais e sem cache HTTP. A falha de atualização do resumo não bloqueia a gestão de usuários.
+
 ## APIs
 
 | Método | Rota | Acesso |
 |---|---|---|
+| GET | `/api/admin/pending` | Admin; resumo de pendências e prazos |
 | POST | `/api/reports` | Usuário autenticado |
 | GET | `/api/reports?status=OPEN&page=0&size=20` | Admin |
 | POST | `/api/reports/{id}/review` | Admin |

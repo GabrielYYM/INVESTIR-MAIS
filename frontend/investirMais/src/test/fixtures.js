@@ -42,6 +42,8 @@ export const teacherStats = {
 export const adminUser = { ...admin, id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", name: "Administrador", email: "admin@example.test" };
 export const teacherUser = { ...teacher, id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", name: "Bruno Professor", email: "bruno@example.test" };
 
+export const adminPending = { openReports: 0, pendingTeacherApplications: 0, recoverableAccounts: 0, expiringAccounts: 0, expiredAccounts: 0, nextRecoveryDeadline: null, expiringWithinDays: 7, checkedAt: "2026-11-17T12:00:00Z" };
+
 export function paged(content, { number = 0, size = 9, totalElements = content.length, totalPages = Math.ceil(totalElements / size) } = {}) {
   return { content, page: { number, size, totalElements, totalPages } };
 }

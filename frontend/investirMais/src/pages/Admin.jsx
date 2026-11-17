@@ -12,6 +12,7 @@ import ResourcePagination from "../components/ui/ResourcePagination.jsx";
 import { Notice } from "../components/ui/PageState.jsx";
 import StatCard from "../components/ui/StatCard.jsx";
 import RoleBadge from "../components/account/RoleBadge.jsx";
+import AdminPendingPanel from "../components/admin/AdminPendingPanel.jsx";
 
 export async function adminLoader({ request }) {
   try {
@@ -80,6 +81,7 @@ export default function Admin() {
   const refresh = useRefresh();
   const promotionBlock = "A promoção a professor ocorre pela aprovação dos documentos em Candidaturas de professores.";
   return <div className="space-y-8"><h1 className="sr-only">Administração</h1>
+    <AdminPendingPanel />
     <ListBase resource="users" perPage={10} sort={{ field: "name", order: "ASC" }} disableAuthentication><UserListState>
       <UserStats />{feedback && <Notice>{feedback}</Notice>}
       <section className="panel space-y-5 p-5 sm:p-6" aria-labelledby="usuarios-titulo">

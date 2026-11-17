@@ -25,6 +25,6 @@ async function exportContract(name, include) {
   } };
   await writeFile(new URL(`../${name}.openapi.json`, import.meta.url), JSON.stringify(output, null, 2) + "\n");
 }
-await exportContract("account", path => path.startsWith("/api/users") || path.startsWith("/api/legal/") || path.startsWith("/api/teacher-applications") || path === "/api/audit" || path === "/auth/me" || path === "/api/teacher/dashboard");
+await exportContract("account", path => path.startsWith("/api/users") || path.startsWith("/api/legal/") || path.startsWith("/api/teacher-applications") || path.startsWith("/api/admin/") || path === "/api/audit" || path === "/auth/me" || path === "/api/teacher/dashboard");
 await exportContract("education", path => path.startsWith("/api/courses") || path.startsWith("/api/lessons") || path.startsWith("/api/learning") || path.startsWith("/api/reports") || path.startsWith("/api/trash"));
 console.log("Contratos de conta e educação atualizados.");
