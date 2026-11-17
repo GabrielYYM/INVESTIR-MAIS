@@ -1,4 +1,5 @@
-import { ArrowLeft, CheckCircle2, CircleHelp, ExternalLink, LockKeyhole, Pencil, Play, Plus, Trash2, Video } from "lucide-react";
+import { CourseLearningDashboard } from "../components/education/LearningDashboard.jsx";
+import { ArrowLeft, CheckCircle2, CircleHelp, ExternalLink, Pencil, Play, Plus, Trash2, Video } from "lucide-react";
 import { lazy, Suspense, useState } from "react";
 import { Radio, RadioGroup } from "@mui/material";
 import { Link, useFetcher, useLoaderData, useLocation, useNavigate, useRevalidator, useRouteLoaderData, NavLink } from "react-router";
@@ -6,7 +7,7 @@ import { useUpdateLessonProgress } from "../generated/education.ts";
 import { apiError } from "../services/api.js";
 import { canManageEducation } from "../services/educationData.js";
 import { pageHref } from "../services/searchParams.js";
-import { externalMediaUrl, youtubeVideo } from "../services/youtube.js";
+import { externalMediaUrl, youtubeVideo, cloudinaryVideo } from "../services/youtube.js";
 import { Notice } from "../components/ui/PageState.jsx";
 import SubmitButton from "../components/ui/SubmitButton.jsx";
 import PageHeader from "../components/layout/PageHeader.jsx";
@@ -65,11 +66,11 @@ function CourseQuestions({
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="eyebrow">Pratique o que aprendeu</p>
-          <h2 id="perguntas-titulo" className="mt-1 text-xl font-bold">Perguntas do curso</h2>
+          <h2 id="perguntas-titulo" className="mt-1 text-xl font-bold">Perguntas da aula</h2>
         </div>
         {canManage && <button className="button-primary" onClick={() => onEdit({})}><Plus size={16} /> Nova pergunta</button>}
       </header>
-      {error ? <div className="space-y-3"><Notice error>{error}</Notice><button className="button-secondary" disabled={loading} onClick={onRetry}>Tentar novamente</button></div> : needsEnrollment ? <div className="space-y-3"><p className="text-sm leading-relaxed text-muted">Entre no curso para responder às perguntas e liberar os próximos conteúdos.</p><SubmitButton type="button" loading={loading} loadingText="Entrando…" onClick={onEnroll}>Começar curso</SubmitButton></div> : questions.length ? <div className="space-y-4">{questions.map((question, index) => <article key={question.id} className="min-w-0 space-y-4 rounded-xl border border-line bg-raised p-4" aria-labelledby={"question-" + question.id}>
+      {error ? <div className="space-y-3"><Notice error>{error}</Notice><button className="button-secondary" disabled={loading} onClick={onRetry}>Tentar novamente</button></div> : needsEnrollment ? <div className="space-y-3"><p className="text-sm leading-relaxed text-muted">Entre no curso para responder às perguntas e acompanhar seu progresso.</p><SubmitButton type="button" loading={loading} loadingText="Entrando…" onClick={onEnroll}>Começar curso</SubmitButton></div> : questions.length ? <div className="space-y-4">{questions.map((question, index) => <article key={question.id} className="min-w-0 space-y-4 rounded-xl border border-line bg-raised p-4" aria-labelledby={"question-" + question.id}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 space-y-2">
                   <p className="flex flex-wrap items-center gap-2 text-xs text-muted"><CircleHelp size={15} className="text-brand" /> Pergunta {index + 1}<span aria-hidden="true">·</span>{question.afterLesson === 0 ? "Antes da primeira aula" : "Após a aula " + question.afterLesson}</p>
@@ -105,7 +106,7 @@ function LessonPlayer({
     if (!isCompleted) onToggleCompleted?.(true);
   };
   return <article className="panel min-w-0 overflow-hidden">
-    {video && showPlayer ? <iframe className="aspect-video min-h-50 w-full border-0 bg-black" title={"Vídeo da aula " + lesson.title} src={video.embedUrl} referrerPolicy="strict-origin-when-cross-origin" allow="encrypted-media; picture-in-picture" allowFullScreen /> : <div className="grid min-h-44 place-items-center border-b border-white/5 bg-canvas px-5 py-8 sm:min-h-56">
+    {cloudinaryVideo(lesson.mediaUrl) ? <video className="aspect-video w-full bg-black" controls preload="metadata" src={lesson.mediaUrl} poster={lesson.thumbnailUrl} onPlay={complete} onEnded={event => { event.currentTarget.currentTime = 0; }} aria-label={"Vídeo da aula " + lesson.title} /> : video && showPlayer ? <iframe className="aspect-video min-h-50 w-full border-0 bg-black" title={"Vídeo da aula " + lesson.title} src={video.embedUrl} referrerPolicy="strict-origin-when-cross-origin" allow="encrypted-media; picture-in-picture" allowFullScreen /> : <div className="grid min-h-44 place-items-center border-b border-white/5 bg-canvas px-5 py-8 sm:min-h-56">
       <span className="grid size-16 place-items-center rounded-2xl bg-amber-500/20 text-amber-400">
         <Video size={30} />
       </span>
@@ -210,15 +211,10 @@ export default function Course() {
       <div className="min-w-0 space-y-5">
         {failure && <Notice error>{failure}</Notice>}
         {progressError && <button className="button-secondary" disabled={revalidator.state !== "idle"} onClick={() => revalidator.revalidate()}>Tentar novamente</button>}
-        {lesson?.locked ? <div className="panel space-y-3 p-6">
-          <LockKeyhole size={28} className="text-brand" />
-          <h2 className="text-xl font-bold">Aula bloqueada</h2>
-          <p className="text-sm leading-relaxed text-muted">Conclua o conteúdo anterior e acerte as perguntas para liberar esta aula.</p>
-          {(questions.length > 0 || needsEnrollment) && <a href="#perguntas" className="button-secondary">Ir para as perguntas</a>}
-        </div> : lesson ? <LessonPlayer key={lesson.id} lesson={lesson} isCompleted={completedIds.has(lesson.id)} onToggleCompleted={canManage ? undefined : completed => updateProgress(completed)} busy={progressMutation.isPending} trackProgress={!canManage} /> : <p className="panel p-6 text-sm text-muted">
+        {lesson ? <LessonPlayer key={lesson.id} lesson={lesson} isCompleted={completedIds.has(lesson.id)} onToggleCompleted={canManage ? undefined : completed => updateProgress(completed)} busy={progressMutation.isPending} trackProgress={!canManage} /> : <p className="panel p-6 text-sm text-muted">
           {canManage ? "Adicione uma videoaula para começar." : "Este curso ainda não tem aulas cadastradas."}
         </p>}
-        <CourseQuestions questions={questions} canManage={canManage} error={questionsError} loading={revalidator.state !== "idle" || enroll.state !== "idle"} onRetry={() => revalidator.revalidate()} needsEnrollment={needsEnrollment} onEnroll={() => enroll.submit({
+        {lesson && <CourseQuestions questions={questions.filter(question => question.afterLesson === lesson?.position || (question.afterLesson === 0 && lesson?.position === 1))} canManage={canManage} error={questionsError} loading={revalidator.state !== "idle" || enroll.state !== "idle"} onRetry={() => revalidator.revalidate()} needsEnrollment={needsEnrollment} onEnroll={() => enroll.submit({
           intent: "enroll-course"
         }, {
           method: "post",
@@ -232,7 +228,8 @@ export default function Course() {
             position,
             ...options
           });
-        }} />
+        }} />}
+        {canManage && <CourseLearningDashboard courseId={course.id} />}
         {!canManage && progress?.totalQuestions > 0 && progress.progressPercentage === 100 && <Notice>Curso concluído! Você concluiu todas as aulas e perguntas.</Notice>}
       </div>
       <section className="panel min-w-0 space-y-4 p-4 sm:p-5" aria-labelledby="aulas-titulo">
@@ -270,14 +267,11 @@ export default function Course() {
             const selected = item.id === lesson?.id;
             const completed = completedIds.has(item.id);
             return <li key={item.id} className={"flex min-w-0 items-center gap-1 rounded-lg border p-1 " + (selected ? "border-brand/35 bg-brand/8" : "border-line bg-canvas")}>
-              {item.locked && !canManage ? <span className="flex min-w-0 flex-1 items-center gap-2 p-2 text-sm text-muted" aria-disabled="true">
-                <LockKeyhole size={15} className="shrink-0" /><span className="min-w-0 break-words">{item.position > 0 && <span className="mr-1 text-xs">{item.position}.</span>}{item.title}</span>
-                <span className="sr-only"> (Bloqueada)</span>
-              </span> : <NavLink end to={pageHref(coursePath + "/" + item.id, page.number)} aria-label={item.title} aria-current={selected ? "true" : undefined} className="flex min-w-0 flex-1 items-center gap-2 rounded-md p-2 text-sm font-semibold hover:text-brand">
+              <NavLink end to={pageHref(coursePath + "/" + item.id, page.number)} aria-label={item.title} aria-current={selected ? "true" : undefined} className="flex min-w-0 flex-1 items-center gap-2 rounded-md p-2 text-sm font-semibold hover:text-brand">
                 <Play size={15} className={"shrink-0 " + (selected ? "text-brand" : "text-muted")} />
                 <span className="break-words flex-1">{item.position > 0 && <span className="mr-1 text-xs text-muted">{item.position}.</span>}{item.title}</span>
                 {completed && <CheckCircle2 size={15} className="shrink-0 text-emerald-400" title="Aula concluída" />}
-              </NavLink>}
+              </NavLink>
               {canManage && <div className="flex shrink-0 gap-1 pr-1">
                 <button className="rounded-md p-2 text-muted hover:bg-raised hover:text-ink" aria-label={"Editar aula " + item.title} onClick={() => setEditor({
                   kind: "aula",

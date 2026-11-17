@@ -72,7 +72,7 @@ export default function QuestionFields() {
       xs: "column",
       sm: "row"
     }} spacing={2}>
-      <NumberInput source="afterLesson" label="Após a aula de número" min={0} max={10000} helperText="Use 0 para perguntar antes da primeira aula." />
+      <NumberInput source="afterLesson" label="Após a aula de número" min={1} max={10000} helperText="A pergunta aparece somente dentro desta aula." />
       <NumberInput source="position" label="Ordem neste ponto" min={1} max={10001} helperText="Define a sequência de perguntas após a mesma aula." />
     </Stack>
     <ArrayInput source="options" label="Alternativas" helperText={false}><SimpleFormIterator fullWidth disableReordering disableRemove={options.length <= 2} sx={{ "& > ul > li": { borderBottom: 0 }, "& > ul > li > .RaSimpleFormIterator-action": { mt: 4.5 } }} addButton={<AddItem source={optionsSource} label="Adicionar alternativa" max={6} defaults={{
@@ -82,26 +82,4 @@ export default function QuestionFields() {
       <OptionFields optionsSource={optionsSource} />
     </SimpleFormIterator></ArrayInput>
   </Stack>;
-}
-function CourseQuestion() {
-  const {
-    index
-  } = useSimpleFormIteratorItem();
-  return <Stack component="fieldset" spacing={2} sx={{
-    minWidth: 0,
-    width: "100%",
-    border: 1,
-    borderColor: "divider",
-    borderRadius: "12px",
-    p: 2
-  }}>
-    <legend>Pergunta {index + 1}</legend><QuestionFields />
-  </Stack>;
-}
-export function CourseQuestionFields({
-  defaults
-}) {
-  return <section className="w-full space-y-4 border-t border-line pt-4" aria-label="Perguntas do novo curso"><p className="text-xs text-muted">Opcional: adicione agora ou depois de cadastrar as aulas.</p><ArrayInput source="questions" label="Perguntas do curso" helperText={false}><SimpleFormIterator fullWidth disableReordering sx={{ "& > ul > li": { flexDirection: "column", gap: 1, pb: 2, borderBottom: 0 } }} addButton={<AddItem source="questions" label="Adicionar pergunta" max={100} defaults={defaults} />} removeButton={<RemoveItem label="Remover pergunta" />}>
-    <CourseQuestion />
-  </SimpleFormIterator></ArrayInput></section>;
 }

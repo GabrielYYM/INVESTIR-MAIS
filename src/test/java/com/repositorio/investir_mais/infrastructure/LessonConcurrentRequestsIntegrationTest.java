@@ -1,6 +1,6 @@
 package com.repositorio.investir_mais.infrastructure;
 
-import com.repositorio.investir_mais.domain.LegalDocumentsService;
+import com.repositorio.investir_mais.domain.legal.service.LegalDocumentsService;
 import com.repositorio.investir_mais.domain.education.DTO.LessonDTO;
 import com.repositorio.investir_mais.domain.education.mapper.LessonMapper;
 import com.repositorio.investir_mais.domain.education.model.Course;
@@ -61,7 +61,7 @@ class LessonConcurrentRequestsIntegrationTest extends PostgreSqlIntegrationTest 
             var user = new User();
             user.setName("Professor de teste");
             user.setEmail(EMAIL);
-            user.setAge(28);
+
             user.setPassword("unused-test-password");
             user.setRole(UserRole.TEACHER);
             user.setEmailVerified(true);

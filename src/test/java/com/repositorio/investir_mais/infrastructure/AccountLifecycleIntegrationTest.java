@@ -1,6 +1,6 @@
 package com.repositorio.investir_mais.infrastructure;
 
-import com.repositorio.investir_mais.domain.AccountSecurityService;
+import com.repositorio.investir_mais.domain.token.service.AccountSecurityService;
 import com.repositorio.investir_mais.domain.education.model.Course;
 import com.repositorio.investir_mais.domain.education.model.Lesson;
 import com.repositorio.investir_mais.domain.education.repository.CourseRepository;
@@ -12,7 +12,7 @@ import com.repositorio.investir_mais.domain.user.model.User;
 import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.repository.UserRepository;
 import com.repositorio.investir_mais.domain.user.service.UserService;
-import com.repositorio.investir_mais.infrastructure.config.WebApplicationProperties;
+import com.repositorio.investir_mais.config.WebApplicationProperties;
 import jakarta.servlet.http.Cookie;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -24,7 +24,6 @@ import java.nio.file.Path;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -148,7 +147,7 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
                 var update = executor.submit(() -> {
                     started.countDown();
                     return assertThrows(ResponseStatusException.class, () -> service.updateProfile(EMAIL, account.getId(),
-                            new UserDTO.UpdateProfileRequest("Novo Nome", EMAIL, null, PASSWORD)));
+                            new UserDTO.UpdateProfileRequest("Novo Nome", EMAIL, PASSWORD)));
                 });
                 assertDoesNotThrow(() -> assertTrue(started.await(5, TimeUnit.SECONDS)));
                 assertThrows(TimeoutException.class, () -> update.get(500, TimeUnit.MILLISECONDS));
@@ -186,7 +185,7 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
     void failedEmailIsPersistedAndCanBeDeliveredByNativeResubmission() {
         doThrow(new RestClientException("simulated Resend failure"))
                 .when(mail).send(eq(EMAIL), anyString(), anyString(), anyString(), anyString());
-        service.registerUser(new UserDTO.Request("Conta", LocalDate.now().minusYears(22), EMAIL, PASSWORD, UserRole.STUDENT));
+        service.registerUser(new UserDTO.Request("Conta", EMAIL, PASSWORD, UserRole.STUDENT));
         awaitFailedPublication();
         reset(mail);
         failedPublications.resubmit(ResubmissionOptions.defaults());
@@ -198,7 +197,7 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
     void failedEmailIsDeliveredByTheManagedRetryScheduler() {
         doThrow(new RestClientException("temporary Resend failure")).doNothing()
                 .when(mail).send(eq(EMAIL), anyString(), anyString(), anyString(), anyString());
-        service.registerUser(new UserDTO.Request("Conta", LocalDate.now().minusYears(22), EMAIL, PASSWORD, UserRole.STUDENT));
+        service.registerUser(new UserDTO.Request("Conta", EMAIL, PASSWORD, UserRole.STUDENT));
         verify(mail, timeout(5000).times(2)).send(eq(EMAIL), anyString(), anyString(), anyString(), anyString());
         await().atMost(Duration.ofSeconds(5)).until(() -> publications.findIncompletePublications().isEmpty());
     }
@@ -234,7 +233,7 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
     void persistedEmailWithExpiredTokenIsDiscardedOnRetry() {
         doThrow(new RestClientException("simulated Resend failure"))
                 .when(mail).send(eq(EMAIL), anyString(), anyString(), anyString(), anyString());
-        service.registerUser(new UserDTO.Request("Conta", LocalDate.now().minusYears(22), EMAIL, PASSWORD, UserRole.STUDENT));
+        service.registerUser(new UserDTO.Request("Conta", EMAIL, PASSWORD, UserRole.STUDENT));
         awaitFailedPublication();
         jdbc.update("UPDATE app_one_time_token SET expires_at = ?", Timestamp.from(Instant.now().minusSeconds(60)));
         reset(mail);
@@ -246,7 +245,7 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
     @Test
     void rollbackDoesNotPersistAccountTokenOrEmailPublication() {
         new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
-            service.registerUser(new UserDTO.Request("Conta", LocalDate.now().minusYears(22), EMAIL, PASSWORD, UserRole.STUDENT));
+            service.registerUser(new UserDTO.Request("Conta", EMAIL, PASSWORD, UserRole.STUDENT));
             status.setRollbackOnly();
         });
         assertTrue(users.findByEmail(EMAIL).isEmpty());
@@ -262,7 +261,7 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
 
     @Test
     void registrationResendAndVerificationWorkAfterCommit() throws Exception {
-        service.registerUser(new UserDTO.Request("Conta", LocalDate.now().minusYears(22), EMAIL, PASSWORD, UserRole.STUDENT));
+        service.registerUser(new UserDTO.Request("Conta", EMAIL, PASSWORD, UserRole.STUDENT));
         verify(mail, timeout(3000)).send(eq(EMAIL), anyString(), anyString(), anyString(), anyString());
         assertFalse(users.findByEmail(EMAIL).orElseThrow().isEmailVerified());
         String first = accountToken("EMAIL_VERIFICATION");
@@ -351,7 +350,7 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
         service.forgotPassword(new AuthDTO.ForgotPasswordRequest(EMAIL));
         assertEquals(200, browser.write(put("/api/users/{id}", users.findByEmail(EMAIL).orElseThrow().getId())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\":\"Conta\",\"email\":\"new@investir.com\",\"birthDate\":\"2000-01-15\",\"currentPassword\":\"" + PASSWORD + "\"}")).getResponse().getStatus());
+                .content("{\"name\":\"Conta\",\"email\":\"new@investir.com\",\"currentPassword\":\"" + PASSWORD + "\"}")).getResponse().getStatus());
         assertEquals(401, browser.read(get("/auth/me")).getResponse().getStatus());
         assertTrue(users.findByEmail(EMAIL).isEmpty());
         assertFalse(users.findByEmail("new@investir.com").orElseThrow().isEmailVerified());
@@ -447,7 +446,7 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
 
     private User createVerifiedUser() {
         User user = new User();
-        user.setName("Conta"); user.setAge(22); user.setEmail(EMAIL);
+        user.setName("Conta"); user.setEmail(EMAIL);
         user.setPassword(encoder.encode(PASSWORD)); user.setRole(UserRole.STUDENT); user.setEmailVerified(true);
         return users.saveAndFlush(user);
     }
@@ -480,7 +479,7 @@ class AccountLifecycleIntegrationTest extends PostgreSqlIntegrationTest {
         private Cookie session;
 
         void register() throws Exception {
-            var request = new UserDTO.Request("Conta", LocalDate.now().minusYears(22), EMAIL, PASSWORD, UserRole.STUDENT);
+            var request = new UserDTO.Request("Conta", EMAIL, PASSWORD, UserRole.STUDENT);
             MvcResult registration = write(post("/api/users/register").contentType(MediaType.APPLICATION_JSON)
                     .content(new tools.jackson.databind.ObjectMapper().writeValueAsString(request)));
             assertEquals(202, registration.getResponse().getStatus());

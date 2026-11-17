@@ -1,6 +1,6 @@
 package com.repositorio.investir_mais.domain.user.repository;
 
-import com.repositorio.investir_mais.domain.AccountSecurityService;
+import com.repositorio.investir_mais.domain.token.service.AccountSecurityService;
 import com.repositorio.investir_mais.domain.education.model.Course;
 import com.repositorio.investir_mais.domain.education.model.Lesson;
 import com.repositorio.investir_mais.domain.education.repository.CourseRepository;
@@ -15,7 +15,6 @@ import com.repositorio.investir_mais.infrastructure.SecurityConfig;
 import jakarta.persistence.EntityManager;
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
@@ -80,7 +79,8 @@ class UserSoftDeleteTest {
         flushAndClear();
 
         assertNotNull(jdbc.queryForObject("SELECT deleted_at FROM tb_user WHERE id = ?", Timestamp.class, deleted.getId()));
-        assertEquals(deleted.getEmail(), jdbc.queryForObject("SELECT email FROM tb_user WHERE id = ?", String.class, deleted.getId()));
+        assertEquals("deleted-" + deleted.getId() + "@deleted.invalid", jdbc.queryForObject("SELECT email FROM tb_user WHERE id = ?", String.class, deleted.getId()));
+        assertNull(jdbc.queryForObject("SELECT name FROM tb_user WHERE id = ?", String.class, deleted.getId()));
         assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM tb_user", Integer.class));
         assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM tb_course_enrollment WHERE student_id = ?",
                 Integer.class, deleted.getId()));
@@ -95,8 +95,8 @@ class UserSoftDeleteTest {
         assertTrue(users.findById(active.getId()).isPresent());
         assertThrows(UsernameNotFoundException.class, () -> new SecurityConfig()
                 .userDetailsService(users).loadUserByUsername(deleted.getEmail()));
-        assertTrue(users.existsByEmailIncludingDeleted(deleted.getEmail()));
-        assertTrue(users.existsByEmailAndIdNot(deleted.getEmail(), active.getId()));
+        assertFalse(users.existsByEmailIncludingDeleted(deleted.getEmail()));
+        assertFalse(users.existsByEmailAndIdNot(deleted.getEmail(), active.getId()));
         assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM app_one_time_token", Integer.class));
         assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM one_time_tokens", Integer.class));
         assertTrue(security.consumePasswordResetToken(resetToken).isEmpty());
@@ -108,9 +108,8 @@ class UserSoftDeleteTest {
         service.forgotPassword(new AuthDTO.ForgotPasswordRequest(deleted.getEmail()));
         service.resendVerification(deleted.getEmail());
         assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM app_one_time_token", Integer.class));
-        var conflict = assertThrows(ResponseStatusException.class, () -> service.registerUser(
-                new UserDTO.Request("Novo usuário", LocalDate.now().minusYears(25), deleted.getEmail(), PASSWORD, UserRole.STUDENT)));
-        assertEquals(409, conflict.getStatusCode().value());
+        assertDoesNotThrow(() -> service.registerUser(
+                new UserDTO.Request("Novo usuário", deleted.getEmail(), PASSWORD, UserRole.STUDENT)));
     }
 
     @Test
@@ -211,10 +210,15 @@ class UserSoftDeleteTest {
 
     @Configuration(proxyBeanMethods = false)
     @EnableJpaAuditing
-    @EntityScan(basePackageClasses = {Course.class, User.class})
-    @EnableEnversRepositories(basePackageClasses = {CourseRepository.class, UserRepository.class})
+    @org.springframework.boot.context.properties.EnableConfigurationProperties(com.repositorio.investir_mais.config.WebApplicationProperties.class)
+    @EntityScan(basePackageClasses = {Course.class, User.class, com.repositorio.investir_mais.domain.token.model.AccountToken.class})
+    @EnableEnversRepositories(basePackageClasses = {CourseRepository.class, UserRepository.class, com.repositorio.investir_mais.domain.token.repository.AccountTokenRepository.class})
     @Import({UserService.class, AccountSecurityService.class})
     static class JpaConfig {
+        @Bean com.repositorio.investir_mais.domain.token.mapper.TokenMapper tokenMapper() { return Mappers.getMapper(com.repositorio.investir_mais.domain.token.mapper.TokenMapper.class); }
+        @Bean org.springframework.security.authentication.ott.JdbcOneTimeTokenService loginTokens(JdbcTemplate jdbc) throws Exception {
+            return new SecurityConfig().loginOneTimeTokenService(jdbc);
+        }
         @Bean UserMapper userMapper() { return Mappers.getMapper(UserMapper.class); }
         @Bean PasswordEncoder passwordEncoder() { return new SecurityConfig().passwordEncoder(); }
     }

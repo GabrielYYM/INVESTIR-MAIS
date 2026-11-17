@@ -46,7 +46,7 @@ public class QuestionController {
         return questions.list(courseId, principal.getName());
     }
     @PostMapping("/{questionId}/answers")
-    @Operation(summary = "Validar resposta e guardar somente que o aluno passou")
+    @Operation(summary = "Validar e registrar resposta privada do aluno")
     public QuestionDTO.AnswerResponse answer(@PathVariable UUID courseId, @PathVariable UUID questionId,
                                              @Valid @RequestBody QuestionDTO.AnswerRequest request, Principal principal) {
         return questions.answer(courseId, questionId, request, principal.getName());

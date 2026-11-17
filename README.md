@@ -4,6 +4,8 @@ O Investir Mais é uma plataforma de educação financeira com catálogo de curs
 
 [Documentação](docs/README.md) · [Diagramas](#diagramas) · [Execução local](#execução-local) · [API](#api) · [Testes](#testes-e-verificações) · [Apresentação](docs/apresentacao.md)
 
+Veja a [atualização da plataforma](docs/atualizacao-plataforma.md) para candidaturas, novos documentos legais, auditoria com filtros, respostas dos alunos, busca de cursos e upload Cloudinary.
+
 ## Funcionalidades
 
 | Área | O que está disponível |
@@ -11,7 +13,7 @@ O Investir Mais é uma plataforma de educação financeira com catálogo de curs
 | Conta | Cadastro de aluno com data de nascimento, confirmação de e-mail, login em duas etapas e recuperação de senha. O perfil permite alterar nome e nascimento com a senha atual, trocar a senha e excluir a conta. |
 | Painel | Entrada comum aos três perfis, com cursos em destaque e métricas para professores e administradores. |
 | Educação | Catálogo paginado, matrícula, videoaulas do YouTube, perguntas de múltipla escolha, progressão por aulas concluídas e perguntas aprovadas, e ordenação das aulas. |
-| Administração | Gestão de todo o catálogo, consulta de usuários e auditoria, e promoção a professor mediante data de nascimento e idade mínima de 18 anos. |
+| Administração | Gestão de todo o catálogo, consulta de usuários e auditoria, e aprovação de candidaturas de professor com documentos privados, sem idade mínima. |
 | Documentos legais | Termos e Política de Privacidade com versões e aceites imutáveis no PostgreSQL. Uma nova versão exige nova confirmação; o perfil permite consultar o histórico. |
 
 | Perfil | Consultar cursos e aulas | Criar cursos | Gerenciar cursos, aulas, perguntas e ordem |
@@ -74,7 +76,7 @@ O [arquivo editável do Draw.io](docs/diagramas/investir-mais.drawio) reúne cin
 - O cadastro público cria uma conta de aluno com data de nascimento. Ao confirmar o e-mail original no navegador do cadastro, o usuário inicia a primeira sessão. Em outro navegador, ou com um link reenviado, a página confirma a conta e oferece o login. A recuperação usa um código separado para definir a nova senha.
 - Uma rota protegida verifica a sessão com `GET /auth/me`. Sem acesso, o React redireciona ao login e guarda a rota solicitada. Após os dois fatores, o navegador abre um destino interno permitido ou o painel.
 - Antes do painel e do catálogo, a aplicação verifica o aceite da versão atual dos Termos e da Política de Privacidade. Uma versão nova exige nova confirmação; o perfil mostra o histórico com o texto de cada versão aceita.
-- O professor proprietário e o administrador podem ordenar as aulas, preservando o vínculo das perguntas. A publicação aceita links de qualquer canal do YouTube; a promoção a professor exige data de nascimento e idade mínima de 18 anos. A saída encerra a sessão no backend.
+- O professor proprietário e o administrador podem ordenar as aulas, preservando o vínculo das perguntas. A publicação aceita links de qualquer canal do YouTube; a promoção a professor depende de candidatura aprovada, sem idade mínima. A saída encerra a sessão no backend.
 
 [![Fluxo de navegação do cadastro e login à área autenticada](docs/diagramas/fluxo-de-navegacao.png)](docs/diagramas/fluxo-de-navegacao.png)
 
@@ -101,9 +103,10 @@ O [arquivo editável do Draw.io](docs/diagramas/investir-mais.drawio) reúne cin
 
 - Na área de conta, `UserController` e `AuthenticationController` expõem operações de usuário e sessão. `UserService` concentra as regras da conta e usa `AccountSecurityService` para tokens de confirmação e recuperação e para revogação de sessões.
 - No catálogo, controllers chamam `CourseService`, `LessonService` e `QuestionService`. As perguntas e o conteúdo anterior controlam a progressão do aluno. Os serviços aplicam regras de permissão e propriedade, usam repositórios JPA e mapeiam entidades para DTOs com MapStruct, incluindo `QuestionMapper`.
-- `LessonService` usa `YouTubeVideoUrl` para normalizar o endereço e a miniatura. Não há aprovação de canais, filtro de conteúdo nem dependência de chave da API do YouTube.
+- `LessonService` usa `LessonVideo` para validar vídeos do YouTube ou Cloudinary e gerar a miniatura. Não há aprovação de canais, filtro de conteúdo nem dependência de chave da API do YouTube.
 - `LegalDocumentsService` publica e consulta versões imutáveis e registra os aceites. O interceptor de aceite retorna HTTP 428 quando há pendência para acessar os recursos da plataforma.
 - O `AuthenticationEmailHandler` envia os e-mails transacionais pela API do Resend.
+- O envio local também usa exclusivamente o Resend; não há transporte SMTP ou Mailpit. Os testes automatizados simulam o provedor.
 
 [![Classes da aplicação para conta, educação e envio de e-mails](docs/diagramas/classes-da-aplicacao.png)](docs/diagramas/classes-da-aplicacao.png)
 
@@ -199,7 +202,7 @@ No perfil `dev`, o Swagger UI fica em [localhost:8080/swagger-ui.html](http://lo
 - O Redis indexa sessões por usuário para revogá-las após alterações de senha ou e-mail e após exclusão de conta.
 - O limite de autenticação usa Redis por IP e rota e também por conta em `/auth/login`. O padrão é 10 solicitações por janela de um minuto. O limite retorna `429` com `Retry-After`. Se o Redis estiver indisponível, o filtro retorna `503`.
 - Tokens de login usam `one_time_tokens`. Tokens de confirmação e recuperação ficam em `app_one_time_token`, com hash SHA-256 para novas emissões e consumo transacional. O Spring Modulith registra e reprocessa eventos de confirmação e recuperação. O e-mail de login segue o fluxo assíncrono da autenticação.
-- A API exige a senha atual para excluir a própria conta. A exclusão lógica preserva o registro e mantém seu e-mail reservado. As operações do serviço cuidam da cascata e da revogação de acesso.
+- A API exige a senha atual para excluir a própria conta. A exclusão lógica preserva vínculos, limpa os dados pessoais do registro principal e libera o e-mail original; os snapshots históricos permanecem na auditoria. As operações do serviço cuidam da cascata e da revogação de acesso.
 - Sem aceite da versão legal atual, os recursos protegidos retornam `428`; se a versão mudar durante a leitura, o aceite retorna `409`. Perfil, segurança, exclusão, documentos e saída continuam acessíveis. O aceite registra concordância com os Termos e ciência da Política, não um consentimento genérico para qualquer tratamento de dados.
 
 ### Produção
@@ -208,7 +211,9 @@ Use o perfil `prod` com PostgreSQL, Redis e HTTPS. Configure `RESEND_API_KEY` e 
 
 Configure `APP_PUBLIC_BASE_URL` como a origem pública do backend e `APP_CORS_ALLOWED_ORIGIN` como a origem pública da SPA quando forem diferentes. O perfil ativa cookies `Secure`, habilita TLS no Redis por padrão e desativa Swagger e `/v3/api-docs`.
 
-O esquema das entidades usa `ddl-auto=update`. A inicialização também executa o [SQL auxiliar](src/main/resources/schema-postgresql.sql), a [estrutura imutável dos documentos legais](src/main/resources/legal-history-postgresql.sql) e a [ordenação das aulas legadas](src/main/resources/lesson-order-postgresql.sql). Faça backup antes de mudanças de esquema e preserve os dados existentes. Veja os guias de [documentos legais](docs/documentos-legais.md) e [ordenação e perguntas](docs/questions.md). As opções de publicação da SPA e do proxy estão no [README do frontend](frontend/investirMais/README.md#publicação).
+O esquema das entidades usa `ddl-auto=update`. A inicialização também executa o [SQL auxiliar](src/main/resources/schema-postgresql.sql) e a [estrutura imutável dos documentos legais](src/main/resources/legal-history-postgresql.sql). Faça backup antes de mudanças de esquema e preserve os dados existentes. Veja os guias de [documentos legais](docs/documentos-legais.md) e [ordenação e perguntas](docs/questions.md). As opções de publicação da SPA e do proxy estão no [README do frontend](frontend/investirMais/README.md#publicação).
+
+A inicialização não adapta esquemas legados nem realinha sequências antigas. Para reutilizar um banco existente, faça backup e prepare a migração necessária antes de executar esta versão; recrie o banco somente quando seus dados puderem ser descartados.
 
 ## Testes e verificações
 
@@ -229,7 +234,7 @@ A suíte inclui testes do fluxo de login com H2 e Redis simulado, além de teste
 - [Perguntas, progressão e ordem das aulas](docs/questions.md)
 - [Vídeos do YouTube e limites da validação](docs/video-validation.md)
 - [Publicação e versionamento dos documentos legais](docs/documentos-legais.md)
-- [Correção de identificadores da auditoria em bancos existentes](docs/auditoria-revisoes.md)
+- [Identificadores das revisões de auditoria](docs/auditoria-revisoes.md)
 - [Apresentação e roteiro dos slides](docs/apresentacao.md)
 - [Auditoria histórica de frontend e segurança](docs/auditoria-frontend-seguranca.md)
 - [Privacidade e dados pessoais](docs/lgpd/README.md)

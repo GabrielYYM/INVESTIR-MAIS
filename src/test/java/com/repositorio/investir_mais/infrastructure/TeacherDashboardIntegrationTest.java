@@ -1,6 +1,6 @@
 package com.repositorio.investir_mais.infrastructure;
 
-import com.repositorio.investir_mais.domain.LegalDocumentsService;
+import com.repositorio.investir_mais.domain.legal.service.LegalDocumentsService;
 import com.repositorio.investir_mais.domain.education.DTO.CourseDTO.CourseStats;
 import com.repositorio.investir_mais.domain.education.DTO.CourseDTO.Summary;
 import com.repositorio.investir_mais.domain.education.controller.CourseController;
@@ -218,7 +218,7 @@ class TeacherDashboardIntegrationTest extends PostgreSqlIntegrationTest {
         var account = new User();
         account.setName(name);
         account.setEmail(name + "@example.test");
-        account.setAge(25);
+
         account.setPassword("unused-test-password");
         account.setRole(role);
         account.setEmailVerified(true);

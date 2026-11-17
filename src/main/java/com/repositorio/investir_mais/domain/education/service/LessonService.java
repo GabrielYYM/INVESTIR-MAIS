@@ -43,7 +43,7 @@ public class LessonService {
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public LessonDTO.Response createLesson(UUID courseId, LessonDTO.Request request, String principalName) {
         Course course = courseService.findCourseOwnedBy(courseId, principalName);
-        var video = YouTubeVideoUrl.parse(request.mediaUrl());
+        var video = LessonVideo.parse(request.mediaUrl());
 
         Lesson lesson = lessonMapper.toEntity(request);
         lesson.setCourse(course);
@@ -56,26 +56,17 @@ public class LessonService {
         return lessonMapper.toDTO(savedLesson);
     }
 
+    @PreAuthorize("isAuthenticated()")
     @Transactional(readOnly = true)
     public LessonDTO.Response getLessonForStudent(UUID lessonId, String email) {
-        Lesson lesson = findLessonOrThrow(lessonId);
-        if (!questionService.canPreview(lesson, email)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Acerte as perguntas e conclua o conteúdo anterior para avançar.");
-        }
-        return lessonMapper.toDTO(lesson);
+        return lessonMapper.toDTO(findLessonOrThrow(lessonId));
     }
 
+    @PreAuthorize("isAuthenticated()")
     @Transactional(readOnly = true)
     public Page<LessonDTO.Response> getLessonsForStudent(UUID courseId, Pageable pageable, String email) {
         pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by("position", "id"));
-        var result = lessonRepository.findAllByCourseId(courseId, pageable);
-        var accessible = result.stream().filter(l -> questionService.canPreview(l, email)).toList();
-        return result.map(lesson -> {
-            if (accessible.contains(lesson)) return lessonMapper.toDTO(lesson);
-
-            return new LessonDTO.Response(lesson.getId(), lesson.getTitle(), null, null, null,
-                    courseId, lesson.getPosition(), true);
-        });
+        return lessonRepository.findAllByCourseId(courseId, pageable).map(lessonMapper::toDTO);
     }
 
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
@@ -122,7 +113,7 @@ public class LessonService {
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public LessonDTO.Response updateLesson(UUID lessonId, LessonDTO.Request request, String principalName) {
         Lesson lesson = findLessonOwnedBy(lessonId, principalName);
-        var video = YouTubeVideoUrl.parse(request.mediaUrl());
+        var video = LessonVideo.parse(request.mediaUrl());
         lessonMapper.updateEntity(request, lesson);
         lesson.setMediaUrl(video.watchUrl());
         lesson.setThumbnailUrl(video.thumbnailUrl());
@@ -152,9 +143,6 @@ public class LessonService {
         courseService.findCourseForProgressUpdate(courseId);
         lessonRepository.findForUpdateById(lessonId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Aula não encontrada."));
-        if (completed) {
-            questionService.assertCanAccessLesson(lesson, student);
-        }
         student.enrollIn(course);
         student.setLessonCompleted(lesson, completed);
 

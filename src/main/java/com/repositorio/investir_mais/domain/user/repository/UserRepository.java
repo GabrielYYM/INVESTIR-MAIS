@@ -20,6 +20,10 @@ public interface UserRepository extends JpaRepository<User, UUID>, RevisionRepos
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<User> findForUpdateByEmail(String email);
 
+    // Token operations must serialize even when the account is logically deleted.
+    @Query(value = "SELECT id FROM tb_user WHERE email = :email FOR UPDATE", nativeQuery = true)
+    Optional<UUID> lockByEmailIncludingDeleted(@Param("email") String email);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<User> findForUpdateById(UUID id);
 

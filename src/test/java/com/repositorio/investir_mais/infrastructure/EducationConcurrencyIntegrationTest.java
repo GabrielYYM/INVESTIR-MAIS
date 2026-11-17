@@ -46,7 +46,7 @@ class EducationConcurrencyIntegrationTest extends PostgreSqlIntegrationTest {
         var owner = new User();
         owner.setName("Professor de teste");
         owner.setEmail(EMAIL);
-        owner.setAge(28);
+
         owner.setPassword("unused-test-password");
         owner.setRole(UserRole.TEACHER);
         owner.setEmailVerified(true);

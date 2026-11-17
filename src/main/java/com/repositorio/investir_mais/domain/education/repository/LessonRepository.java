@@ -23,21 +23,10 @@ public interface LessonRepository extends JpaRepository<Lesson, UUID> {
 
     long countByCourseId(UUID courseId);
 
-    @Query(value = """
-            select l.id
-            from tb_lesson_progress p
-            join tb_lesson l on l.id = p.lesson_id
-            where p.student_id = :studentId and l.course_id = :courseId
-              and l.deleted_at is null and p.completed = true
-              and not exists (
-                  select 1 from tb_question q
-                  where q.course_id = l.course_id and q.deleted_at is null and q.after_lesson < l.position
-                    and not exists (select 1 from tb_question_pass a
-                                    where a.question_id = q.id and a.student_id = p.student_id)
-              )
-            """, nativeQuery = true)
+    @Query("select l.id from User u join u.lessonProgress p join Lesson l on l.id = key(p).id where u.id = :studentId and l.course.id = :courseId and p.completed = true")
     List<UUID> findCompletedLessonIds(UUID studentId, UUID courseId);
 
+    // Includes deleted lessons to avoid reusing their positions.
     @Query(value = "select coalesce(max(position), 0) + 1 from tb_lesson where course_id = :courseId", nativeQuery = true)
     int nextPosition(UUID courseId);
 
@@ -46,13 +35,9 @@ public interface LessonRepository extends JpaRepository<Lesson, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     List<Lesson> findForUpdateByCourseIdOrderByPositionAscIdAsc(UUID courseId);
 
-    @Query(value = "select count(*) from tb_question where course_id = :courseId and deleted_at is null", nativeQuery = true)
+    @Query("select count(q) from Question q where q.course.id = :courseId")
     long countQuestions(UUID courseId);
 
-    @Query(value = """
-            select count(*) from tb_question q where q.course_id = :courseId and q.deleted_at is null
-              and exists(select 1 from tb_question_pass a
-                         where a.question_id = q.id and a.student_id = :studentId)
-            """, nativeQuery = true)
+    @Query("select count(q) from Question q where q.course.id = :courseId and exists (select u.id from User u join u.passedQuestionIds p where u.id = :studentId and p = q.id)")
     long countPassedQuestions(UUID courseId, UUID studentId);
 }

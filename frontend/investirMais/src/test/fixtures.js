@@ -1,8 +1,6 @@
 export const student = {
   id: "11111111-1111-4111-8111-111111111111",
   name: "Ana Teste",
-  age: 25,
-  birthDate: "2000-01-15",
   email: "ana@example.test",
   role: "STUDENT",
 };
@@ -20,6 +18,7 @@ export const course = {
 export const lesson = {
   id: "33333333-3333-4333-8333-333333333333",
   courseId: course.id,
+  position: 1,
   title: "Primeiros passos",
   description: "Conheça os fundamentos da renda fixa.",
   mediaUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
@@ -29,6 +28,7 @@ export const lesson = {
 export const otherLesson = {
   ...lesson,
   id: "44444444-4444-4444-8444-444444444444",
+  position: 2,
   title: "Reserva de emergência",
 };
 

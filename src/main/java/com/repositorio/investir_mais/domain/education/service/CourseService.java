@@ -42,6 +42,7 @@ public class CourseService {
         User professor = userService.findByEmail(principalName);
         Course course = courseMapper.toEntity(request);
         course.setProfessor(professor);
+        if (course.getCategory() == null || course.getCategory().isBlank()) course.setCategory("Geral");
         if (request.questions() != null) {
             request.questions().forEach(q -> course.getQuestions().add(
                     questionMapper.toEntity(course, q)));
@@ -65,6 +66,22 @@ public class CourseService {
     @Transactional(readOnly = true)
     public Page<CourseDTO.Response> getAllCourses(Pageable pageable) {
         return courseRepository.findAll(pageable).map(courseMapper::toDTO);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<CourseDTO.Response> search(String query, String category, Pageable pageable) {
+        if (pageable.getSort().stream().anyMatch(order -> !java.util.Set.of("name", "id", "createdAt").contains(order.getProperty()))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ordenação inválida.");
+        }
+        return courseRepository.findAll((root, criteria, cb) -> {
+            var predicates = new java.util.ArrayList<jakarta.persistence.criteria.Predicate>();
+            if (query != null && !query.isBlank()) {
+                String term = "%" + query.toLowerCase(java.util.Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
+                predicates.add(cb.or(cb.like(cb.lower(root.get("name")), term, '\\'), cb.like(cb.lower(root.get("keywords")), term, '\\')));
+            }
+            if (category != null && !category.isBlank()) predicates.add(cb.equal(cb.lower(root.get("category")), category.toLowerCase(java.util.Locale.ROOT)));
+            return cb.and(predicates.toArray(jakarta.persistence.criteria.Predicate[]::new));
+        }, pageable).map(courseMapper::toDTO);
     }
 
     @Transactional(readOnly = true)
@@ -148,6 +165,7 @@ public class CourseService {
         }
         Course course = findCourseOwnedBy(courseId, principalName);
         courseMapper.updateEntity(request, course);
+        if (course.getCategory() == null || course.getCategory().isBlank()) course.setCategory("Geral");
         
         log.info("Curso atualizado com sucesso. ID: {}", course.getId());
         return courseMapper.toDTO(course);
@@ -170,6 +188,17 @@ public class CourseService {
             log.warn("Acesso negado: Usuário {} tentou modificar o curso {} pertencente ao professor {}", 
                 professor.getId(), courseId, course.getProfessor().getId());
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não tem permissão para alterar este curso.");
+        }
+        return course;
+    }
+
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
+    @Transactional(readOnly = true)
+    public Course getCourseForTeacher(UUID courseId, String email) {
+        User user = userService.findByEmail(email);
+        Course course = findCourseOrThrow(courseId);
+        if (user.getRole() != UserRole.ADMIN && !course.getProfessor().getId().equals(user.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não tem acesso aos dados deste curso.");
         }
         return course;
     }

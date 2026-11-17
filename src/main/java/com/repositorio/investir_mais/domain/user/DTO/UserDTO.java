@@ -3,7 +3,6 @@ package com.repositorio.investir_mais.domain.user.DTO;
 import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -11,22 +10,16 @@ import jakarta.validation.constraints.Size;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.LocalDate;
 import java.util.UUID;
 
 public class UserDTO {
 
     @Schema(description = "Dados para cadastro de um novo usuário")
     public record Request(
-        @Schema(description = "Nome completo do usuário", example = "Usuario da Silva")
-        @NotBlank(message = "O nome é obrigatório")
-        @Size(min = 2, max = 100, message = "O nome deve ter entre 2 e 100 caracteres")
+        @Schema(description = "Apelido do usuário", example = "Investidor")
+        @NotBlank(message = "O apelido é obrigatório")
+        @Size(min = 2, max = 100, message = "O apelido deve ter entre 2 e 100 caracteres")
         String name,
-
-        @Schema(description = "Data de nascimento do usuário", example = "2000-01-15")
-        @NotNull(message = "A data de nascimento é obrigatória")
-        @PastOrPresent(message = "A data de nascimento não pode estar no futuro")
-        LocalDate birthDate,
 
         @Schema(description = "Endereço de e-mail único", example = "usuario@gmail.com")
         @NotBlank(message = "O e-mail é obrigatório")
@@ -46,9 +39,9 @@ public class UserDTO {
 
     @Schema(description = "Dados para atualização de perfil")
     public record UpdateProfileRequest(
-        @Schema(description = "Nome do usuário", example = "Usuario da Silva")
-        @NotBlank(message = "O nome é obrigatório")
-        @Size(min = 2, max = 100, message = "O nome deve ter entre 2 e 100 caracteres")
+        @Schema(description = "Apelido do usuário", example = "Investidor")
+        @NotBlank(message = "O apelido é obrigatório")
+        @Size(min = 2, max = 100, message = "O apelido deve ter entre 2 e 100 caracteres")
         String name,
         
         @Schema(description = "Novo endereço de e-mail", example = "usuario@gmail.com")
@@ -57,10 +50,6 @@ public class UserDTO {
         @Size(max = 254)
         String email,
         
-        @Schema(description = "Data de nascimento do usuário", example = "2000-01-15")
-        @PastOrPresent(message = "A data de nascimento não pode estar no futuro")
-        LocalDate birthDate,
-
         @Schema(description = "Senha atual para confirmar a alteração do perfil")
         @NotBlank(message = "A senha atual é obrigatória")
         @Size(max = 4096)
@@ -80,14 +69,8 @@ public class UserDTO {
         @Schema(description = "Identificador único (UUID)", example = "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d")
         UUID id,
 
-        @Schema(description = "Nome do usuário", example = "Usuario da Silva")
+        @Schema(description = "Apelido do usuário", example = "Investidor")
         String name,
-
-        @Schema(description = "Idade do usuário", example = "22")
-        Integer age,
-
-        @Schema(description = "Data de nascimento do usuário, ausente em contas antigas", example = "2000-01-15")
-        LocalDate birthDate,
 
         @Schema(description = "E-mail cadastrado", example = "usuario@gmail.com")
         String email,

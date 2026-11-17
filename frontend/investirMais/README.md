@@ -62,7 +62,7 @@ Reutilize os dados de `src/test/fixtures.js` e as respostas padrão de `src/test
 
 A saída é uma ação em `/sair`, que chama `POST /auth/logout`.
 
-O layout autenticado carrega a identidade por `GET /auth/me`. Se o backend responder `401` ou `403`, o React Router envia o usuário ao login com o caminho de retorno. Alunos consultam o catálogo, matriculam-se e avançam ao concluir aulas e acertar perguntas. Professores gerenciam os próprios cursos, aulas, perguntas e ordem das aulas. Administradores gerenciam todo o catálogo e também podem ordenar as aulas. As permissões são verificadas pelo backend. A promoção a professor exige nascimento informado e idade mínima de 18 anos; o painel não concede nem altera o papel ADMIN.
+O layout autenticado carrega a identidade por `GET /auth/me`. Se o backend responder `401` ou `403`, o React Router envia o usuário ao login com o caminho de retorno. Alunos consultam o catálogo, matriculam-se e avançam ao concluir aulas e acertar perguntas. Professores gerenciam os próprios cursos, aulas, perguntas e ordem das aulas. Administradores gerenciam todo o catálogo e também podem ordenar as aulas. As permissões são verificadas pelo backend. A promoção a professor exige candidatura com documentos aprovada pelo administrador, sem idade mínima; o painel não concede nem altera o papel ADMIN.
 
 Antes de abrir os recursos da plataforma, o layout consulta `/api/legal/status`. Uma pendência leva a `/aceitar-documentos`, preservando o retorno interno. O backend também aplica a restrição com `428`; o aceite de uma versão que deixou de ser a atual retorna `409` e exige a leitura da nova versão. Perfil, segurança, exclusão, documentos e saída permanecem disponíveis. Os textos, versões e aceites são consultados na API e persistidos no PostgreSQL. Veja o [guia de publicação](../../docs/documentos-legais.md).
 
@@ -96,7 +96,7 @@ O **React-admin** assume os formulários CRUD (`CreateBase`, `EditBase`, `Simple
 
 `dataProvider.js` concentra a adaptação dos recursos `courses`, `lessons`, `questions`, `users` e `audit` aos clientes gerados pelo Orval. Cursos e aulas usam a paginação da API. Usuários e auditoria são paginados e filtrados no cliente porque seus endpoints retornam listas completas. O histórico é produzido pelo Hibernate Envers no backend; o frontend apenas consulta e apresenta os snapshots.
 
-As validações de conta e educação são geradas em `src/generated/*.zod.ts` pelo Orval. Os schemas dos editores acrescentam mensagens em português e regras de apresentação. As alternativas são `options: string[]`, com 2 a 6 textos distintos e um `correctOptionIndex` a partir de zero. A posição da aula começa em 1; `afterLesson: 0` significa antes da primeira aula, e `position` da pergunta ordena perguntas no mesmo ponto a partir de zero. A ordenação envia a lista completa de IDs e preserva o vínculo das perguntas com as aulas. A aprovação e o bloqueio da próxima aula são responsabilidade do backend; as respostas marcadas e o número de tentativas não são persistidos.
+As validações de conta e educação são geradas em `src/generated/*.zod.ts` pelo Orval. Os schemas dos editores acrescentam mensagens em português e regras de apresentação. As alternativas são `options: string[]`, com 2 a 6 textos distintos e um `correctOptionIndex` a partir de zero. A posição da aula começa em 1; questões legadas com `afterLesson: 0` aparecem dentro da primeira aula, e `position` da pergunta ordena perguntas no mesmo ponto a partir de zero. A ordenação envia a lista completa de IDs e preserva o vínculo das perguntas com as aulas. Os vídeos são acessíveis em qualquer ordem; os pré-requisitos para responder às questões continuam sendo verificados pelo backend; as novas tentativas são persistidas para consulta do próprio aluno, enquanto o professor recebe taxas de acerto sem alternativas individuais.
 
 Os formulários de conta usam `accountSchema.js`, que reaproveita os schemas Zod gerados pelo Orval e acrescenta normalização, mensagens em português, aceite dos termos e confirmação de senha. Nome, e-mail e código são aparados; senhas mantêm seus espaços. `PasswordFields` compartilha os campos de nova senha e confirmação entre cadastro, recuperação e perfil. Os painéis do perfil mantêm as classes visuais originais, sem restaurar os antigos controladores e validações manuais.
 
@@ -136,7 +136,7 @@ Versione o contrato atualizado junto com a mudança da API. Depois, rode `npm ru
 
 ## Videoaulas
 
-Para cadastrar uma aula, o professor responsável ou ADMIN cola um link de vídeo do YouTube no formulário. São aceitos vídeos de qualquer canal. O arquivo continua hospedado no YouTube; não há upload de arquivos para a plataforma.
+Para cadastrar uma aula, o professor responsável ou ADMIN cola um link de vídeo do YouTube no formulário. São aceitos vídeos de qualquer canal. Também é possível enviar arquivos MP4, WebM ou MOV ao Cloudinary, quando configurado no backend; o formulário preenche a URL e o professor salva a aula.
 
 O frontend valida o formato do link. O backend valida novamente, normaliza a URL e gera a miniatura pelo ID do vídeo. Não há aprovação de canais, filtro de conteúdo, consulta de disponibilidade nem configuração de `YOUTUBE_API_KEY`. Quem publica deve conferir o conteúdo e a autorização de uso.
 
@@ -154,3 +154,12 @@ O player e a opção **Abrir no YouTube** dependem das condições do vídeo no 
 Se frontend e API usarem origens distintas dentro do mesmo site, configure `VITE_API_BASE_URL` no build e `APP_CORS_ALLOWED_ORIGIN` no backend com a origem exata da SPA. O navegador aplica as regras de envio do cookie `SameSite=Lax`. Os links de login e confirmação de e-mail usam `APP_CORS_ALLOWED_ORIGIN`.
 
 No proxy ou CDN, use HTTPS e configure HSTS, `X-Content-Type-Options: nosniff` e `Referrer-Policy: strict-origin-when-cross-origin`. Para uma CSP da SPA, uma base é `default-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; frame-src https://www.youtube-nocookie.com`. Inclua em `connect-src` a origem da API quando estiver em outro host. Teste a política em modo de relatório antes de aplicá-la. Limite os corpos de requisições na borda e exclua o parâmetro `token` dos logs de acesso de `/confirmar-email`.
+
+## Atualização de novembro de 2026
+
+As rotas `/cadastro-professor`, `/admin/professores`, `/admin/documentos` e
+`/admin/auditoria` oferecem candidatura com arquivos privados, análise administrativa,
+publicação de documentos e pesquisa de revisões. O painel separa matrículas,
+respostas próprias e cursos criados pelo professor. O catálogo filtra nome,
+palavras-chave, categoria e ordem por data. Questões aparecem dentro da aula.
+Consulte o [guia de configuração e limites](../../docs/atualizacao-plataforma.md).

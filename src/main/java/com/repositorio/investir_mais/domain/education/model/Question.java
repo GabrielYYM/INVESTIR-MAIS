@@ -1,5 +1,7 @@
 package com.repositorio.investir_mais.domain.education.model;
 
+import org.hibernate.envers.Audited;
+import org.hibernate.envers.NotAudited;
 import jakarta.persistence.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -10,6 +12,7 @@ import org.hibernate.annotations.SoftDelete;
 import org.hibernate.annotations.SoftDeleteType;
 import org.hibernate.type.SqlTypes;
 
+@Audited
 @Entity
 @Table(name = "tb_question")
 @SoftDelete(strategy = SoftDeleteType.TIMESTAMP, columnName = "deleted_at")
@@ -18,6 +21,7 @@ import org.hibernate.type.SqlTypes;
 public class Question {
     @Id @GeneratedValue
     private UUID id;
+    @NotAudited
     @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "course_id", nullable = false)
     private Course course;

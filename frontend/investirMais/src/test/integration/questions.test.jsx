@@ -79,20 +79,14 @@ describe("perguntas para professores", () => {
     await waitFor(() => expect(screen.queryByRole("heading", { name: question.prompt })).not.toBeInTheDocument());
   });
 
-  it("cadastra perguntas no mesmo pedido de criação do curso", async () => {
-    const payloads = [];
-    server.use(http.post(origin + "/api/courses", async ({ request }) => { payloads.push(await request.json()); return HttpResponse.json(course, { status: 201 }); }));
+  it("orienta criar questões dentro das aulas após criar o curso", async () => {
     const { user } = renderApp("/educacao", { session: teacher });
     await user.click(await screen.findByRole("button", { name: "Novo curso" }));
     const dialog = within(await screen.findByRole("dialog", { name: "Novo curso" }));
-    await user.type(dialog.getByLabelText("Nome do curso"), course.name);
-    await user.type(dialog.getByLabelText("Descrição"), course.description);
-    await user.click(dialog.getByRole("button", { name: "Adicionar pergunta" }));
-    await fillQuestion(user, dialog);
-    await user.click(dialog.getByRole("button", { name: "Salvar curso" }));
-    await screen.findByRole("heading", { name: course.name, level: 1 });
-    expect(payloads[0].questions).toEqual([{ prompt: question.prompt, afterLesson: 1, position: 0, options: question.options, correctOptionIndex: 0 }]);
+    expect(dialog.getByText(/cadastre as questões dentro de cada aula/)).toBeInTheDocument();
+    expect(dialog.queryByRole("button", { name: "Adicionar pergunta" })).not.toBeInTheDocument();
   });
+
   it.each([401, 409])("trata recusa da exclusão de pergunta (%i)", async status => {
     server.use(
       http.get(base + "/manage", () => HttpResponse.json([question])),
@@ -129,32 +123,16 @@ describe("perguntas para professores", () => {
     expect(dialog.getByLabelText("Enunciado")).toHaveValue(question.prompt);
   });
 
-  it("preserva os campos da segunda pergunta ao remover a primeira do curso", async () => {
-    const payloads = [];
-    server.use(http.post(origin + "/api/courses", async ({ request }) => {
-      payloads.push(await request.json()); return HttpResponse.json(course, { status: 201 });
-    }));
-    const { user } = renderApp("/educacao", { session: teacher });
-    await user.click(await screen.findByRole("button", { name: "Novo curso" }));
-    const dialog = within(await screen.findByRole("dialog", { name: "Novo curso" }));
-    await fillFields(user, { "Nome do curso": course.name, Descrição: course.description }, dialog);
-    await user.click(dialog.getByRole("button", { name: "Adicionar pergunta" }));
-    await fillQuestion(user, within(dialog.getByRole("group", { name: "Pergunta 1", exact: true })));
-    await user.click(dialog.getByRole("button", { name: "Adicionar pergunta" }));
-    const second = within(dialog.getByRole("group", { name: "Pergunta 2", exact: true }));
-    await fillQuestion(user, second);
-    await fillFields(user, { Enunciado: "Pergunta preservada?" }, second);
-    await user.click(second.getByRole("radio", { name: "Alternativa correta 2" }));
-    await user.click(dialog.getByRole("button", { name: "Remover pergunta 1" }));
-    expect(dialog.getByLabelText("Enunciado")).toHaveValue("Pergunta preservada?");
-    expect(dialog.getByRole("radio", { name: "Alternativa correta 2" })).toBeChecked();
-    await user.click(dialog.getByRole("button", { name: "Salvar curso" }));
-    await screen.findByRole("heading", { name: course.name, level: 1 });
-    expect(payloads[0].questions).toEqual([{ prompt: "Pergunta preservada?", afterLesson: 1, position: 1, options: question.options, correctOptionIndex: 1 }]);
+  it("mostra somente questões da aula selecionada", async () => {
+    server.use(http.get(base + "/manage", () => HttpResponse.json([question, { ...question, id: "outra", prompt: "Questão da segunda aula", afterLesson: 2 }])));
+    renderApp(coursePath, { session: teacher });
+    expect(await screen.findByRole("heading", { name: question.prompt })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Questão da segunda aula" })).not.toBeInTheDocument();
   });
+
 });
 
-function studentFlow({ enrolled = true, lockedUrl = false } = {}) {
+function studentFlow({ enrolled = true } = {}) {
   let passed = false; let joined = enrolled;
   const submissions = [];
   server.use(
@@ -163,9 +141,9 @@ function studentFlow({ enrolled = true, lockedUrl = false } = {}) {
     http.post(origin + "/api/courses/:id/enroll", () => { joined = true; return HttpResponse.json({ enrolled: true }, { status: 201 }); }),
     http.get(base, () => HttpResponse.json([{ ...question, correctOptionIndex: undefined, locked: false, passed }])),
     http.get(origin + "/api/lessons/course/:id", () => HttpResponse.json(paged([
-      { ...lesson, position: 1 }, { ...otherLesson, position: 2, locked: !passed, mediaUrl: passed ? otherLesson.mediaUrl : null },
+      { ...lesson, position: 1 }, { ...otherLesson, position: 2, locked: false },
     ], { size: 10 }))),
-    http.get(origin + "/api/lessons/:id", ({ params }) => params.id === otherLesson.id && !passed && lockedUrl ? HttpResponse.json({ detail: "Aula bloqueada" }, { status: 409 }) : HttpResponse.json({ ...(params.id === otherLesson.id ? otherLesson : lesson), position: params.id === otherLesson.id ? 2 : 1 })),
+    http.get(origin + "/api/lessons/:id", ({ params }) => HttpResponse.json({ ...(params.id === otherLesson.id ? otherLesson : lesson), position: params.id === otherLesson.id ? 2 : 1 })),
     http.post(base + "/:id/answers", async ({ request }) => {
       const body = await request.json(); submissions.push(body); passed = body.optionIndex === 0; return HttpResponse.json({ questionId: question.id, passed });
     }),
@@ -174,17 +152,17 @@ function studentFlow({ enrolled = true, lockedUrl = false } = {}) {
 }
 
 describe("perguntas para alunos", () => {
-  it("permite tentar após erro e libera a aula e o progresso depois do acerto", async () => {
+  it("mantém os vídeos livres e atualiza a questão e o progresso depois do acerto", async () => {
     const submissions = studentFlow();
     const { user } = renderApp(coursePath);
     await screen.findByRole("heading", { name: question.prompt });
     expect(screen.queryByRole("button", { name: "Nova pergunta" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: otherLesson.title })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: otherLesson.title })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Responder pergunta" })).toBeDisabled();
     await user.click(screen.getByRole("radio", { name: "CDB" }));
     await user.click(screen.getByRole("button", { name: "Responder pergunta" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Ainda não é a alternativa correta");
-    expect(screen.queryByRole("link", { name: otherLesson.title })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: otherLesson.title })).toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole("button", { name: "Responder pergunta" })).toBeEnabled());
     await user.click(screen.getByRole("radio", { name: "Tesouro Selic" }));
     await user.click(screen.getByRole("button", { name: "Responder pergunta" }));
@@ -203,11 +181,15 @@ describe("perguntas para alunos", () => {
     expect(await screen.findByRole("heading", { name: question.prompt })).toBeInTheDocument(); expect(getQuestions).toHaveBeenCalledOnce();
   });
 
-  it("trata endereço direto de aula bloqueada sem derrubar a página do curso", async () => {
-    studentFlow({ lockedUrl: true }); renderApp(coursePath + "/" + otherLesson.id);
-    expect(await screen.findByRole("heading", { name: "Aula bloqueada" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: question.prompt })).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Abrir no YouTube" })).not.toBeInTheDocument();
+  it("permite abrir diretamente outra videoaula sem acertar as questões anteriores", async () => {
+    const submissions = studentFlow();
+    const { user } = renderApp(coursePath + "/" + otherLesson.id);
+    expect(await screen.findByRole("heading", { name: otherLesson.title })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Abrir no YouTube" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: question.prompt })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("link", { name: lesson.title }));
+    expect(await screen.findByRole("heading", { name: question.prompt })).toBeInTheDocument();
+    expect(submissions).toHaveLength(0);
   });
 
   it("recupera falha de carregamento das perguntas preservando a aula", async () => {

@@ -33,8 +33,8 @@ public class CourseController {
 
     @Operation(summary = "Listar todos os cursos", description = "Retorna uma lista paginada com todos os cursos cadastrados.")
     @GetMapping
-    public Page<CourseDTO.Response> getAllCourses(@ParameterObject @PageableDefault(size = 10, sort = "name") Pageable pageable) {
-        return courseService.getAllCourses(pageable);
+    public Page<CourseDTO.Response> getAllCourses(@RequestParam(required = false) String query, @RequestParam(required = false) String category, @ParameterObject @PageableDefault(size = 10, sort = "name") Pageable pageable) {
+        return courseService.search(query, category, pageable);
     }
 
     @Operation(summary = "Obter curso por ID", description = "Retorna os detalhes de um curso específico.")

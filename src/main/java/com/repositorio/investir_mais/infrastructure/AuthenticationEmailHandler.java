@@ -1,17 +1,15 @@
 package com.repositorio.investir_mais.infrastructure;
 
 import com.repositorio.investir_mais.domain.AccountEmailRequested;
-import com.repositorio.investir_mais.domain.AccountSecurityService;
-import com.repositorio.investir_mais.infrastructure.config.WebApplicationProperties;
+import com.repositorio.investir_mais.domain.token.service.AccountSecurityService;
+import com.repositorio.investir_mais.config.WebApplicationProperties;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.modulith.events.FailedEventPublications;
 import org.springframework.modulith.events.ResubmissionOptions;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.util.Assert;
 import org.springframework.web.util.HtmlUtils;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -29,15 +27,12 @@ public class AuthenticationEmailHandler {
     private final Duration retryDelay;
 
     public AuthenticationEmailHandler(ResendEmailSender resend, WebApplicationProperties properties,
-            AccountSecurityService accountSecurity, FailedEventPublications publications,
-            @Value(RETRY_DELAY_PROPERTY) Duration retryDelay) {
-        Assert.isTrue(retryDelay.compareTo(Duration.ofSeconds(1)) >= 0,
-                "app.mail.retry-delay deve ser de pelo menos 1 segundo");
+            AccountSecurityService accountSecurity, FailedEventPublications publications) {
         this.resend = resend;
         this.properties = properties;
         this.accountSecurity = accountSecurity;
         this.publications = publications;
-        this.retryDelay = retryDelay;
+        this.retryDelay = properties.mail().retryDelay();
     }
 
     @ApplicationModuleListener

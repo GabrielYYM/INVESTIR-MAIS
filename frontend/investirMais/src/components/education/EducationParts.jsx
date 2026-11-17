@@ -1,17 +1,23 @@
+import CourseProgressBar from "./CourseProgressBar.jsx";
+import { useLearningCourses } from "../../services/learningQueries.js";
 import { ArrowLeft, ArrowRight, BookOpen, ChevronRight } from "lucide-react";
-import { Link, useLocation } from "react-router";
+import { Link, useLocation, useRouteLoaderData } from "react-router";
 import { pageHref } from "../../services/searchParams.js";
 
 export function CourseCard({ course }) {
+  const user = useRouteLoaderData("app");
+  const showProgress = user?.role === "STUDENT";
+  const learning = useLearningCourses(showProgress);
+  const progress = learning.data?.find(item => item.id === course.id);
   return (
     <Link to={"/educacao/" + course.id} className="panel group flex min-w-0 flex-col overflow-hidden transition-colors hover:border-brand/55">
       <div className="flex items-center gap-3 px-5 pt-5">
-        <span className="grid size-10 place-items-center rounded-xl bg-amber-500/20 text-amber-400"><BookOpen size={20} /></span>
-        <span className="eyebrow">Curso</span>
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-amber-500/20 text-amber-400"><BookOpen size={20} /></span>
+        <h3 className="min-w-0 font-bold break-words">{course.name}</h3>
       </div>
-      <div className="flex flex-1 flex-col p-5">
-        <h3 className="line-clamp-2 font-bold break-words">{course.name}</h3>
-        <p className="mt-2 mb-4 line-clamp-3 text-sm leading-relaxed break-words text-muted">{course.description}</p>
+      <div className="flex flex-1 flex-col p-5 pt-3">
+        <p className="mb-4 line-clamp-3 text-sm leading-relaxed break-words text-muted">{course.description}</p>
+        {showProgress && <div className="mb-4">{learning.isPending ? <p className="text-xs text-muted">Carregando progresso…</p> : learning.error ? <p className="text-xs text-muted">Progresso indisponível</p> : <CourseProgressBar value={progress?.progress_percentage} completed={progress?.completed} label={"Seu progresso em " + course.name} />}</div>}
         <span className="mt-auto inline-flex items-center gap-1.5 text-sm font-semibold text-brand">Ver curso <ChevronRight size={16} className="transition-transform group-hover:translate-x-0.5" /></span>
       </div>
     </Link>

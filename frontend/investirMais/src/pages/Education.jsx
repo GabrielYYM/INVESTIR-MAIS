@@ -1,6 +1,6 @@
 import { lazy, Suspense, useState } from "react";
 import { BookOpen, Plus } from "lucide-react";
-import { useLoaderData, useRouteLoaderData } from "react-router";
+import { useLoaderData, useRouteLoaderData, Form, useSearchParams } from "react-router";
 import { CourseCard, Pagination } from "../components/education/EducationParts.jsx";
 import PageHeader from "../components/layout/PageHeader.jsx";
 import EmptyState from "../components/ui/EmptyState.jsx";
@@ -12,6 +12,7 @@ export { catalogLoader } from "../services/educationData.js";
 
 export default function Education() {
   const page = useLoaderData();
+  const [search] = useSearchParams();
   const user = useRouteLoaderData("app");
   const [creating, setCreating] = useState(false);
   const canCreate = canManageEducation(user);
@@ -24,6 +25,12 @@ export default function Education() {
         actions={canCreate && <button className="button-primary" onClick={() => setCreating(true)}><Plus size={18} /> Novo curso</button>}
       />
 
+      <Form method="get" className="panel flex flex-wrap gap-4 p-5" key={search.toString()}>
+        <label>Nome ou palavra-chave<input className="block rounded border border-line bg-canvas p-2" name="busca" defaultValue={search.get("busca") || ""} maxLength={100} /></label>
+        <label>Categoria<input className="block rounded border border-line bg-canvas p-2" name="categoria" defaultValue={search.get("categoria") || ""} maxLength={100} /></label>
+        <label>Ordenar por<select className="block rounded border border-line bg-canvas p-2" name="ordem" defaultValue={search.get("ordem") || "name"}><option value="name">Nome</option><option value="newest">Mais recentes</option><option value="oldest">Mais antigos</option></select></label>
+        <button className="button-primary">Pesquisar cursos</button>
+      </Form>
       <section className="space-y-4" aria-labelledby="catalogo-titulo">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 id="catalogo-titulo" className="text-xl font-bold">Catálogo de cursos</h2>

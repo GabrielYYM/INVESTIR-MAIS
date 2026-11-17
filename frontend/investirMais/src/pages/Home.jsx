@@ -1,3 +1,4 @@
+import { StudentLearningDashboard, TeacherCourses } from "../components/education/LearningDashboard.jsx";
 import { useMemo } from "react";
 import { AlertCircle, ArrowRight, BookOpen, Calendar, ChevronRight, Filter, PlayCircle, Plus, RotateCcw, TrendingUp, Users } from "lucide-react";
 import { Button, LinearProgress, Stack, TextField, Typography } from "@mui/material";
@@ -144,7 +145,7 @@ function TeacherMetricsSection({ stats, period, setPeriod }) {
           caption="Alunos com matrículas"
         />
         <StatCard
-          label="Taxa de Conclusão"
+          label="Aulas concluídas (%)"
           value={`${stats.averageCompletionRate}%`}
           icon={TrendingUp}
           color="text-emerald-400"
@@ -192,7 +193,7 @@ function TeacherMetricsSection({ stats, period, setPeriod }) {
                 <DataTable.Col source="lessonsWatched" label="Aulas Assistidas" />
                 <DataTable.Col
                   source="completionRate"
-                  label="Taxa de Conclusão"
+                  label="Aulas concluídas (%)"
                   render={(course) => (
                     <Stack direction="row" spacing={1} sx={{ alignItems: "center", minWidth: 120 }}>
                       <LinearProgress sx={{ flex: 1 }} variant="determinate" value={Math.min(100, course.completionRate)} />
@@ -222,7 +223,7 @@ export default function Home() {
   const { page, teacherStats, teacherError } = useLoaderData();
   const user = useRouteLoaderData("app");
   const [period, setPeriod] = useQueryStates(periodParams, { shallow: false, history: "push" });
-  const firstName = user.name?.trim().split(/\s+/)[0] || "investidor";
+  const nickname = user.name?.trim() || "investidor";
   const isTeacherOrAdmin = user.role === "TEACHER" || user.role === "ADMIN";
   const showTeacherDashboard = isTeacherOrAdmin && Boolean(teacherStats);
 
@@ -242,11 +243,11 @@ export default function Home() {
       )}
 
       <PageHeader
-        title={`Olá, ${firstName}.`}
+        title={`Olá, ${nickname}.`}
         description={
           showTeacherDashboard
             ? user.role === "ADMIN"
-              ? "Visão global de métricas educacionais da plataforma. Acompanhe visualizações, matrículas e taxas de conclusão."
+              ? "Visão global de métricas educacionais da plataforma. Acompanhe visualizações, matrículas e conclusão de aulas."
               : "Acompanhe em tempo real o engajamento dos seus alunos, aulas assistidas e o desempenho dos seus cursos."
             : <>Bem-vindo ao <span className="font-semibold text-amber-400">Investir+</span>. Explore o catálogo de cursos sobre finanças.</>
         }
@@ -256,6 +257,8 @@ export default function Home() {
         <TeacherMetricsSection stats={teacherStats} period={period} setPeriod={setPeriod} />
       )}
 
+      {user.role === "TEACHER" && <TeacherCourses userId={user.id} />}
+      {["STUDENT", "TEACHER"].includes(user.role) && <StudentLearningDashboard />}
       <section className="space-y-4" aria-labelledby="educacao-titulo">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>

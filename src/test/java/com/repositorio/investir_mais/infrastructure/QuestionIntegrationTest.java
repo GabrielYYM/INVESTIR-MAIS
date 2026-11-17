@@ -1,6 +1,6 @@
 package com.repositorio.investir_mais.infrastructure;
 
-import com.repositorio.investir_mais.domain.LegalDocumentsService;
+import com.repositorio.investir_mais.domain.legal.service.LegalDocumentsService;
 import com.repositorio.investir_mais.domain.education.DTO.*;
 import com.repositorio.investir_mais.domain.education.model.*;
 import com.repositorio.investir_mais.domain.education.repository.*;
@@ -15,17 +15,14 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import javax.sql.DataSource;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.context.ActiveProfiles;
@@ -53,7 +50,6 @@ class QuestionIntegrationTest extends PostgreSqlIntegrationTest {
     @Autowired CourseRepository courses;
     @Autowired LessonRepository lessons;
     @Autowired QuestionRepository questions;
-    @Autowired DataSource dataSource;
     @Autowired EntityManager em;
     @Autowired JdbcTemplate jdbc;
     @Autowired LegalDocumentsService legal;
@@ -100,6 +96,25 @@ class QuestionIntegrationTest extends PostgreSqlIntegrationTest {
     }
 
     @Test
+    void videosCanBeOpenedAndCompletedOutOfOrderWhileQuestionsRemainRequired() throws Exception {
+        var question = create(1, 0);
+        mvc.perform(get("/api/lessons/" + second.getId()).with(as(student)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.locked").value(false))
+                .andExpect(jsonPath("$.mediaUrl").isNotEmpty());
+        mvc.perform(get("/api/lessons/course/" + course.getId()).with(as(student)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.content[0].locked").value(false))
+                .andExpect(jsonPath("$.content[1].locked").value(false))
+                .andExpect(jsonPath("$.content[1].mediaUrl").isNotEmpty());
+        progress(second, 200);
+        mvc.perform(get("/api/courses/" + course.getId() + "/progress").with(as(student)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.completedLessons").value(1))
+                .andExpect(jsonPath("$.totalQuestions").value(1)).andExpect(jsonPath("$.passedQuestions").value(0));
+        answer(question.id(), 0, 409);
+        mvc.perform(get(base()).with(as(student))).andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(question.id().toString()));
+    }
+
+    @Test
     void wrongAnswerStoresNothingAndCorrectAnswerStoresOnlyStudentAndQuestion() throws Exception {
         var q = create(1, 0);
         answer(q.id(), 0, 409);
@@ -107,8 +122,8 @@ class QuestionIntegrationTest extends PostgreSqlIntegrationTest {
         assertFalse(answer(q.id(), 1, 200).passed());
         assertFalse(answer(q.id(), 1, 200).passed());
         assertEquals(0, passCount());
-        progress(second, 409);
-        mvc.perform(get("/api/lessons/" + second.getId()).with(as(student))).andExpect(status().isConflict());
+        progress(second, 200);
+        mvc.perform(get("/api/lessons/" + second.getId()).with(as(student))).andExpect(status().isOk()).andExpect(jsonPath("$.locked").value(false)).andExpect(jsonPath("$.mediaUrl").isNotEmpty());
         mvc.perform(get(base()).with(as(student))).andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].correctOptionIndex").doesNotExist())
                 .andExpect(jsonPath("$[0].options[0]").value("Certa"));
@@ -129,7 +144,7 @@ class QuestionIntegrationTest extends PostgreSqlIntegrationTest {
         mvc.perform(put(base() + "/" + q.id()).with(as(teacher)).with(csrf()).contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(new QuestionDTO.Request("Pergunta alterada", 0, 0, List.of("A", "B"), 1))))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.correctOptionIndex").value(1));
-        assertEquals(1, passCount()); progress(first, 409);
+        assertEquals(1, passCount()); progress(first, 200);
         assertFalse(answer(q.id(), 0, 200).passed()); assertTrue(answer(q.id(), 1, 200).passed());
         progress(first, 200);
         mvc.perform(delete(base() + "/" + q.id()).with(as(teacher)).with(csrf())).andExpect(status().isNoContent());
@@ -247,29 +262,6 @@ class QuestionIntegrationTest extends PostgreSqlIntegrationTest {
         assertEquals(2, lessons.findById(second.getId()).orElseThrow().getPosition());
     }
 
-    @Test
-    void legacyMigrationBackfillsAlphabeticallyAndDoesNotResetSavedOrder() throws Exception {
-        first.setTitle("Zulu"); first.setPosition(0);
-        second.setTitle("Alpha"); second.setPosition(0);
-        var third = lesson(1);
-        var question = create(1, 1);
-        em.flush();
-        var migration = new ResourceDatabasePopulator(
-                new ClassPathResource("lesson-order-postgresql.sql"));
-        migration.execute(dataSource); em.clear();
-        assertEquals(List.of(second.getId(), first.getId(), third.getId()),
-                lessons.findAllByCourseIdOrderByPositionAscIdAsc(course.getId()).stream().map(Lesson::getId).toList());
-        assertEquals(3, questions.findById(question.id()).orElseThrow().getAfterLesson());
-
-        String orderPath = "/api/lessons/course/" + course.getId() + "/order";
-        mvc.perform(put(orderPath).with(as(teacher)).with(csrf()).contentType(MediaType.APPLICATION_JSON)
-                .content(json.writeValueAsString(new LessonDTO.OrderRequest(List.of(third.getId(), second.getId(), first.getId())))))
-                .andExpect(status().isNoContent());
-        em.flush(); em.clear(); migration.execute(dataSource); em.clear();
-        assertEquals(List.of(third.getId(), second.getId(), first.getId()),
-                lessons.findAllByCourseIdOrderByPositionAscIdAsc(course.getId()).stream().map(Lesson::getId).toList());
-        assertEquals(1, questions.findById(question.id()).orElseThrow().getAfterLesson());
-    }
     private QuestionDTO.TeacherQuestion create(int afterLesson, int position) throws Exception {
         var response = mvc.perform(post(base()).with(as(teacher)).with(csrf()).contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(request(afterLesson, position)))).andExpect(status().isCreated()).andReturn().getResponse();

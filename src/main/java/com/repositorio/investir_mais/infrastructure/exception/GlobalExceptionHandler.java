@@ -15,6 +15,11 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+    @ExceptionHandler(jakarta.validation.ConstraintViolationException.class)
+    public ProblemDetail handleInvalidParameters(jakarta.validation.ConstraintViolationException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Parâmetros de consulta inválidos.");
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
     public ProblemDetail handleAccessDenied(AccessDeniedException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, "Acesso negado.");

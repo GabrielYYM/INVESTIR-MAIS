@@ -1,10 +1,15 @@
-package com.repositorio.investir_mais.domain;
+package com.repositorio.investir_mais.domain.legal.service;
 
 import com.repositorio.investir_mais.domain.user.repository.UserRepository;
+import com.repositorio.investir_mais.domain.legal.model.*;
+import com.repositorio.investir_mais.domain.legal.repository.*;
+import com.repositorio.investir_mais.domain.legal.DTO.LegalDocumentDTO.*;
+import com.repositorio.investir_mais.domain.legal.mapper.LegalDocumentMapper;
+import jakarta.validation.Validator;
+import lombok.RequiredArgsConstructor;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -15,27 +20,20 @@ import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-import tools.jackson.databind.ObjectMapper;
 
+@org.springframework.modulith.NamedInterface("legal-service")
 @Service
+@RequiredArgsConstructor
 public class LegalDocumentsService {
-    public record Section(String heading, String content) {}
-    public record Document(String id, String label, String title, List<Section> sections) {}
-    public record Release(int version, LocalDate publishedOn, List<Document> documents) {}
-    public record Status(int currentVersion, boolean acceptanceRequired, Instant acceptedAt) {}
-    public record Acceptance(int version, Instant acceptedAt) {}
-
     private final JdbcClient jdbc;
+    private final LegalReleaseRepository releases;
+    private final LegalAcceptanceRepository acceptances;
     private final UserRepository users;
-    private final ObjectMapper json;
-
-    public LegalDocumentsService(JdbcClient jdbc, UserRepository users, ObjectMapper json) {
-        this.jdbc = jdbc;
-        this.users = users;
-        this.json = json;
-    }
+    private final LegalDocumentMapper mapper;
+    private final Validator validator;
 
     @Transactional
     public void publishBundledReleases() {
@@ -44,7 +42,7 @@ public class LegalDocumentsService {
             if (resources.length == 0) throw new IllegalStateException("Nenhum documento legal publicado.");
             var releases = new ArrayList<Release>();
             for (var resource : resources) {
-                releases.add(json.readValue(resource.getContentAsString(StandardCharsets.UTF_8), Release.class));
+                releases.add(mapper.fromContent(resource.getContentAsString(StandardCharsets.UTF_8)));
             }
             releases.sort(Comparator.comparingInt(Release::version));
             if (releases.stream().map(Release::version).distinct().count() != releases.size()) {
@@ -58,57 +56,70 @@ public class LegalDocumentsService {
     }
 
     private void validate(Release release) {
-        if (release.version() < 1 || release.publishedOn() == null || release.publishedOn().isAfter(LocalDate.now())
-                || release.documents() == null || release.documents().size() != 2
-                || !release.documents().stream().map(Document::id).collect(Collectors.toSet())
-                    .equals(Set.of("termos", "privacidade"))) {
-            throw new IllegalStateException("Versão legal inválida: " + release.version());
+        if (release == null || !validator.validate(release).isEmpty()) {
+            throw new IllegalStateException("Versão legal inválida.");
         }
-        for (var document : release.documents()) {
-            if (document.label() == null || document.label().isBlank() || document.title() == null || document.title().isBlank()
-                    || document.sections() == null || document.sections().isEmpty()
-                    || document.sections().stream().anyMatch(section -> section.heading() == null || section.heading().isBlank()
-                        || section.content() == null || section.content().isBlank())) {
-                throw new IllegalStateException("Documento legal incompleto: " + document.id());
-            }
+        if (release.documents().stream().map(Document::id).distinct().count() != release.documents().size()
+                || !release.documents().stream().map(Document::id).collect(Collectors.toSet())
+                    .containsAll(Set.of("termos", "privacidade"))) {
+            throw new IllegalStateException("Versão legal inválida: " + release.version());
         }
     }
 
     private void publish(Release release) {
-        String content = json.writeValueAsString(release);
+        String content = mapper.toContent(release);
         String hash = DigestUtils.sha256Hex(content);
-        jdbc.sql("""
-            INSERT INTO legal_document_release (version, published_on, content, content_hash)
-            VALUES (?, ?, ?, ?) ON CONFLICT (version) DO NOTHING
-            """).params(release.version(), release.publishedOn(), content, hash).update();
-        String persistedHash = jdbc.sql("SELECT content_hash FROM legal_document_release WHERE version = ?")
-                .param(release.version()).query(String.class).single();
+        releases.insertIfAbsent(release.version(), release.publishedOn(), content, hash);
+        String persistedHash = releases.findById(release.version()).orElseThrow().getContentHash();
         if (!hash.equals(persistedHash)) {
             throw new IllegalStateException("A versão legal " + release.version() + " já foi publicada. Crie uma nova versão.");
         }
     }
 
+    @Transactional
+    @PreAuthorize("hasRole('ADMIN')")
+    public Release publishNewRelease(Release release) {
+        try { validate(release); }
+        catch (IllegalStateException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Preencha a versão, data, termos, privacidade e seções dos documentos.");
+        }
+        jdbc.sql("LOCK TABLE legal_document_release IN EXCLUSIVE MODE").update();
+        if (release.version() != current().version() + 1) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Publique a próxima versão sequencial. Versões anteriores são imutáveis.");
+        }
+        if (mapper.toContent(release).length() > 1_000_000) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Os documentos excedem o limite de 1 MB.");
+        }
+        publish(release);
+        return release;
+    }
+
+    @Transactional(readOnly = true)
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<Release> releases() {
+        return releases.findAllByOrderByVersionDesc().stream()
+                .map(mapper::toDTO).toList();
+    }
+
     @Transactional(readOnly = true)
     public Release current() {
-        return json.readValue(jdbc.sql("SELECT content FROM legal_document_release ORDER BY version DESC LIMIT 1")
-                .query(String.class).single(), Release.class);
+        return mapper.toDTO(releases.findFirstByOrderByVersionDesc().orElseThrow());
     }
 
     @Transactional(readOnly = true)
     public Release release(int version) {
-        String content = jdbc.sql("SELECT content FROM legal_document_release WHERE version = ?").param(version)
-                .query(String.class).optional()
+        String content = releases.findById(version).map(LegalRelease::getContent)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Versão não encontrada."));
-        return json.readValue(content, Release.class);
+        return mapper.fromContent(content);
     }
 
     @Transactional(readOnly = true)
     public Status status(String email) {
         var user = users.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
-        int currentVersion = jdbc.sql("SELECT MAX(version) FROM legal_document_release").query(Integer.class).single();
-        var acceptedAt = jdbc.sql("SELECT accepted_at FROM legal_document_acceptance WHERE user_id = ? AND version = ?")
-                .params(user.getId(), currentVersion).query(Instant.class).optional();
+        int currentVersion = releases.findFirstByOrderByVersionDesc().orElseThrow().getVersion();
+        var acceptedAt = acceptances.findById(new LegalAcceptance.Id(user.getId(), currentVersion))
+                .map(LegalAcceptance::getAcceptedAt);
         return new Status(currentVersion, acceptedAt.isEmpty(), acceptedAt.orElse(null));
     }
 
@@ -119,10 +130,10 @@ public class LegalDocumentsService {
         if (version != current().version()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Os documentos foram atualizados. Leia a nova versão antes de confirmar.");
         }
-        jdbc.sql("""
-            INSERT INTO legal_document_acceptance (user_id, version, accepted_at)
-            VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT (user_id, version) DO NOTHING
-            """).params(user.getId(), version).update();
+        var id = new LegalAcceptance.Id(user.getId(), version);
+        if (!acceptances.existsById(id)) {
+            acceptances.saveAndFlush(new LegalAcceptance(user.getId(), version, Instant.now()));
+        }
         return status(email);
     }
 
@@ -130,7 +141,7 @@ public class LegalDocumentsService {
     public List<Acceptance> history(String email) {
         var user = users.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
-        return jdbc.sql("SELECT version, accepted_at FROM legal_document_acceptance WHERE user_id = ? ORDER BY version DESC")
-                .param(user.getId()).query((rs, row) -> new Acceptance(rs.getInt("version"), rs.getTimestamp("accepted_at").toInstant())).list();
+        return acceptances.findByIdUserIdOrderByIdVersionDesc(user.getId()).stream()
+                .map(mapper::toDTO).toList();
     }
 }

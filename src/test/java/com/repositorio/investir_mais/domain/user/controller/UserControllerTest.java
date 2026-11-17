@@ -8,7 +8,6 @@ import com.repositorio.investir_mais.domain.user.repository.UserRepository;
 import com.repositorio.investir_mais.domain.user.service.UserService;
 import com.repositorio.investir_mais.infrastructure.exception.GlobalExceptionHandler;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -67,22 +66,6 @@ class UserControllerTest {
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 
     @Test
-    void registerUser_WithValidData_ShouldReturnGenericAcceptance() throws Exception {
-        UserDTO.Request requestDTO = new UserDTO.Request("Felipe", LocalDate.now().minusYears(22), "felipe@investir.com", "SenhaTeste1!", UserRole.STUDENT);
-        when(userService.registerUser(any(UserDTO.Request.class)))
-                .thenReturn(new DefaultOneTimeToken("registration-token", requestDTO.email(), Instant.now().plusSeconds(300)));
-
-        mockMvc.perform(post("/api/users/register")
-                .with(csrf())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(requestDTO)))
-                .andExpect(status().isAccepted())
-                .andExpect(jsonPath("$.message").isString())
-                .andExpect(jsonPath("$.email").doesNotExist())
-                .andExpect(jsonPath("$.token").doesNotExist());
-    }
-
-    @Test
     void deleteAccount_WithConfirmation_ShouldReturnNoContent() throws Exception {
         UUID id = UUID.randomUUID();
         var dto = new UserDTO.DeleteAccountRequest("current-password");
@@ -122,49 +105,10 @@ class UserControllerTest {
     }
 
     @Test
-    void forgotPassword_WithValidEmail_ShouldReturnOk() throws Exception {
-        AuthDTO.ForgotPasswordRequest dto = new AuthDTO.ForgotPasswordRequest("felipe@investir.com");
-
-        mockMvc.perform(post("/api/users/forgot-password")
-                .with(csrf())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(dto)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message", containsString("Se o e-mail existir na nossa base")));
-
-        verify(userService).forgotPassword(any(AuthDTO.ForgotPasswordRequest.class));
-    }
-
-    @Test
-    void resetPassword_WithValidData_ShouldReturnOk() throws Exception {
-        AuthDTO.ResetPasswordRequest dto = new AuthDTO.ResetPasswordRequest("token-123", "NovaSenha123!");
-
-        mockMvc.perform(post("/api/users/reset-password")
-                .with(csrf())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(dto)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Senha redefinida com sucesso!"));
-
-        verify(userService).resetPassword(any(AuthDTO.ResetPasswordRequest.class));
-    }
-
-    @Test
-    void resetPassword_WithInvalidData_ShouldReturnBadRequest() throws Exception {
-        AuthDTO.ResetPasswordRequest dto = new AuthDTO.ResetPasswordRequest("", "123");
-
-        mockMvc.perform(post("/api/users/reset-password")
-                .with(csrf())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(dto)))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
     void listAllUsers_ShouldReturnUsersList() throws Exception {
         UUID id = UUID.randomUUID();
         UserDTO.Response responseDTO = new UserDTO.Response(
-            id, "Admin", 30, null, "admin@investir.com", UserRole.ADMIN, true, LocalDateTime.now()
+            id, "Admin", "admin@investir.com", UserRole.ADMIN, true, LocalDateTime.now()
         );
         when(userService.listAllUsers()).thenReturn(List.of(responseDTO));
 
@@ -181,7 +125,7 @@ class UserControllerTest {
         UUID id = UUID.randomUUID();
         UserDTO.UpdateRoleRequest dto = new UserDTO.UpdateRoleRequest(UserRole.TEACHER);
         UserDTO.Response responseDTO = new UserDTO.Response(
-            id, "Felipe", 25, null, "felipe@investir.com", UserRole.TEACHER, true, LocalDateTime.now()
+            id, "Felipe", "felipe@investir.com", UserRole.TEACHER, true, LocalDateTime.now()
         );
         when(userService.updateUserRole(eq("admin@investir.com"), eq(id), eq(UserRole.TEACHER))).thenReturn(responseDTO);
 
@@ -200,7 +144,7 @@ class UserControllerTest {
     void getUserAuditHistory_ShouldReturnAuditList() throws Exception {
         UUID id = UUID.randomUUID();
         UserDTO.Response userSnapshot = new UserDTO.Response(
-            id, "Felipe", 25, null, "felipe@investir.com", UserRole.STUDENT, true, LocalDateTime.now()
+            id, "Felipe", "felipe@investir.com", UserRole.STUDENT, true, LocalDateTime.now()
         );
         UserDTO.AuditResponse auditDTO = new UserDTO.AuditResponse(1, Instant.now(), "INSERT", userSnapshot);
         when(userService.getUserAuditHistory(id)).thenReturn(List.of(auditDTO));

@@ -134,7 +134,6 @@ class LessonServiceTest {
         LessonDTO.Response responseDTO = new LessonDTO.Response(lessonId, "Aula 1", "Desc", "https://youtu.be/dQw4w9WgXcQ", "url_thumb", courseId);
         when(lessonRepository.findById(lessonId)).thenReturn(Optional.of(lesson));
         when(lessonMapper.toDTO(lesson)).thenReturn(responseDTO);
-        when(questionService.canPreview(lesson, "aluno@investir.com")).thenReturn(true);
 
         LessonDTO.Response result = lessonService.getLessonForStudent(lessonId, "aluno@investir.com");
 
@@ -150,7 +149,6 @@ class LessonServiceTest {
 
         when(lessonRepository.findAllByCourseId(courseId, pageable)).thenReturn(page);
         when(lessonMapper.toDTO(lesson)).thenReturn(responseDTO);
-        when(questionService.canPreview(lesson, "aluno@investir.com")).thenReturn(true);
 
         Page<LessonDTO.Response> result = lessonService.getLessonsForStudent(courseId, pageable, "aluno@investir.com");
 
@@ -287,7 +285,6 @@ class LessonServiceTest {
     @Test
     void studentReceivesStoredMediaWithoutExternalVideoApproval() {
         when(lessonRepository.findById(lessonId)).thenReturn(Optional.of(lesson));
-        when(questionService.canPreview(lesson, "student")).thenReturn(true);
         var response = new LessonDTO.Response(lessonId, "Aula", "Descrição",
                 "https://www.youtube.com/watch?v=dQw4w9WgXcQ", "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg", courseId);
         when(lessonMapper.toDTO(lesson)).thenReturn(response);

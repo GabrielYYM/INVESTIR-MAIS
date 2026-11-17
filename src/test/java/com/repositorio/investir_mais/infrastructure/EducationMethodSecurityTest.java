@@ -98,7 +98,7 @@ class EducationMethodSecurityTest {
         var failure = assertThrows(ResponseStatusException.class, write(operation));
         assertEquals(403, failure.getStatusCode().value());
         verify(courseRepository, never()).save(any());
-        verify(courseRepository, never()).delete(any());
+        verify(courseRepository, never()).delete(any(Course.class));
         verify(lessonRepository, never()).save(any());
         verify(lessonRepository, never()).delete(any());
         verifyNoInteractions(courseMapper, lessonMapper);

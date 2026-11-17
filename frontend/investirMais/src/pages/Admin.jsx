@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Button, CircularProgress, InputAdornment } from "@mui/material";
 import { History, Search, ShieldCheck, UserCheck, Users } from "lucide-react";
-import { DataTable, FilterLiveForm, ListBase, SelectInput, TextInput, useListContext, useRefresh } from "react-admin";
-import { Navigate, redirect, useLoaderData } from "react-router";
+import { DataTable, FilterLiveForm, ListBase, SelectInput, TextInput, useInput, useListContext, useRefresh } from "react-admin";
+import { Link, Navigate, redirect, useLoaderData } from "react-router";
 import { UpdateUserRoleBody } from "../generated/account.zod.ts";
 import { getCurrentUser } from "../services/authService.js";
 import { roleNames } from "../services/dataProvider.js";
@@ -40,15 +40,19 @@ function UserStats() {
   </section>;
 }
 function UserFilters() {
-  const { filterValues, setFilters } = useListContext();
-  return <div className="flex flex-wrap items-center gap-3">
-    <FilterLiveForm debounce={0}><TextInput source="q" label={false} fullWidth={false} className="admin-search" placeholder="Buscar por nome ou e-mail..." resettable helperText={false}
-      slotProps={{ htmlInput: { "aria-label": "Buscar por nome ou e-mail" }, input: { startAdornment: <InputAdornment position="start"><Search size={16} /></InputAdornment> } }} /></FilterLiveForm>
-    <div className="flex items-center gap-1 rounded-xl border border-line bg-canvas p-1 text-xs">
-      {[["ALL", "Todos"], ["ADMIN", "Admins"], ["TEACHER", "Professores"], ["STUDENT", "Alunos"]].map(([role, label]) =>
-        <button key={role} type="button" aria-pressed={(filterValues.role ?? "ALL") === role} onClick={() => setFilters({ ...filterValues, role: role === "ALL" ? undefined : role })}
-          className={`rounded-lg px-2.5 py-1.5 transition-colors ${(filterValues.role ?? "ALL") === role ? "bg-brand font-semibold text-zinc-900" : "text-muted hover:text-zinc-200"}`}>{label}</button>)}
-    </div>
+  return <FilterLiveForm debounce={false}><div className="flex flex-wrap items-center gap-3">
+    <TextInput source="q" label={false} fullWidth={false} className="admin-search" placeholder="Buscar por apelido ou e-mail..." resettable helperText={false}
+      slotProps={{ htmlInput: { "aria-label": "Buscar por apelido ou e-mail" }, input: { startAdornment: <InputAdornment position="start"><Search size={16} /></InputAdornment> } }} />
+    <UserRoleFilter />
+  </div></FilterLiveForm>;
+}
+function UserRoleFilter() {
+  const { field } = useInput({ source: "role", defaultValue: "" });
+  const selectedRole = field.value || "ALL";
+  return <div className="flex items-center gap-1 rounded-xl border border-line bg-canvas p-1 text-xs">
+    {[["ALL", "Todos"], ["ADMIN", "Admins"], ["TEACHER", "Professores"], ["STUDENT", "Alunos"]].map(([role, label]) =>
+      <button key={role} type="button" aria-pressed={selectedRole === role} onClick={() => field.onChange(role === "ALL" ? "" : role)}
+        className={`rounded-lg px-2.5 py-1.5 transition-colors ${selectedRole === role ? "bg-brand font-semibold text-zinc-900" : "text-muted hover:text-zinc-200"}`}>{label}</button>)}
   </div>;
 }
 function AuditDialog({ user, onClose }) {
@@ -66,7 +70,7 @@ function AuditTable() {
     <DataTable.Col source="timestamp" label="Data/Hora" render={row => formatDate(row.timestamp)} />
     <DataTable.Col source="operation" label="Operação" render={row => <span className={`rounded border px-2 py-0.5 text-xs ${operationBadges[row.operation] ?? "border-line text-muted"}`}>{operations[row.operation] ?? row.operation}</span>} />
     <DataTable.Col label="Antes" render={row => row.before ? <span className="text-xs text-muted">{row.before.name ?? "—"} {row.before.role ? <RoleBadge role={row.before.role} /> : null}</span> : "—"} />
-    <DataTable.Col label="Nome no Snapshot" render={row => row.user?.name ?? "—"} />
+    <DataTable.Col label="Apelido no Snapshot" render={row => row.user?.name ?? "—"} />
     <DataTable.Col label="Papel no Snapshot" render={row => row.user?.role ? <RoleBadge role={row.user.role} /> : "—"} />
   </DataTable><ResourcePagination /></div>;
 }
@@ -74,11 +78,7 @@ export default function Admin() {
   const { currentUser } = useLoaderData();
   const [editor, setEditor] = useState(null), [audited, setAudited] = useState(null), [feedback, setFeedback] = useState("");
   const refresh = useRefresh();
-  const promotionBlock = !editor?.birthDate
-    ? "Este usuário não tem data de nascimento cadastrada. Não é possível verificar a idade mínima para professor."
-    : editor.age < 18
-    ? "Este usuário não pode ser promovido a professor porque tem menos de 18 anos."
-    : "";
+  const promotionBlock = "A promoção a professor ocorre pela aprovação dos documentos em Candidaturas de professores.";
   return <div className="space-y-8"><h1 className="sr-only">Administração</h1>
     <ListBase resource="users" perPage={10} sort={{ field: "name", order: "ASC" }} disableAuthentication><UserListState>
       <UserStats />{feedback && <Notice>{feedback}</Notice>}
@@ -86,9 +86,8 @@ export default function Admin() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><h2 id="usuarios-titulo" className="text-lg font-bold">Usuários Cadastrados</h2>
           <p className="text-xs text-muted">Visualize a base de dados, altere papéis e consulte o histórico de auditoria.</p></div><UserFilters /></div>
         <div className="overflow-x-auto"><DataTable bulkActionButtons={false} rowClick={false} sx={{ minWidth: 720 }} empty={<p className="text-muted">Nenhum usuário encontrado com os filtros selecionados.</p>}>
-          <DataTable.Col source="name" label="Usuário" render={user => <><div className="flex items-center gap-2 font-semibold">{user.name} {user.id === currentUser.id && <span className="rounded bg-brand/20 px-1.5 py-0.5 text-xs text-brand">Você</span>}</div><div className="text-xs text-muted">{user.email}</div></>} />
+          <DataTable.Col source="name" label="Apelido" render={user => <><div className="flex items-center gap-2 font-semibold">{user.name} {user.id === currentUser.id && <span className="rounded bg-brand/20 px-1.5 py-0.5 text-xs text-brand">Você</span>}</div><div className="text-xs text-muted">{user.email}</div></>} />
           <DataTable.Col source="role" label="Papel" render={user => <RoleBadge role={user.role} />} />
-          <DataTable.Col source="age" label="Idade" render={user => user.age == null ? "—" : `${user.age} anos`} />
           <DataTable.Col source="createdAt" label="Data de Cadastro" render={user => formatDate(user.createdAt)} />
           <DataTable.Col label="Ações" align="right" render={user => <div className="inline-flex gap-2"><Button size="small" startIcon={<ShieldCheck size={14} />} disabled={user.role === "ADMIN"} onClick={() => setEditor(user)}>Alterar Papel</Button>
             <Button size="small" startIcon={<History size={14} />} onClick={() => setAudited(user)}>Auditoria</Button></div>} />
@@ -101,6 +100,7 @@ export default function Admin() {
       {promotionBlock && <Notice>{promotionBlock}</Notice>}
       <SelectInput source="role" label="Novo Papel" choices={[{ id: "STUDENT", name: "Aluno" }, { id: "TEACHER", name: "Professor", disabled: Boolean(promotionBlock) }]} />
     </CrudDialog>}
+    <nav className="flex flex-wrap gap-3" aria-label="Gestão da plataforma"><Link className="button-secondary" to="/admin/auditoria">Auditoria geral</Link><Link className="button-secondary" to="/admin/documentos">Documentos legais</Link><Link className="button-secondary" to="/admin/professores">Candidaturas de professores</Link></nav>
     {audited && <AuditDialog user={audited} onClose={() => setAudited(null)} />}
   </div>;
 }
