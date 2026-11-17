@@ -53,9 +53,8 @@ export default function SignUp() {
       <Field label="Apelido" icon={User} autoComplete="nickname" maxLength={100} placeholder="Ex: Investidor" error={errors.name?.message} {...form.register("name")} />
       <Field label="E-mail" icon={Mail} type="email" autoComplete="email" placeholder="seu.email@exemplo.com" error={errors.email?.message} {...form.register("email")} />
       <PasswordFields form={form} creating />
-      <label className="flex items-start gap-3 rounded-xl border border-line bg-canvas p-4 text-xs leading-relaxed text-muted">
-        <input type="checkbox" className="mt-0.5 size-4 shrink-0 accent-amber-500" {...form.register("acceptTerms")} />
-        <span>Concordo com os{" "}
+      <p className="rounded-xl border border-line bg-canvas p-4 text-xs leading-relaxed text-muted">
+        <span>Consulte os{" "}
           <button type="button" onClick={event => {
             event.preventDefault();
             setTermsModalTab("termos");
@@ -66,9 +65,8 @@ export default function SignUp() {
           }} className="font-semibold text-brand underline hover:text-amber-400">Política de Privacidade</button>{" "}
           do Investir Mais.
         </span>
-      </label>
-      {errors.acceptTerms && <p role="alert" className="text-sm text-negative">{errors.acceptTerms.message}</p>}
-      <p className="text-xs text-muted">Após verificar seu e-mail, você confirmará a versão vigente dos documentos. Essa confirmação ficará disponível no seu perfil.</p>
+      </p>
+      <p className="text-xs text-muted">Após verificar seu e-mail, você aceitará uma única vez a versão vigente dos documentos. O registro ficará disponível no seu perfil. Uma nova confirmação será solicitada somente se houver uma nova versão.</p>
       <SubmitButton loading={registration.isPending} loadingText="Criando conta…" fullWidth>Criar conta</SubmitButton>
     </form>}
     <p className="text-xs text-muted">Quer ser professor? Crie e confirme sua conta e envie seus documentos em <Link className="text-brand underline" to="/cadastro-professor">Cadastro de professor</Link>.</p>

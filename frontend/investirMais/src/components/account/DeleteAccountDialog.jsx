@@ -12,6 +12,7 @@ export default function DeleteAccountDialog({
   onClose
 }) {
   const [step, setStep] = useState(1);
+  const [immediately, setImmediately] = useState(false);
   const form = useForm({
     defaultValues: {
       consent: false,
@@ -30,7 +31,7 @@ export default function DeleteAccountDialog({
   }) => {
     if (!consent || step !== 2) return;
     try {
-      await deleteAccount(user.id, password);
+      await deleteAccount(user.id, password, immediately);
       await logout().catch(() => {});
       window.location.href = "/entrar?contaExcluida=true";
     } catch (error) {
@@ -46,12 +47,14 @@ export default function DeleteAccountDialog({
         <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-xs text-zinc-300 space-y-2 leading-relaxed">
           <p className="font-bold text-rose-300">Atenção às consequências da exclusão:</p>
           <ul className="list-disc list-inside space-y-1">
-            <li>Sua conta será desativada de forma definitiva</li>
+            <li>{immediately ? "Seus dados e conteúdos no banco ativo serão eliminados definitivamente, sem recuperação." : "Sua conta ficará bloqueada, com dados preservados para recuperação por 30 dias. Depois desse prazo, a eliminação definitiva será processada automaticamente."}</li>
             <li>Todas as sessões abertas em qualquer dispositivo serão desconectadas na hora.</li>
             <li>Seu progresso em cursos, matrículas e certificados serão tornados inacessíveis.</li>
-            <li>Você não poderá mais utilizar este e-mail para acessar a conta atual.</li>
+            <li>{immediately ? "O administrador não poderá restaurar esta conta." : "Para recuperar a conta dentro de 30 dias, solicite ao suporte: investirmaisinfo@gmail.com. O administrador verificará sua identidade antes de restaurar."}</li>
           </ul>
         </div>
+        <fieldset className="space-y-2"><legend>Como deseja encerrar a conta?</legend><label className="flex gap-2"><input type="radio" name="deletion-mode" checked={!immediately} onChange={() => setImmediately(false)} />Desativar com recuperação por 30 dias</label><label className="flex gap-2"><input type="radio" name="deletion-mode" checked={immediately} onChange={() => setImmediately(true)} />Solicitar eliminação definitiva agora</label></fieldset>
+        <p className="text-xs text-muted">A janela de 30 dias é uma política de recuperação, não um prazo obrigatório da LGPD. Registros sujeitos a obrigação legal específica podem ter guarda separada. Backups e serviços externos têm procedimentos próprios de eliminação.</p>
         <label className="flex items-start gap-3 p-3 rounded-xl border border-line bg-canvas cursor-pointer">
           <input type="checkbox" className="mt-0.5 size-4 accent-amber-500" {...form.register("consent")} />
           <span className="text-xs"><strong>1ª Confirmação:</strong> Li com atenção e tenho plena ciência de que minha conta será desativada e todo o meu acesso à plataforma será revogado.</span>
@@ -72,7 +75,7 @@ export default function DeleteAccountDialog({
           <div className="flex gap-2">
             <button type="button" disabled={busy} onClick={onClose} className="button-secondary">Cancelar</button>
             <SubmitButton variant="danger" loading={busy} disabled={!form.watch("password")} loadingText="Excluindo conta…" icon={Trash2} iconSize={14}>
-              Confirmar e Desativar Conta
+              {immediately ? "Confirmar eliminação definitiva" : "Confirmar e Desativar Conta"}
             </SubmitButton>
           </div>
         </div>

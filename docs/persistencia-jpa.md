@@ -23,7 +23,7 @@ Os novos mapeamentos usam as tabelas existentes. Esta refatoração não exige u
 | `LegalReleaseRepository.insertIfAbsent` | `ON CONFLICT DO NOTHING` mantém a publicação idempotente entre instâncias concorrentes sem atualizar versões protegidas por triggers. |
 | `LegalDocumentsService.publishNewRelease` | O bloqueio da tabela serializa a publicação da próxima versão. Um bloqueio de linha não protege sozinho a inserção de uma próxima versão ainda inexistente. |
 | `AuditController` | Consulta unificada de tabelas históricas do Envers com projeção JSON do PostgreSQL e remoção da senha, mantendo paginação global e o contrato da API. |
-| `User.@SQLDelete` / `@SQLRestriction` | Exclusão lógica com anonimização e filtragem automática dos usuários. |
+| `User.@SQLDelete` / `@SQLRestriction` | Exclusão lógica e filtragem automática. O serviço de desativação preserva dados para recuperação por 30 dias; a eliminação definitiva é um fluxo separado. |
 | `schema-postgresql.sql` e `legal-history-postgresql.sql` | Estrutura, índices e triggers de imutabilidade são responsabilidades do banco. |
 
 O login usa o `JdbcOneTimeTokenService` nativo do Spring Security para emissão, consumo e limpeza dos códigos. Não há entidade, repositório ou implementação própria para os códigos de login. Os filtros do Spring Security continuam validando os fatores e o vínculo com a sessão do navegador. A revogação por conta usa uma exclusão SQL na tabela nativa `one_time_tokens`, dentro da transação de alteração da conta; a tarefa existente de limpeza chama o serviço nativo.

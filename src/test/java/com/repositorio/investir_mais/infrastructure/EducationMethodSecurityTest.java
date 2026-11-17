@@ -78,7 +78,8 @@ class EducationMethodSecurityTest {
     void teacherCanWriteOwnResourcesThroughSpringProxy(String operation) {
         prepareResources(UserRole.TEACHER, true);
         assertDoesNotThrow(write(operation));
-        verify(users).findByEmail(EMAIL);
+        if (operation.equals("createCourse")) verify(users).findByEmailForUpdate(EMAIL);
+        else verify(users).findByEmail(EMAIL);
     }
 
     @ParameterizedTest
@@ -87,7 +88,8 @@ class EducationMethodSecurityTest {
     void administratorCanWriteOtherTeachersResources(String operation) {
         prepareResources(UserRole.ADMIN, false);
         assertDoesNotThrow(write(operation));
-        verify(users).findByEmail(EMAIL);
+        if (operation.equals("createCourse")) verify(users).findByEmailForUpdate(EMAIL);
+        else verify(users).findByEmail(EMAIL);
     }
 
     @ParameterizedTest
@@ -130,6 +132,7 @@ class EducationMethodSecurityTest {
         lesson.setId(LESSON_ID);
         lesson.setCourse(course);
         when(users.findByEmail(EMAIL)).thenReturn(user);
+        when(users.findByEmailForUpdate(EMAIL)).thenReturn(user);
         when(courseRepository.findForUpdateById(COURSE_ID)).thenReturn(Optional.of(course));
         when(lessonRepository.findForUpdateById(LESSON_ID)).thenReturn(Optional.of(lesson));
         when(lessonRepository.findByIdAndCourse_Professor_Id(LESSON_ID, user.getId()))

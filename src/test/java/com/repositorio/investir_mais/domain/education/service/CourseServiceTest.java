@@ -71,7 +71,7 @@ class CourseServiceTest {
         CourseDTO.Request request = new CourseDTO.Request("Finanças Pessoais", "Descrição do Curso");
         CourseDTO.Response responseDTO = new CourseDTO.Response(courseId, "Finanças Pessoais", "Descrição do Curso", professorId);
 
-        when(userService.findByEmail("prof@investir.com")).thenReturn(professor);
+        when(userService.findByEmailForUpdate("prof@investir.com")).thenReturn(professor);
         when(courseMapper.toEntity(request)).thenReturn(course);
         when(courseRepository.save(course)).thenReturn(course);
         when(courseMapper.toDTO(course)).thenReturn(responseDTO);

@@ -10,7 +10,6 @@ async function fillSignUp(user) {
     "Apelido": "  Ana Teste  ", "E-mail": student.email,
     Senha: "SenhaTeste1!", "Confirme a senha": "SenhaTeste1!",
   });
-  await user.click(screen.getByRole("checkbox"));
 }
 
 describe("cadastro", () => {
@@ -38,13 +37,13 @@ describe("cadastro", () => {
     expect(bodies[0].password).toBe(" SenhaTeste1! ");
   });
 
-  it("valida apelido, senha, confirmação e aceite antes de enviar", async () => {
+  it("valida o cadastro sem duplicar o aceite versionado dos documentos", async () => {
     const register = mockApi("post", "/api/users/register", {});
     const { user } = renderApp("/cadastro");
     await user.click(screen.getByRole("button", { name: "Criar conta" }));
     expect(await screen.findByText("Informe seu apelido.")).toBeInTheDocument();
     expect(screen.queryByLabelText("Data de nascimento")).not.toBeInTheDocument();
-    expect(screen.getByRole("alert")).toHaveTextContent("Aceite os termos para continuar.");
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
     await user.type(screen.getByLabelText("Senha", { exact: true }), "curta");
     await user.type(screen.getByLabelText("Confirme a senha"), "diferente");
     await user.click(screen.getByRole("button", { name: "Criar conta" }));

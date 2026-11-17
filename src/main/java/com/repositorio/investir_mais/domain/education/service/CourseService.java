@@ -4,6 +4,7 @@ import com.repositorio.investir_mais.domain.education.DTO.CourseDTO;
 import com.repositorio.investir_mais.domain.education.mapper.CourseMapper;
 import com.repositorio.investir_mais.domain.education.mapper.QuestionMapper;
 import com.repositorio.investir_mais.domain.education.model.Course;
+import com.repositorio.investir_mais.domain.education.model.CourseCategories;
 import com.repositorio.investir_mais.domain.education.repository.CourseRepository;
 import com.repositorio.investir_mais.domain.education.repository.LessonRepository;
 import com.repositorio.investir_mais.domain.user.model.User;
@@ -39,10 +40,10 @@ public class CourseService {
 
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public CourseDTO.Response createCourse(CourseDTO.Request request, String principalName) {
-        User professor = userService.findByEmail(principalName);
+        User professor = userService.findByEmailForUpdate(principalName);
         Course course = courseMapper.toEntity(request);
         course.setProfessor(professor);
-        if (course.getCategory() == null || course.getCategory().isBlank()) course.setCategory("Geral");
+        course.setCategory(CourseCategories.validate(request.category(), null));
         if (request.questions() != null) {
             request.questions().forEach(q -> course.getQuestions().add(
                     questionMapper.toEntity(course, q)));
@@ -164,8 +165,9 @@ public class CourseService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Altere perguntas pelas rotas de questions para preservar respostas existentes.");
         }
         Course course = findCourseOwnedBy(courseId, principalName);
+        String category = CourseCategories.validate(request.category(), course.getCategory());
         courseMapper.updateEntity(request, course);
-        if (course.getCategory() == null || course.getCategory().isBlank()) course.setCategory("Geral");
+        course.setCategory(category);
         
         log.info("Curso atualizado com sucesso. ID: {}", course.getId());
         return courseMapper.toDTO(course);

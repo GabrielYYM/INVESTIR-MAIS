@@ -38,6 +38,7 @@ public class UserService {
     private final UserMapper userMapper;
     private final AccountSecurityService accountSecurity;
     private final ApplicationEventPublisher events;
+    private final AccountDeletionService accountDeletions;
 
     @Transactional(readOnly = true)
     public User findByEmail(String email) {
@@ -109,12 +110,21 @@ public class UserService {
         }
         verifyCurrentPassword(user, dto.currentPassword());
 
-        teacherApplications.findByUserId(user.getId()).ifPresent(teacherApplications::delete);
-        userRepository.delete(user);
-        userRepository.flush();
+        accountDeletions.deactivate(user);
         accountSecurity.invalidateAll(user.getEmail());
         accountSecurity.revokeAllSessions(user.getEmail());
         log.info("Conta excluída logicamente com sucesso. Usuário ID: {}", user.getId());
+    }
+
+    public void eraseAccount(String principalName, UUID requestedId, UserDTO.DeleteAccountRequest dto) {
+        User user = findByEmailForUpdate(principalName);
+        if (!user.getId().equals(requestedId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não pode excluir outra conta.");
+        }
+        verifyCurrentPassword(user, dto.currentPassword());
+        accountSecurity.invalidateAll(user.getEmail());
+        accountSecurity.revokeAllSessions(user.getEmail());
+        accountDeletions.erase(requestedId, true);
     }
 
     public void updatePassword(String email, AuthDTO.UpdatePasswordRequest dto) {

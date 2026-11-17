@@ -33,7 +33,7 @@ import java.util.HashSet;
 @NamedInterface("user-model")
 @Entity
 @Table(name = "TB_USER")
-@SQLDelete(sql = "UPDATE tb_user SET deleted_at = CURRENT_TIMESTAMP, name = NULL, email = CONCAT('deleted-', id, '@deleted.invalid'), password = NULL, email_verified = false WHERE id = ? AND deleted_at IS NULL", verify = Expectation.RowCount.class)
+@SQLDelete(sql = "UPDATE tb_user SET deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND deleted_at IS NULL", verify = Expectation.RowCount.class)
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @Setter

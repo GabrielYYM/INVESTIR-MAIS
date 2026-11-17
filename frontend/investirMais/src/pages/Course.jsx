@@ -8,6 +8,7 @@ import { apiError } from "../services/api.js";
 import { canManageEducation } from "../services/educationData.js";
 import { pageHref } from "../services/searchParams.js";
 import { externalMediaUrl, youtubeVideo, cloudinaryVideo } from "../services/youtube.js";
+import ReportDialog from "../components/education/ReportDialog.jsx";
 import { Notice } from "../components/ui/PageState.jsx";
 import SubmitButton from "../components/ui/SubmitButton.jsx";
 import PageHeader from "../components/layout/PageHeader.jsx";
@@ -156,6 +157,7 @@ export default function Course() {
   const user = useRouteLoaderData("app");
   const canManage = canManageEducation(user, course);
   const [editor, setEditor] = useState(null);
+  const [reporting, setReporting] = useState(null);
   const [questionEditor, setQuestionEditor] = useState(null);
   const [ordering, setOrdering] = useState(false);
   const revalidator = useRevalidator();
@@ -207,6 +209,10 @@ export default function Course() {
       </div>}
     />
 
+    <div className="flex flex-wrap gap-3">
+      <button className="button-secondary" onClick={() => setReporting({ targetType: "TEACHER", targetId: course.professorId, title: "Professor responsável por " + course.name })}>Denunciar professor</button>
+      {lesson && <button className="button-secondary" onClick={() => setReporting({ targetType: "LESSON", targetId: lesson.id, title: lesson.title })}>Denunciar vídeo</button>}
+    </div>
     <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(18rem,0.62fr)]">
       <div className="min-w-0 space-y-5">
         {failure && <Notice error>{failure}</Notice>}
@@ -293,6 +299,7 @@ export default function Course() {
         <Pagination page={page} pathname={coursePath} />
       </section>
     </div>
+    {reporting && <ReportDialog key={reporting.targetType + reporting.targetId} {...reporting} courseId={course.id} onClose={() => setReporting(null)} />}
     {editor && canManage && <Suspense fallback={null}><EducationDialog {...editor} onClose={() => setEditor(null)} /></Suspense>}
     {ordering && canManage && <Suspense fallback={null}><LessonOrderDialog courseId={course.id} onClose={() => setOrdering(false)} /></Suspense>}
     {questionEditor && canManage && <Suspense fallback={null}><QuestionDialog {...questionEditor} onClose={() => setQuestionEditor(null)} /></Suspense>}

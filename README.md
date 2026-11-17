@@ -10,7 +10,7 @@ Veja a [atualização da plataforma](docs/atualizacao-plataforma.md) para candid
 
 | Área | O que está disponível |
 | --- | --- |
-| Conta | Cadastro de aluno com data de nascimento, confirmação de e-mail, login em duas etapas e recuperação de senha. O perfil permite alterar nome e nascimento com a senha atual, trocar a senha e excluir a conta. |
+| Conta | Cadastro de aluno, confirmação de e-mail, aceite versionado único, login em duas etapas e recuperação de senha. O perfil permite alterar apelido com senha atual, trocar a senha, desativar a conta por 30 dias ou solicitar eliminação definitiva. |
 | Painel | Entrada comum aos três perfis, com cursos em destaque e métricas para professores e administradores. |
 | Educação | Catálogo paginado, matrícula, videoaulas do YouTube, perguntas de múltipla escolha, progressão por aulas concluídas e perguntas aprovadas, e ordenação das aulas. |
 | Administração | Gestão de todo o catálogo, consulta de usuários e auditoria, e aprovação de candidaturas de professor com documentos privados, sem idade mínima. |
@@ -95,7 +95,7 @@ O [arquivo editável do Draw.io](docs/diagramas/investir-mais.drawio) reúne cin
 - Cada `Course` tem um usuário proprietário e pode ter zero ou mais aulas e perguntas. Cada `Lesson` pertence a exatamente um curso e guarda os endereços de mídia e miniatura.
 - `User` mantém matrículas por curso e progresso por aula como coleções de valores embutíveis. Os acertos são UUIDs em `passedQuestionIds`; as alternativas pertencem a `Question`.
 - Documentos e aceites ficam nas tabelas SQL `legal_document_release` e `legal_document_acceptance`, acessadas por JDBC e protegidas contra alterações.
-- A exclusão é lógica. Excluir um curso propaga a exclusão às aulas e perguntas. Excluir uma conta pelo serviço também exclui logicamente os cursos e aulas vinculados.
+- Cursos, aulas e questões usam exclusão lógica e podem ser restaurados pelo admin. Contas têm desativação recuperável por 30 dias ou eliminação definitiva mediante senha. Veja [denúncias e recuperação](docs/moderacao-e-recuperacao.md) e a [matriz de retenção](.lgpd/retention.md).
 
 [![Entidades de domínio, perfis, matrículas e progresso com atributos e cardinalidades](docs/diagramas/classes-de-dominio.png)](docs/diagramas/classes-de-dominio.png)
 
@@ -202,7 +202,7 @@ No perfil `dev`, o Swagger UI fica em [localhost:8080/swagger-ui.html](http://lo
 - O Redis indexa sessões por usuário para revogá-las após alterações de senha ou e-mail e após exclusão de conta.
 - O limite de autenticação usa Redis por IP e rota e também por conta em `/auth/login`. O padrão é 10 solicitações por janela de um minuto. O limite retorna `429` com `Retry-After`. Se o Redis estiver indisponível, o filtro retorna `503`.
 - Tokens de login usam `one_time_tokens`. Tokens de confirmação e recuperação ficam em `app_one_time_token`, com hash SHA-256 para novas emissões e consumo transacional. O Spring Modulith registra e reprocessa eventos de confirmação e recuperação. O e-mail de login segue o fluxo assíncrono da autenticação.
-- A API exige a senha atual para excluir a própria conta. A exclusão lógica preserva vínculos, limpa os dados pessoais do registro principal e libera o e-mail original; os snapshots históricos permanecem na auditoria. As operações do serviço cuidam da cascata e da revogação de acesso.
+- A API exige a senha atual para encerrar a própria conta. A desativação preserva dados, vínculos e o e-mail reservado durante 30 dias, com sessões/tokens revogados; o admin pode restaurar mediante solicitação verificada do titular. A eliminação definitiva remove dados e snapshots relacionados do banco ativo, sem restauração. Os 30 dias são uma política de recuperação, não um prazo da LGPD.
 - Sem aceite da versão legal atual, os recursos protegidos retornam `428`; se a versão mudar durante a leitura, o aceite retorna `409`. Perfil, segurança, exclusão, documentos e saída continuam acessíveis. O aceite registra concordância com os Termos e ciência da Política, não um consentimento genérico para qualquer tratamento de dados.
 
 ### Produção

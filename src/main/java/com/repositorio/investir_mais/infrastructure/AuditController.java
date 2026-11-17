@@ -16,7 +16,7 @@ import java.util.*;
 @RequiredArgsConstructor
 public class AuditController {
     private final JdbcClient jdbc;
-    private static final Map<String, String> TABLES = Map.of("users", "tb_user_audit", "courses", "tb_course_aud", "lessons", "tb_lesson_aud", "questions", "tb_question_aud");
+    private static final Map<String, String> TABLES = Map.of("users", "tb_user_audit", "courses", "tb_course_aud", "lessons", "tb_lesson_aud", "questions", "tb_question_aud", "reports", "tb_content_report_aud", "restorations", "tb_content_restoration_aud", "accounts", "account_deletion_aud");
 
     @GetMapping @Transactional(readOnly = true)
     public Map<String, Object> searchAudit(@RequestParam(required = false) String entity,

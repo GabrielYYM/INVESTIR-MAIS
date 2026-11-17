@@ -18,7 +18,6 @@ export const registrationSchema = confirmed(RegisterUserBody.omit({ role: true }
   name: trimmed(RegisterUserBody.shape.name),
   email: emailSchema.shape.email,
   password: password(RegisterUserBody.shape.password),
-  acceptTerms: z.literal(true, { error: "Aceite os termos para continuar." }),
 }), "password");
 export const profileSchema = UpdateProfileBody.omit({ email: true }).extend({
   name: trimmed(UpdateProfileBody.shape.name),

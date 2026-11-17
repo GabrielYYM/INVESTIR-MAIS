@@ -100,7 +100,7 @@ export default function Admin() {
       {promotionBlock && <Notice>{promotionBlock}</Notice>}
       <SelectInput source="role" label="Novo Papel" choices={[{ id: "STUDENT", name: "Aluno" }, { id: "TEACHER", name: "Professor", disabled: Boolean(promotionBlock) }]} />
     </CrudDialog>}
-    <nav className="flex flex-wrap gap-3" aria-label="Gestão da plataforma"><Link className="button-secondary" to="/admin/auditoria">Auditoria geral</Link><Link className="button-secondary" to="/admin/documentos">Documentos legais</Link><Link className="button-secondary" to="/admin/professores">Candidaturas de professores</Link></nav>
+    <nav className="flex flex-wrap gap-3" aria-label="Gestão da plataforma"><Link className="button-secondary" to="/admin/auditoria">Auditoria geral</Link><Link className="button-secondary" to="/admin/denuncias">Denúncias</Link><Link className="button-secondary" to="/admin/lixeira">Lixeira</Link><Link className="button-secondary" to="/admin/documentos">Documentos legais</Link><Link className="button-secondary" to="/admin/professores">Candidaturas de professores</Link></nav>
     {audited && <AuditDialog user={audited} onClose={() => setAudited(null)} />}
   </div>;
 }

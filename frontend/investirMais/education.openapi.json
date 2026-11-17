@@ -372,6 +372,200 @@
         }
       }
     },
+    "/api/trash/{entity}/{id}/restore": {
+      "post": {
+        "tags": [
+          "content-trash-controller"
+        ],
+        "operationId": "restoreTrashContent",
+        "parameters": [
+          {
+            "name": "entity",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/trash/accounts/{id}/restore": {
+      "post": {
+        "tags": [
+          "content-trash-controller"
+        ],
+        "operationId": "restoreDeletedAccount",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestoreAccount"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/reports": {
+      "get": {
+        "tags": [
+          "content-report-controller"
+        ],
+        "operationId": "listContentReports",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "OPEN",
+              "enum": [
+                "OPEN",
+                "RESOLVED",
+                "DISMISSED"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedModelContentReport"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "content-report-controller"
+        ],
+        "operationId": "submitContentReport",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContentReportSubmit"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentReportReceipt"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reports/{id}/review": {
+      "post": {
+        "tags": [
+          "content-report-controller"
+        ],
+        "operationId": "reviewContentReport",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContentReportReview"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentReport"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/lessons/{courseId}/{lessonId}/progress": {
       "post": {
         "tags": [
@@ -843,6 +1037,98 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/CourseProgressResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/trash": {
+      "get": {
+        "tags": [
+          "content-trash-controller"
+        ],
+        "operationId": "listTrashContent",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/trash/accounts": {
+      "get": {
+        "tags": [
+          "content-trash-controller"
+        ],
+        "operationId": "listRecoverableAccounts",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
                 }
               }
             }
@@ -1452,6 +1738,175 @@
           }
         }
       },
+      "RestoreAccount": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "ContentReportSubmit": {
+        "type": "object",
+        "properties": {
+          "targetType": {
+            "type": "string",
+            "enum": [
+              "LESSON",
+              "TEACHER"
+            ]
+          },
+          "targetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "INAPPROPRIATE",
+              "OFF_TOPIC",
+              "MISLEADING",
+              "HARASSMENT",
+              "COPYRIGHT",
+              "OTHER"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "courseId",
+          "description",
+          "reason",
+          "targetId",
+          "targetType"
+        ]
+      },
+      "ContentReportReceipt": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "RESOLVED",
+              "DISMISSED"
+            ]
+          }
+        }
+      },
+      "ContentReportReview": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "RESOLVED",
+              "DISMISSED"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 0
+          },
+          "removeLesson": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "note",
+          "status"
+        ]
+      },
+      "ContentReport": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reporterId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "targetType": {
+            "type": "string",
+            "enum": [
+              "LESSON",
+              "TEACHER"
+            ]
+          },
+          "targetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "targetLabel": {
+            "type": "string"
+          },
+          "mediaUrl": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "INAPPROPRIATE",
+              "OFF_TOPIC",
+              "MISLEADING",
+              "HARASSMENT",
+              "COPYRIGHT",
+              "OTHER"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "RESOLVED",
+              "DISMISSED"
+            ]
+          },
+          "reviewNote": {
+            "type": "string"
+          },
+          "reviewerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reviewedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "ProgressRequest": {
         "type": "object",
         "description": "Requisição para atualizar o progresso de uma aula",
@@ -1565,6 +2020,24 @@
           "size",
           "totalElements",
           "totalPages"
+        ]
+      },
+      "PagedModelContentReport": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContentReport"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageMetadata"
+          }
+        },
+        "required": [
+          "content",
+          "page"
         ]
       },
       "PagedModelLessonResponse": {

@@ -9,6 +9,8 @@ import com.repositorio.investir_mais.domain.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.security.core.context.SecurityContextHolder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -40,11 +42,25 @@ public class UserController {
         return userService.updateProfile(principal.getName(), id, dto);
     }
 
-    @Operation(summary = "Excluir a própria conta", description = "Exclui logicamente o usuário e seus cursos e aulas, preservando os registros. Exige a senha atual e encerra todas as sessões da conta.")
+    @Operation(summary = "Desativar a própria conta por 30 dias", description = "Bloqueia a conta, preserva dados para recuperação solicitada pelo titular e agenda eliminação definitiva após 30 dias. Exige senha atual e encerra sessões.")
     @DeleteMapping("/users/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteAccount(Principal principal, @PathVariable UUID id, @Valid @RequestBody UserDTO.DeleteAccountRequest dto) {
+    public void deleteAccount(Principal principal, @PathVariable UUID id, @Valid @RequestBody UserDTO.DeleteAccountRequest dto, HttpServletRequest request) {
         userService.deleteAccount(principal.getName(), id, dto);
+        endCurrentSession(request);
+    }
+
+    @Operation(summary = "Eliminar definitivamente a própria conta", description = "Elimina os dados da conta no banco ativo sem janela de recuperação. Exige senha atual. Irreversível.")
+    @PostMapping("/users/{id}/erasure") @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void eraseAccount(Principal principal, @PathVariable UUID id, @Valid @RequestBody UserDTO.DeleteAccountRequest dto, HttpServletRequest request) {
+        userService.eraseAccount(principal.getName(), id, dto);
+        endCurrentSession(request);
+    }
+
+    private void endCurrentSession(HttpServletRequest request) {
+        var session = request.getSession(false);
+        if (session != null) session.invalidate();
+        SecurityContextHolder.clearContext();
     }
 
     @Operation(summary = "Atualizar senha do usuário logado", description = "Permite alterar a senha mediante confirmação da senha atual.")

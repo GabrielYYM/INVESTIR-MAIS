@@ -5,6 +5,8 @@ import { apiClient, apiError } from "../services/api.js";
 import { Notice } from "../components/ui/PageState.jsx";
 import PageHeader from "../components/layout/PageHeader.jsx";
 import { TextField } from "@mui/material";
+import ModerationWorkspace from "./ModerationWorkspace.jsx";
+import TrashWorkspace from "./TrashWorkspace.jsx";
 
 function AuditWorkspace() {
   const [filters, setFilters] = useState({});
@@ -17,7 +19,7 @@ function AuditWorkspace() {
       for (const key of ["from", "to"]) if (values[key]) values[key] = new Date(values[key]).toISOString();
       setFilters(Object.fromEntries(Object.entries(values).filter(([, value]) => value))); setPage(0);
     }}>
-      <label>Entidade<select name="entity" className="block rounded border border-line bg-canvas p-2"><option value="">Todas</option>{[["users", "Usuários"], ["courses", "Cursos"], ["lessons", "Aulas"], ["questions", "Questões"]].map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+      <label>Entidade<select name="entity" className="block rounded border border-line bg-canvas p-2"><option value="">Todas</option>{[["users", "Usuários"], ["courses", "Cursos"], ["lessons", "Aulas"], ["questions", "Questões"], ["reports", "Denúncias"], ["restorations", "Restaurações de conteúdo"], ["accounts", "Desativações e recuperações de contas"]].map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
       <TextField name="entityId" label="ID do registro" size="small" />
       <TextField name="revision" label="Revisão" type="number" slotProps={{ htmlInput: { min: 1 } }} size="small" />
       <TextField name="actor" label="Usuário autor (e-mail)" type="email" size="small" />
@@ -92,5 +94,5 @@ function TeacherWorkspace() {
 export default function AdminWorkspace({ kind }) {
   const user = useRouteLoaderData("app");
   if (user.role !== "ADMIN") return <Navigate to="/" replace />;
-  return <><PageHeader title={({ audit: "Auditoria geral", legal: "Documentos legais", teachers: "Candidaturas de professores" })[kind]} /><Link className="button-secondary" to="/admin">Voltar à administração</Link>{kind === "audit" ? <AuditWorkspace /> : kind === "legal" ? <LegalWorkspace /> : <TeacherWorkspace />}</>;
+  return <><PageHeader title={({ audit: "Auditoria geral", legal: "Documentos legais", teachers: "Candidaturas de professores", reports: "Denúncias", trash: "Lixeira" })[kind]} /><Link className="button-secondary" to="/admin">Voltar à administração</Link>{kind === "audit" ? <AuditWorkspace /> : kind === "legal" ? <LegalWorkspace /> : kind === "reports" ? <ModerationWorkspace /> : kind === "trash" ? <TrashWorkspace /> : <TeacherWorkspace />}</>;
 }
