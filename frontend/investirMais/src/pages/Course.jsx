@@ -1,8 +1,8 @@
 import { CourseLearningDashboard } from "../components/education/LearningDashboard.jsx";
 import { ProgressTrack } from "../components/education/CourseProgressBar.jsx";
-import { ArrowLeft, CheckCircle2, CircleHelp, ExternalLink, Pencil, Play, Plus, Trash2, Video } from "lucide-react";
+import { ArrowLeft, CheckCircle2, ChevronDown, CircleHelp, ExternalLink, Pencil, Play, Plus, Trash2, Video } from "lucide-react";
 import { lazy, Suspense, useState } from "react";
-import { Radio, RadioGroup } from "@mui/material";
+import { Accordion, AccordionDetails, AccordionSummary, Radio, RadioGroup } from "@mui/material";
 import { Link, useFetcher, useLoaderData, useLocation, useNavigate, useRevalidator, useRouteLoaderData, NavLink } from "react-router";
 import { useUpdateLessonProgress } from "../generated/education.ts";
 import { apiError } from "../services/api.js";
@@ -66,15 +66,16 @@ function CourseQuestions({
   onEnroll
 }) {
   if (!canManage && !questions.length && !error && !needsEnrollment) return null;
-  return <section className="panel min-w-0 space-y-5 p-5 sm:p-6" aria-labelledby="perguntas-titulo" id="perguntas">
-      <header className="flex flex-wrap items-center justify-between gap-3">
+  return <Accordion defaultExpanded component="section" className="panel min-w-0" aria-labelledby="perguntas-titulo" id="perguntas">
+      <AccordionSummary expandIcon={<ChevronDown size={20} />}>
         <div>
           <p className="eyebrow">Pratique o que aprendeu</p>
           <h2 id="perguntas-titulo" className="mt-1 text-xl font-bold">Perguntas da aula</h2>
         </div>
-        {canManage && <button className="button-primary" onClick={() => onEdit({})}><Plus size={16} /> Nova pergunta</button>}
-      </header>
-      {error ? <div className="space-y-3"><Notice error>{error}</Notice><button className="button-secondary" disabled={loading} onClick={onRetry}>Tentar novamente</button></div> : needsEnrollment ? <div className="space-y-3"><p className="text-sm leading-relaxed text-muted">Entre no curso para responder às perguntas e acompanhar seu progresso.</p><SubmitButton type="button" loading={loading} loadingText="Entrando…" onClick={onEnroll}>Começar curso</SubmitButton></div> : questions.length ? <div className="space-y-4">{questions.map((question, index) => <article key={question.id} className="min-w-0 space-y-4 rounded-xl border border-line bg-raised p-4" aria-labelledby={"question-" + question.id}>
+      </AccordionSummary>
+      <AccordionDetails className="space-y-4">
+        {canManage && <div className="flex justify-end"><button type="button" className="button-primary" onClick={() => onEdit({})}><Plus size={16} /> Nova pergunta</button></div>}
+        {error ? <div className="space-y-3"><Notice error>{error}</Notice><button className="button-secondary" disabled={loading} onClick={onRetry}>Tentar novamente</button></div> : needsEnrollment ? <div className="space-y-3"><p className="text-sm leading-relaxed text-muted">Entre no curso para responder às perguntas e acompanhar seu progresso.</p><SubmitButton type="button" loading={loading} loadingText="Entrando…" onClick={onEnroll}>Começar curso</SubmitButton></div> : questions.length ? <div className="space-y-4">{questions.map((question, index) => <article key={question.id} className="min-w-0 space-y-4 rounded-xl border border-line bg-raised p-4" aria-labelledby={"question-" + question.id}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 space-y-2">
                   <p className="flex flex-wrap items-center gap-2 text-xs text-muted"><CircleHelp size={15} className="text-brand" /> Pergunta {index + 1}<span aria-hidden="true">·</span>{question.afterLesson === 0 ? "Antes da primeira aula" : "Após a aula " + question.afterLesson}</p>
@@ -91,7 +92,8 @@ function CourseQuestions({
                   {option === question.correctOptionIndex && <CheckCircle2 size={16} className="mt-0.5 shrink-0" />}<span className="min-w-0 break-words">{text}</span>{option === question.correctOptionIndex && <span className="sr-only"> (Correta)</span>}
                 </li>)}</ul> : <StudentQuestion key={JSON.stringify([question.prompt, question.options])} question={question} />}
             </article>)}</div> : <p className="text-sm text-muted">Adicione perguntas de múltipla escolha para os alunos praticarem durante o curso.</p>}
-    </section>;
+      </AccordionDetails>
+    </Accordion>;
 }
 function LessonPlayer({
   lesson,
