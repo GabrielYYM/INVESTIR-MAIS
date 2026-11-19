@@ -8,33 +8,6 @@ import { TextField } from "@mui/material";
 import ModerationWorkspace from "./ModerationWorkspace.jsx";
 import TrashWorkspace from "./TrashWorkspace.jsx";
 
-function AuditWorkspace() {
-  const [filters, setFilters] = useState({});
-  const [page, setPage] = useState(0);
-  const result = useQuery({ queryKey: ["global-audit", filters, page], queryFn: async () => (await apiClient.get("/api/audit", { params: { ...filters, page, size: 20 } })).data });
-  return <>
-    <p className="text-sm text-muted">Filtros de usuário e papel referem-se ao autor da alteração. Revisões antigas podem não informar o autor.</p>
-    <form className="panel flex flex-wrap gap-3 p-5" onSubmit={event => {
-      event.preventDefault(); const values = Object.fromEntries(new FormData(event.currentTarget));
-      for (const key of ["from", "to"]) if (values[key]) values[key] = new Date(values[key]).toISOString();
-      setFilters(Object.fromEntries(Object.entries(values).filter(([, value]) => value))); setPage(0);
-    }}>
-      <label>Entidade<select name="entity" className="block rounded border border-line bg-canvas p-2"><option value="">Todas</option>{[["users", "Usuários"], ["courses", "Cursos"], ["lessons", "Aulas"], ["questions", "Questões"], ["reports", "Denúncias"], ["restorations", "Restaurações de conteúdo"], ["accounts", "Desativações e recuperações de contas"]].map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-      <TextField name="entityId" label="ID do registro" size="small" />
-      <TextField name="revision" label="Revisão" type="number" slotProps={{ htmlInput: { min: 1 } }} size="small" />
-      <TextField name="actor" label="Usuário autor (e-mail)" type="email" size="small" />
-      <label>Papel do autor<select name="role" className="block rounded border border-line bg-canvas p-2"><option value="">Todos</option>{["ADMIN", "TEACHER", "STUDENT"].map(role => <option key={role}>{role}</option>)}</select></label>
-      <TextField name="from" label="Desde" type="datetime-local" slotProps={{ inputLabel: { shrink: true } }} size="small" />
-      <TextField name="to" label="Até" type="datetime-local" slotProps={{ inputLabel: { shrink: true } }} size="small" />
-      <button className="button-primary">Filtrar</button>
-    </form>
-    {result.isPending && <p>Carregando auditoria…</p>}{result.error && <Notice error>{apiError(result.error, "Não foi possível consultar a auditoria.")}</Notice>}
-    <p>{result.data?.totalItems ?? 0} registros</p>
-    {result.data?.items.map(row => <details key={row.entity + row.id + row.revision} className="panel p-4"><summary className="cursor-pointer">Rev. {row.revision} · {row.entity} · {({ 0: "Criação", 1: "Alteração", 2: "Exclusão" })[row.operation]} · {new Date(Number(row.timestamp)).toLocaleString("pt-BR")} · {row.actor || "Autor não registrado"} ({row.role || "—"})</summary><pre className="mt-3 overflow-auto whitespace-pre-wrap break-words text-xs">{JSON.stringify(JSON.parse(row.data), null, 2)}</pre></details>)}
-    <div className="flex gap-3"><button className="button-secondary" disabled={page === 0} onClick={() => setPage(page - 1)}>Anterior</button><span>Página {page + 1}</span><button className="button-secondary" disabled={!result.data || (page + 1) * 20 >= result.data.totalItems} onClick={() => setPage(page + 1)}>Próxima</button></div>
-  </>;
-}
-
 function LegalWorkspace() {
   const client = useQueryClient();
   const current = useQuery({ queryKey: ["legal-editor"], queryFn: async () => (await apiClient.get("/api/legal/current")).data });
@@ -94,5 +67,5 @@ function TeacherWorkspace() {
 export default function AdminWorkspace({ kind }) {
   const user = useRouteLoaderData("app");
   if (user.role !== "ADMIN") return <Navigate to="/" replace />;
-  return <><PageHeader title={({ audit: "Auditoria geral", legal: "Documentos legais", teachers: "Candidaturas de professores", reports: "Denúncias", trash: "Lixeira" })[kind]} /><Link className="button-secondary" to="/admin">Voltar à administração</Link>{kind === "audit" ? <AuditWorkspace /> : kind === "legal" ? <LegalWorkspace /> : kind === "reports" ? <ModerationWorkspace /> : kind === "trash" ? <TrashWorkspace /> : <TeacherWorkspace />}</>;
+  return <><PageHeader title={({ legal: "Documentos legais", teachers: "Candidaturas de professores", reports: "Denúncias", trash: "Lixeira" })[kind]} /><Link className="button-secondary" to="/admin">Voltar à administração</Link>{kind === "legal" ? <LegalWorkspace /> : kind === "reports" ? <ModerationWorkspace /> : kind === "trash" ? <TrashWorkspace /> : <TeacherWorkspace />}</>;
 }

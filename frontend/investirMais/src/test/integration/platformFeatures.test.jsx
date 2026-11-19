@@ -41,12 +41,13 @@ describe("novos fluxos da plataforma", () => {
   });
 
   it("filtra auditoria por revisão e autor", async () => {
+    mockApi("get", "/api/users", [adminUser]);
     const audit = mockApi("get", "/api/audit", ({ request }) => {
       const params = new URL(request.url).searchParams;
       if (params.get("revision")) { expect(params.get("revision")).toBe("42"); expect(params.get("actor")).toBe("admin@example.test"); }
       return { items: [], totalItems: 0 };
     });
-    const { user } = renderApp("/admin/auditoria", { session: adminUser });
+    const { user } = renderApp("/admin", { session: adminUser });
     await user.type(await screen.findByLabelText("Revisão"), "42");
     await user.type(screen.getByLabelText("Usuário autor (e-mail)"), "admin@example.test");
     await user.click(screen.getByRole("button", { name: "Filtrar" }));
@@ -79,7 +80,7 @@ describe("novos fluxos da plataforma", () => {
 
   it("não consulta auditoria quando o usuário é aluno", async () => {
     const audit = mockApi("get", "/api/audit", {});
-    const { router } = renderApp("/admin/auditoria");
+    const { router } = renderApp("/admin");
     await waitFor(() => expect(router.state.location.pathname).toBe("/")); expect(audit).not.toHaveBeenCalled();
   });
 });

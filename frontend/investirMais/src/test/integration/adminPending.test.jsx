@@ -49,7 +49,8 @@ describe("painel de pendências do admin", () => {
     const query = mockApi("get", "/api/admin/pending", { detail: "Resumo temporariamente indisponível." }, { status: 503 });
     const { user } = setup();
     expect(await screen.findByRole("alert")).toHaveTextContent("Resumo temporariamente indisponível.");
-    expect(await screen.findByText(student.email)).toBeInTheDocument();
+    expect(await screen.findByText(student.id)).toBeInTheDocument();
+    expect(screen.queryByText(student.email)).not.toBeInTheDocument();
     expect(screen.queryByText("Denúncias em análise")).not.toBeInTheDocument();
     mockApi("get", "/api/admin/pending", summary);
     await user.click(screen.getByRole("button", { name: "Atualizar pendências" }));

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Outlet, redirect, useFetcher, useLoaderData, useNavigation } from "react-router";
+import { Outlet, redirect, useFetcher, useLoaderData, useLocation, useNavigation } from "react-router";
 import { Box, Toolbar } from "@mui/material";
 import { logout } from "../../services/authService.js";
 import { apiError } from "../../services/api.js";
@@ -25,7 +25,9 @@ export default function AppLayout() {
   const user = useLoaderData();
   const signOutForm = useFetcher();
   const navigation = useNavigation();
+  const { pathname } = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(true);
+  const wideLayout = pathname.startsWith("/admin");
 
   return (
     <Box sx={{ display: "flex", minHeight: "100dvh" }}>
@@ -59,7 +61,7 @@ export default function AppLayout() {
             className={navigation.state === "loading" ? "h-0.5 animate-pulse bg-brand" : "h-0.5"}
             aria-hidden="true"
           />
-          <main id="conteudo" className="mx-auto max-w-6xl space-y-8 px-4 py-6 sm:p-8">
+          <main id="conteudo" className={`mx-auto w-full ${wideLayout ? "max-w-[1600px]" : "max-w-6xl"} space-y-8 px-4 py-6 sm:p-8`}>
             {signOutForm.data?.error && <Notice error>{signOutForm.data.error}</Notice>}
             <Outlet />
           </main>
