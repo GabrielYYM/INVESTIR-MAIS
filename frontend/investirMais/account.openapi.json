@@ -100,8 +100,8 @@
         "tags": [
           "Usuários"
         ],
-        "summary": "Excluir a própria conta",
-        "description": "Exclui logicamente o usuário e seus cursos e aulas, preservando os registros. Exige a senha atual e encerra todas as sessões da conta.",
+        "summary": "Desativar a própria conta por 30 dias",
+        "description": "Bloqueia a conta, preserva dados para recuperação solicitada pelo titular e agenda eliminação definitiva após 30 dias. Exige senha atual e encerra sessões.",
         "operationId": "deleteAccount",
         "parameters": [
           {
@@ -162,6 +162,42 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/users/{id}/erasure": {
+      "post": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Eliminar definitivamente a própria conta",
+        "description": "Elimina os dados da conta no banco ativo sem janela de recuperação. Exige senha atual. Irreversível.",
+        "operationId": "eraseAccount",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteAccountRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
           }
         }
       }
@@ -1008,6 +1044,28 @@
           }
         }
       }
+    },
+    "/api/admin/pending": {
+      "get": {
+        "tags": [
+          "admin-pending-controller"
+        ],
+        "summary": "Consultar pendências administrativas",
+        "description": "Contadores de denúncias, candidaturas de contas ativas e prazos de recuperação. Não inclui dados pessoais.",
+        "operationId": "getAdminPendingSummary",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPendingSummary"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1109,6 +1167,21 @@
         "required": [
           "currentPassword",
           "newPassword"
+        ]
+      },
+      "DeleteAccountRequest": {
+        "type": "object",
+        "description": "Confirmação para exclusão da própria conta",
+        "properties": {
+          "currentPassword": {
+            "type": "string",
+            "description": "Senha atual do usuário",
+            "maxLength": 4096,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "currentPassword"
         ]
       },
       "VerificationResponse": {
@@ -1584,20 +1657,42 @@
           }
         }
       },
-      "DeleteAccountRequest": {
+      "AdminPendingSummary": {
         "type": "object",
-        "description": "Confirmação para exclusão da própria conta",
         "properties": {
-          "currentPassword": {
+          "openReports": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "pendingTeacherApplications": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "recoverableAccounts": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expiringAccounts": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expiredAccounts": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "nextRecoveryDeadline": {
             "type": "string",
-            "description": "Senha atual do usuário",
-            "maxLength": 4096,
-            "minLength": 0
+            "format": "date-time"
+          },
+          "expiringWithinDays": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "checkedAt": {
+            "type": "string",
+            "format": "date-time"
           }
-        },
-        "required": [
-          "currentPassword"
-        ]
+        }
       }
     }
   }

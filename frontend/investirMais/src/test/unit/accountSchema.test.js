@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { accountResolver, emailSchema, loginSchema, passwordRequirements, passwordSchema, profileSchema, registrationSchema, resetPasswordSchema } from "../../services/accountSchema.js";
 
-const valid = { name: "Ana Teste", email: "ana@example.test", password: "SenhaTeste1!", confirmPassword: "SenhaTeste1!", acceptTerms: true };
+const valid = { name: "Ana Teste", email: "ana@example.test", password: "SenhaTeste1!", confirmPassword: "SenhaTeste1!" };
 const validate = (schema, values) => accountResolver(schema)(values, {}, { fields: {}, shouldUseNativeValidation: false });
 
 describe("validação compartilhada dos formulários de conta", () => {

@@ -53,6 +53,7 @@ class UserServiceTest {
     private ApplicationEventPublisher events;
 
     @Mock private com.repositorio.investir_mais.domain.user.repository.TeacherApplicationRepository teacherApplications;
+    @Mock private com.repositorio.investir_mais.domain.user.service.AccountDeletionService accountDeletions;
 
     @InjectMocks
     private UserService userService;
@@ -176,9 +177,8 @@ class UserServiceTest {
 
         userService.deleteAccount(user.getEmail(), user.getId(), new UserDTO.DeleteAccountRequest("current-password"));
 
-        var deletion = inOrder(userRepository, accountSecurity);
-        deletion.verify(userRepository).delete(user);
-        deletion.verify(userRepository).flush();
+        var deletion = inOrder(accountDeletions, accountSecurity);
+        deletion.verify(accountDeletions).deactivate(user);
         deletion.verify(accountSecurity).invalidateAll(user.getEmail());
         deletion.verify(accountSecurity).revokeAllSessions(user.getEmail());
         verifyNoInteractions(events);

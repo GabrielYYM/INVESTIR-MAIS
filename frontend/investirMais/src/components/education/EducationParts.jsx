@@ -1,4 +1,5 @@
 import CourseProgressBar from "./CourseProgressBar.jsx";
+import IconBadge from "../ui/IconBadge.jsx";
 import { useLearningCourses } from "../../services/learningQueries.js";
 import { ArrowLeft, ArrowRight, BookOpen, ChevronRight } from "lucide-react";
 import { Link, useLocation, useRouteLoaderData } from "react-router";
@@ -12,7 +13,7 @@ export function CourseCard({ course }) {
   return (
     <Link to={"/educacao/" + course.id} className="panel group flex min-w-0 flex-col overflow-hidden transition-colors hover:border-brand/55">
       <div className="flex items-center gap-3 px-5 pt-5">
-        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-amber-500/20 text-amber-400"><BookOpen size={20} /></span>
+        <IconBadge icon={BookOpen} />
         <h3 className="min-w-0 font-bold break-words">{course.name}</h3>
       </div>
       <div className="flex flex-1 flex-col p-5 pt-3">

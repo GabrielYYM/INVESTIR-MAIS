@@ -5,6 +5,7 @@ import { CourseCard, Pagination } from "../components/education/EducationParts.j
 import PageHeader from "../components/layout/PageHeader.jsx";
 import EmptyState from "../components/ui/EmptyState.jsx";
 import { canManageEducation } from "../services/educationData.js";
+import { categoryChoices } from "../services/courseCategories.js";
 
 const EducationDialog = lazy(() => import("../components/education/EducationDialog.jsx"));
 
@@ -26,8 +27,8 @@ export default function Education() {
       />
 
       <Form method="get" className="panel flex flex-wrap gap-4 p-5" key={search.toString()}>
-        <label>Nome ou palavra-chave<input className="block rounded border border-line bg-canvas p-2" name="busca" defaultValue={search.get("busca") || ""} maxLength={100} /></label>
-        <label>Categoria<input className="block rounded border border-line bg-canvas p-2" name="categoria" defaultValue={search.get("categoria") || ""} maxLength={100} /></label>
+        <label>Buscar curso<input className="block rounded border border-line bg-canvas p-2" name="busca" defaultValue={search.get("busca") || ""} maxLength={100} /></label>
+        <label>Categoria<select className="block rounded border border-line bg-canvas p-2" name="categoria" defaultValue={search.get("categoria") || ""}><option value="">Todas as categorias</option>{categoryChoices(search.get("categoria")).map(category => <option key={category.id}>{category.name}</option>)}</select></label>
         <label>Ordenar por<select className="block rounded border border-line bg-canvas p-2" name="ordem" defaultValue={search.get("ordem") || "name"}><option value="name">Nome</option><option value="newest">Mais recentes</option><option value="oldest">Mais antigos</option></select></label>
         <button className="button-primary">Pesquisar cursos</button>
       </Form>

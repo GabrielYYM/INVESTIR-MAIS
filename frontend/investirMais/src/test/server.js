@@ -1,9 +1,11 @@
 import { http, HttpResponse } from "msw/http";
 import { setupServer } from "msw/node";
-import { course, legalRelease, lesson, paged, student } from "./fixtures.js";
+import { adminPending, course, legalRelease, lesson, paged, student } from "./fixtures.js";
 
 export const origin = "http://localhost:5173";
 export const server = setupServer(
+  http.get(origin + "/api/admin/pending", () => HttpResponse.json(adminPending)),
+  http.get(origin + "/api/audit", () => HttpResponse.json({ items: [], totalItems: 0, page: 0, size: 10 })),
   http.get(origin + "/api/learning/teaching/courses", () => HttpResponse.json({items:[],totalItems:0,totalPages:0,page:0})),
   http.get(origin + "/api/learning/courses", () => HttpResponse.json([])),
   http.get(origin + "/api/learning/answers", () => HttpResponse.json(paged([]))),

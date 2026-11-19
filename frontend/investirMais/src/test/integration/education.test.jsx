@@ -156,10 +156,13 @@ describe("gestão de cursos", () => {
     expect(await dialog.findByText("Informe um título.")).toBeInTheDocument();
     expect(dialog.getByText("Informe uma descrição.")).toBeInTheDocument();
     expect(payloads).toHaveLength(0);
+    expect(dialog.queryByLabelText(/Palavras-chave/)).not.toBeInTheDocument();
+    await user.click(dialog.getByRole("combobox", { name: /Categoria/ }));
+    await user.click(await screen.findByRole("option", { name: "Renda fixa" }));
     await fillFields(user, { "Nome do curso": "  Renda fixa  ", Descrição: "  Aprenda sobre investimentos.  " }, dialog);
     await waitFor(() => expect(dialog.getByRole("button", { name: "Salvar curso" })).toBeEnabled());
     await user.click(dialog.getByRole("button", { name: "Salvar curso" }));
-    await waitFor(() => expect(payloads).toEqual([{ name: "Renda fixa", description: "Aprenda sobre investimentos.", category: "", keywords: "" }]));
+    await waitFor(() => expect(payloads).toEqual([{ name: "Renda fixa", description: "Aprenda sobre investimentos.", category: "Renda fixa" }]));
     expect(await screen.findByRole("heading", { name: course.name, level: 1 }, { timeout: 5000 })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe(coursePath);
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());

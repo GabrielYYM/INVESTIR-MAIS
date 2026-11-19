@@ -1,13 +1,17 @@
 import { CourseLearningDashboard } from "../components/education/LearningDashboard.jsx";
-import { ArrowLeft, CheckCircle2, CircleHelp, ExternalLink, Pencil, Play, Plus, Trash2, Video } from "lucide-react";
+import { ProgressTrack } from "../components/education/CourseProgressBar.jsx";
+import { ArrowLeft, CheckCircle2, ChevronDown, CircleHelp, ExternalLink, Pencil, Play, Plus, Trash2, Video } from "lucide-react";
 import { lazy, Suspense, useState } from "react";
-import { Radio, RadioGroup } from "@mui/material";
+import { Accordion, AccordionDetails, AccordionSummary, Radio, RadioGroup } from "@mui/material";
 import { Link, useFetcher, useLoaderData, useLocation, useNavigate, useRevalidator, useRouteLoaderData, NavLink } from "react-router";
 import { useUpdateLessonProgress } from "../generated/education.ts";
 import { apiError } from "../services/api.js";
 import { canManageEducation } from "../services/educationData.js";
 import { pageHref } from "../services/searchParams.js";
 import { externalMediaUrl, youtubeVideo, cloudinaryVideo } from "../services/youtube.js";
+import ReportDialog from "../components/education/ReportDialog.jsx";
+import IconBadge from "../components/ui/IconBadge.jsx";
+import ItemActionButtons from "../components/ui/ItemActionButtons.jsx";
 import { Notice } from "../components/ui/PageState.jsx";
 import SubmitButton from "../components/ui/SubmitButton.jsx";
 import PageHeader from "../components/layout/PageHeader.jsx";
@@ -62,35 +66,34 @@ function CourseQuestions({
   onEnroll
 }) {
   if (!canManage && !questions.length && !error && !needsEnrollment) return null;
-  return <section className="panel min-w-0 space-y-5 p-5 sm:p-6" aria-labelledby="perguntas-titulo" id="perguntas">
-      <header className="flex flex-wrap items-center justify-between gap-3">
+  return <Accordion defaultExpanded component="section" className="panel min-w-0" aria-labelledby="perguntas-titulo" id="perguntas">
+      <AccordionSummary expandIcon={<ChevronDown size={20} />}>
         <div>
           <p className="eyebrow">Pratique o que aprendeu</p>
           <h2 id="perguntas-titulo" className="mt-1 text-xl font-bold">Perguntas da aula</h2>
         </div>
-        {canManage && <button className="button-primary" onClick={() => onEdit({})}><Plus size={16} /> Nova pergunta</button>}
-      </header>
-      {error ? <div className="space-y-3"><Notice error>{error}</Notice><button className="button-secondary" disabled={loading} onClick={onRetry}>Tentar novamente</button></div> : needsEnrollment ? <div className="space-y-3"><p className="text-sm leading-relaxed text-muted">Entre no curso para responder às perguntas e acompanhar seu progresso.</p><SubmitButton type="button" loading={loading} loadingText="Entrando…" onClick={onEnroll}>Começar curso</SubmitButton></div> : questions.length ? <div className="space-y-4">{questions.map((question, index) => <article key={question.id} className="min-w-0 space-y-4 rounded-xl border border-line bg-raised p-4" aria-labelledby={"question-" + question.id}>
+      </AccordionSummary>
+      <AccordionDetails className="space-y-4">
+        {canManage && <div className="flex justify-end"><button type="button" className="button-primary" onClick={() => onEdit({})}><Plus size={16} /> Nova pergunta</button></div>}
+        {error ? <div className="space-y-3"><Notice error>{error}</Notice><button className="button-secondary" disabled={loading} onClick={onRetry}>Tentar novamente</button></div> : needsEnrollment ? <div className="space-y-3"><p className="text-sm leading-relaxed text-muted">Entre no curso para responder às perguntas e acompanhar seu progresso.</p><SubmitButton type="button" loading={loading} loadingText="Entrando…" onClick={onEnroll}>Começar curso</SubmitButton></div> : questions.length ? <div className="space-y-4">{questions.map((question, index) => <article key={question.id} className="min-w-0 space-y-4 rounded-xl border border-line bg-raised p-4" aria-labelledby={"question-" + question.id}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 space-y-2">
                   <p className="flex flex-wrap items-center gap-2 text-xs text-muted"><CircleHelp size={15} className="text-brand" /> Pergunta {index + 1}<span aria-hidden="true">·</span>{question.afterLesson === 0 ? "Antes da primeira aula" : "Após a aula " + question.afterLesson}</p>
                   <h3 id={"question-" + question.id} className="font-semibold break-words whitespace-pre-wrap">{question.prompt}</h3>
                 </div>
-                {canManage && <div className="flex shrink-0 gap-1">
-                  <button className="rounded-lg p-2 text-muted hover:bg-raised hover:text-ink" aria-label={"Editar pergunta " + question.prompt} onClick={() => onEdit({
-              item: question
-            })}><Pencil size={16} /></button>
-                  <button className="rounded-lg p-2 text-muted hover:bg-negative/10 hover:text-negative" aria-label={"Excluir pergunta " + question.prompt} onClick={() => onEdit({
-              item: question,
-              remove: true
-            })}><Trash2 size={16} /></button>
-                </div>}
+                {canManage && <ItemActionButtons
+                  editLabel={"Editar pergunta " + question.prompt}
+                  deleteLabel={"Excluir pergunta " + question.prompt}
+                  onEdit={() => onEdit({ item: question })}
+                  onDelete={() => onEdit({ item: question, remove: true })}
+                />}
               </div>
               {canManage ? <ul className="space-y-2">{question.options.map((text, option) => <li key={option} className={"flex items-start gap-2 rounded-lg border px-3 py-2 text-sm " + (option === question.correctOptionIndex ? "border-emerald-500/25 bg-emerald-500/5 text-positive" : "border-line text-muted")}>
                   {option === question.correctOptionIndex && <CheckCircle2 size={16} className="mt-0.5 shrink-0" />}<span className="min-w-0 break-words">{text}</span>{option === question.correctOptionIndex && <span className="sr-only"> (Correta)</span>}
                 </li>)}</ul> : <StudentQuestion key={JSON.stringify([question.prompt, question.options])} question={question} />}
             </article>)}</div> : <p className="text-sm text-muted">Adicione perguntas de múltipla escolha para os alunos praticarem durante o curso.</p>}
-    </section>;
+      </AccordionDetails>
+    </Accordion>;
 }
 function LessonPlayer({
   lesson,
@@ -107,9 +110,7 @@ function LessonPlayer({
   };
   return <article className="panel min-w-0 overflow-hidden">
     {cloudinaryVideo(lesson.mediaUrl) ? <video className="aspect-video w-full bg-black" controls preload="metadata" src={lesson.mediaUrl} poster={lesson.thumbnailUrl} onPlay={complete} onEnded={event => { event.currentTarget.currentTime = 0; }} aria-label={"Vídeo da aula " + lesson.title} /> : video && showPlayer ? <iframe className="aspect-video min-h-50 w-full border-0 bg-black" title={"Vídeo da aula " + lesson.title} src={video.embedUrl} referrerPolicy="strict-origin-when-cross-origin" allow="encrypted-media; picture-in-picture" allowFullScreen /> : <div className="grid min-h-44 place-items-center border-b border-white/5 bg-canvas px-5 py-8 sm:min-h-56">
-      <span className="grid size-16 place-items-center rounded-2xl bg-amber-500/20 text-amber-400">
-        <Video size={30} />
-      </span>
+      <IconBadge icon={Video} size="lg" />
     </div>}
     <div className="space-y-3 p-5 sm:p-6">
       <div className="flex items-center justify-between gap-2">
@@ -156,6 +157,7 @@ export default function Course() {
   const user = useRouteLoaderData("app");
   const canManage = canManageEducation(user, course);
   const [editor, setEditor] = useState(null);
+  const [reporting, setReporting] = useState(null);
   const [questionEditor, setQuestionEditor] = useState(null);
   const [ordering, setOrdering] = useState(false);
   const revalidator = useRevalidator();
@@ -207,6 +209,10 @@ export default function Course() {
       </div>}
     />
 
+    <div className="flex flex-wrap gap-3">
+      <button className="button-secondary" onClick={() => setReporting({ targetType: "TEACHER", targetId: course.professorId, title: "Professor responsável por " + course.name })}>Denunciar professor</button>
+      {lesson && <button className="button-secondary" onClick={() => setReporting({ targetType: "LESSON", targetId: lesson.id, title: lesson.title })}>Denunciar vídeo</button>}
+    </div>
     <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(18rem,0.62fr)]">
       <div className="min-w-0 space-y-5">
         {failure && <Notice error>{failure}</Notice>}
@@ -255,11 +261,7 @@ export default function Course() {
             </span>
           </div>
           {progress.totalQuestions > 0 && <p className="text-xs text-muted">{progress.passedQuestions ?? 0} de {progress.totalQuestions} perguntas concluídas</p>}
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
-            <div className="h-full rounded-full bg-emerald-400 transition-all duration-500" style={{
-              width: `${Math.min(100, progress.progressPercentage)}%`
-            }} />
-          </div>
+          <ProgressTrack value={progress.progressPercentage} />
         </div>}
 
         {page.items.length > 0 && <ul className="space-y-2">
@@ -272,27 +274,21 @@ export default function Course() {
                 <span className="break-words flex-1">{item.position > 0 && <span className="mr-1 text-xs text-muted">{item.position}.</span>}{item.title}</span>
                 {completed && <CheckCircle2 size={15} className="shrink-0 text-emerald-400" title="Aula concluída" />}
               </NavLink>
-              {canManage && <div className="flex shrink-0 gap-1 pr-1">
-                <button className="rounded-md p-2 text-muted hover:bg-raised hover:text-ink" aria-label={"Editar aula " + item.title} onClick={() => setEditor({
-                  kind: "aula",
-                  item
-                })}>
-                  <Pencil size={15} />
-                </button>
-                <button className="rounded-md p-2 text-muted hover:bg-negative/10 hover:text-negative" aria-label={"Excluir aula " + item.title} onClick={() => setEditor({
-                  kind: "aula",
-                  item,
-                  remove: true
-                })}>
-                  <Trash2 size={15} />
-                </button>
-              </div>}
+              {canManage && <ItemActionButtons
+                className="pr-1"
+                iconSize={15}
+                editLabel={"Editar aula " + item.title}
+                deleteLabel={"Excluir aula " + item.title}
+                onEdit={() => setEditor({ kind: "aula", item })}
+                onDelete={() => setEditor({ kind: "aula", item, remove: true })}
+              />}
             </li>;
           })}
         </ul>}
         <Pagination page={page} pathname={coursePath} />
       </section>
     </div>
+    {reporting && <ReportDialog key={reporting.targetType + reporting.targetId} {...reporting} courseId={course.id} onClose={() => setReporting(null)} />}
     {editor && canManage && <Suspense fallback={null}><EducationDialog {...editor} onClose={() => setEditor(null)} /></Suspense>}
     {ordering && canManage && <Suspense fallback={null}><LessonOrderDialog courseId={course.id} onClose={() => setOrdering(false)} /></Suspense>}
     {questionEditor && canManage && <Suspense fallback={null}><QuestionDialog {...questionEditor} onClose={() => setQuestionEditor(null)} /></Suspense>}

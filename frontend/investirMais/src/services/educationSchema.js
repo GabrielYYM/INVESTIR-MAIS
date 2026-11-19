@@ -8,7 +8,6 @@ export function educationSchema(lesson, currentMediaUrl) {
     description: z.string().trim().min(1, "Informe uma descrição.").max(createCourseBodyDescriptionMax, "A descrição deve ter no máximo 10.000 caracteres."),
     mediaUrl: lesson ? CreateLessonBody.shape.mediaUrl.trim().min(1, "Informe a URL do vídeo.").refine(value => youtubeVideo(value) || cloudinaryVideo(value), "Informe um vídeo do YouTube ou Cloudinary.") : z.string().optional(),
     category: z.string().trim().max(100).default(""),
-    keywords: z.string().trim().max(1000).default(""),
     questions: z.array(questionSchema).max(createCourseBodyQuestionsMax).default([]),
   });
 }

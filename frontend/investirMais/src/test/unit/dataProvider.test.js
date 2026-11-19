@@ -35,6 +35,12 @@ describe("contrato entre React-admin e Spring", () => {
       .toMatchObject({ total: 2, data: [{ id: 2, revisionNumber: 2, user: snapshot }] });
     expect(account.getUserAuditHistory).toHaveBeenCalledWith(student.id, { signal: undefined });
   });
+  it("consulta ocorridos recentes de auditoria geral preservando o uid", async () => {
+    account.searchAudit.mockResolvedValue({ items: [{ entity: "users", id: student.id, revision: 5, operation: 1, data: JSON.stringify(student) }], totalItems: 1 });
+    expect(await dataProvider.getList("audit", { pagination: { page: 1, perPage: 10 }, sort: { field: "revisionNumber", order: "DESC" } }))
+      .toMatchObject({ total: 1, data: [{ id: `users-${student.id}-5`, uid: student.id, revision: 5 }] });
+    expect(account.searchAudit).toHaveBeenCalledWith({ page: 0, size: 10 }, { signal: undefined });
+  });
   it("encontra uma pergunta no curso e devolve 404 se ela não existir", async () => {
     education.manage.mockResolvedValue([{ id: "pergunta", prompt: "Enunciado" }]);
     expect(await dataProvider.getOne("questions", { id: "pergunta", meta: { courseId: course.id } })).toMatchObject({ data: { prompt: "Enunciado" } });

@@ -194,7 +194,7 @@ export default function Perfil() {
       </div>
       <p className="text-sm text-zinc-300 leading-relaxed">
         Ao solicitar a exclusão, sua conta será desativada de forma lógica.
-        O seu acesso imediato à plataforma será revogado, todas as suas sessões ativas serão encerradas e suas matrículas serão desativadas.
+        O seu acesso imediato à plataforma será revogado e todas as suas sessões ativas serão encerradas. Você pode escolher desativação com recuperação por 30 dias ou eliminação definitiva sem recuperação.
         Por motivos de segurança e integridade, esta operação exige <strong>dupla confirmação</strong> e autenticação com sua senha atual.
       </p>
       <div>

@@ -5,6 +5,7 @@ import { Link } from "react-router";
 import { useRegisterUser, useResendVerification } from "../generated/account.ts";
 import { AuthCard, Field } from "../components/ui/FormFields.jsx";
 import PasswordFields from "../components/account/PasswordFields.jsx";
+import ResendActionForm from "../components/account/ResendActionForm.jsx";
 import { Notice } from "../components/ui/PageState.jsx";
 import SubmitButton from "../components/ui/SubmitButton.jsx";
 import { accountResolver, registrationSchema } from "../services/accountSchema.js";
@@ -37,25 +38,17 @@ export default function SignUp() {
     }
   }));
   return <AuthCard icon={email ? CheckCircle2 : ShieldCheck} title={email ? "Confirme seu e-mail" : "Crie sua conta"} description={email ? `Se o cadastro puder ser realizado, você receberá um link em ${email}. Confira também a pasta de spam.` : "Crie uma conta para explorar os cursos de educação financeira."}>
-    {email ? <form onSubmit={event => {
-      event.preventDefault();
-      resend.mutate({
-        data: {
-          email
-        }
-      });
-    }} className="space-y-4">
-      {resend.error && <Notice error>{apiError(resend.error, "Não foi possível reenviar o link agora.")}</Notice>}
-      {resend.isSuccess && <Notice>Link de confirmação solicitado novamente.</Notice>}
-      <SubmitButton variant="secondary" loading={resend.isPending} fullWidth>Reenviar link de confirmação</SubmitButton>
-    </form> : <form onSubmit={submit} noValidate className="space-y-4">
+    {email ? <ResendActionForm
+      mutation={resend}
+      email={email}
+      successMessage="Link de confirmação solicitado novamente."
+    /> : <form onSubmit={submit} noValidate className="space-y-4">
       {registration.error && <Notice error>{apiError(registration.error, "Não foi possível criar sua conta. Verifique os dados informados.")}</Notice>}
       <Field label="Apelido" icon={User} autoComplete="nickname" maxLength={100} placeholder="Ex: Investidor" error={errors.name?.message} {...form.register("name")} />
       <Field label="E-mail" icon={Mail} type="email" autoComplete="email" placeholder="seu.email@exemplo.com" error={errors.email?.message} {...form.register("email")} />
       <PasswordFields form={form} creating />
-      <label className="flex items-start gap-3 rounded-xl border border-line bg-canvas p-4 text-xs leading-relaxed text-muted">
-        <input type="checkbox" className="mt-0.5 size-4 shrink-0 accent-amber-500" {...form.register("acceptTerms")} />
-        <span>Concordo com os{" "}
+      <p className="rounded-xl border border-line bg-canvas p-4 text-xs leading-relaxed text-muted">
+        <span>Consulte os{" "}
           <button type="button" onClick={event => {
             event.preventDefault();
             setTermsModalTab("termos");
@@ -66,9 +59,8 @@ export default function SignUp() {
           }} className="font-semibold text-brand underline hover:text-amber-400">Política de Privacidade</button>{" "}
           do Investir Mais.
         </span>
-      </label>
-      {errors.acceptTerms && <p role="alert" className="text-sm text-negative">{errors.acceptTerms.message}</p>}
-      <p className="text-xs text-muted">Após verificar seu e-mail, você confirmará a versão vigente dos documentos. Essa confirmação ficará disponível no seu perfil.</p>
+      </p>
+      <p className="text-xs text-muted">Após verificar seu e-mail, você aceitará uma única vez a versão vigente dos documentos. O registro ficará disponível no seu perfil. Uma nova confirmação será solicitada somente se houver uma nova versão.</p>
       <SubmitButton loading={registration.isPending} loadingText="Criando conta…" fullWidth>Criar conta</SubmitButton>
     </form>}
     <p className="text-xs text-muted">Quer ser professor? Crie e confirme sua conta e envie seus documentos em <Link className="text-brand underline" to="/cadastro-professor">Cadastro de professor</Link>.</p>

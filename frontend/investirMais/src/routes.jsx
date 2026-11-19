@@ -55,7 +55,8 @@ export const appRoutes = [{ Component: ApplicationProviders, children: [
       { path: "educacao/:courseId/:lessonId?", Component: Course, loader: courseLoader, action: courseAction, ErrorBoundary: PageError },
       { path: "perfil", Component: Perfil },
       { path: "cadastro-professor", lazy: async () => ({ Component: (await import("./pages/TeacherApplication.jsx")).default }), ErrorBoundary: PageError },
-      { path: "admin/auditoria", lazy: adminWorkspace("audit"), ErrorBoundary: PageError },
+      { path: "admin/denuncias", lazy: adminWorkspace("reports"), ErrorBoundary: PageError },
+      { path: "admin/lixeira", lazy: adminWorkspace("trash"), ErrorBoundary: PageError },
       { path: "admin/documentos", lazy: adminWorkspace("legal"), ErrorBoundary: PageError },
       { path: "admin/professores", lazy: adminWorkspace("teachers"), ErrorBoundary: PageError },
       { path: "admin", lazy: async () => {

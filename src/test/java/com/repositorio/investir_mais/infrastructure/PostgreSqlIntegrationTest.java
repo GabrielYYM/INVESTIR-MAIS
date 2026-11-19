@@ -22,6 +22,17 @@ public abstract class PostgreSqlIntegrationTest {
 
     @DynamicPropertySource
     static void configurePostgreSql(DynamicPropertyRegistry registry) {
+        String external = System.getenv("INVESTIR_TEST_DATABASE_URL");
+        if (external != null) {
+            if (!external.matches("jdbc:postgresql://127\\.0\\.0\\.1:[0-9]+/investir_test_[a-z0-9_]+")) {
+                throw new IllegalArgumentException("External integration tests require an isolated investir_test_* database on loopback.");
+            }
+            registry.add("spring.datasource.url", () -> external);
+            registry.add("spring.datasource.username", () -> "postgres");
+            registry.add("spring.datasource.password", () -> "");
+            registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
+            return;
+        }
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);

@@ -168,15 +168,15 @@ class PlatformFeaturesIntegrationTest extends PostgreSqlIntegrationTest {
                 .andExpect(status().isServiceUnavailable());
     }
 
-    @Test void deletionErasesPersonalFieldsAndDocumentsWhilePreservingAuditSnapshots() {
+    @Test void deletionPreservesPersonalFieldsAndDocumentsForTheRecoveryWindow() {
         var application=apply();
         student.setPassword(encoder.encode("Temporary123!")); users.saveAndFlush(student);
         accounts.deleteAccount(student.getEmail(),student.getId(),new UserDTO.DeleteAccountRequest("Temporary123!"));
-        assertNull(jdbc.queryForObject("select name from tb_user where id=?",String.class,student.getId()));
-        assertNotEquals(student.getEmail(),jdbc.queryForObject("select email from tb_user where id=?",String.class,student.getId()));
+        assertEquals(student.getName(),jdbc.queryForObject("select name from tb_user where id=?",String.class,student.getId()));
+        assertEquals(student.getEmail(),jdbc.queryForObject("select email from tb_user where id=?",String.class,student.getId()));
         assertTrue(jdbc.queryForObject("select count(*) from tb_user_audit where id=? and email=?",Integer.class,student.getId(),student.getEmail())>0);
-        assertFalse(applicationRepository.existsById(application.id()));
-        assertEquals(0,jdbc.queryForObject("select count(*) from teacher_document where id=?",Integer.class,application.documents().getFirst().id()));
+        assertTrue(applicationRepository.existsById(application.id()));
+        assertEquals(1,jdbc.queryForObject("select count(*) from teacher_document where id=?",Integer.class,application.documents().getFirst().id()));
     }
 
     @Test void questionEditsPreserveWatchedVideosInDashboards() throws Exception {

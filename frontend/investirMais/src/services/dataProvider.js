@@ -18,7 +18,7 @@ const resources = {
     update: (id, data, params) => education.update(courseId(params), id, data),
     delete: (id, params) => education._delete(courseId(params), id) },
   users: { list: (_, options) => account.listAllUsers(options), one: account.getProfile, update: account.updateUserRole },
-  audit: { list: (_, options, params) => account.getUserAuditHistory(params.meta.userId, options) },
+  audit: { list: (query, options, params) => params?.meta?.userId ? account.getUserAuditHistory(params.meta.userId, options) : account.searchAudit({ page: query.page, size: query.size, ...params?.filter }, options) },
 };
 
 async function call(resource, operation, ...args) {
@@ -41,12 +41,26 @@ export const dataProvider = {
     const { page = 1, perPage = 10 } = params.pagination ?? {};
     const { field = "id", order = "ASC" } = params.sort ?? {};
     const result = await call(resource, "list", { page: page - 1, size: perPage, sort: [`${field},${order.toLowerCase()}`] }, { signal: params.signal }, params);
+    if (Array.isArray(result?.items)) {
+      const items = result.items.map((row, index, list) => {
+        const isInsert = row.operation === 0 || row.operation === "0" || row.operation === "INSERT";
+        const previous = isInsert ? null : (row.before ?? list.slice(index + 1).find(item => item.entity === row.entity && String(item.id) === String(row.id))?.data ?? null);
+        return {
+          ...row,
+          before: previous,
+          uid: row.uid ?? row.user?.id ?? row.id,
+          id: row.entity && row.revision != null ? `${row.entity}-${row.id}-${row.revision}` : (row.revisionNumber ?? row.revision ?? row.id ?? index),
+        };
+      });
+      const data = items.length > perPage ? items.slice((page - 1) * perPage, page * perPage) : items;
+      return { data, total: result.totalItems ?? items.length };
+    }
     if (!Array.isArray(result)) return { data: result.content, total: result.page.totalElements };
     const { q = "", role } = params.filter ?? {};
-    const rows = result.map(row => resource === "audit" ? { ...row, id: row.revisionNumber } : row)
-      .filter(row => (!role || row.role === role) && (!q || `${row.name} ${row.email}`.toLocaleLowerCase("pt-BR").includes(q.toLocaleLowerCase("pt-BR"))))
+    const rows = result.map(row => resource === "audit" ? { ...row, uid: row.uid ?? row.user?.id ?? row.id, id: row.revisionNumber ?? row.revision ?? row.id } : row)
+      .filter(row => (!role || row.role === role) && (!q || `${row.name ?? ""} ${row.id ?? ""} ${row.email ?? ""}`.toLocaleLowerCase("pt-BR").includes(q.toLocaleLowerCase("pt-BR"))))
       .sort((a, b) => String(a[field] ?? "").localeCompare(String(b[field] ?? ""), "pt-BR", { numeric: true }) * (order === "DESC" ? -1 : 1));
-    return { data: rows.slice((page - 1) * perPage, page * perPage), total: rows.length, meta: { stats: { total: result.length, ...Object.fromEntries(["ADMIN", "TEACHER", "STUDENT"].map(role => [role, result.filter(row => row.role === role).length])) } } };
+    return { data: rows.slice((page - 1) * perPage, page * perPage), total: rows.length, meta: { users: result, stats: { total: result.length, ...Object.fromEntries(["ADMIN", "TEACHER", "STUDENT"].map(role => [role, result.filter(row => row.role === role).length])) } } };
   },
   async getOne(resource, params) {
     if (resource === "questions") {

@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { adminUser, student, teacherUser } from "../fixtures.js";
+import { adminUser, course, student, teacherUser } from "../fixtures.js";
 import { mockApi } from "../helpers.js";
 import { renderApp } from "../renderApp.jsx";
 
@@ -8,8 +8,9 @@ function setup(users = [adminUser, student, teacherUser]) {
   mockApi("get", "/api/users", () => users);
   return renderApp("/admin", { session: adminUser });
 }
-async function userRow(email = student.email) {
-  return within((await screen.findByText(email)).closest("tr"));
+async function userRow(uid = student.id) {
+  const section = within(await screen.findByRole("region", { name: "Usuários Cadastrados" }));
+  return within((await section.findByText(uid)).closest("tr"));
 }
 
 describe("gestão de usuários", () => {
@@ -24,29 +25,31 @@ describe("gestão de usuários", () => {
     expect(update).not.toHaveBeenCalled();
   });
 
-  it("filtra usuários por apelido, e-mail e perfil e protege administradores", async () => {
+  it("filtra usuários por apelido, e-mail e perfil, oculta e-mail na tabela e protege administradores", async () => {
     const { user } = setup();
-    const row = await userRow(adminUser.email);
+    const row = await userRow(adminUser.id);
     expect(row.getByRole("button", { name: "Alterar Papel" })).toBeDisabled();
     expect(row.getByText("Você")).toBeInTheDocument();
+    expect(screen.queryByText(adminUser.email)).not.toBeInTheDocument();
+    expect(screen.queryByText(student.email)).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Professores", exact: true }));
-    await waitFor(() => expect(screen.queryByText(student.email)).not.toBeInTheDocument());
-    expect(await screen.findByText(teacherUser.email)).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText(student.id)).not.toBeInTheDocument());
+    expect(await screen.findByText(teacherUser.id)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Todos", exact: true }));
     const search = screen.getByPlaceholderText("Buscar por apelido ou e-mail...");
-    await user.type(search, "ANA@"); expect(await screen.findByText(student.email)).toBeInTheDocument();
-    await waitFor(() => expect(screen.queryByText(teacherUser.email)).not.toBeInTheDocument());
+    await user.type(search, "ANA@"); expect(await screen.findByText(student.id)).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText(teacherUser.id)).not.toBeInTheDocument());
     await user.clear(search); await user.type(search, "inexistente");
     expect(await screen.findByText(/Nenhum usuário encontrado/)).toBeInTheDocument();
     await user.clear(search); await user.click(screen.getByRole("button", { name: "Alunos", exact: true }));
-    expect(await screen.findByText(student.email)).toBeInTheDocument();
+    expect(await screen.findByText(student.id)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Admins", exact: true }));
 
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "Admins", exact: true })).toHaveAttribute("aria-pressed", "true");
-      expect(screen.getByText(adminUser.email)).toBeInTheDocument();
-      expect(screen.queryByText(student.email)).not.toBeInTheDocument();
-      expect(screen.queryByText(teacherUser.email)).not.toBeInTheDocument();
+      expect(screen.getByText(adminUser.id)).toBeInTheDocument();
+      expect(screen.queryByText(student.id)).not.toBeInTheDocument();
+      expect(screen.queryByText(teacherUser.id)).not.toBeInTheDocument();
     });
   });
 
@@ -55,20 +58,20 @@ describe("gestão de usuários", () => {
     await userRow();
     const search = screen.getByPlaceholderText("Buscar por apelido ou e-mail...");
     await user.type(search, "ANA@");
-    await waitFor(() => expect(screen.queryByText(adminUser.email)).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText(adminUser.id)).not.toBeInTheDocument());
     await user.click(screen.getByRole("button", { name: "Admins", exact: true }));
     expect(await screen.findByText(/Nenhum usuário encontrado/)).toBeInTheDocument();
     expect(search).toHaveValue("ANA@");
 
     await user.clear(search);
-    expect(await screen.findByText(adminUser.email)).toBeInTheDocument();
+    expect(await screen.findByText(adminUser.id)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Admins", exact: true })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.queryByText(student.email)).not.toBeInTheDocument();
+    expect(screen.queryByText(student.id)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Todos", exact: true }));
-    expect(await screen.findByText(student.email)).toBeInTheDocument();
-    expect(await screen.findByText(teacherUser.email)).toBeInTheDocument();
-    expect(screen.getByText(adminUser.email)).toBeInTheDocument();
+    expect(await screen.findByText(student.id)).toBeInTheDocument();
+    expect(await screen.findByText(teacherUser.id)).toBeInTheDocument();
+    expect(screen.getByText(adminUser.id)).toBeInTheDocument();
     expect(search).toHaveValue("");
   });
 
@@ -80,18 +83,18 @@ describe("gestão de usuários", () => {
       const updated = { ...teacherUser, role: body.role }; users = users.map(u => u.id === teacherUser.id ? updated : u); return updated;
     });
     const { user } = renderApp("/admin", { session: adminUser });
-    await user.click((await userRow(teacherUser.email)).getByRole("button", { name: "Alterar Papel" }));
+    await user.click((await userRow(teacherUser.id)).getByRole("button", { name: "Alterar Papel" }));
     await user.click(screen.getByRole("combobox", { name: "Novo Papel" }));
     await user.click(await screen.findByRole("option", { name: "Aluno" }));
     await user.click(screen.getByRole("button", { name: "Salvar Alteração" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect((await userRow(teacherUser.email)).getByText("Aluno")).toBeInTheDocument(); expect(update).toHaveBeenCalledOnce();
+    expect((await userRow(teacherUser.id)).getByText("Aluno")).toBeInTheDocument(); expect(update).toHaveBeenCalledOnce();
   });
 
   it("preserva o diálogo e a escolha quando a atualização falha", async () => {
     mockApi("patch", `/api/users/${teacherUser.id}/role`, { detail: "Perfil indisponível." }, { status: 409 });
     const { user } = setup();
-    await user.click((await userRow(teacherUser.email)).getByRole("button", { name: "Alterar Papel" }));
+    await user.click((await userRow(teacherUser.id)).getByRole("button", { name: "Alterar Papel" }));
     await user.click(screen.getByRole("combobox", { name: "Novo Papel" }));
     await user.click(await screen.findByRole("option", { name: "Aluno" }));
     await user.click(screen.getByRole("button", { name: "Salvar Alteração" }));
@@ -107,7 +110,7 @@ describe("gestão de usuários", () => {
   it.each([{ users: [] }, { users: [student] }, { users: [{ ...student, role: "CUSTOM", createdAt: null }] }])("mostra bases vazias e dados incompletos %#", async ({ users }) => {
     setup(users); await screen.findByRole("heading", { name: "Usuários Cadastrados" });
     if (!users.length) expect(screen.getByText(/Nenhum usuário encontrado/)).toBeInTheDocument();
-    else expect(screen.getByText(student.email)).toBeInTheDocument();
+    else expect(screen.getByText(student.id)).toBeInTheDocument();
   });
 
   it.each([401, 403])("redireciona ao perder autorização (%i)", async (status) => {
@@ -127,84 +130,165 @@ describe("gestão de usuários", () => {
       ...student, id: `aluno-${index}`, name: `Aluno ${index}`, email: `aluno${index}@example.test`,
     }));
     const { user } = setup([adminUser, ...students]);
-    await screen.findByText(students[0].email);
-    expect(screen.queryByText(students[11].email)).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /página 2/i }));
-    expect(await screen.findByText(students[11].email)).toBeInTheDocument();
+    const usersSection = within(await screen.findByRole("region", { name: "Usuários Cadastrados" }));
+    await usersSection.findByText(students[0].id);
+    expect(usersSection.queryByText(students[11].id)).not.toBeInTheDocument();
+    await user.click(usersSection.getByRole("button", { name: /página 2/i }));
+    expect(await usersSection.findByText(students[11].id)).toBeInTheDocument();
     await user.type(screen.getByPlaceholderText("Buscar por apelido ou e-mail..."), students[11].email);
-    expect(screen.getByText(students[11].email)).toBeInTheDocument();
-    await waitFor(() => expect(screen.queryByText(students[10].email)).not.toBeInTheDocument());
+    expect(usersSection.getByText(students[11].id)).toBeInTheDocument();
+    await waitFor(() => expect(usersSection.queryByText(students[10].id)).not.toBeInTheDocument());
   });
 });
 
-describe("histórico de auditoria", () => {
-  it("pagina mais de cem revisões sem misturar os parâmetros da lista de usuários", async () => {
-    mockApi("get", `/api/users/${student.id}/audit`, Array.from({ length: 103 }, (_, index) => ({
-      revisionNumber: index + 1, operation: "UPDATE", user: { ...student, name: `Revisão ${index + 1}` },
-    })));
+describe("histórico de auditoria de ocorridos recentes", () => {
+  it("pagina mais de cem ocorrências recentes na tabela principal sem misturar parâmetros da lista de usuários", async () => {
+    mockApi("get", "/api/audit", {
+      items: Array.from({ length: 103 }, (_, index) => ({
+        entity: "users",
+        id: student.id,
+        revision: 103 - index,
+        operation: 1,
+        timestamp: 1763035200000,
+        actor: adminUser.email,
+        role: "ADMIN",
+        data: JSON.stringify({ ...student, name: `Ocorrência ${103 - index}` }),
+      })),
+      totalItems: 103,
+    });
     const { user, router } = setup();
-    await user.click((await userRow()).getByRole("button", { name: "Auditoria" }));
-    const dialog = within(screen.getByRole("dialog"));
-    expect(await dialog.findByText("Revisão 103")).toBeInTheDocument();
-    await user.click(dialog.getByRole("button", { name: /página 11/i }));
-    expect(await dialog.findByText("Revisão 1", { exact: true })).toBeInTheDocument();
+    const auditSection = within(await screen.findByRole("region", { name: "Auditoria de Ocorridos Recentes" }));
+    expect(await auditSection.findByText("Ocorrência 103")).toBeInTheDocument();
+    expect(auditSection.getByText("Ocorrência 84")).toBeInTheDocument();
+    await user.click(auditSection.getByRole("button", { name: /página 6/i }));
+    expect(await auditSection.findByText("Ocorrência 1", { exact: true })).toBeInTheDocument();
     expect(router.state.location.search).toBe("");
   });
-  it("consulta novamente ao reabrir e separa o histórico de cada usuário", async () => {
-    let name = "Snapshot anterior";
-    const audit = mockApi("get", `/api/users/${student.id}/audit`, () => [
-      { revisionNumber: 1, operation: "UPDATE", user: { ...student, name } },
-    ]);
-    mockApi("get", `/api/users/${teacherUser.id}/audit`, [
-      { revisionNumber: 2, operation: "INSERT", user: { ...teacherUser, name: "Snapshot do professor" } },
-    ]);
+
+  it("exibe somente nome e UID na tabela de auditoria (sem e-mail) e abre todos os dados em modal pelo ícone de olho", async () => {
+    mockApi("get", "/api/audit", {
+      items: [
+        {
+          entity: "users",
+          id: student.id,
+          revision: 7,
+          operation: 1,
+          timestamp: "2026-11-13T12:00:00Z",
+          actor: adminUser.email,
+          role: "ADMIN",
+          data: JSON.stringify({ ...student, name: "Ana Atualizada", role: "TEACHER" }),
+        },
+        {
+          entity: "users",
+          id: student.id,
+          revision: 5,
+          operation: 0,
+          timestamp: "2026-11-12T12:00:00Z",
+          actor: student.email,
+          role: "STUDENT",
+          data: JSON.stringify({ ...student, name: "Ana Antes", role: "STUDENT" }),
+        },
+        {
+          entity: "courses",
+          id: course.id,
+          revision: 6,
+          operation: 0,
+          timestamp: 1763035200000,
+          actor: teacherUser.email,
+          role: "TEACHER",
+          data: JSON.stringify(course),
+        },
+      ],
+      totalItems: 3,
+    });
     const { user } = setup();
-    await user.click((await userRow()).getByRole("button", { name: "Auditoria" }));
-    expect(await screen.findByText("Snapshot anterior")).toBeInTheDocument();
-    await user.click(within(screen.getByRole("dialog")).getAllByRole("button", { name: "Fechar" })[0]);
-    name = "Snapshot atualizado";
-    await user.click((await userRow()).getByRole("button", { name: "Auditoria" }));
-    expect(await screen.findByText("Snapshot atualizado")).toBeInTheDocument();
-    expect(audit).toHaveBeenCalledTimes(2);
-    await user.click(within(screen.getByRole("dialog")).getAllByRole("button", { name: "Fechar" })[0]);
-    await user.click((await userRow(teacherUser.email)).getByRole("button", { name: "Auditoria" }));
-    expect(await screen.findByText("Snapshot do professor")).toBeInTheDocument();
-    expect(screen.queryByText("Snapshot atualizado")).not.toBeInTheDocument();
+    const auditSection = within(await screen.findByRole("region", { name: "Auditoria de Ocorridos Recentes" }));
+    expect(await auditSection.findByText("Ana Atualizada")).toBeInTheDocument();
+    expect(auditSection.getAllByText(student.id).length).toBeGreaterThan(0);
+    expect(auditSection.getByText(course.name)).toBeInTheDocument();
+    expect(auditSection.getByText(course.id)).toBeInTheDocument();
+    expect(auditSection.queryByText(student.email)).not.toBeInTheDocument();
+    expect(auditSection.queryByText(adminUser.email)).not.toBeInTheDocument();
+    expect(auditSection.queryByText(teacherUser.email)).not.toBeInTheDocument();
+
+    const eyeButtons = auditSection.getAllByRole("button", { name: "Ver detalhes da auditoria" });
+    await user.click(eyeButtons[0]);
+
+    const dialog = within(await screen.findByRole("dialog"));
+    expect(dialog.getByText("Detalhes da Auditoria")).toBeInTheDocument();
+    expect(dialog.queryByText(/Hibernate Envers/)).not.toBeInTheDocument();
+    expect(dialog.getByRole("heading", { name: "Antes" })).toBeInTheDocument();
+    expect(dialog.getByRole("heading", { name: "Depois" })).toBeInTheDocument();
+    expect(dialog.getByText("7")).toBeInTheDocument();
+    expect(dialog.getByText("Ana Atualizada")).toBeInTheDocument();
+    expect(dialog.getByText(/Ana Antes/)).toBeInTheDocument();
+    expect(dialog.getByText(student.id)).toBeInTheDocument();
+    expect(dialog.getByText(student.email)).toBeInTheDocument();
+    expect(dialog.getAllByText(adminUser.name).length).toBeGreaterThan(1);
+    expect(dialog.getByText(adminUser.id)).toBeInTheDocument();
+    expect(dialog.getByText(adminUser.email)).toBeInTheDocument();
+
+    await user.click(dialog.getAllByRole("button", { name: "Fechar" })[0]);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    await user.click(eyeButtons[1]);
+    const insertDialog = within(await screen.findByRole("dialog"));
+    expect(insertDialog.queryByRole("heading", { name: "Antes" })).not.toBeInTheDocument();
+    expect(insertDialog.queryByRole("heading", { name: "Depois" })).not.toBeInTheDocument();
+    expect(insertDialog.getByRole("heading", { name: "Dados da Auditoria (Snapshot)" })).toBeInTheDocument();
+    await user.click(insertDialog.getAllByRole("button", { name: "Fechar" })[0]);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("cancela a consulta pendente ao fechar o histórico", async () => {
-    let signal;
-    let release;
-    const response = new Promise((resolve) => { release = resolve; });
-    const audit = mockApi("get", `/api/users/${student.id}/audit`, ({ request }) => {
-      signal = request.signal;
-      return response;
+  it("filtra a tabela de auditoria usando os parâmetros do backend e permite limpar os filtros", async () => {
+    const audit = mockApi("get", "/api/audit", ({ request }) => {
+      const params = new URL(request.url).searchParams;
+      if (params.get("entity") === "courses") {
+        expect(params.get("entityId")).toBe(course.id);
+        expect(params.get("revision")).toBe("15");
+        expect(params.get("actor")).toBe(adminUser.email);
+        expect(params.get("role")).toBe("ADMIN");
+        return {
+          items: [{ entity: "courses", id: course.id, revision: 15, operation: 0, timestamp: 1763035200000, actor: adminUser.email, role: "ADMIN", data: JSON.stringify(course) }],
+          totalItems: 1,
+        };
+      }
+      return { items: [], totalItems: 0 };
     });
-    try {
-      const { user } = setup();
-      await user.click((await userRow()).getByRole("button", { name: "Auditoria" }));
-      await waitFor(() => expect(audit).toHaveBeenCalledOnce());
-      await user.click(within(screen.getByRole("dialog")).getAllByRole("button", { name: "Fechar" })[0]);
-      await waitFor(() => expect(signal.aborted).toBe(true));
-      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    } finally {
-      release([]);
-    }
+    const { user } = setup();
+    const auditSection = within(await screen.findByRole("region", { name: "Auditoria de Ocorridos Recentes" }));
+    await user.click(auditSection.getByRole("combobox", { name: "Entidade" }));
+    await user.click(await screen.findByRole("option", { name: "Cursos" }));
+    await user.type(auditSection.getByLabelText("ID do registro"), course.id);
+    await user.type(auditSection.getByLabelText("Revisão"), "15");
+    await user.type(auditSection.getByLabelText("Usuário autor (e-mail)"), adminUser.email);
+    await user.click(auditSection.getByRole("combobox", { name: "Papel do autor" }));
+    await user.click(await screen.findByRole("option", { name: "Administrador" }));
+    await user.click(auditSection.getByRole("button", { name: "Filtrar" }));
+    expect(await auditSection.findByText(course.name)).toBeInTheDocument();
+
+    await user.click(auditSection.getByRole("button", { name: "Limpar" }));
+    expect(await auditSection.findByText("Nenhum registro de auditoria encontrado")).toBeInTheDocument();
+    expect(audit).toHaveBeenCalledTimes(3);
   });
 
   it.each([
-    [[], 200, "Nenhum registro de auditoria encontrado"],
+    [{ items: [], totalItems: 0 }, 200, "Nenhum registro de auditoria encontrado"],
     [{ detail: "Auditoria indisponível." }, 503, "Auditoria indisponível."],
-    [[{ revisionNumber: 1, timestamp: "2026-11-13T12:00:00Z", operation: "INSERT", user: student },
-      { revisionNumber: 2, timestamp: null, operation: "UPDATE", user: teacherUser },
-      { revisionNumber: 3, timestamp: null, operation: "DELETE", user: null },
-      { revisionNumber: 4, timestamp: null, operation: "CUSTOM", user: { name: "Legado", role: "CUSTOM" } }], 200, "Criação (INSERT)"],
-  ])("consulta o histórico e trata a resposta %#", async (response, status, message) => {
-    const audit = mockApi("get", `/api/users/${student.id}/audit`, response, { status });
-    const { user } = setup(); await user.click((await userRow()).getByRole("button", { name: "Auditoria" }));
-    const dialog = within(screen.getByRole("dialog"));
-    expect(await dialog.findByText(message)).toBeInTheDocument(); expect(audit).toHaveBeenCalledOnce();
-    await user.click(dialog.getAllByRole("button", { name: "Fechar" })[0]);
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    [{
+      items: [
+        { entity: "users", id: student.id, revision: 1, timestamp: "2026-11-13T12:00:00Z", operation: "INSERT", data: JSON.stringify(student) },
+        { entity: "users", id: teacherUser.id, revision: 2, timestamp: null, operation: "UPDATE", data: JSON.stringify(teacherUser) },
+        { entity: "users", id: student.id, revision: 3, timestamp: null, operation: "DELETE", data: null },
+        { entity: "users", id: "legado-id", revision: 4, timestamp: null, operation: "CUSTOM", data: JSON.stringify({ name: "Legado", role: "CUSTOM" }) },
+      ],
+      totalItems: 4,
+    }, 200, "Criação"],
+  ])("consulta os ocorridos recentes e trata a resposta %#", async (response, status, message) => {
+    const audit = mockApi("get", "/api/audit", response, { status });
+    setup();
+    const auditSection = within(await screen.findByRole("region", { name: "Auditoria de Ocorridos Recentes" }));
+    expect(await auditSection.findByText(message)).toBeInTheDocument();
+    expect(audit).toHaveBeenCalledOnce();
   });
 });
