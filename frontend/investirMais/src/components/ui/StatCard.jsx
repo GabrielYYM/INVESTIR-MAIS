@@ -1,3 +1,5 @@
+import { ProgressTrack } from "../education/CourseProgressBar.jsx";
+
 export default function StatCard({
   label,
   value,
@@ -14,11 +16,8 @@ export default function StatCard({
       </div>
       <p className={`mt-2 text-2xl font-bold ${color}`}>{value}</p>
       {progress !== undefined ? (
-        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
-          <div
-            className="h-full rounded-full bg-emerald-400 transition-all duration-500"
-            style={{ width: `${Math.min(100, progress)}%` }}
-          />
+        <div className="mt-2">
+          <ProgressTrack value={progress} />
         </div>
       ) : (
         caption && <span className="text-xs text-muted">{caption}</span>

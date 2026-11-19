@@ -3,6 +3,7 @@ import { Link, Navigate, useRouteLoaderData } from "react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient, apiError } from "../services/api.js";
 import { Notice } from "../components/ui/PageState.jsx";
+import StatePagination from "../components/ui/StatePagination.jsx";
 import PageHeader from "../components/layout/PageHeader.jsx";
 import { TextField } from "@mui/material";
 import ModerationWorkspace from "./ModerationWorkspace.jsx";
@@ -60,7 +61,7 @@ function TeacherWorkspace() {
       {application.documents.map(document => <a className="block text-brand underline" key={document.id} href={(apiClient.defaults.baseURL || "") + `/api/teacher-applications/${application.id}/documents/${document.id}`}>Baixar {document.type.replaceAll("-", " ")}</a>)}
       {application.status === "PENDING" ? <><TextField label="Parecer da análise" multiline fullWidth value={reasons[application.id] || ""} onChange={event => setReasons(previous => ({ ...previous, [application.id]: event.target.value }))} slotProps={{ htmlInput: { maxLength: 2000 } }} /><div className="flex gap-3">{[true, false].map(approve => <button key={String(approve)} className={approve ? "button-primary" : "button-danger"} disabled={review.isPending || !reasons[application.id]?.trim()} onClick={() => review.mutate({ id: application.id, approve })}>{approve ? "Aprovar professor" : "Reprovar"}</button>)}</div></> : <p>{application.reviewReason}</p>}
     </article>)}
-    {applications.data?.page.totalPages > 1 && <div className="flex gap-3"><button className="button-secondary" disabled={page === 0} onClick={() => setPage(page - 1)}>Anterior</button><button className="button-secondary" disabled={page + 1 >= applications.data.page.totalPages} onClick={() => setPage(page + 1)}>Próxima</button></div>}
+    <StatePagination page={page} totalPages={applications.data?.page.totalPages} onChange={setPage} showPageNumber={false} />
   </>;
 }
 

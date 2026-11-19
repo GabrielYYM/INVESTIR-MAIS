@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient, apiError } from "../services/api.js";
 import { reportReasons, reportStatuses } from "../services/reportReasons.js";
 import { Notice } from "../components/ui/PageState.jsx";
+import StatePagination from "../components/ui/StatePagination.jsx";
 
 export default function ModerationWorkspace() {
   const [status, setStatus] = useState("OPEN"), [page, setPage] = useState(0), [confirming, setConfirming] = useState(null);
@@ -33,6 +34,6 @@ export default function ModerationWorkspace() {
         {confirming === report.id && <div className="space-y-3 rounded border border-line p-4"><p>A aula e suas questões vinculadas serão retiradas da plataforma e enviadas para a lixeira. O arquivo no provedor de vídeo permanece disponível por seu endereço.</p><button className="button-danger" disabled={review.isPending} onClick={() => review.mutate({ id: report.id, status: "RESOLVED", removeLesson: true })}>Confirmar remoção da aula</button><button className="button-secondary ml-3" onClick={() => setConfirming(null)}>Cancelar</button></div>}
       </> : <p className="whitespace-pre-wrap break-words">Parecer: {report.reviewNote} · {new Date(report.reviewedAt).toLocaleString("pt-BR")}</p>}
     </article>)}
-    <div className="flex gap-3"><button className="button-secondary" disabled={page === 0} onClick={() => setPage(page - 1)}>Anterior</button><span>Página {page + 1}</span><button className="button-secondary" disabled={!result.data || page + 1 >= result.data.page.totalPages} onClick={() => setPage(page + 1)}>Próxima</button></div>
+    <StatePagination page={page} totalPages={result.data?.page.totalPages} onChange={setPage} hideIfSinglePage={false} />
   </>;
 }

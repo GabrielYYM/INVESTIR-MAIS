@@ -2,6 +2,7 @@ import { ArrowLeft, Lock } from "lucide-react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
 import Footer from "../components/layout/Footer.jsx";
 import TermsContent from "../components/account/TermsContent.jsx";
+import IconBadge from "../components/ui/IconBadge.jsx";
 
 export default function Terms() {
   const location = useLocation();
@@ -31,9 +32,7 @@ export default function Terms() {
         <section className="panel overflow-hidden shadow-2xl">
           <header className="border-b border-line px-6 pt-6 pb-4 sm:px-8">
             <div className="flex items-center gap-3 mb-2">
-              <span className="grid size-10 place-items-center rounded-xl bg-amber-500/15 text-brand">
-                <Lock size={20} />
-              </span>
+              <IconBadge icon={Lock} className="bg-amber-500/15 text-brand" />
               <div>
                 <h1 className="text-2xl font-bold">Termos e Políticas de Privacidade</h1>
                 <p className="text-xs sm:text-sm text-muted">

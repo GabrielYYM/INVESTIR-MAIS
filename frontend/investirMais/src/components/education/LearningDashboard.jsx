@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient, apiError } from "../../services/api.js";
 import { Notice } from "../ui/PageState.jsx";
+import StatePagination from "../ui/StatePagination.jsx";
 import { useState } from "react";
 
 export function TeacherCourses({ userId }) {
@@ -13,7 +14,7 @@ export function TeacherCourses({ userId }) {
     {courses.isPending && <p>Carregando seus cursos…</p>}{courses.error && <Notice error>{apiError(courses.error, "Não foi possível carregar seus cursos.")}</Notice>}
     {courses.data?.items.length === 0 && <p>Você ainda não cadastrou cursos.</p>}
     <div className="grid gap-3 sm:grid-cols-2">{courses.data?.items.map(course => <Link key={course.id} to={"/educacao/" + course.id} className="panel p-4"><h3 className="font-bold">{course.name}</h3><p className="mt-2 mb-4 text-sm text-muted">Inscritos: {course.enrolled_students} · Concluíram: {course.completed_students}</p><CourseProgressBar value={course.average_progress} label={"Progresso médio em " + course.name} /><p className="mt-3 text-sm text-muted">Taxa de conclusão: <strong className="text-positive">{Number(course.completion_rate).toLocaleString("pt-BR")}%</strong></p></Link>)}</div>
-    {courses.data?.totalPages > 1 && <div className="flex gap-3"><button className="button-secondary" disabled={page === 0} onClick={() => setPage(page - 1)}>Anterior</button><button className="button-secondary" disabled={page + 1 >= courses.data.totalPages} onClick={() => setPage(page + 1)}>Próxima</button></div>}
+    <StatePagination page={page} totalPages={courses.data?.totalPages} onChange={setPage} showPageNumber={false} />
   </section>;
 }
 
@@ -32,7 +33,7 @@ export function StudentLearningDashboard() {
     {answers.error && <Notice error>{apiError(answers.error, "Não foi possível carregar suas respostas.")}</Notice>}
     {answers.data?.content.length === 0 && <p className="text-muted">Suas novas respostas aparecerão aqui. Respostas anteriores à atualização não possuem alternativa registrada.</p>}
     {answers.data?.content.map(answer => <article key={answer.id} className="panel space-y-2 p-4"><h3 className="font-semibold">{answer.prompt}</h3><p>Sua resposta: {answer.selectedAnswer}</p><p className={answer.correct ? "text-positive" : "text-negative"}>{answer.correct ? "Correta" : "Incorreta"} · {new Date(answer.answeredAt).toLocaleString("pt-BR")}</p><Link className="text-brand" to={"/educacao/" + answer.courseId}>Abrir curso</Link></article>)}
-    {answers.data?.page.totalPages > 1 && <div className="flex gap-3"><button className="button-secondary" disabled={page === 0} onClick={() => setPage(page - 1)}>Anterior</button><span>Página {page + 1}</span><button className="button-secondary" disabled={page + 1 >= answers.data.page.totalPages} onClick={() => setPage(page + 1)}>Próxima</button></div>}
+    <StatePagination page={page} totalPages={answers.data?.page.totalPages} onChange={setPage} />
   </section>;
 }
 
