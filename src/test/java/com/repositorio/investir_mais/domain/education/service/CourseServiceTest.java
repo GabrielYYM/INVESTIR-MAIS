@@ -2,6 +2,7 @@ package com.repositorio.investir_mais.domain.education.service;
 
 import com.repositorio.investir_mais.domain.education.DTO.CourseDTO;
 import com.repositorio.investir_mais.domain.education.mapper.CourseMapper;
+import com.repositorio.investir_mais.domain.education.mapper.QuestionMapper;
 import com.repositorio.investir_mais.domain.education.model.Course;
 import com.repositorio.investir_mais.domain.education.repository.CourseRepository;
 import com.repositorio.investir_mais.domain.user.model.User;
@@ -36,6 +37,8 @@ class CourseServiceTest {
     @Mock
     private CourseMapper courseMapper;
     @Mock
+    private QuestionMapper questionMapper;
+    @Mock
     private UserService userService;
 
     @InjectMocks
@@ -68,7 +71,7 @@ class CourseServiceTest {
         CourseDTO.Request request = new CourseDTO.Request("Finanças Pessoais", "Descrição do Curso");
         CourseDTO.Response responseDTO = new CourseDTO.Response(courseId, "Finanças Pessoais", "Descrição do Curso", professorId);
 
-        when(userService.findByEmail("prof@investir.com")).thenReturn(professor);
+        when(userService.findByEmailForUpdate("prof@investir.com")).thenReturn(professor);
         when(courseMapper.toEntity(request)).thenReturn(course);
         when(courseRepository.save(course)).thenReturn(course);
         when(courseMapper.toDTO(course)).thenReturn(responseDTO);
@@ -197,6 +200,6 @@ class CourseServiceTest {
             () -> courseService.deleteCourse(courseId, "outro@investir.com"));
 
         assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
-        verify(courseRepository, never()).delete(any());
+        verify(courseRepository, never()).delete(any(Course.class));
     }
 }

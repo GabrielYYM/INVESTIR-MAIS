@@ -2,50 +2,61 @@
 
 O Investir Mais é uma plataforma de educação financeira com catálogo de cursos e aulas. A aplicação reúne uma interface React e uma API Spring Boot. A gestão de carteira faz parte do escopo planejado.
 
-[Diagramas](#diagramas) · [Execução local](#execução-local) · [API](#api) · [Testes](#testes-e-verificações) · [Frontend](frontend/investirMais/README.md) · [Privacidade](docs/lgpd/README.md)
+[Documentação](docs/README.md) · [Diagramas](#diagramas) · [Execução local](#execução-local) · [API](#api) · [Testes](#testes-e-verificações) · [Apresentação](docs/apresentacao.md)
+
+Veja a [atualização da plataforma](docs/atualizacao-plataforma.md) para candidaturas, novos documentos legais, auditoria com filtros, respostas dos alunos, busca de cursos e upload Cloudinary.
 
 ## Funcionalidades
 
 | Área | O que está disponível |
 | --- | --- |
-| Conta | Cadastro de aluno, confirmação de e-mail, login em duas etapas e recuperação de senha. A tela de perfil permite alterar o nome com a senha atual. |
+| Conta | Cadastro de aluno, confirmação de e-mail, aceite versionado único, login em duas etapas e recuperação de senha. O perfil permite alterar apelido com senha atual, trocar a senha, desativar a conta por 30 dias ou solicitar eliminação definitiva. |
 | Painel | Entrada comum aos três perfis, com cursos em destaque e métricas para professores e administradores. |
-| Educação | Catálogo paginado, navegação por curso e aula, reprodução de vídeos do YouTube e ações de gestão conforme o perfil. |
+| Educação | Catálogo paginado, matrícula, videoaulas do YouTube, perguntas de múltipla escolha, progressão por aulas concluídas e perguntas aprovadas, e ordenação das aulas. |
+| Administração | Gestão de todo o catálogo, consulta de usuários e auditoria, e aprovação de candidaturas de professor com documentos privados, sem idade mínima. |
+| Documentos legais | Termos e Política de Privacidade com versões e aceites imutáveis no PostgreSQL. Uma nova versão exige nova confirmação; o perfil permite consultar o histórico. |
 
-| Perfil | Consultar cursos e aulas | Criar cursos | Gerenciar cursos e aulas |
+| Perfil | Consultar cursos e aulas | Criar cursos | Gerenciar cursos, aulas, perguntas e ordem |
 | --- | --- | --- | --- |
 | `STUDENT` | Sim | — | — |
 | `TEACHER` | Sim | Sim | Cursos próprios e suas aulas |
 | `ADMIN` | Sim | Sim | Todo o catálogo |
 
-O cadastro público aceita apenas `STUDENT`. A interface exibe as ações disponíveis e a API valida o perfil e a propriedade do curso em cada operação de escrita.
+O cadastro público aceita apenas `STUDENT`. A interface exibe as ações disponíveis e a API valida o perfil e a propriedade do curso em cada operação de escrita. O painel não concede nem altera o papel `ADMIN`.
+
+As aulas aceitam links de qualquer canal do YouTube. A validação é local e verifica o formato da URL; não há filtro temático, aprovação de canais, verificação de disponibilidade ou uso de `YOUTUBE_API_KEY`. Quem publica deve conferir o material e sua reprodução. Veja o [guia dos vídeos](docs/video-validation.md).
+
+O cadastro, a troca e a recuperação de senha exigem de 8 a 100 caracteres, com ao
+menos uma letra minúscula, uma maiúscula, um número e um caractere especial. A API
+e os formulários aplicam a mesma regra. Senhas existentes continuam aceitas no
+login e na confirmação de operações; uma nova senha deve cumprir os requisitos.
 
 ## Arquitetura
 
 | Componente | Responsabilidade |
 | --- | --- |
 | React e React Router | Rotas públicas e protegidas, formulários, painel, catálogo, aula e perfil. |
-| Axios e Orval | Axios centraliza cookies, CSRF e tratamento de falhas. Orval gera o cliente de educação a partir do contrato OpenAPI versionado. |
+| Axios e Orval | Axios centraliza cookies, CSRF e tratamento de falhas. Orval gera clientes de conta e educação a partir dos contratos OpenAPI versionados. |
 | Spring Boot e Spring Security | Endpoints HTTP, validação, autorização, autenticação com senha e OTT e regras de conta e educação. |
-| PostgreSQL | Usuários, cursos, aulas, revisões Envers, tokens de uso único e registro de eventos de e-mail. |
+| PostgreSQL | Usuários, cursos, aulas, perguntas e aprovações, progresso, versões e aceites legais, revisões Envers, tokens de uso único e registro de eventos de e-mail. |
 | Redis | Sessões indexadas por usuário e contadores de tentativas de autenticação. |
 | Resend | Entrega dos e-mails de confirmação, login e recuperação. |
 | YouTube | Hospeda os vídeos referenciados pelas aulas. |
 
 | Stack | Versões e referências |
 | --- | --- |
-| Backend | Java 21, Spring Boot 4.1.2, Spring Modulith 2.1.1, MapStruct 1.6.3 e SpringDoc 3.1.1. [Configuração Maven](pom.xml) |
-| Frontend | Node.js 24 na CI, React 19.3.1, React Router 8.5.1, Vite 8.3.5, Tailwind CSS 4.3.4 e Orval 8.46.0. [Dependências travadas](frontend/investirMais/package-lock.json) |
+| Backend | Java 21, Spring Boot 4.1.2, Spring Modulith 2.1.2, MapStruct 1.6.3 e SpringDoc 3.2.0. [Configuração Maven](pom.xml) |
+| Frontend | Node.js 24 na CI, React 19.3.1, React Router 7, React-admin 5, Material UI 9, Tailwind CSS 4, Vite 8 e Orval 8.46.0. [Dependências travadas](frontend/investirMais/package-lock.json) |
 | Infraestrutura de integração | PostgreSQL 17 e Redis 8 nos testes com Testcontainers. [Configuração da aplicação](src/main/resources/application.properties) |
 
 ```text
 INVESTIR-MAIS/
 ├── .github/workflows/        Verificações de backend e frontend
 ├── docs/                     Diagramas, auditoria e notas de privacidade
-├── frontend/investirMais/    SPA React e contrato OpenAPI de educação
+├── frontend/investirMais/    SPA React e contratos OpenAPI de conta e educação
 ├── src/main/java/com/repositorio/investir_mais/
-│   ├── domain/               Conta, usuários, cursos e aulas
-│   └── infrastructure/       Segurança e e-mail
+│   ├── domain/               Conta, educação e serviço de documentos legais
+│   └── infrastructure/       Segurança, documentos legais e e-mail
 ├── src/main/resources/       Configuração e SQL de inicialização
 ├── src/test/                 Testes unitários, HTTP e de integração
 ├── .env.example              Modelo de configuração local do backend
@@ -54,17 +65,18 @@ INVESTIR-MAIS/
 
 ## Diagramas
 
-O [arquivo editável do Draw.io](docs/diagramas/investir-mais.drawio) reúne cinco abas com as classes de domínio, as classes da aplicação, a navegação, o BPMN do login e a arquitetura. A [documentação dos diagramas](docs/diagrama-de-classes.md) relaciona cada visão ao código.
+O [arquivo editável do Draw.io](docs/diagramas/investir-mais.drawio) reúne cinco abas com as classes de domínio, as classes da aplicação, a navegação, o BPMN do login e a arquitetura. Os diagramas incluem os documentos legais versionados, a publicação de links do YouTube e a ordenação das aulas. A [documentação dos diagramas](docs/diagrama-de-classes.md) relaciona cada visão ao código.
 
 ### Arquitetura
 
-[![Arquitetura do Investir Mais com React, Spring Boot, PostgreSQL, Redis e Resend](docs/diagramas/arquitetura.png)](docs/diagramas/arquitetura.png)
+[![Arquitetura com React, Spring Boot, PostgreSQL, Redis, Resend e YouTube](docs/diagramas/arquitetura.png)](docs/diagramas/arquitetura.png)
 
 ### Fluxo de navegação
 
-- O cadastro público cria uma conta de aluno. Ao confirmar o e-mail original no navegador do cadastro, o usuário entra no painel. Em outro navegador, ou com um link reenviado, a página confirma a conta e oferece o login. A recuperação usa um código separado para definir a nova senha.
+- O cadastro público cria uma conta de aluno com data de nascimento. Ao confirmar o e-mail original no navegador do cadastro, o usuário inicia a primeira sessão. Em outro navegador, ou com um link reenviado, a página confirma a conta e oferece o login. A recuperação usa um código separado para definir a nova senha.
 - Uma rota protegida verifica a sessão com `GET /auth/me`. Sem acesso, o React redireciona ao login e guarda a rota solicitada. Após os dois fatores, o navegador abre um destino interno permitido ou o painel.
-- A área autenticada oferece painel, catálogo, curso, aula e perfil. Professor e administrador veem ações de gestão conforme suas permissões. A saída encerra a sessão no backend.
+- Antes do painel e do catálogo, a aplicação verifica o aceite da versão atual dos Termos e da Política de Privacidade. Uma versão nova exige nova confirmação; o perfil mostra o histórico com o texto de cada versão aceita.
+- O professor proprietário e o administrador podem ordenar as aulas, preservando o vínculo das perguntas. A publicação aceita links de qualquer canal do YouTube; a promoção a professor depende de candidatura aprovada, sem idade mínima. A saída encerra a sessão no backend.
 
 [![Fluxo de navegação do cadastro e login à área autenticada](docs/diagramas/fluxo-de-navegacao.png)](docs/diagramas/fluxo-de-navegacao.png)
 
@@ -73,24 +85,28 @@ O [arquivo editável do Draw.io](docs/diagramas/investir-mais.drawio) reúne cin
 1. A pessoa informa e-mail e senha. O Spring valida as credenciais e exige e-mail confirmado. Nessa etapa existe uma sessão parcial.
 2. O serviço JDBC de OTT do Spring Security gera um token de uso único com validade de cinco minutos. O e-mail inclui o link **Concluir acesso** e a opção de digitar o código.
 3. Na rota `/entrar/link`, o React lê e remove o token do fragmento da URL e o envia com CSRF para `POST /auth/verify-2fa`. O código manual chama o mesmo endpoint. O token pertence à sessão que iniciou o login e deve ser usado no mesmo navegador.
-4. Após validar e consumir o OTT, o Spring combina os fatores e troca o identificador da sessão. O diagrama também mostra as saídas de recusa por credenciais ou token inválido.
+4. Após validar e consumir o OTT, o Spring combina os fatores e troca o identificador da sessão. A interface consulta o aceite legal antes de liberar o catálogo. O diagrama também mostra as saídas de recusa por credenciais ou token inválido.
 
 [![BPMN do login com raias para pessoa usuária, React e Spring](docs/diagramas/bpmn-login-ott.png)](docs/diagramas/bpmn-login-ott.png)
 
 ### Classes de domínio
 
 - `User` representa a conta e seu perfil `UserRole`. A senha é persistida como hash Argon2id e fica fora das revisões Envers.
-- Cada `Course` tem um usuário proprietário e pode ter zero ou mais aulas. Cada `Lesson` pertence a exatamente um curso e guarda os endereços de mídia e miniatura.
-- `User` mantém matrículas por curso e progresso por aula como coleções de valores embutíveis.
-- A exclusão é lógica. Excluir um curso propaga a exclusão às aulas. Excluir uma conta pelo serviço também exclui logicamente os cursos e aulas vinculados.
+- Cada `Course` tem um usuário proprietário e pode ter zero ou mais aulas e perguntas. Cada `Lesson` pertence a exatamente um curso e guarda os endereços de mídia e miniatura.
+- `User` mantém matrículas por curso e progresso por aula como coleções de valores embutíveis. Os acertos são UUIDs em `passedQuestionIds`; as alternativas pertencem a `Question`.
+- Documentos e aceites ficam nas tabelas SQL `legal_document_release` e `legal_document_acceptance`, acessadas por JDBC e protegidas contra alterações.
+- Cursos, aulas e questões usam exclusão lógica e podem ser restaurados pelo admin. Contas têm desativação recuperável por 30 dias ou eliminação definitiva mediante senha. Veja [denúncias e recuperação](docs/moderacao-e-recuperacao.md) e a [matriz de retenção](.lgpd/retention.md).
 
 [![Entidades de domínio, perfis, matrículas e progresso com atributos e cardinalidades](docs/diagramas/classes-de-dominio.png)](docs/diagramas/classes-de-dominio.png)
 
 ### Classes da aplicação
 
 - Na área de conta, `UserController` e `AuthenticationController` expõem operações de usuário e sessão. `UserService` concentra as regras da conta e usa `AccountSecurityService` para tokens de confirmação e recuperação e para revogação de sessões.
-- No catálogo, controllers chamam `CourseService` e `LessonService`. Os serviços aplicam regras de permissão e propriedade, usam repositórios JPA e mapeiam entidades para DTOs com MapStruct.
+- No catálogo, controllers chamam `CourseService`, `LessonService` e `QuestionService`. As perguntas e o conteúdo anterior controlam a progressão do aluno. Os serviços aplicam regras de permissão e propriedade, usam repositórios JPA e mapeiam entidades para DTOs com MapStruct, incluindo `QuestionMapper`.
+- `LessonService` usa `LessonVideo` para validar vídeos do YouTube ou Cloudinary e gerar a miniatura. Não há aprovação de canais, filtro de conteúdo nem dependência de chave da API do YouTube.
+- `LegalDocumentsService` publica e consulta versões imutáveis e registra os aceites. O interceptor de aceite retorna HTTP 428 quando há pendência para acessar os recursos da plataforma.
 - O `AuthenticationEmailHandler` envia os e-mails transacionais pela API do Resend.
+- O envio local também usa exclusivamente o Resend; não há transporte SMTP ou Mailpit. Os testes automatizados simulam o provedor.
 
 [![Classes da aplicação para conta, educação e envio de e-mails](docs/diagramas/classes-da-aplicacao.png)](docs/diagramas/classes-da-aplicacao.png)
 
@@ -175,6 +191,10 @@ No perfil `dev`, o Swagger UI fica em [localhost:8080/swagger-ui.html](http://lo
 | `/api/users` | Cadastro, verificação de e-mail, reenvio, recuperação e operações da própria conta. |
 | `/api/courses` | Listagem paginada, detalhe, filtro por professor e gestão de cursos. |
 | `/api/lessons` | Aulas por curso, detalhe e operações de gestão. |
+| `GET/PUT /api/lessons/course/{courseId}/order` | Consulta e atualização da sequência completa de aulas pelo professor responsável ou ADMIN. |
+| `/api/courses/{courseId}/questions` | Gestão de perguntas, consulta sem gabarito para alunos e respostas que liberam a progressão. |
+| `/api/legal/current`, `/api/legal/versions/{version}` | Textos públicos da versão atual ou de uma versão específica. |
+| `GET /api/legal/status`, `GET/POST /api/legal/acceptances` | Pendência e histórico do usuário autenticado; registro de aceite por POST com CSRF. |
 
 ### Sessões, dados e operação
 
@@ -182,7 +202,8 @@ No perfil `dev`, o Swagger UI fica em [localhost:8080/swagger-ui.html](http://lo
 - O Redis indexa sessões por usuário para revogá-las após alterações de senha ou e-mail e após exclusão de conta.
 - O limite de autenticação usa Redis por IP e rota e também por conta em `/auth/login`. O padrão é 10 solicitações por janela de um minuto. O limite retorna `429` com `Retry-After`. Se o Redis estiver indisponível, o filtro retorna `503`.
 - Tokens de login usam `one_time_tokens`. Tokens de confirmação e recuperação ficam em `app_one_time_token`, com hash SHA-256 para novas emissões e consumo transacional. O Spring Modulith registra e reprocessa eventos de confirmação e recuperação. O e-mail de login segue o fluxo assíncrono da autenticação.
-- A API exige a senha atual para excluir a própria conta. A exclusão lógica preserva o registro e mantém seu e-mail reservado. As operações do serviço cuidam da cascata e da revogação de acesso.
+- A API exige a senha atual para encerrar a própria conta. A desativação preserva dados, vínculos e o e-mail reservado durante 30 dias, com sessões/tokens revogados; o admin pode restaurar mediante solicitação verificada do titular. A eliminação definitiva remove dados e snapshots relacionados do banco ativo, sem restauração. Os 30 dias são uma política de recuperação, não um prazo da LGPD.
+- Sem aceite da versão legal atual, os recursos protegidos retornam `428`; se a versão mudar durante a leitura, o aceite retorna `409`. Perfil, segurança, exclusão, documentos e saída continuam acessíveis. O aceite registra concordância com os Termos e ciência da Política, não um consentimento genérico para qualquer tratamento de dados.
 
 ### Produção
 
@@ -190,7 +211,9 @@ Use o perfil `prod` com PostgreSQL, Redis e HTTPS. Configure `RESEND_API_KEY` e 
 
 Configure `APP_PUBLIC_BASE_URL` como a origem pública do backend e `APP_CORS_ALLOWED_ORIGIN` como a origem pública da SPA quando forem diferentes. O perfil ativa cookies `Secure`, habilita TLS no Redis por padrão e desativa Swagger e `/v3/api-docs`.
 
-O esquema das entidades usa `ddl-auto=update` e o SQL auxiliar fica em [`schema-postgresql.sql`](src/main/resources/schema-postgresql.sql). As opções de publicação da SPA e do proxy estão no [README do frontend](frontend/investirMais/README.md#publicação).
+O esquema das entidades usa `ddl-auto=update`. A inicialização também executa o [SQL auxiliar](src/main/resources/schema-postgresql.sql) e a [estrutura imutável dos documentos legais](src/main/resources/legal-history-postgresql.sql). Faça backup antes de mudanças de esquema e preserve os dados existentes. Veja os guias de [documentos legais](docs/documentos-legais.md) e [ordenação e perguntas](docs/questions.md). As opções de publicação da SPA e do proxy estão no [README do frontend](frontend/investirMais/README.md#publicação).
+
+A inicialização não adapta esquemas legados nem realinha sequências antigas. Para reutilizar um banco existente, faça backup e prepare a migração necessária antes de executar esta versão; recrie o banco somente quando seus dados puderem ser descartados.
 
 ## Testes e verificações
 
@@ -199,14 +222,20 @@ O esquema das entidades usa `ddl-auto=update` e o SQL auxiliar fica em [`schema-
 | Backend no Windows | `.\mvnw.cmd -B verify` na raiz |
 | Backend no Linux ou macOS | `bash mvnw -B verify` na raiz |
 | Build do frontend | `npm ci` e `npm run build` em `frontend/investirMais` |
+| Testes e cobertura do frontend | `npm run test:coverage` em `frontend/investirMais` |
 | Auditoria de dependências npm | `npm audit --audit-level=high` em `frontend/investirMais` |
 
-A suíte inclui testes do fluxo de login com H2 e Redis simulado, além de testes de integração com PostgreSQL e Redis via Docker. Os testes com Testcontainers configurados com `disabledWithoutDocker` são ignorados quando Docker está indisponível. O [workflow de CI](.github/workflows/checks.yml) executa as verificações em pushes e pull requests.
+A suíte inclui testes do fluxo de login com H2 e Redis simulado, além de testes de integração com PostgreSQL e Redis via Docker. Os testes com Testcontainers configurados com `disabledWithoutDocker` são ignorados quando Docker está indisponível. Execute a verificação completa com Docker disponível e mantenha esses testes em bancos isolados: nunca os aponte para o banco oficial local. O [workflow de CI](.github/workflows/checks.yml) executa as verificações em pushes e pull requests.
 
 ## Documentação complementar
 
 - [Frontend, rotas e publicação](frontend/investirMais/README.md)
 - [Diagramas e referências ao código](docs/diagrama-de-classes.md)
+- [Perguntas, progressão e ordem das aulas](docs/questions.md)
+- [Vídeos do YouTube e limites da validação](docs/video-validation.md)
+- [Publicação e versionamento dos documentos legais](docs/documentos-legais.md)
+- [Identificadores das revisões de auditoria](docs/auditoria-revisoes.md)
+- [Apresentação e roteiro dos slides](docs/apresentacao.md)
 - [Auditoria histórica de frontend e segurança](docs/auditoria-frontend-seguranca.md)
 - [Privacidade e dados pessoais](docs/lgpd/README.md)
 - [Licença](LICENSE)

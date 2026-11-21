@@ -1,3 +1,4 @@
+@layer theme, base, mui, components, utilities;
 @import "tailwindcss" source(".");
 
 @theme {
@@ -24,7 +25,7 @@ body {
   @apply min-w-0 bg-canvas font-sans text-ink antialiased;
 }
 
-button, a, input, textarea {
+button, a, input:not(.MuiInputBase-input), textarea:not(.MuiInputBase-input) {
   @apply focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand;
 }
 
@@ -57,21 +58,6 @@ button:enabled {
     @apply border border-red-500/20 bg-red-500/10 text-negative hover:bg-red-500/20;
   }
 
-  .field {
-    @apply w-full rounded-xl border border-line bg-raised px-3.5 py-3 text-sm text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-amber-500/50 focus-visible:outline-offset-0 focus-visible:outline-1 disabled:cursor-not-allowed disabled:opacity-60;
-  }
-
-  select.field {
-    color-scheme: dark;
-    background-color: #1e1c2a;
-    color: #f4f4f5;
-  }
-
-  select option {
-    background-color: #1e1c2a;
-    color: #f4f4f5;
-  }
-
   .eyebrow {
     @apply text-xs font-semibold tracking-wider uppercase text-amber-400;
   }
@@ -84,3 +70,5 @@ button:enabled {
     @apply border-red-500/20 bg-red-500/10 text-negative;
   }
 }
+
+html { scroll-behavior: smooth; }

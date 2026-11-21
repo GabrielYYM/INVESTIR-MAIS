@@ -4,15 +4,19 @@ import com.repositorio.investir_mais.domain.education.DTO.CourseDTO;
 import com.repositorio.investir_mais.domain.education.DTO.LessonDTO;
 import com.repositorio.investir_mais.domain.education.mapper.CourseMapper;
 import com.repositorio.investir_mais.domain.education.mapper.LessonMapper;
+import com.repositorio.investir_mais.domain.education.mapper.QuestionMapper;
 import com.repositorio.investir_mais.domain.education.model.Course;
 import com.repositorio.investir_mais.domain.education.model.Lesson;
 import com.repositorio.investir_mais.domain.education.repository.CourseRepository;
 import com.repositorio.investir_mais.domain.education.repository.LessonRepository;
 import com.repositorio.investir_mais.domain.education.service.CourseService;
 import com.repositorio.investir_mais.domain.education.service.LessonService;
+import com.repositorio.investir_mais.domain.education.service.QuestionService;
 import com.repositorio.investir_mais.domain.user.model.User;
 import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.service.UserService;
+import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -28,9 +32,6 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.Optional;
-import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -41,7 +42,7 @@ class EducationMethodSecurityTest {
     private static final UUID COURSE_ID = UUID.randomUUID();
     private static final UUID LESSON_ID = UUID.randomUUID();
     private static final CourseDTO.Request COURSE = new CourseDTO.Request("Curso", "Descrição");
-    private static final LessonDTO.Request LESSON = new LessonDTO.Request("Aula", "Descrição", "video", "capa");
+    private static final LessonDTO.Request LESSON = new LessonDTO.Request("Aula", "Descrição", "https://youtu.be/dQw4w9WgXcQ", "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg");
 
     @Autowired CourseService courses;
     @Autowired LessonService lessons;
@@ -77,7 +78,8 @@ class EducationMethodSecurityTest {
     void teacherCanWriteOwnResourcesThroughSpringProxy(String operation) {
         prepareResources(UserRole.TEACHER, true);
         assertDoesNotThrow(write(operation));
-        verify(users).findByEmail(EMAIL);
+        if (operation.equals("createCourse")) verify(users).findByEmailForUpdate(EMAIL);
+        else verify(users).findByEmail(EMAIL);
     }
 
     @ParameterizedTest
@@ -86,7 +88,8 @@ class EducationMethodSecurityTest {
     void administratorCanWriteOtherTeachersResources(String operation) {
         prepareResources(UserRole.ADMIN, false);
         assertDoesNotThrow(write(operation));
-        verify(users).findByEmail(EMAIL);
+        if (operation.equals("createCourse")) verify(users).findByEmailForUpdate(EMAIL);
+        else verify(users).findByEmail(EMAIL);
     }
 
     @ParameterizedTest
@@ -97,7 +100,7 @@ class EducationMethodSecurityTest {
         var failure = assertThrows(ResponseStatusException.class, write(operation));
         assertEquals(403, failure.getStatusCode().value());
         verify(courseRepository, never()).save(any());
-        verify(courseRepository, never()).delete(any());
+        verify(courseRepository, never()).delete(any(Course.class));
         verify(lessonRepository, never()).save(any());
         verify(lessonRepository, never()).delete(any());
         verifyNoInteractions(courseMapper, lessonMapper);
@@ -129,6 +132,7 @@ class EducationMethodSecurityTest {
         lesson.setId(LESSON_ID);
         lesson.setCourse(course);
         when(users.findByEmail(EMAIL)).thenReturn(user);
+        when(users.findByEmailForUpdate(EMAIL)).thenReturn(user);
         when(courseRepository.findForUpdateById(COURSE_ID)).thenReturn(Optional.of(course));
         when(lessonRepository.findForUpdateById(LESSON_ID)).thenReturn(Optional.of(lesson));
         when(lessonRepository.findByIdAndCourse_Professor_Id(LESSON_ID, user.getId()))
@@ -146,7 +150,11 @@ class EducationMethodSecurityTest {
         @Bean CourseRepository courseRepository() { return mock(CourseRepository.class); }
         @Bean LessonRepository lessonRepository() { return mock(LessonRepository.class); }
         @Bean CourseMapper courseMapper() { return mock(CourseMapper.class); }
+        @Bean QuestionMapper questionMapper() { return mock(QuestionMapper.class); }
         @Bean LessonMapper lessonMapper() { return mock(LessonMapper.class); }
         @Bean UserService users() { return mock(UserService.class); }
+        @Bean QuestionService questions() {
+            return mock(QuestionService.class);
+        }
     }
 }

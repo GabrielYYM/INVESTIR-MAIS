@@ -2,7 +2,9 @@ package com.repositorio.investir_mais.domain.education.service;
 
 import com.repositorio.investir_mais.domain.education.DTO.CourseDTO;
 import com.repositorio.investir_mais.domain.education.mapper.CourseMapper;
+import com.repositorio.investir_mais.domain.education.mapper.QuestionMapper;
 import com.repositorio.investir_mais.domain.education.model.Course;
+import com.repositorio.investir_mais.domain.education.model.CourseCategories;
 import com.repositorio.investir_mais.domain.education.repository.CourseRepository;
 import com.repositorio.investir_mais.domain.education.repository.LessonRepository;
 import com.repositorio.investir_mais.domain.user.model.User;
@@ -33,13 +35,19 @@ public class CourseService {
     private final CourseRepository courseRepository;
     private final LessonRepository lessonRepository;
     private final CourseMapper courseMapper;
+    private final QuestionMapper questionMapper;
     private final UserService userService;
 
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public CourseDTO.Response createCourse(CourseDTO.Request request, String principalName) {
-        User professor = userService.findByEmail(principalName);
+        User professor = userService.findByEmailForUpdate(principalName);
         Course course = courseMapper.toEntity(request);
         course.setProfessor(professor);
+        course.setCategory(CourseCategories.validate(request.category(), null));
+        if (request.questions() != null) {
+            request.questions().forEach(q -> course.getQuestions().add(
+                    questionMapper.toEntity(course, q)));
+        }
         
         Course savedCourse = courseRepository.save(course);
         log.info("Novo curso criado com sucesso. ID: {}, Professor ID: {}", savedCourse.getId(), professor.getId());
@@ -59,6 +67,22 @@ public class CourseService {
     @Transactional(readOnly = true)
     public Page<CourseDTO.Response> getAllCourses(Pageable pageable) {
         return courseRepository.findAll(pageable).map(courseMapper::toDTO);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<CourseDTO.Response> search(String query, String category, Pageable pageable) {
+        if (pageable.getSort().stream().anyMatch(order -> !java.util.Set.of("name", "id", "createdAt").contains(order.getProperty()))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ordenação inválida.");
+        }
+        return courseRepository.findAll((root, criteria, cb) -> {
+            var predicates = new java.util.ArrayList<jakarta.persistence.criteria.Predicate>();
+            if (query != null && !query.isBlank()) {
+                String term = "%" + query.toLowerCase(java.util.Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
+                predicates.add(cb.or(cb.like(cb.lower(root.get("name")), term, '\\'), cb.like(cb.lower(root.get("keywords")), term, '\\')));
+            }
+            if (category != null && !category.isBlank()) predicates.add(cb.equal(cb.lower(root.get("category")), category.toLowerCase(java.util.Locale.ROOT)));
+            return cb.and(predicates.toArray(jakarta.persistence.criteria.Predicate[]::new));
+        }, pageable).map(courseMapper::toDTO);
     }
 
     @Transactional(readOnly = true)
@@ -137,8 +161,13 @@ public class CourseService {
 
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public CourseDTO.Response updateCourse(UUID courseId, CourseDTO.Request request, String principalName) {
+        if (request.questions() != null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Altere perguntas pelas rotas de questions para preservar respostas existentes.");
+        }
         Course course = findCourseOwnedBy(courseId, principalName);
+        String category = CourseCategories.validate(request.category(), course.getCategory());
         courseMapper.updateEntity(request, course);
+        course.setCategory(category);
         
         log.info("Curso atualizado com sucesso. ID: {}", course.getId());
         return courseMapper.toDTO(course);
@@ -154,11 +183,7 @@ public class CourseService {
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public Course findCourseOwnedBy(UUID courseId, String principalName) {
         User professor = userService.findByEmail(principalName);
-        Course course = courseRepository.findForUpdateById(courseId)
-            .orElseThrow(() -> {
-                log.warn("Tentativa de alterar/excluir curso inexistente. ID: {}", courseId);
-                return new ResponseStatusException(HttpStatus.NOT_FOUND, "Curso não encontrado.");
-            });
+        Course course = findCourseForProgressUpdate(courseId);
 
         if (professor.getRole() != UserRole.ADMIN
                 && !course.getProfessor().getId().equals(professor.getId())) {
@@ -169,23 +194,43 @@ public class CourseService {
         return course;
     }
 
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
+    @Transactional(readOnly = true)
+    public Course getCourseForTeacher(UUID courseId, String email) {
+        User user = userService.findByEmail(email);
+        Course course = findCourseOrThrow(courseId);
+        if (user.getRole() != UserRole.ADMIN && !course.getProfessor().getId().equals(user.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não tem acesso aos dados deste curso.");
+        }
+        return course;
+    }
+
     CourseDTO.CourseProgressResponse buildCourseProgress(UUID courseId, UUID studentId, boolean enrolled) {
         long totalLessons = lessonRepository.countByCourseId(courseId);
         List<UUID> completedLessonIds = lessonRepository.findCompletedLessonIds(studentId, courseId);
         long completedLessons = completedLessonIds.size();
+        long totalQuestions = lessonRepository.countQuestions(courseId);
+        long passedQuestions = lessonRepository.countPassedQuestions(courseId, studentId);
 
         return new CourseDTO.CourseProgressResponse(
                 courseId,
                 enrolled,
                 totalLessons,
                 completedLessons,
-                CourseDTO.CourseStats.completionPercentage(completedLessons, totalLessons),
-                completedLessonIds
+                CourseDTO.CourseStats.completionPercentage(completedLessons + passedQuestions, totalLessons + totalQuestions),
+                completedLessonIds,
+                totalQuestions,
+                passedQuestions
         );
     }
 
     Course findCourseOrThrow(UUID courseId) {
         return courseRepository.findById(courseId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Curso não encontrado."));
+    }
+
+    Course findCourseForProgressUpdate(UUID courseId) {
+        return courseRepository.findForUpdateById(courseId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Curso não encontrado."));
     }
 }

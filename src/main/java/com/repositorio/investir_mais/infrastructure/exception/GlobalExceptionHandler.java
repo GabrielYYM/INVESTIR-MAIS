@@ -15,6 +15,11 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+    @ExceptionHandler(jakarta.validation.ConstraintViolationException.class)
+    public ProblemDetail handleInvalidParameters(jakarta.validation.ConstraintViolationException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Parâmetros de consulta inválidos.");
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
     public ProblemDetail handleAccessDenied(AccessDeniedException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, "Acesso negado.");
@@ -37,6 +42,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         }
         for (Throwable cause = ex.getCause(); cause != null; cause = cause.getCause()) {
             if (cause instanceof ConstraintViolationException violation) {
+                if ("revinfo_pkey".equalsIgnoreCase(violation.getConstraintName())) {
+                    return handleGenericException(ex);
+                }
                 return switch (violation.getKind()) {
                     case UNIQUE -> ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "Já existe um registro com esses dados.");
                     case FOREIGN_KEY -> ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "A operação conflita com registros relacionados.");

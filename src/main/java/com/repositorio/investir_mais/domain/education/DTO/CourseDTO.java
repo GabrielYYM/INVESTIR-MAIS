@@ -1,8 +1,11 @@
 package com.repositorio.investir_mais.domain.education.DTO;
 
+import java.time.LocalDateTime;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -19,8 +22,14 @@ public class CourseDTO {
         @Schema(description = "Descrição detalhada sobre o conteúdo do curso", example = "Aprenda os conceitos básicos de renda fixa e variável.")
         @NotBlank(message = "A descrição é obrigatória") 
         @Size(max = 10000)
-        String description
-    ) {}
+        String description,
+        @Size(max = 100) List<QuestionDTO.@NotNull @Valid Request> questions,
+        @Size(max = 100) String category,
+        @Size(max = 1000) String keywords
+    ) {
+        public Request(String name, String description) { this(name, description, null, null, null); }
+        public Request(String name, String description, List<QuestionDTO.Request> questions) { this(name, description, questions, null, null); }
+    }
 
     @Schema(name = "CourseResponse", description = "Resposta com dados do curso")
     public record Response(
@@ -34,8 +43,10 @@ public class CourseDTO {
         String description,
 
         @Schema(description = "ID do professor responsável pelo curso", example = "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d")
-        UUID professorId
-    ) {}
+        UUID professorId, String category, String keywords, LocalDateTime createdAt
+    ) {
+        public Response(UUID id, String name, String description, UUID professorId) { this(id, name, description, professorId, null, null, null); }
+    }
 
     @Schema(description = "Estatísticas gerais consolidadas do professor no período")
     public record Summary(
@@ -100,6 +111,13 @@ public class CourseDTO {
         long totalLessons,
         long completedLessons,
         double progressPercentage,
-        List<UUID> completedLessonIds
-    ) {}
+        List<UUID> completedLessonIds,
+        long totalQuestions,
+        long passedQuestions
+    ) {
+        public CourseProgressResponse(UUID courseId, boolean enrolled, long totalLessons, long completedLessons,
+                                      double progressPercentage, List<UUID> completedLessonIds) {
+            this(courseId, enrolled, totalLessons, completedLessons, progressPercentage, completedLessonIds, 0, 0);
+        }
+    }
 }

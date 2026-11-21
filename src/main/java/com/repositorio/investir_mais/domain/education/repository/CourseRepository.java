@@ -14,49 +14,27 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface CourseRepository extends JpaRepository<Course, UUID> {
+public interface CourseRepository extends JpaRepository<Course, UUID>, org.springframework.data.jpa.repository.JpaSpecificationExecutor<Course> {
     Page<Course> findAllByProfessorId(UUID professorId, Pageable pageable);
 
 
-    @Query(value = """
-            with visible_courses as (
-                select id, name
-                from tb_course
-                where deleted_at is null and (:allCourses = true or professor_id = :professorId)
-            ), lesson_counts as (
-                select l.course_id, count(*) as total
-                from tb_lesson l join visible_courses c on c.id = l.course_id
-                where l.deleted_at is null
-                group by l.course_id
-            ), enrollment_counts as (
-                select e.course_id, count(*) as total
-                from tb_course_enrollment e join visible_courses c on c.id = e.course_id
-                where e.enrolled_at between :start and :end
-                group by e.course_id
-            ), completion_counts as (
-                select l.course_id, count(*) as total
-                from tb_lesson_progress p
-                join tb_lesson l on l.id = p.lesson_id
-                join visible_courses c on c.id = l.course_id
-                where l.deleted_at is null and p.completed = true and p.completed_at between :start and :end
-                group by l.course_id
-            )
-            select c.id as "courseId", c.name as "courseName", coalesce(l.total, 0) as "totalLessons",
-                   coalesce(e.total, 0) as "enrolledStudents", coalesce(p.total, 0) as "lessonsWatched"
-            from visible_courses c
-            left join lesson_counts l on l.course_id = c.id
-            left join enrollment_counts e on e.course_id = c.id
-            left join completion_counts p on p.course_id = c.id
-            """, nativeQuery = true)
+    @Query("""
+            select c.id as courseId, c.name as courseName,
+                (select count(l) from Lesson l where l.course.id = c.id) as totalLessons,
+                (select count(u) from User u join u.enrollments e
+                    where key(e).id = c.id and e.enrolledAt between :start and :end) as enrolledStudents,
+                (select count(u) from User u join u.lessonProgress p join Lesson l on l.id = key(p).id
+                    where l.course.id = c.id and p.completed = true
+                      and p.completedAt between :start and :end) as lessonsWatched
+            from Course c where (:allCourses = true or c.professor.id = :professorId)
+            """)
     List<CourseStats> findDashboardStats(UUID professorId, boolean allCourses, LocalDateTime start, LocalDateTime end);
 
-    @Query(value = """
-            select count(distinct e.student_id)
-            from tb_course_enrollment e
-            join tb_course c on c.id = e.course_id
-            where e.enrolled_at between :start and :end
-              and (:allCourses = true or (c.deleted_at is null and c.professor_id = :professorId))
-            """, nativeQuery = true)
+    @Query("""
+            select count(distinct u.id) from User u join u.enrollments e join Course c on c.id = key(e).id
+            where e.enrolledAt between :start and :end
+              and (:allCourses = true or c.professor.id = :professorId)
+            """)
     long countDashboardStudents(UUID professorId, boolean allCourses, LocalDateTime start, LocalDateTime end);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

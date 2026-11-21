@@ -25,7 +25,7 @@ class ResendEmailSender {
                 .build();
     }
 
-    void send(String recipient, String subject, String text, String html, String idempotencyKey) {
+    public void send(String recipient, String subject, String text, String html, String idempotencyKey) {
         var request = client.post().uri("/emails").contentType(MediaType.APPLICATION_JSON);
         if (idempotencyKey != null) {
             request.header("Idempotency-Key", idempotencyKey);

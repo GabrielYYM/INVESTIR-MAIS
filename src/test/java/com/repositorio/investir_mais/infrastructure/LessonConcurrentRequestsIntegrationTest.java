@@ -1,5 +1,6 @@
 package com.repositorio.investir_mais.infrastructure;
 
+import com.repositorio.investir_mais.domain.legal.service.LegalDocumentsService;
 import com.repositorio.investir_mais.domain.education.DTO.LessonDTO;
 import com.repositorio.investir_mais.domain.education.mapper.LessonMapper;
 import com.repositorio.investir_mais.domain.education.model.Course;
@@ -11,6 +12,13 @@ import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.repository.UserRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,13 +32,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.testcontainers.junit.jupiter.Testcontainers;
-
-import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -46,6 +47,7 @@ class LessonConcurrentRequestsIntegrationTest extends PostgreSqlIntegrationTest 
     private static final String EMAIL = "concurrent-lesson@example.test";
     @Autowired private MockMvc mvc;
     @Autowired private UserRepository users;
+    @Autowired private LegalDocumentsService legal;
     @Autowired private CourseRepository courses;
     @MockitoSpyBean private LessonRepository lessons;
     @MockitoSpyBean private LessonMapper mapper;
@@ -59,12 +61,13 @@ class LessonConcurrentRequestsIntegrationTest extends PostgreSqlIntegrationTest 
             var user = new User();
             user.setName("Professor de teste");
             user.setEmail(EMAIL);
-            user.setAge(28);
+
             user.setPassword("unused-test-password");
             user.setRole(UserRole.TEACHER);
             user.setEmailVerified(true);
             return users.saveAndFlush(user);
         });
+        legal.accept(owner.getEmail(), legal.current().version());
         var course = new Course();
         course.setName("Curso de teste");
         course.setDescription("Exclusões e edições concorrentes");
@@ -73,7 +76,7 @@ class LessonConcurrentRequestsIntegrationTest extends PostgreSqlIntegrationTest 
         var lesson = new Lesson();
         lesson.setTitle("Aula de teste");
         lesson.setDescription("Descrição da aula");
-        lesson.setMediaUrl("https://example.test/video");
+        lesson.setMediaUrl("https://youtu.be/dQw4w9WgXcQ");
         lesson.setThumbnailUrl("https://example.test/thumbnail");
         lesson.setCourse(course);
         UUID lessonId = lessons.saveAndFlush(lesson).getId();
@@ -103,11 +106,11 @@ class LessonConcurrentRequestsIntegrationTest extends PostgreSqlIntegrationTest 
                 var request = method.equals("DELETE") ? delete("/api/lessons/{id}", lessonId)
                         : put("/api/lessons/{id}", lessonId).contentType(MediaType.APPLICATION_JSON).content("""
                           {"title":"Aula editada","description":"Descrição atualizada",
-                           "mediaUrl":"https://example.test/video","thumbnailUrl":"https://example.test/thumbnail"}
+                           "mediaUrl":"https://youtu.be/dQw4w9WgXcQ","thumbnailUrl":"https://example.test/thumbnail"}
                           """);
                 return mvc.perform(request.with(csrf())).andReturn();
             }));
-            java.util.concurrent.Future<MvcResult> second;
+            Future<MvcResult> second;
             try {
                 assertTrue(writeStarted.await(5, TimeUnit.SECONDS));
                 var deleteStarted = new CountDownLatch(1);

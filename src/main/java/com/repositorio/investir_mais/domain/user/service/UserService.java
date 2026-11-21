@@ -1,27 +1,29 @@
 package com.repositorio.investir_mais.domain.user.service;
 
+import com.repositorio.investir_mais.domain.user.repository.TeacherApplicationRepository;
+import com.repositorio.investir_mais.domain.AccountEmailRequested;
+import com.repositorio.investir_mais.domain.token.service.AccountSecurityService;
 import com.repositorio.investir_mais.domain.user.DTO.AuthDTO;
 import com.repositorio.investir_mais.domain.user.DTO.UserDTO;
 import com.repositorio.investir_mais.domain.user.mapper.UserMapper;
 import com.repositorio.investir_mais.domain.user.model.User;
 import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.repository.UserRepository;
-import com.repositorio.investir_mais.domain.AccountEmailRequested;
-import com.repositorio.investir_mais.domain.AccountSecurityService;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.modulith.NamedInterface;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
+import org.springframework.modulith.NamedInterface;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.ott.OneTimeToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.util.List;
-import java.util.UUID;
 
 @NamedInterface("user-service")
 @Service
@@ -31,10 +33,12 @@ import java.util.UUID;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final TeacherApplicationRepository teacherApplications;
     private final PasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
     private final AccountSecurityService accountSecurity;
     private final ApplicationEventPublisher events;
+    private final AccountDeletionService accountDeletions;
 
     @Transactional(readOnly = true)
     public User findByEmail(String email) {
@@ -59,18 +63,13 @@ public class UserService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não pode alterar este perfil.");
         }
 
-        if (!passwordEncoder.matches(dto.currentPassword(), user.getPassword())) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Senha atual inválida.");
-        }
+        verifyCurrentPassword(user, dto.currentPassword());
 
         if (userRepository.existsByEmailAndIdNot(dto.email(), user.getId())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Não foi possível atualizar o perfil. Verifique os dados informados.");
         }
 
         user.setName(dto.name());
-        if (dto.age() != null) {
-            user.setAge(dto.age());
-        }
         String previousEmail = user.getEmail();
         boolean emailChanged = !previousEmail.equals(dto.email());
         user.setEmail(dto.email());
@@ -109,24 +108,29 @@ public class UserService {
         if (!user.getId().equals(requestedId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não pode excluir outra conta.");
         }
-        if (!passwordEncoder.matches(dto.currentPassword(), user.getPassword())) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Senha atual inválida.");
-        }
+        verifyCurrentPassword(user, dto.currentPassword());
 
-        userRepository.delete(user);
-        userRepository.flush();
+        accountDeletions.deactivate(user);
         accountSecurity.invalidateAll(user.getEmail());
         accountSecurity.revokeAllSessions(user.getEmail());
         log.info("Conta excluída logicamente com sucesso. Usuário ID: {}", user.getId());
     }
 
+    public void eraseAccount(String principalName, UUID requestedId, UserDTO.DeleteAccountRequest dto) {
+        User user = findByEmailForUpdate(principalName);
+        if (!user.getId().equals(requestedId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não pode excluir outra conta.");
+        }
+        verifyCurrentPassword(user, dto.currentPassword());
+        accountSecurity.invalidateAll(user.getEmail());
+        accountSecurity.revokeAllSessions(user.getEmail());
+        accountDeletions.erase(requestedId, true);
+    }
+
     public void updatePassword(String email, AuthDTO.UpdatePasswordRequest dto) {
         User user = findByEmailForUpdate(email);
 
-        if (!passwordEncoder.matches(dto.currentPassword(), user.getPassword())) {
-            log.warn("Falha ao atualizar senha para o usuário {}: Senha atual incorreta", user.getId());
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Senha atual inválida.");
-        }
+        verifyCurrentPassword(user, dto.currentPassword());
 
         user.setPassword(passwordEncoder.encode(dto.newPassword()));
         accountSecurity.revokeAllSessions(user.getEmail());
@@ -161,6 +165,13 @@ public class UserService {
         return userMapper.toDTO(user);
     }
 
+    private void verifyCurrentPassword(User user, String currentPassword) {
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            log.warn("Senha atual incorreta para o usuário {}", user.getId());
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Senha atual inválida.");
+        }
+    }
+
     private OneTimeToken sendVerificationLink(String email) {
         OneTimeToken token = accountSecurity.generateEmailVerificationToken(email);
         events.publishEvent(new AccountEmailRequested(email, token.getTokenValue(), AccountEmailRequested.Purpose.VERIFY_EMAIL));
@@ -188,7 +199,7 @@ public class UserService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não é permitido conceder o perfil de Administrador pelo painel.");
         }
 
-        User targetUser = userRepository.findById(userId)
+        User targetUser = userRepository.findForUpdateById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
 
         if (targetUser.getRole() == UserRole.ADMIN) {
@@ -197,6 +208,9 @@ public class UserService {
 
         User admin = findByEmail(principalName);
 
+        if (newRole == UserRole.TEACHER && !teacherApplications.existsByUserIdAndStatus(userId, "APPROVED")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Aprove a candidatura e os documentos antes de conceder o perfil de professor.");
+        }
         targetUser.setRole(newRole);
         User saved = userRepository.save(targetUser);
 
@@ -211,14 +225,20 @@ public class UserService {
         if (!userRepository.existsByIdIncludingDeleted(userId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado.");
         }
-        return userRepository.findRevisions(userId).stream()
-                .map(rev -> new UserDTO.AuditResponse(
-                        rev.getRequiredRevisionNumber(),
-                        rev.getRequiredRevisionInstant(),
-                        rev.getMetadata().getRevisionType().name(),
-                        userMapper.toDTO(rev.getEntity())
-                ))
-                .toList();
+        List<UserDTO.AuditResponse> history = new ArrayList<>();
+        User previous = null;
+        for (var rev : userRepository.findRevisions(userId)) {
+            User current = rev.getEntity();
+            history.add(new UserDTO.AuditResponse(
+                    rev.getRequiredRevisionNumber(),
+                    rev.getRequiredRevisionInstant(),
+                    rev.getMetadata().getRevisionType().name(),
+                    previous != null ? userMapper.toDTO(previous) : null,
+                    userMapper.toDTO(current)
+            ));
+            previous = current;
+        }
+        return history;
     }
 
     public User findByEmailForUpdate(String email) {

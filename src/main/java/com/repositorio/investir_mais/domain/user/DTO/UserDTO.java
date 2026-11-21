@@ -3,9 +3,9 @@ package com.repositorio.investir_mais.domain.user.DTO;
 import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
-import org.hibernate.validator.constraints.Range;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.time.Instant;
@@ -16,15 +16,10 @@ public class UserDTO {
 
     @Schema(description = "Dados para cadastro de um novo usuário")
     public record Request(
-        @Schema(description = "Nome completo do usuário", example = "Usuario da Silva")
-        @NotBlank(message = "O nome é obrigatório")
-        @Size(min = 2, max = 100, message = "O nome deve ter entre 2 e 100 caracteres")
+        @Schema(description = "Apelido do usuário", example = "Investidor")
+        @NotBlank(message = "O apelido é obrigatório")
+        @Size(min = 2, max = 100, message = "O apelido deve ter entre 2 e 100 caracteres")
         String name,
-
-        @Schema(description = "Idade do usuário", example = "22")
-        @NotNull(message = "A idade é obrigatória")
-        @Range(min = 0, max = 120, message = "A idade deve estar entre 0 e 120 anos")
-        Integer age,
 
         @Schema(description = "Endereço de e-mail único", example = "usuario@gmail.com")
         @NotBlank(message = "O e-mail é obrigatório")
@@ -32,9 +27,10 @@ public class UserDTO {
         @Size(max = 254)
         String email,
 
-        @Schema(description = "Senha de acesso do usuário", example = "SenhaSegura123")
+        @Schema(description = "Senha com minúscula, maiúscula, número e caractere especial", example = "SenhaSegura123!")
         @NotBlank(message = "A senha é obrigatória")
-        @Size(min = 8, max = 4096, message = "A senha deve ter entre 8 e 4096 caracteres")
+        @Size(min = 8, max = 100, message = "A senha deve ter entre 8 e 100 caracteres")
+        @Pattern(regexp = AuthDTO.PASSWORD_PATTERN, message = AuthDTO.PASSWORD_REQUIREMENTS)
         String password,
 
         @Schema(description = "Perfil de acesso no sistema. O cadastro público aceita apenas STUDENT.", example = "STUDENT")
@@ -43,9 +39,9 @@ public class UserDTO {
 
     @Schema(description = "Dados para atualização de perfil")
     public record UpdateProfileRequest(
-        @Schema(description = "Nome do usuário", example = "Usuario da Silva")
-        @NotBlank(message = "O nome é obrigatório")
-        @Size(min = 2, max = 100, message = "O nome deve ter entre 2 e 100 caracteres")
+        @Schema(description = "Apelido do usuário", example = "Investidor")
+        @NotBlank(message = "O apelido é obrigatório")
+        @Size(min = 2, max = 100, message = "O apelido deve ter entre 2 e 100 caracteres")
         String name,
         
         @Schema(description = "Novo endereço de e-mail", example = "usuario@gmail.com")
@@ -54,10 +50,6 @@ public class UserDTO {
         @Size(max = 254)
         String email,
         
-        @Schema(description = "Idade do usuário", example = "23")
-        @Range(min = 0, max = 120, message = "A idade deve estar entre 0 e 120 anos")
-        Integer age,
-
         @Schema(description = "Senha atual para confirmar a alteração do perfil")
         @NotBlank(message = "A senha atual é obrigatória")
         @Size(max = 4096)
@@ -77,11 +69,8 @@ public class UserDTO {
         @Schema(description = "Identificador único (UUID)", example = "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d")
         UUID id,
 
-        @Schema(description = "Nome do usuário", example = "Usuario da Silva")
+        @Schema(description = "Apelido do usuário", example = "Investidor")
         String name,
-
-        @Schema(description = "Idade do usuário", example = "22")
-        Integer age,
 
         @Schema(description = "E-mail cadastrado", example = "usuario@gmail.com")
         String email,
@@ -114,7 +103,14 @@ public class UserDTO {
         @Schema(description = "Tipo de operação: INSERT, UPDATE ou DELETE", example = "UPDATE")
         String operation,
 
+        @Schema(description = "Estado anterior do usuário (antes da alteração)")
+        UserDTO.Response before,
+
         @Schema(description = "Estado do usuário no momento desta revisão")
         UserDTO.Response user
-    ) {}
+    ) {
+        public AuditResponse(Integer revisionNumber, Instant timestamp, String operation, UserDTO.Response user) {
+            this(revisionNumber, timestamp, operation, null, user);
+        }
+    }
 }

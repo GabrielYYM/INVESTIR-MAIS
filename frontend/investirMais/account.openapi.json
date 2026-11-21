@@ -1,0 +1,1699 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "OpenAPI definition",
+    "version": "v0"
+  },
+  "tags": [
+    {
+      "name": "Cursos",
+      "description": "Endpoints para gerenciamento do catálogo de cursos"
+    },
+    {
+      "name": "Perguntas",
+      "description": "CRUD de perguntas e aprovação do aluno"
+    },
+    {
+      "name": "Usuários",
+      "description": "Endpoints para gerenciamento de perfis, cadastros e redefinição de senhas"
+    },
+    {
+      "name": "Aulas",
+      "description": "Endpoints para gerenciamento de aulas associadas a cursos"
+    }
+  ],
+  "paths": {
+    "/api/users/{id}": {
+      "get": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Obter perfil do usuário por ID",
+        "description": "Retorna os detalhes do perfil do usuário autenticado.",
+        "operationId": "getProfile",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Atualizar dados do perfil",
+        "description": "Atualiza apelido ou e-mail do usuário autenticado.",
+        "operationId": "updateProfile",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProfileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Desativar a própria conta por 30 dias",
+        "description": "Bloqueia a conta, preserva dados para recuperação solicitada pelo titular e agenda eliminação definitiva após 30 dias. Exige senha atual e encerra sessões.",
+        "operationId": "deleteAccount",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteAccountRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/users/update-password": {
+      "put": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Atualizar senha do usuário logado",
+        "description": "Permite alterar a senha mediante confirmação da senha atual.",
+        "operationId": "updatePassword",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/{id}/erasure": {
+      "post": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Eliminar definitivamente a própria conta",
+        "description": "Elimina os dados da conta no banco ativo sem janela de recuperação. Exige senha atual. Irreversível.",
+        "operationId": "eraseAccount",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteAccountRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/users/verify-email": {
+      "post": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Verificar e-mail",
+        "description": "Consome o token após a confirmação do usuário.",
+        "operationId": "verifyEmail",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "token"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerificationResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/reset-password": {
+      "post": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Redefinir senha via token OTT",
+        "description": "Consome o token de acesso único recebido por e-mail para cadastrar uma nova senha.",
+        "operationId": "resetPassword",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/resend-verification": {
+      "post": {
+        "tags": [
+          "Usuários"
+        ],
+        "operationId": "resendVerification",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/register": {
+      "post": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Cadastrar novo usuário",
+        "description": "Registra um novo usuário no sistema e envia um e-mail com o link de ativação.",
+        "operationId": "registerUser",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Request"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/forgot-password": {
+      "post": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Solicitar link de recuperação de senha",
+        "description": "Envia um link/token de acesso único caso o e-mail exista no sistema.",
+        "operationId": "forgotPassword",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/teacher-applications": {
+      "get": {
+        "tags": [
+          "teacher-application-controller"
+        ],
+        "operationId": "getTeacherApplications",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Zero-based page index (0..N)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "description": "The size of the page to be returned",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedModelApplicationView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "teacher-application-controller"
+        ],
+        "operationId": "submitTeacherApplication",
+        "parameters": [
+          {
+            "name": "types",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "files": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  }
+                },
+                "required": [
+                  "files"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/teacher-applications/{id}/review": {
+      "post": {
+        "tags": [
+          "teacher-application-controller"
+        ],
+        "operationId": "reviewTeacherApplication",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Review"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/legal/versions": {
+      "get": {
+        "tags": [
+          "legal-documents-controller"
+        ],
+        "operationId": "releases",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Release"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "legal-documents-controller"
+        ],
+        "operationId": "publish",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Release"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Release"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/legal/acceptances": {
+      "get": {
+        "tags": [
+          "legal-documents-controller"
+        ],
+        "operationId": "history",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Acceptance"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "legal-documents-controller"
+        ],
+        "operationId": "accept",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptanceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/{id}/role": {
+      "patch": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Alterar perfil (role) do usuário",
+        "description": "Altera o perfil para TEACHER ou STUDENT. Exige ADMIN.",
+        "operationId": "updateUserRole",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRoleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "tags": [
+          "authentication-controller"
+        ],
+        "operationId": "currentUser",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users": {
+      "get": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Listar todos os usuários",
+        "description": "Retorna a lista completa de usuários cadastrados no sistema. Exige perfil ADMIN.",
+        "operationId": "listAllUsers",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Response"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/{id}/audit": {
+      "get": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Consultar histórico de auditoria do usuário",
+        "description": "Retorna todas as revisões históricas do usuário registradas pelo Hibernate Envers. Exige perfil ADMIN.",
+        "operationId": "getUserAuditHistory",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AuditResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/teacher/dashboard": {
+      "get": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Obter estatísticas do painel do professor",
+        "description": "Retorna métricas consolidadas sobre cursos, alunos matriculados, videoaulas assistidas e taxas de conclusão no período informado (padrão últimos 6 meses, máximo de 6 meses de intervalo). Exige perfil TEACHER ou ADMIN.",
+        "operationId": "getDashboard",
+        "parameters": [
+          {
+            "name": "startDate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Summary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/teacher-applications/{id}/documents/{documentId}": {
+      "get": {
+        "tags": [
+          "teacher-application-controller"
+        ],
+        "operationId": "downloadTeacherDocument",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "documentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/teacher-applications/requirements": {
+      "get": {
+        "tags": [
+          "teacher-application-controller"
+        ],
+        "operationId": "teacherDocumentRequirements",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/teacher-applications/mine": {
+      "get": {
+        "tags": [
+          "teacher-application-controller"
+        ],
+        "operationId": "myTeacherApplication",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/legal/versions/{version}": {
+      "get": {
+        "tags": [
+          "legal-documents-controller"
+        ],
+        "operationId": "release",
+        "parameters": [
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Release"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/legal/status": {
+      "get": {
+        "tags": [
+          "legal-documents-controller"
+        ],
+        "operationId": "status",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/legal/current": {
+      "get": {
+        "tags": [
+          "legal-documents-controller"
+        ],
+        "operationId": "current",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Release"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/audit": {
+      "get": {
+        "tags": [
+          "audit-controller"
+        ],
+        "operationId": "searchAudit",
+        "parameters": [
+          {
+            "name": "entity",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "entityId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "revision",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "actor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/pending": {
+      "get": {
+        "tags": [
+          "admin-pending-controller"
+        ],
+        "summary": "Consultar pendências administrativas",
+        "description": "Contadores de denúncias, candidaturas de contas ativas e prazos de recuperação. Não inclui dados pessoais.",
+        "operationId": "getAdminPendingSummary",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPendingSummary"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "UpdateProfileRequest": {
+        "type": "object",
+        "description": "Dados para atualização de perfil",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Apelido do usuário",
+            "example": "Investidor",
+            "maxLength": 100,
+            "minLength": 2
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Novo endereço de e-mail",
+            "example": "usuario@gmail.com",
+            "maxLength": 254,
+            "minLength": 0
+          },
+          "currentPassword": {
+            "type": "string",
+            "description": "Senha atual para confirmar a alteração do perfil",
+            "maxLength": 4096,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "currentPassword",
+          "email",
+          "name"
+        ]
+      },
+      "Response": {
+        "type": "object",
+        "description": "Resposta com dados do usuário",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identificador único (UUID)",
+            "example": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d"
+          },
+          "name": {
+            "type": "string",
+            "description": "Apelido do usuário",
+            "example": "Investidor"
+          },
+          "email": {
+            "type": "string",
+            "description": "E-mail cadastrado",
+            "example": "usuario@gmail.com"
+          },
+          "role": {
+            "type": "string",
+            "description": "Perfil de acesso",
+            "enum": [
+              "ADMIN",
+              "TEACHER",
+              "STUDENT"
+            ],
+            "example": "STUDENT"
+          },
+          "emailVerified": {
+            "type": "boolean",
+            "description": "Status de validação do e-mail",
+            "example": false
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Data e hora do cadastro"
+          }
+        }
+      },
+      "UpdatePasswordRequest": {
+        "type": "object",
+        "description": "Dados para atualização de senha de usuário autenticado",
+        "properties": {
+          "currentPassword": {
+            "type": "string",
+            "description": "Senha atual do usuário",
+            "example": "SenhaAntiga123",
+            "maxLength": 4096,
+            "minLength": 0
+          },
+          "newPassword": {
+            "type": "string",
+            "description": "Nova senha com minúscula, maiúscula, número e caractere especial",
+            "example": "NovaSenhaSegura123!",
+            "maxLength": 100,
+            "minLength": 8,
+            "pattern": "^(?=[\\s\\S]*[a-z])(?=[\\s\\S]*[A-Z])(?=[\\s\\S]*[0-9])(?=[\\s\\S]*[\\x21-\\x2F\\x3A-\\x40\\x5B-\\x60\\x7B-\\x7E])[\\s\\S]*$"
+          }
+        },
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ]
+      },
+      "DeleteAccountRequest": {
+        "type": "object",
+        "description": "Confirmação para exclusão da própria conta",
+        "properties": {
+          "currentPassword": {
+            "type": "string",
+            "description": "Senha atual do usuário",
+            "maxLength": 4096,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "currentPassword"
+        ]
+      },
+      "VerificationResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "signedIn": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ResetPasswordRequest": {
+        "type": "object",
+        "description": "Dados para redefinição de senha com token OTT",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Token de verificação recebido por e-mail",
+            "example": "123456",
+            "maxLength": 64,
+            "minLength": 0
+          },
+          "newPassword": {
+            "type": "string",
+            "description": "Nova senha com minúscula, maiúscula, número e caractere especial",
+            "example": "NovaSenha123!",
+            "maxLength": 100,
+            "minLength": 8,
+            "pattern": "^(?=[\\s\\S]*[a-z])(?=[\\s\\S]*[A-Z])(?=[\\s\\S]*[0-9])(?=[\\s\\S]*[\\x21-\\x2F\\x3A-\\x40\\x5B-\\x60\\x7B-\\x7E])[\\s\\S]*$"
+          }
+        },
+        "required": [
+          "newPassword",
+          "token"
+        ]
+      },
+      "MessageResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "ForgotPasswordRequest": {
+        "type": "object",
+        "description": "Dados para solicitação de recuperação de senha",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "E-mail do usuário que deseja redefinir a senha",
+            "example": "usuario@gmail.com",
+            "maxLength": 254,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "Request": {
+        "type": "object",
+        "description": "Dados para cadastro de um novo usuário",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Apelido do usuário",
+            "example": "Investidor",
+            "maxLength": 100,
+            "minLength": 2
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Endereço de e-mail único",
+            "example": "usuario@gmail.com",
+            "maxLength": 254,
+            "minLength": 0
+          },
+          "password": {
+            "type": "string",
+            "description": "Senha com minúscula, maiúscula, número e caractere especial",
+            "example": "SenhaSegura123!",
+            "maxLength": 100,
+            "minLength": 8,
+            "pattern": "^(?=[\\s\\S]*[a-z])(?=[\\s\\S]*[A-Z])(?=[\\s\\S]*[0-9])(?=[\\s\\S]*[\\x21-\\x2F\\x3A-\\x40\\x5B-\\x60\\x7B-\\x7E])[\\s\\S]*$"
+          },
+          "role": {
+            "type": "string",
+            "description": "Perfil de acesso no sistema. O cadastro público aceita apenas STUDENT.",
+            "enum": [
+              "ADMIN",
+              "TEACHER",
+              "STUDENT"
+            ],
+            "example": "STUDENT"
+          }
+        },
+        "required": [
+          "email",
+          "name",
+          "password"
+        ]
+      },
+      "ApplicationView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string"
+          },
+          "submittedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reviewedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reviewReason": {
+            "type": "string"
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentView"
+            }
+          }
+        }
+      },
+      "DocumentView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string"
+          },
+          "mediaType": {
+            "type": "string"
+          }
+        }
+      },
+      "Review": {
+        "type": "object",
+        "properties": {
+          "approve": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "approve",
+          "reason"
+        ]
+      },
+      "Document": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "[a-z][a-z0-9-]{0,63}"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Section"
+            },
+            "minItems": 1
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "sections",
+          "title"
+        ]
+      },
+      "Release": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1
+          },
+          "publishedOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Document"
+            },
+            "maxItems": 20,
+            "minItems": 2
+          }
+        },
+        "required": [
+          "documents",
+          "publishedOn"
+        ]
+      },
+      "Section": {
+        "type": "object",
+        "properties": {
+          "heading": {
+            "type": "string",
+            "minLength": 1
+          },
+          "content": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "content",
+          "heading"
+        ]
+      },
+      "AcceptanceRequest": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1
+          },
+          "accepted": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "accepted"
+        ]
+      },
+      "Status": {
+        "type": "object",
+        "properties": {
+          "currentVersion": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "acceptanceRequired": {
+            "type": "boolean"
+          },
+          "acceptedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "UpdateRoleRequest": {
+        "type": "object",
+        "description": "Requisição para alteração do perfil (role) do usuário pelo administrador",
+        "properties": {
+          "role": {
+            "type": "string",
+            "description": "Novo perfil do usuário (apenas TEACHER ou STUDENT)",
+            "enum": [
+              "ADMIN",
+              "TEACHER",
+              "STUDENT"
+            ],
+            "example": "TEACHER"
+          }
+        },
+        "required": [
+          "role"
+        ]
+      },
+      "AuditResponse": {
+        "type": "object",
+        "description": "Registro de auditoria histórica de um usuário",
+        "properties": {
+          "revisionNumber": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Número sequencial da revisão",
+            "example": 1
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Data e hora exata da alteração"
+          },
+          "operation": {
+            "type": "string",
+            "description": "Tipo de operação: INSERT, UPDATE ou DELETE",
+            "example": "UPDATE"
+          },
+          "before": {
+            "$ref": "#/components/schemas/Response",
+            "description": "Estado anterior do usuário (antes da alteração)"
+          },
+          "user": {
+            "$ref": "#/components/schemas/Response",
+            "description": "Estado do usuário no momento desta revisão"
+          }
+        }
+      },
+      "CourseStats": {
+        "type": "object",
+        "description": "Métricas de engajamento de um curso",
+        "properties": {
+          "courseId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID do curso"
+          },
+          "courseName": {
+            "type": "string",
+            "description": "Nome do curso"
+          },
+          "totalLessons": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total de aulas neste curso"
+          },
+          "enrolledStudents": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Alunos matriculados no curso"
+          },
+          "lessonsWatched": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Aulas concluídas/assistidas pelos alunos"
+          },
+          "completionRate": {
+            "type": "number",
+            "format": "double",
+            "description": "Taxa de conclusão do curso (%)",
+            "example": 65
+          }
+        }
+      },
+      "Summary": {
+        "type": "object",
+        "description": "Estatísticas gerais consolidadas do professor no período",
+        "properties": {
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Data inicial do período de consulta (ISO-8601)",
+            "example": "2026-05-08"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Data final do período de consulta (ISO-8601)",
+            "example": "2026-11-08"
+          },
+          "totalCourses": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total de cursos criados pelo professor",
+            "example": 4
+          },
+          "totalLessons": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total de videoaulas publicadas",
+            "example": 24
+          },
+          "totalStudents": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total de alunos distintos matriculados no período",
+            "example": 85
+          },
+          "totalLessonsWatched": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total de aulas assistidas pelos alunos no período",
+            "example": 310
+          },
+          "averageCompletionRate": {
+            "type": "number",
+            "format": "double",
+            "description": "Taxa média geral de conclusão (%) no período",
+            "example": 72.4
+          },
+          "courses": {
+            "type": "array",
+            "description": "Métricas detalhadas por curso no período",
+            "items": {
+              "$ref": "#/components/schemas/CourseStats"
+            }
+          }
+        }
+      },
+      "PageMetadata": {
+        "type": "object",
+        "properties": {
+          "size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "number": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "number",
+          "size",
+          "totalElements",
+          "totalPages"
+        ]
+      },
+      "PagedModelApplicationView": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApplicationView"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageMetadata"
+          }
+        },
+        "required": [
+          "content",
+          "page"
+        ]
+      },
+      "Acceptance": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "acceptedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AdminPendingSummary": {
+        "type": "object",
+        "properties": {
+          "openReports": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "pendingTeacherApplications": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "recoverableAccounts": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expiringAccounts": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expiredAccounts": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "nextRecoveryDeadline": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiringWithinDays": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "checkedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    }
+  }
+}

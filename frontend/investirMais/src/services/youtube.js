@@ -6,7 +6,7 @@ function mediaAddress(value) {
     const url = new URL(value);
     if (["https:", "http:"].includes(url.protocol) && !url.username && !url.password) return url;
   } catch {
-    // A URL is optional when displaying older records.
+
   }
   return null;
 }
@@ -34,4 +34,11 @@ export function youtubeVideo(value) {
 
 export function externalMediaUrl(value) {
   return mediaAddress(value)?.href;
+}
+
+export function cloudinaryVideo(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && url.hostname === "res.cloudinary.com" && !url.username && !url.password && !url.port && !url.search && !url.hash && /^\/[A-Za-z0-9_-]+\/video\/upload\/[A-Za-z0-9_/.-]+\.(mp4|webm|mov)$/.test(url.pathname);
+  } catch { return false; }
 }

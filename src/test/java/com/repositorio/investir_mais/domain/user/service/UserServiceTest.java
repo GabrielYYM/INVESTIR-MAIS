@@ -1,35 +1,42 @@
 package com.repositorio.investir_mais.domain.user.service;
 
+import com.repositorio.investir_mais.domain.AccountEmailRequested;
+import com.repositorio.investir_mais.domain.token.service.AccountSecurityService;
+import com.repositorio.investir_mais.domain.education.service.CourseService;
 import com.repositorio.investir_mais.domain.user.DTO.AuthDTO;
 import com.repositorio.investir_mais.domain.user.DTO.UserDTO;
+import com.repositorio.investir_mais.domain.user.controller.UserController;
 import com.repositorio.investir_mais.domain.user.mapper.UserMapper;
 import com.repositorio.investir_mais.domain.user.model.User;
 import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.repository.UserRepository;
-import com.repositorio.investir_mais.domain.AccountEmailRequested;
-import org.springframework.context.ApplicationEventPublisher;
-import com.repositorio.investir_mais.domain.AccountSecurityService;
+import com.repositorio.investir_mais.infrastructure.exception.GlobalExceptionHandler;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.ott.DefaultOneTimeToken;
 import org.springframework.security.authentication.ott.OneTimeToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.csrf.CsrfTokenRepository;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
@@ -44,6 +51,9 @@ class UserServiceTest {
     private AccountSecurityService accountSecurity;
     @Mock
     private ApplicationEventPublisher events;
+
+    @Mock private com.repositorio.investir_mais.domain.user.repository.TeacherApplicationRepository teacherApplications;
+    @Mock private com.repositorio.investir_mais.domain.user.service.AccountDeletionService accountDeletions;
 
     @InjectMocks
     private UserService userService;
@@ -74,7 +84,7 @@ class UserServiceTest {
     void findByEmail_WhenUserDoesNotExist_ShouldThrowNotFound() {
         when(userRepository.findByEmail("inexistente@investir.com")).thenReturn(Optional.empty());
 
-        ResponseStatusException ex = assertThrows(ResponseStatusException.class, 
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
             () -> userService.findByEmail("inexistente@investir.com"));
 
         assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
@@ -82,9 +92,9 @@ class UserServiceTest {
 
     @Test
     void registerUser_WhenRoleIsAdmin_ShouldThrowBadRequest() {
-        UserDTO.Request dto = new UserDTO.Request("Admin", 30, "admin@investir.com", "password123", UserRole.ADMIN);
+        UserDTO.Request dto = new UserDTO.Request("Admin", "admin@investir.com", "password123", UserRole.ADMIN);
 
-        ResponseStatusException ex = assertThrows(ResponseStatusException.class, 
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
             () -> userService.registerUser(dto));
 
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
@@ -93,7 +103,7 @@ class UserServiceTest {
 
     @Test
     void registerUser_WhenRoleIsTeacher_ShouldThrowBadRequest() {
-        UserDTO.Request dto = new UserDTO.Request("Professor", 30, "teacher@investir.com", "password123", UserRole.TEACHER);
+        UserDTO.Request dto = new UserDTO.Request("Professor", "teacher@investir.com", "password123", UserRole.TEACHER);
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
             () -> userService.registerUser(dto));
@@ -104,7 +114,7 @@ class UserServiceTest {
 
     @Test
     void registerUser_WhenEmailExists_ShouldRejectWithoutPublishingEmail() {
-        var dto = new UserDTO.Request("Felipe", 22, user.getEmail(), "password123", UserRole.STUDENT);
+        var dto = new UserDTO.Request("Felipe", user.getEmail(), "password123", UserRole.STUDENT);
         when(userRepository.existsByEmailIncludingDeleted(dto.email())).thenReturn(true);
 
         var exception = assertThrows(ResponseStatusException.class, () -> userService.registerUser(dto));
@@ -115,7 +125,7 @@ class UserServiceTest {
 
     @Test
     void updateProfile_WhenEmailBelongsToAnotherUser_ShouldRejectBeforeChangingProfile() {
-        var dto = new UserDTO.UpdateProfileRequest("Outro nome", "other@investir.com", 30, "correct-password");
+        var dto = new UserDTO.UpdateProfileRequest("Outro nome", "other@investir.com", "correct-password");
         when(userRepository.findForUpdateByEmail(user.getEmail())).thenReturn(Optional.of(user));
         when(userRepository.existsByEmailAndIdNot(dto.email(), user.getId())).thenReturn(true);
         when(passwordEncoder.matches("correct-password", "encoded_password")).thenReturn(true);
@@ -131,7 +141,7 @@ class UserServiceTest {
 
     @Test
     void updateProfile_WhenConfirmationPasswordIsWrong_ShouldNotChangeAccount() {
-        var dto = new UserDTO.UpdateProfileRequest("Outro nome", "other@investir.com", 30, "wrong-password");
+        var dto = new UserDTO.UpdateProfileRequest("Outro nome", "other@investir.com", "wrong-password");
         when(userRepository.findForUpdateByEmail(user.getEmail())).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("wrong-password", "encoded_password")).thenReturn(false);
 
@@ -147,7 +157,7 @@ class UserServiceTest {
 
     @Test
     void registerUser_OnSuccess_ShouldSaveAndSendOtt() {
-        UserDTO.Request dto = new UserDTO.Request("Felipe", 22, "felipe@investir.com", "password123", UserRole.STUDENT);
+        UserDTO.Request dto = new UserDTO.Request("Felipe", "felipe@investir.com", "password123", UserRole.STUDENT);
         OneTimeToken ott = new DefaultOneTimeToken("token-123", "felipe@investir.com", Instant.now().plusSeconds(300));
 
         when(userRepository.existsByEmailIncludingDeleted("felipe@investir.com")).thenReturn(false);
@@ -167,9 +177,8 @@ class UserServiceTest {
 
         userService.deleteAccount(user.getEmail(), user.getId(), new UserDTO.DeleteAccountRequest("current-password"));
 
-        var deletion = inOrder(userRepository, accountSecurity);
-        deletion.verify(userRepository).delete(user);
-        deletion.verify(userRepository).flush();
+        var deletion = inOrder(accountDeletions, accountSecurity);
+        deletion.verify(accountDeletions).deactivate(user);
         deletion.verify(accountSecurity).invalidateAll(user.getEmail());
         deletion.verify(accountSecurity).revokeAllSessions(user.getEmail());
         verifyNoInteractions(events);
@@ -205,7 +214,7 @@ class UserServiceTest {
         when(userRepository.findForUpdateByEmail(user.getEmail())).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("senhaIncorreta", "encoded_password")).thenReturn(false);
 
-        ResponseStatusException ex = assertThrows(ResponseStatusException.class, 
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
             () -> userService.updatePassword(user.getEmail(), dto));
 
         assertEquals(HttpStatus.UNAUTHORIZED, ex.getStatusCode());
@@ -229,10 +238,10 @@ class UserServiceTest {
     void updateProfile_WhenEmailChanges_ShouldRequireVerificationAndSendLink() {
         UUID userId = user.getId();
         user.setEmailVerified(true);
-        UserDTO.UpdateProfileRequest dto = new UserDTO.UpdateProfileRequest("Felipe", "novo@investir.com", 22, "correct-password");
+        UserDTO.UpdateProfileRequest dto = new UserDTO.UpdateProfileRequest("Felipe", "novo@investir.com", "correct-password");
         when(passwordEncoder.matches("correct-password", "encoded_password")).thenReturn(true);
         UserDTO.Response response = new UserDTO.Response(
-            userId, "Felipe", 22, "novo@investir.com", UserRole.STUDENT, false, LocalDateTime.now());
+            userId, "Felipe", "novo@investir.com", UserRole.STUDENT, false, LocalDateTime.now());
         OneTimeToken ott = new DefaultOneTimeToken(
             "verification-token", "novo@investir.com", Instant.now().plusSeconds(300));
 
@@ -278,7 +287,7 @@ class UserServiceTest {
         AuthDTO.ResetPasswordRequest dto = new AuthDTO.ResetPasswordRequest("token-invalido", "novaSenha123");
         when(accountSecurity.consumePasswordResetToken("token-invalido")).thenReturn(Optional.empty());
 
-        ResponseStatusException ex = assertThrows(ResponseStatusException.class, 
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
             () -> userService.resetPassword(dto));
 
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
@@ -306,7 +315,7 @@ class UserServiceTest {
     void listAllUsers_ShouldReturnMappedUsers() {
         when(userRepository.findAll()).thenReturn(List.of(user));
         UserDTO.Response response = new UserDTO.Response(
-            user.getId(), user.getName(), user.getAge(), user.getEmail(), user.getRole(), user.isEmailVerified(), LocalDateTime.now()
+            user.getId(), user.getName(), user.getEmail(), user.getRole(), user.isEmailVerified(), LocalDateTime.now()
         );
         when(userMapper.toDTO(user)).thenReturn(response);
 
@@ -332,7 +341,7 @@ class UserServiceTest {
     void updateUserRole_WhenTargetUserIsAdmin_ShouldThrowBadRequest() {
         UUID adminId = user.getId();
         user.setRole(UserRole.ADMIN);
-        when(userRepository.findById(adminId)).thenReturn(Optional.of(user));
+        when(userRepository.findForUpdateById(adminId)).thenReturn(Optional.of(user));
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
             () -> userService.updateUserRole("admin@investir.com", adminId, UserRole.STUDENT));
@@ -344,24 +353,144 @@ class UserServiceTest {
 
     @Test
     void updateUserRole_WhenValid_ShouldUpdateRoleAndRevokeSessions() {
+
         UUID targetId = user.getId();
         User admin = new User();
         admin.setId(UUID.randomUUID());
         admin.setEmail("admin@investir.com");
         admin.setRole(UserRole.ADMIN);
 
-        when(userRepository.findById(targetId)).thenReturn(Optional.of(user));
+        when(userRepository.findForUpdateById(targetId)).thenReturn(Optional.of(user));
         when(userRepository.findByEmail("admin@investir.com")).thenReturn(Optional.of(admin));
         when(userRepository.save(user)).thenReturn(user);
         UserDTO.Response response = new UserDTO.Response(
-            targetId, user.getName(), user.getAge(), user.getEmail(), UserRole.TEACHER, user.isEmailVerified(), LocalDateTime.now()
+            targetId, user.getName(), user.getEmail(), UserRole.TEACHER, user.isEmailVerified(), LocalDateTime.now()
         );
         when(userMapper.toDTO(user)).thenReturn(response);
 
+        when(teacherApplications.existsByUserIdAndStatus(targetId, "APPROVED")).thenReturn(true);
         UserDTO.Response result = userService.updateUserRole("admin@investir.com", targetId, UserRole.TEACHER);
 
         assertEquals(UserRole.TEACHER, user.getRole());
         verify(userRepository).save(user);
         verify(accountSecurity).revokeAllSessions(user.getEmail());
+    }
+
+    @Test
+    void updateUserRole_WithoutApprovedApplication_ShouldNotChangeRole() {
+
+
+        when(userRepository.findForUpdateById(user.getId())).thenReturn(Optional.of(user));
+        User admin = new User();
+        admin.setId(UUID.randomUUID());
+        when(userRepository.findByEmail("admin@investir.com")).thenReturn(Optional.of(admin));
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> userService.updateUserRole("admin@investir.com", user.getId(), UserRole.TEACHER));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("Aprove a candidatura e os documentos antes de conceder o perfil de professor.", ex.getReason());
+        assertEquals(UserRole.STUDENT, user.getRole());
+        verify(userRepository, never()).save(any());
+        verifyNoInteractions(accountSecurity);
+    }
+
+    @Test
+    void updateUserRole_WithoutDocuments_ShouldRejectPromotion() {
+
+        when(userRepository.findForUpdateById(user.getId())).thenReturn(Optional.of(user));
+        when(userRepository.findByEmail("admin@investir.com")).thenReturn(Optional.of(new User()));
+        assertThrows(ResponseStatusException.class,
+                () -> userService.updateUserRole("admin@investir.com", user.getId(), UserRole.TEACHER));
+        verify(userRepository, never()).save(any());
+        verifyNoInteractions(accountSecurity);
+    }
+
+    @Test
+    void updateUserRole_WithoutBirthDate_ShouldStillAllowDemotion() {
+        user.setRole(UserRole.TEACHER);
+        when(userRepository.findForUpdateById(user.getId())).thenReturn(Optional.of(user));
+        when(userRepository.findByEmail("admin@investir.com")).thenReturn(Optional.of(new User()));
+        when(userRepository.save(user)).thenReturn(user);
+        userService.updateUserRole("admin@investir.com", user.getId(), UserRole.STUDENT);
+        assertEquals(UserRole.STUDENT, user.getRole());
+        verify(accountSecurity).revokeAllSessions(user.getEmail());
+    }
+
+    @Test
+    void updateUserRole_DirectHttpRequestWithoutApprovedDocuments_ShouldReturnBadRequest() throws Exception {
+
+        when(userRepository.findForUpdateById(user.getId())).thenReturn(Optional.of(user));
+        when(userRepository.findByEmail("admin@investir.com")).thenReturn(Optional.of(new User()));
+        var mvc = MockMvcBuilders.standaloneSetup(new UserController(userService,
+                mock(CourseService.class)))
+                .setControllerAdvice(new GlobalExceptionHandler()).build();
+
+        mvc.perform(patch("/api/users/{id}/role", user.getId()).principal(() -> "admin@investir.com")
+                .contentType(MediaType.APPLICATION_JSON).content("{\"role\":\"TEACHER\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Aprove a candidatura e os documentos antes de conceder o perfil de professor."));
+        verify(userRepository, never()).save(any());
+        verifyNoInteractions(accountSecurity);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void getUserAuditHistory_ShouldPopulateBeforeAndAfterSnapshots() {
+        UUID userId = user.getId();
+        when(userRepository.existsByIdIncludingDeleted(userId)).thenReturn(true);
+
+        User user1 = new User();
+        user1.setId(userId);
+        user1.setName("Carlos");
+        user1.setRole(UserRole.STUDENT);
+
+        User user2 = new User();
+        user2.setId(userId);
+        user2.setName("Carlos Silva");
+        user2.setRole(UserRole.TEACHER);
+
+        UserDTO.Response dto1 = new UserDTO.Response(userId, "Carlos", "carlos@test.com", UserRole.STUDENT, true, LocalDateTime.now());
+        UserDTO.Response dto2 = new UserDTO.Response(userId, "Carlos Silva", "carlos@test.com", UserRole.TEACHER, true, LocalDateTime.now());
+
+        when(userMapper.toDTO(user1)).thenReturn(dto1);
+        when(userMapper.toDTO(user2)).thenReturn(dto2);
+
+        org.springframework.data.history.Revision<Integer, User> rev1 = mock(org.springframework.data.history.Revision.class);
+        org.springframework.data.history.Revision<Integer, User> rev2 = mock(org.springframework.data.history.Revision.class);
+        org.springframework.data.history.RevisionMetadata<Integer> meta1 = mock(org.springframework.data.history.RevisionMetadata.class);
+        org.springframework.data.history.RevisionMetadata<Integer> meta2 = mock(org.springframework.data.history.RevisionMetadata.class);
+
+        when(rev1.getRequiredRevisionNumber()).thenReturn(1);
+        when(rev1.getRequiredRevisionInstant()).thenReturn(Instant.ofEpochMilli(1000));
+        when(rev1.getMetadata()).thenReturn(meta1);
+        when(meta1.getRevisionType()).thenReturn(org.springframework.data.history.RevisionMetadata.RevisionType.INSERT);
+        when(rev1.getEntity()).thenReturn(user1);
+
+        when(rev2.getRequiredRevisionNumber()).thenReturn(2);
+        when(rev2.getRequiredRevisionInstant()).thenReturn(Instant.ofEpochMilli(2000));
+        when(rev2.getMetadata()).thenReturn(meta2);
+        when(meta2.getRevisionType()).thenReturn(org.springframework.data.history.RevisionMetadata.RevisionType.UPDATE);
+        when(rev2.getEntity()).thenReturn(user2);
+
+        org.springframework.data.history.Revisions<Integer, User> revisionsMock = mock(org.springframework.data.history.Revisions.class);
+        when(revisionsMock.iterator()).thenReturn(List.of(rev1, rev2).iterator());
+        when(userRepository.findRevisions(userId)).thenReturn(revisionsMock);
+
+        List<UserDTO.AuditResponse> history = userService.getUserAuditHistory(userId);
+
+        assertEquals(2, history.size());
+
+        // Revisão 1 (INSERT): antes deve ser null, depois deve ser user1
+        assertEquals(1, history.get(0).revisionNumber());
+        assertEquals("INSERT", history.get(0).operation());
+        assertNull(history.get(0).before());
+        assertEquals(dto1, history.get(0).user());
+
+        // Revisão 2 (UPDATE): antes deve ser user1, depois deve ser user2
+        assertEquals(2, history.get(1).revisionNumber());
+        assertEquals("UPDATE", history.get(1).operation());
+        assertEquals(dto1, history.get(1).before());
+        assertEquals(dto2, history.get(1).user());
     }
 }

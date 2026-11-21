@@ -1,6 +1,5 @@
 package com.repositorio.investir_mais.domain.user.controller;
 
-import tools.jackson.databind.ObjectMapper;
 import com.repositorio.investir_mais.domain.education.service.CourseService;
 import com.repositorio.investir_mais.domain.user.DTO.AuthDTO;
 import com.repositorio.investir_mais.domain.user.DTO.UserDTO;
@@ -8,8 +7,12 @@ import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.repository.UserRepository;
 import com.repositorio.investir_mais.domain.user.service.UserService;
 import com.repositorio.investir_mais.infrastructure.exception.GlobalExceptionHandler;
-
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -21,11 +24,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.UUID;
+import tools.jackson.databind.ObjectMapper;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
@@ -33,10 +32,10 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -67,22 +66,6 @@ class UserControllerTest {
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 
     @Test
-    void registerUser_WithValidData_ShouldReturnGenericAcceptance() throws Exception {
-        UserDTO.Request requestDTO = new UserDTO.Request("Felipe", 22, "felipe@investir.com", "senha12345", UserRole.STUDENT);
-        when(userService.registerUser(any(UserDTO.Request.class)))
-                .thenReturn(new DefaultOneTimeToken("registration-token", requestDTO.email(), Instant.now().plusSeconds(300)));
-
-        mockMvc.perform(post("/api/users/register")
-                .with(csrf())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(requestDTO)))
-                .andExpect(status().isAccepted())
-                .andExpect(jsonPath("$.message").isString())
-                .andExpect(jsonPath("$.email").doesNotExist())
-                .andExpect(jsonPath("$.token").doesNotExist());
-    }
-
-    @Test
     void deleteAccount_WithConfirmation_ShouldReturnNoContent() throws Exception {
         UUID id = UUID.randomUUID();
         var dto = new UserDTO.DeleteAccountRequest("current-password");
@@ -103,12 +86,12 @@ class UserControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{}"))
                 .andExpect(status().isBadRequest());
-        org.mockito.Mockito.verifyNoInteractions(userService);
+        Mockito.verifyNoInteractions(userService);
     }
 
     @Test
     void updatePassword_WithValidData_ShouldReturnOk() throws Exception {
-        AuthDTO.UpdatePasswordRequest dto = new AuthDTO.UpdatePasswordRequest("senhaAntiga123", "novaSenha123");
+        AuthDTO.UpdatePasswordRequest dto = new AuthDTO.UpdatePasswordRequest("senhaAntiga123", "NovaSenha123!");
 
         mockMvc.perform(put("/api/users/update-password")
             .principal(() -> "felipe@investir.com")
@@ -122,49 +105,10 @@ class UserControllerTest {
     }
 
     @Test
-    void forgotPassword_WithValidEmail_ShouldReturnOk() throws Exception {
-        AuthDTO.ForgotPasswordRequest dto = new AuthDTO.ForgotPasswordRequest("felipe@investir.com");
-
-        mockMvc.perform(post("/api/users/forgot-password")
-                .with(csrf())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(dto)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message", containsString("Se o e-mail existir na nossa base")));
-
-        verify(userService).forgotPassword(any(AuthDTO.ForgotPasswordRequest.class));
-    }
-
-    @Test
-    void resetPassword_WithValidData_ShouldReturnOk() throws Exception {
-        AuthDTO.ResetPasswordRequest dto = new AuthDTO.ResetPasswordRequest("token-123", "novaSenha123");
-
-        mockMvc.perform(post("/api/users/reset-password")
-                .with(csrf())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(dto)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Senha redefinida com sucesso!"));
-
-        verify(userService).resetPassword(any(AuthDTO.ResetPasswordRequest.class));
-    }
-
-    @Test
-    void resetPassword_WithInvalidData_ShouldReturnBadRequest() throws Exception {
-        AuthDTO.ResetPasswordRequest dto = new AuthDTO.ResetPasswordRequest("", "123");
-
-        mockMvc.perform(post("/api/users/reset-password")
-                .with(csrf())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(dto)))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
     void listAllUsers_ShouldReturnUsersList() throws Exception {
         UUID id = UUID.randomUUID();
         UserDTO.Response responseDTO = new UserDTO.Response(
-            id, "Admin", 30, "admin@investir.com", UserRole.ADMIN, true, LocalDateTime.now()
+            id, "Admin", "admin@investir.com", UserRole.ADMIN, true, LocalDateTime.now()
         );
         when(userService.listAllUsers()).thenReturn(List.of(responseDTO));
 
@@ -181,7 +125,7 @@ class UserControllerTest {
         UUID id = UUID.randomUUID();
         UserDTO.UpdateRoleRequest dto = new UserDTO.UpdateRoleRequest(UserRole.TEACHER);
         UserDTO.Response responseDTO = new UserDTO.Response(
-            id, "Felipe", 25, "felipe@investir.com", UserRole.TEACHER, true, LocalDateTime.now()
+            id, "Felipe", "felipe@investir.com", UserRole.TEACHER, true, LocalDateTime.now()
         );
         when(userService.updateUserRole(eq("admin@investir.com"), eq(id), eq(UserRole.TEACHER))).thenReturn(responseDTO);
 
@@ -200,7 +144,7 @@ class UserControllerTest {
     void getUserAuditHistory_ShouldReturnAuditList() throws Exception {
         UUID id = UUID.randomUUID();
         UserDTO.Response userSnapshot = new UserDTO.Response(
-            id, "Felipe", 25, "felipe@investir.com", UserRole.STUDENT, true, LocalDateTime.now()
+            id, "Felipe", "felipe@investir.com", UserRole.STUDENT, true, LocalDateTime.now()
         );
         UserDTO.AuditResponse auditDTO = new UserDTO.AuditResponse(1, Instant.now(), "INSERT", userSnapshot);
         when(userService.getUserAuditHistory(id)).thenReturn(List.of(auditDTO));

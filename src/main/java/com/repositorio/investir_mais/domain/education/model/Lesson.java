@@ -1,14 +1,16 @@
 package com.repositorio.investir_mais.domain.education.model;
 
+import org.hibernate.envers.Audited;
+import org.hibernate.envers.NotAudited;
 import jakarta.persistence.*;
+import java.util.UUID;
 import lombok.*;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.SoftDelete;
 import org.hibernate.annotations.SoftDeleteType;
-
-import java.util.UUID;
-
 import org.hibernate.validator.constraints.URL;
 
+@Audited
 @Entity
 @Table(name = "TB_LESSON")
 @SoftDelete(strategy = SoftDeleteType.TIMESTAMP, columnName = "deleted_at")
@@ -36,7 +38,12 @@ public class Lesson {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String thumbnailUrl;
 
+    @NotAudited
     @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "course_id", nullable = false)
     private Course course;
+
+    @Column(nullable = false)
+    @ColumnDefault("0")
+    private int position;
 }

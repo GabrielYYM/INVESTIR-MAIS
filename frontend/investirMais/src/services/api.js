@@ -25,10 +25,16 @@ function prepareCsrf() {
 apiClient.interceptors.request.use(async (config) => {
   if (safeMethods.has(config.method)) return config;
 
-  // Spring pode renovar o cookie entre as etapas da autenticação.
   const token = await prepareCsrf();
   if (crossOrigin) config.headers.set("X-XSRF-TOKEN", token);
   return config;
+});
+
+apiClient.interceptors.response.use(response => response, error => {
+  if (error.response?.status === 428 && error.response.data?.code === "LEGAL_ACCEPTANCE_REQUIRED") {
+    window.dispatchEvent(new Event("legal-acceptance-required"));
+  }
+  return Promise.reject(error);
 });
 
 export function apiError(error, fallback) {

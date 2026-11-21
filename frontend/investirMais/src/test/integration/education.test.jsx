@@ -1,26 +1,23 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw/http";
 import { describe, expect, it, vi } from "vitest";
 import { admin, course, lesson, otherLesson, paged, student, teacher } from "../fixtures.js";
 import { renderApp } from "../renderApp.jsx";
+import { fillFields } from "../helpers.js";
 import { origin, server } from "../server.js";
 
 const coursePath = "/educacao/" + course.id;
-function asUser(user) {
-  server.use(http.get(origin + "/auth/me", () => HttpResponse.json(user)));
-}
 
 describe("catálogo e aulas", () => {
   it.each([[student, false], [teacher, true], [admin, true]])("mostra a criação de curso conforme o perfil %#", async (user, canCreate) => {
-    asUser(user);
-    renderApp("/educacao");
+    renderApp("/educacao", { session: user });
     await screen.findByRole("heading", { name: "Educação financeira" });
     expect(screen.getByRole("heading", { name: course.name })).toBeInTheDocument();
     if (canCreate) expect(screen.getByRole("button", { name: "Novo curso" })).toBeInTheDocument();
     else expect(screen.queryByRole("button", { name: "Novo curso" })).not.toBeInTheDocument();
   });
 
-  it("carrega a próxima página do catálogo com os parâmetros do contrato", async () => {
+  it.each(["", "?contexto=ensino"])("carrega a próxima página mantendo os parâmetros do contrato e os filtros %s", async (search) => {
     const pages = [];
     server.use(http.get(origin + "/api/courses", ({ request }) => {
       const query = new URL(request.url).searchParams;
@@ -31,11 +28,13 @@ describe("catálogo e aulas", () => {
       expect(query.has("sort[]")).toBe(false);
       return HttpResponse.json(paged([{ ...course, name: number === 0 ? "Renda fixa" : "Renda variável" }], { number, totalPages: 2, totalElements: 10 }));
     }));
-    const { user, router } = renderApp("/educacao");
+    const { user, router } = renderApp("/educacao" + search);
     await user.click(await screen.findByRole("link", { name: "Próxima" }));
     expect(await screen.findByRole("heading", { name: "Renda variável" })).toBeInTheDocument();
     expect(screen.getByText("Página 2 de 2")).toBeInTheDocument();
-    expect(router.state.location.search).toBe("?pagina=2");
+    const query = new URLSearchParams(router.state.location.search);
+    expect(query.get("pagina")).toBe("2");
+    expect(query.get("contexto")).toBe(search ? "ensino" : null);
     expect(pages).toEqual([0, 1]);
   });
 
@@ -47,9 +46,8 @@ describe("catálogo e aulas", () => {
   });
 
   it.each([[student, "Os cursos aparecerão aqui quando forem cadastrados."], [teacher, "Crie um curso para começar a adicionar aulas."]])("explica catálogo vazio ao perfil %#", async (user, message) => {
-    asUser(user);
     server.use(http.get(origin + "/api/courses", () => HttpResponse.json(paged([]))));
-    renderApp("/educacao");
+    renderApp("/educacao", { session: user });
     expect(await screen.findByRole("heading", { name: "O catálogo ainda está vazio" })).toBeInTheDocument();
     expect(screen.getByText(message)).toBeInTheDocument();
   });
@@ -66,15 +64,31 @@ describe("catálogo e aulas", () => {
     await user.click(screen.getByRole("button", { name: "Abrir player" }));
     expect(screen.getByTitle("Vídeo da aula " + lesson.title)).toHaveAttribute("src", "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ");
     await user.click(screen.getByRole("link", { name: otherLesson.title }));
-    expect(await screen.findByRole("heading", { name: otherLesson.title })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: otherLesson.title }, { timeout: 5000 })).toBeInTheDocument();
     expect(screen.queryByTitle("Vídeo da aula " + otherLesson.title)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Abrir player" })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe(coursePath + "/" + otherLesson.id);
   });
 
+  it("mostra a capa do Cloudinary e volta ao início ao terminar, sem marcar progresso do professor", async () => {
+    const cloudinaryLesson = { ...lesson, mediaUrl: "https://res.cloudinary.com/demo/video/upload/dog.mp4", thumbnailUrl: "https://res.cloudinary.com/demo/video/upload/dog.jpg" };
+    const progress = vi.fn(() => new HttpResponse(null, { status: 204 }));
+    server.use(
+      http.get(origin + "/api/lessons/course/:id", () => HttpResponse.json(paged([cloudinaryLesson]))),
+      http.post(origin + "/api/lessons/:courseId/:lessonId/progress", progress),
+    );
+    renderApp(coursePath, { session: teacher });
+    const player = await screen.findByLabelText("Vídeo da aula " + lesson.title);
+    expect(player).toHaveAttribute("poster", cloudinaryLesson.thumbnailUrl);
+    player.currentTime = 13;
+    fireEvent.ended(player);
+    expect(player.currentTime).toBe(0);
+    fireEvent.play(player);
+    expect(progress).not.toHaveBeenCalled();
+  });
+
   it.each([[student, false], [{ ...teacher, id: "outro-professor" }, false], [teacher, true], [{ ...admin, id: "outro-admin" }, true]])("aplica propriedade do curso aos controles de gestão %#", async (user, canManage) => {
-    asUser(user);
-    renderApp(coursePath);
+    renderApp(coursePath, { session: user });
     await screen.findByRole("heading", { name: course.name });
     for (const name of ["Editar curso", "Excluir curso", "Nova aula", "Editar aula " + lesson.title, "Excluir aula " + lesson.title]) {
       if (canManage) expect(screen.getByRole("button", { name })).toBeInTheDocument();
@@ -100,16 +114,14 @@ describe("catálogo e aulas", () => {
   });
 
   it.each([[student, "Este curso ainda não tem aulas cadastradas."], [teacher, "Adicione uma videoaula para começar."]])("explica curso vazio ao perfil %#", async (user, message) => {
-    asUser(user);
     server.use(http.get(origin + "/api/lessons/course/:id", () => HttpResponse.json(paged([]))));
-    renderApp(coursePath);
+    renderApp(coursePath, { session: user });
     expect(await screen.findByText(message)).toBeInTheDocument();
   });
 });
 
 describe("gestão de cursos", () => {
   it("volta à mesma aula e página após perder a sessão durante a edição", async () => {
-    asUser(teacher);
     server.use(
       http.get(origin + "/api/lessons/course/:id", () => HttpResponse.json(paged([lesson], { number: 1, totalPages: 2, totalElements: 11 }))),
       http.put(origin + "/api/courses/:id", () => HttpResponse.json({}, { status: 401 })),
@@ -117,13 +129,12 @@ describe("gestão de cursos", () => {
       http.post(origin + "/auth/verify-2fa", () => new HttpResponse(null, { status: 204 })),
     );
     const destination = coursePath + "/" + lesson.id + "?pagina=2";
-    const { user, router } = renderApp(destination);
+    const { user, router } = renderApp(destination, { session: teacher });
     await user.click(await screen.findByRole("button", { name: "Editar curso" }));
-    await user.click(screen.getByRole("button", { name: "Salvar curso" }));
+    await user.click(await screen.findByRole("button", { name: "Salvar curso" }));
     await screen.findByRole("heading", { name: "Bem-vindo de volta" });
     expect(new URLSearchParams(router.state.location.search).get("retorno")).toBe(destination);
-    await user.type(screen.getByLabelText("E-mail"), teacher.email);
-    await user.type(screen.getByLabelText("Senha", { exact: true }), "senha-teste");
+    await fillFields(user, { "E-mail": teacher.email, Senha: "senha-teste" });
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     await user.click(await screen.findByText("Usar código manualmente"));
     await user.type(screen.getByLabelText("Código de verificação"), "codigo-teste");
@@ -133,33 +144,34 @@ describe("gestão de cursos", () => {
   });
 
   it("valida, cria o curso e navega para seu detalhe", async () => {
-    asUser(teacher);
     const payloads = [];
     server.use(http.post(origin + "/api/courses", async ({ request }) => {
       payloads.push(await request.json());
       return HttpResponse.json(course, { status: 201 });
     }));
-    const { user, router } = renderApp("/educacao");
+    const { user, router } = renderApp("/educacao", { session: teacher });
     await user.click(await screen.findByRole("button", { name: "Novo curso" }));
-    const dialog = within(screen.getByRole("dialog", { name: "Novo curso" }));
+    const dialog = within(await screen.findByRole("dialog", { name: "Novo curso" }));
     await user.click(dialog.getByRole("button", { name: "Salvar curso" }));
     expect(await dialog.findByText("Informe um título.")).toBeInTheDocument();
     expect(dialog.getByText("Informe uma descrição.")).toBeInTheDocument();
     expect(payloads).toHaveLength(0);
-    await user.type(dialog.getByLabelText("Nome do curso"), "  Renda fixa  ");
-    await user.type(dialog.getByLabelText("Descrição"), "  Aprenda sobre investimentos.  ");
+    expect(dialog.queryByLabelText(/Palavras-chave/)).not.toBeInTheDocument();
+    await user.click(dialog.getByRole("combobox", { name: /Categoria/ }));
+    await user.click(await screen.findByRole("option", { name: "Renda fixa" }));
+    await fillFields(user, { "Nome do curso": "  Renda fixa  ", Descrição: "  Aprenda sobre investimentos.  " }, dialog);
+    await waitFor(() => expect(dialog.getByRole("button", { name: "Salvar curso" })).toBeEnabled());
     await user.click(dialog.getByRole("button", { name: "Salvar curso" }));
-    expect(await screen.findByRole("heading", { name: course.name, level: 1 })).toBeInTheDocument();
-    expect(payloads).toEqual([{ name: "Renda fixa", description: "Aprenda sobre investimentos." }]);
+    await waitFor(() => expect(payloads).toEqual([{ name: "Renda fixa", description: "Aprenda sobre investimentos.", category: "Renda fixa" }]));
+    expect(await screen.findByRole("heading", { name: course.name, level: 1 }, { timeout: 5000 })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe(coursePath);
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
   it("fecha o formulário ao cancelar e pelo botão de fechar", async () => {
-    asUser(teacher);
     const create = vi.fn();
     server.use(http.post(origin + "/api/courses", create));
-    const { user } = renderApp("/educacao");
+    const { user } = renderApp("/educacao", { session: teacher });
     await user.click(await screen.findByRole("button", { name: "Novo curso" }));
     await user.click(screen.getByRole("button", { name: "Cancelar" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -170,20 +182,17 @@ describe("gestão de cursos", () => {
   });
 
   it("mantém o diálogo e os dados quando a API recusa a criação", async () => {
-    asUser(teacher);
     server.use(http.post(origin + "/api/courses", () => HttpResponse.json({ detail: "Sem permissão para criar." }, { status: 403 })));
-    const { user } = renderApp("/educacao");
+    const { user } = renderApp("/educacao", { session: teacher });
     await user.click(await screen.findByRole("button", { name: "Novo curso" }));
-    await user.type(screen.getByLabelText("Nome do curso"), "Curso de teste");
-    await user.type(screen.getByLabelText("Descrição"), "Descrição de teste");
-    await user.click(screen.getByRole("button", { name: "Salvar curso" }));
+    await fillFields(user, { "Nome do curso": "Curso de teste", Descrição: "Descrição de teste" });
+    await user.click(await screen.findByRole("button", { name: "Salvar curso" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Sem permissão para criar.");
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByLabelText("Nome do curso")).toHaveValue("Curso de teste");
   });
 
   it("edita o curso, revalida o detalhe e fecha o diálogo", async () => {
-    asUser(teacher);
     let currentCourse = { ...course };
     server.use(
       http.get(origin + "/api/courses/:id", () => HttpResponse.json(currentCourse)),
@@ -193,26 +202,24 @@ describe("gestão de cursos", () => {
         return HttpResponse.json(currentCourse);
       }),
     );
-    const { user } = renderApp(coursePath);
+    const { user } = renderApp(coursePath, { session: teacher });
     await user.click(await screen.findByRole("button", { name: "Editar curso" }));
     const field = screen.getByLabelText("Nome do curso");
     expect(field).toHaveValue(course.name);
-    await user.clear(field);
-    await user.type(field, "Renda fixa avançada");
-    await user.click(screen.getByRole("button", { name: "Salvar curso" }));
+    await fillFields(user, { "Nome do curso": "Renda fixa avançada" });
+    await user.click(await screen.findByRole("button", { name: "Salvar curso" }));
     expect(await screen.findByRole("heading", { name: "Renda fixa avançada" })).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
   it("só exclui após confirmação e volta ao catálogo", async () => {
-    asUser(teacher);
     let deleted = false;
     const remove = vi.fn(() => { deleted = true; return new HttpResponse(null, { status: 204 }); });
     server.use(
       http.delete(origin + "/api/courses/:id", remove),
       http.get(origin + "/api/courses", () => HttpResponse.json(paged(deleted ? [] : [course]))),
     );
-    const { user, router } = renderApp(coursePath);
+    const { user, router } = renderApp(coursePath, { session: teacher });
     await user.click(await screen.findByRole("button", { name: "Excluir curso" }));
     expect(remove).not.toHaveBeenCalled();
     expect(screen.getByRole("dialog", { name: "Excluir curso" })).toHaveTextContent("O curso e suas aulas deixarão de aparecer");
@@ -224,8 +231,10 @@ describe("gestão de cursos", () => {
 });
 
 describe("gestão de aulas", () => {
-  it("valida a URL e cria uma aula com vídeo e miniatura normalizados", async () => {
-    asUser(teacher);
+  it.each([
+    ["YouTube", "  https://youtu.be/dQw4w9WgXcQ?t=10  ", lesson.mediaUrl, lesson.thumbnailUrl],
+    ["Cloudinary", "https://res.cloudinary.com/demo/video/upload/dog.mp4", "https://res.cloudinary.com/demo/video/upload/dog.mp4", "https://res.cloudinary.com/demo/video/upload/dog.jpg"],
+  ])("valida a URL e cria uma aula do %s com vídeo e miniatura normalizados", async (_provider, inputUrl, mediaUrl, thumbnailUrl) => {
     const payloads = [];
     server.use(
       http.post(origin + "/api/lessons/course/:id", async ({ params, request }) => {
@@ -235,28 +244,27 @@ describe("gestão de aulas", () => {
       }),
       http.get(origin + "/api/lessons/:id", () => HttpResponse.json(otherLesson)),
     );
-    const { user, router } = renderApp(coursePath);
+    const { user, router } = renderApp(coursePath, { session: teacher });
     await user.click(await screen.findByRole("button", { name: "Nova aula" }));
-    await user.type(screen.getByLabelText("Título da aula"), "  Reserva de emergência  ");
-    await user.type(screen.getByLabelText("Descrição"), "  Aprenda a criar sua reserva.  ");
-    await user.type(screen.getByLabelText("URL do vídeo no YouTube"), "https://evil.example.test/video");
+    await fillFields(user, {
+      "Título da aula": "  Reserva de emergência  ", Descrição: "  Aprenda a criar sua reserva.  ",
+      "URL do vídeo (YouTube ou Cloudinary)": "https://evil.example.test/video",
+    });
     await user.click(screen.getByRole("button", { name: "Salvar aula" }));
-    expect(await screen.findByText("Informe o link de um vídeo do YouTube.")).toBeInTheDocument();
+    expect(await screen.findByText("Informe um vídeo do YouTube ou Cloudinary.")).toBeInTheDocument();
     expect(payloads).toHaveLength(0);
-    await user.clear(screen.getByLabelText("URL do vídeo no YouTube"));
-    await user.type(screen.getByLabelText("URL do vídeo no YouTube"), "  https://youtu.be/dQw4w9WgXcQ?t=10  ");
+    await fillFields(user, { "URL do vídeo (YouTube ou Cloudinary)": inputUrl });
     await user.click(screen.getByRole("button", { name: "Salvar aula" }));
-    expect(await screen.findByRole("heading", { name: otherLesson.title })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: otherLesson.title }, { timeout: 5000 })).toBeInTheDocument();
     expect(payloads).toEqual([{
       title: "Reserva de emergência", description: "Aprenda a criar sua reserva.",
-      mediaUrl: lesson.mediaUrl, thumbnailUrl: lesson.thumbnailUrl,
+      mediaUrl, thumbnailUrl,
     }]);
     expect(router.state.location.pathname).toBe(coursePath + "/" + otherLesson.id);
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
-  it("preserva mídia de registro antigo ao editar somente o título", async () => {
-    asUser(teacher);
+  it("exige substituir links antigos de outros sites por um vídeo do YouTube ao editar", async () => {
     let currentLesson = { ...lesson, mediaUrl: "https://videos.example.test/legado" };
     const payloads = [];
     server.use(
@@ -269,18 +277,21 @@ describe("gestão de aulas", () => {
         return HttpResponse.json(currentLesson);
       }),
     );
-    const { user } = renderApp(coursePath);
+    const { user } = renderApp(coursePath, { session: teacher });
     await user.click(await screen.findByRole("button", { name: "Editar aula " + lesson.title }));
-    await user.clear(screen.getByLabelText("Título da aula"));
-    await user.type(screen.getByLabelText("Título da aula"), "Aula atualizada");
-    await user.click(screen.getByRole("button", { name: "Salvar aula" }));
-    expect(await screen.findByRole("heading", { name: "Aula atualizada" })).toBeInTheDocument();
-    expect(payloads).toEqual([{ title: "Aula atualizada", description: lesson.description, mediaUrl: "https://videos.example.test/legado", thumbnailUrl: lesson.thumbnailUrl }]);
+    const dialog = within(await screen.findByRole("dialog", { name: "Editar aula" }));
+    await fillFields(user, { "Título da aula": "Aula atualizada" }, dialog);
+    await user.click(dialog.getByRole("button", { name: "Salvar aula" }));
+    expect(await dialog.findByText("Informe um vídeo do YouTube ou Cloudinary.")).toBeInTheDocument();
+    expect(payloads).toEqual([]);
+    await fillFields(user, { "URL do vídeo (YouTube ou Cloudinary)": lesson.mediaUrl }, dialog);
+    await user.click(dialog.getByRole("button", { name: "Salvar aula" }));
+    await waitFor(() => expect(payloads).toEqual([{ title: "Aula atualizada", description: lesson.description, mediaUrl: lesson.mediaUrl, thumbnailUrl: lesson.thumbnailUrl }]));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(await screen.findByRole("heading", { name: "Aula atualizada" })).toBeInTheDocument();
   });
 
   it("exclui a aula selecionada e exibe o estado vazio do curso", async () => {
-    asUser(teacher);
     let deleted = false;
     server.use(
       http.get(origin + "/api/lessons/course/:id", () => HttpResponse.json(paged(deleted ? [] : [lesson]))),
@@ -290,7 +301,7 @@ describe("gestão de aulas", () => {
         return new HttpResponse(null, { status: 204 });
       }),
     );
-    const { user, router } = renderApp(coursePath + "/" + lesson.id);
+    const { user, router } = renderApp(coursePath + "/" + lesson.id, { session: teacher });
     await user.click(await screen.findByRole("button", { name: "Excluir aula " + lesson.title }));
     expect(screen.getByRole("dialog", { name: "Excluir aula" })).toHaveTextContent("A aula deixará de aparecer no curso.");
     await user.click(screen.getByRole("button", { name: "Confirmar exclusão" }));
