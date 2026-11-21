@@ -2,10 +2,10 @@ import { useState } from "react";
 import { Link, Navigate, useRouteLoaderData } from "react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient, apiError } from "../services/api.js";
+import { Field } from "../components/ui/FormFields.jsx";
 import { Notice } from "../components/ui/PageState.jsx";
 import StatePagination from "../components/ui/StatePagination.jsx";
 import PageHeader from "../components/layout/PageHeader.jsx";
-import { TextField } from "@mui/material";
 import ModerationWorkspace from "./ModerationWorkspace.jsx";
 import TrashWorkspace from "./TrashWorkspace.jsx";
 
@@ -23,14 +23,14 @@ function LegalWorkspace() {
     {current.error && <Notice error>{apiError(current.error, "Não foi possível carregar os documentos.")}</Notice>}
     {value && <form className="panel space-y-5 p-5" onSubmit={event => { event.preventDefault(); setPreview(structuredClone(value)); }}>
       <p className="font-bold">Nova versão: {value.version}</p>
-      <TextField label="Data da publicação" type="date" value={value.publishedOn} onChange={event => edit(next => { next.publishedOn = event.target.value; })} required slotProps={{ inputLabel: { shrink: true }, htmlInput: { max: today } }} />
+      <Field label="Data da publicação" type="date" value={value.publishedOn} onChange={event => edit(next => { next.publishedOn = event.target.value; })} required max={today} />
       {value.documents.map((document, index) => <fieldset key={index} className="space-y-3 rounded-xl border border-line p-4"><legend>Documento {index + 1}</legend>
-        <TextField label="Identificador" value={document.id} required onChange={event => edit(next => { next.documents[index].id = event.target.value; })} helperText="Use letras minúsculas, números e hífens." slotProps={{ htmlInput: { pattern: "[a-z][a-z0-9-]{0,63}", maxLength: 64 } }} />
-        <TextField label="Nome da aba" value={document.label} required onChange={event => edit(next => { next.documents[index].label = event.target.value; })} />
-        <TextField label="Título do documento" value={document.title} fullWidth required onChange={event => edit(next => { next.documents[index].title = event.target.value; })} />
+        <Field label="Identificador" value={document.id} required onChange={event => edit(next => { next.documents[index].id = event.target.value; })} hint="Use letras minúsculas, números e hífens." maxLength={64} slotProps={{ htmlInput: { pattern: "[a-z][a-z0-9-]{0,63}", maxLength: 64 } }} />
+        <Field label="Nome da aba" value={document.label} required onChange={event => edit(next => { next.documents[index].label = event.target.value; })} />
+        <Field label="Título do documento" value={document.title} fullWidth required onChange={event => edit(next => { next.documents[index].title = event.target.value; })} />
         {document.sections.map((section, sectionIndex) => <div key={sectionIndex} className="space-y-3 border-t border-line pt-3">
-          <TextField label="Título da seção" value={section.heading} fullWidth required onChange={event => edit(next => { next.documents[index].sections[sectionIndex].heading = event.target.value; })} />
-          <TextField label="Texto da seção" value={section.content} multiline minRows={4} fullWidth required onChange={event => edit(next => { next.documents[index].sections[sectionIndex].content = event.target.value; })} />
+          <Field label="Título da seção" value={section.heading} fullWidth required onChange={event => edit(next => { next.documents[index].sections[sectionIndex].heading = event.target.value; })} />
+          <Field label="Texto da seção" value={section.content} multiline minRows={4} fullWidth required onChange={event => edit(next => { next.documents[index].sections[sectionIndex].content = event.target.value; })} />
           {document.sections.length > 1 && <button type="button" className="button-secondary" onClick={() => edit(next => { next.documents[index].sections.splice(sectionIndex, 1); })}>Remover seção</button>}
         </div>)}
         <div className="flex gap-3"><button type="button" className="button-secondary" onClick={() => edit(next => { next.documents[index].sections.push({ heading: "", content: "" }); })}>Adicionar seção</button>
@@ -59,7 +59,7 @@ function TeacherWorkspace() {
     {applications.data?.content.length === 0 && <p>Nenhuma candidatura recebida.</p>}
     {applications.data?.content.map(application => <article key={application.id} className="panel space-y-3 p-5"><h2 className="font-bold">Usuário {application.userId}</h2><p>{application.status} · {new Date(application.submittedAt).toLocaleString("pt-BR")}</p>
       {application.documents.map(document => <a className="block text-brand underline" key={document.id} href={(apiClient.defaults.baseURL || "") + `/api/teacher-applications/${application.id}/documents/${document.id}`}>Baixar {document.type.replaceAll("-", " ")}</a>)}
-      {application.status === "PENDING" ? <><TextField label="Parecer da análise" multiline fullWidth value={reasons[application.id] || ""} onChange={event => setReasons(previous => ({ ...previous, [application.id]: event.target.value }))} slotProps={{ htmlInput: { maxLength: 2000 } }} /><div className="flex gap-3">{[true, false].map(approve => <button key={String(approve)} className={approve ? "button-primary" : "button-danger"} disabled={review.isPending || !reasons[application.id]?.trim()} onClick={() => review.mutate({ id: application.id, approve })}>{approve ? "Aprovar professor" : "Reprovar"}</button>)}</div></> : <p>{application.reviewReason}</p>}
+      {application.status === "PENDING" ? <><Field label="Parecer da análise" multiline fullWidth maxLength={2000} value={reasons[application.id] || ""} onChange={event => setReasons(previous => ({ ...previous, [application.id]: event.target.value }))} /><div className="flex gap-3">{[true, false].map(approve => <button key={String(approve)} className={approve ? "button-primary" : "button-danger"} disabled={review.isPending || !reasons[application.id]?.trim()} onClick={() => review.mutate({ id: application.id, approve })}>{approve ? "Aprovar professor" : "Reprovar"}</button>)}</div></> : <p>{application.reviewReason}</p>}
     </article>)}
     <StatePagination page={page} totalPages={applications.data?.page.totalPages} onChange={setPage} showPageNumber={false} />
   </>;

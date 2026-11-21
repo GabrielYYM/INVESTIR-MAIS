@@ -4,20 +4,16 @@ import {
   Button,
   CircularProgress,
   Divider,
-  FormControl,
   IconButton,
-  InputLabel,
-  MenuItem,
   Paper,
-  Select,
   Stack,
-  TextField,
   Tooltip,
   Typography,
 } from "@mui/material";
 import { Eye } from "lucide-react";
 import { DataTable, ListBase, useListContext } from "react-admin";
 import AppModal from "../ui/AppModal.jsx";
+import { Field, SelectField } from "../ui/FormFields.jsx";
 import ResourcePagination from "../ui/ResourcePagination.jsx";
 import { Notice } from "../ui/PageState.jsx";
 import RoleBadge from "../account/RoleBadge.jsx";
@@ -215,25 +211,13 @@ export function AuditFilters({ onApply, onClear }) {
         onClear?.();
       }}
     >
-      <FormControl size="small" fullWidth>
-        <InputLabel id="audit-entity-label">Entidade</InputLabel>
-        <Select labelId="audit-entity-label" id="audit-entity" name="entity" value={draft.entity} label="Entidade" displayEmpty onChange={updateField("entity")}>
-          <MenuItem value="">Todas</MenuItem>
-          {entityOptions.map(([value, label]) => <MenuItem key={value} value={value}>{label}</MenuItem>)}
-        </Select>
-      </FormControl>
-      <TextField name="entityId" label="ID do registro" placeholder="UUID do registro..." value={draft.entityId} onChange={updateField("entityId")} />
-      <TextField name="revision" label="Revisão" type="number" value={draft.revision} onChange={updateField("revision")} slotProps={{ htmlInput: { min: 1 } }} />
-      <TextField name="actor" label="Usuário autor (e-mail)" type="email" value={draft.actor} onChange={updateField("actor")} />
-      <FormControl size="small" fullWidth>
-        <InputLabel id="audit-role-label">Papel do autor</InputLabel>
-        <Select labelId="audit-role-label" id="audit-role" name="role" value={draft.role} label="Papel do autor" displayEmpty onChange={updateField("role")}>
-          <MenuItem value="">Todos</MenuItem>
-          {roleOptions.map(([value, label]) => <MenuItem key={value} value={value}>{label}</MenuItem>)}
-        </Select>
-      </FormControl>
-      <TextField name="from" label="Desde" type="datetime-local" value={draft.from} onChange={updateField("from")} slotProps={{ inputLabel: { shrink: true } }} />
-      <TextField name="to" label="Até" type="datetime-local" value={draft.to} onChange={updateField("to")} slotProps={{ inputLabel: { shrink: true } }} />
+      <SelectField id="audit-entity" name="entity" label="Entidade" value={draft.entity} emptyOption="Todas" options={entityOptions} onChange={updateField("entity")} />
+      <Field name="entityId" label="ID do registro" placeholder="UUID do registro..." value={draft.entityId} onChange={updateField("entityId")} />
+      <Field name="revision" label="Revisão" type="number" value={draft.revision} onChange={updateField("revision")} min={1} />
+      <Field name="actor" label="Usuário autor (e-mail)" type="email" value={draft.actor} onChange={updateField("actor")} />
+      <SelectField id="audit-role" name="role" label="Papel do autor" value={draft.role} emptyOption="Todos" options={roleOptions} onChange={updateField("role")} />
+      <Field name="from" label="Desde" type="datetime-local" value={draft.from} onChange={updateField("from")} />
+      <Field name="to" label="Até" type="datetime-local" value={draft.to} onChange={updateField("to")} />
       <Stack direction="row" spacing={1} sx={{ alignItems: "flex-end" }}>
         <Button type="submit" variant="contained" color="primary" fullWidth>Filtrar</Button>
         <Button type="reset" variant="outlined">Limpar</Button>
