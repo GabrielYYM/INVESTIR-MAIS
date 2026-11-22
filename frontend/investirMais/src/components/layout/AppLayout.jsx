@@ -37,7 +37,7 @@ export default function AppLayout() {
       >
         Pular para o conteúdo
       </a>
-      <Topbar user={user} onToggleDrawer={() => setDrawerOpen((prev) => !prev)} />
+      <Topbar logout={signOutForm} user={user} onToggleDrawer={() => setDrawerOpen((prev) => !prev)} />
       <Sidebar
         logout={signOutForm}
         user={user}
