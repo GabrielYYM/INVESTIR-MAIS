@@ -70,12 +70,11 @@ describe("novos fluxos da plataforma", () => {
     await waitFor(() => expect(publish).toHaveBeenCalledOnce());
   });
 
-  it("separa matrículas e respostas pessoais do catálogo", async () => {
+  it("separa matrículas pessoais do catálogo", async () => {
     mockApi("get", "/api/learning/courses", [{ id: course.id, name: "Minha matrícula", completed_lessons: 1, total_lessons: 3 }]);
-    mockApi("get", "/api/learning/answers", paged([{ id: "answer", prompt: "Minha questão", selectedAnswer: "Minha alternativa", correct: false, answeredAt: "2026-11-16T10:00:00Z", courseId: course.id }]));
     renderApp("/");
     expect(await screen.findByRole("heading", { name: "Minha matrícula" })).toBeInTheDocument();
-    expect(await screen.findByText("Sua resposta: Minha alternativa")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Minhas respostas" })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Catálogo de Cursos" })).toBeInTheDocument();
   });
 

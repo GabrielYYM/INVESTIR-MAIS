@@ -21,21 +21,13 @@ export function TeacherCourses({ userId }) {
 }
 
 export function StudentLearningDashboard() {
-  const [page, setPage] = useState(0);
   const courses = useLearningCourses();
-  const answers = useQuery({ queryKey: ["my-answers", page], queryFn: async () => (await apiClient.get("/api/learning/answers", { params: { page, size: 10 } })).data });
   return <section className="space-y-5" aria-label="Meu aprendizado">
     <h2 className="text-xl font-bold">Meus cursos</h2>
     {courses.isPending && <p>Carregando seus cursos…</p>}
     {courses.error && <Notice error>{apiError(courses.error, "Não foi possível carregar suas matrículas.")}</Notice>}
     {courses.data?.length === 0 && <p className="text-muted">Você ainda não está matriculado em nenhum curso.</p>}
     <div className="grid gap-3 sm:grid-cols-2">{courses.data?.map(course => <Link className="panel space-y-2 p-4" key={course.id} to={"/educacao/" + course.id}><h3 className="font-bold">{course.name}</h3><CourseProgressBar value={course.progress_percentage} label={"Progresso em " + course.name} completed={course.completed} /><p className="text-sm text-muted">{course.completed_lessons} de {course.total_lessons} aulas · {course.passed_questions ?? 0} de {course.total_questions ?? 0} questões aprovadas</p></Link>)}</div>
-    <h2 className="text-xl font-bold">Minhas respostas</h2>
-    {answers.isPending && <p>Carregando suas respostas…</p>}
-    {answers.error && <Notice error>{apiError(answers.error, "Não foi possível carregar suas respostas.")}</Notice>}
-    {answers.data?.content.length === 0 && <p className="text-muted">Suas novas respostas aparecerão aqui. Respostas anteriores à atualização não possuem alternativa registrada.</p>}
-    {answers.data?.content.map(answer => <article key={answer.id} className="panel space-y-2 p-4"><h3 className="font-semibold">{answer.prompt}</h3><p>Sua resposta: {answer.selectedAnswer}</p><p className={answer.correct ? "text-positive" : "text-negative"}>{answer.correct ? "Correta" : "Incorreta"} · {new Date(answer.answeredAt).toLocaleString("pt-BR")}</p><Link className="text-brand" to={"/educacao/" + answer.courseId}>Abrir curso</Link></article>)}
-    <StatePagination page={page} totalPages={answers.data?.page.totalPages} onChange={setPage} />
   </section>;
 }
 
