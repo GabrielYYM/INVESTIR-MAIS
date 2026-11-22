@@ -27,9 +27,17 @@ public class TeacherApplicationService {
     }
     public List<String> types() { return requiredTypes; }
     public record DocumentView(UUID id, String type, String mediaType) {}
-    public record ApplicationView(UUID id, UUID userId, String status, Instant submittedAt, Instant reviewedAt, String reviewReason, List<DocumentView> documents) {}
-    private ApplicationView view(TeacherApplication a) {
-        return new ApplicationView(a.getId(),a.getUserId(),a.getStatus(),a.getSubmittedAt(),a.getReviewedAt(),a.getReviewReason(),
+    public record ApplicationView(UUID id, UUID userId, String userName, String status, Instant submittedAt, Instant reviewedAt, String reviewReason, List<DocumentView> documents) {}
+    private Map<UUID, String> applicantNames(List<TeacherApplication> values) {
+        if (values.isEmpty()) return Map.of();
+        var names = new HashMap<UUID, String>();
+        applications.applicantNames(values.stream().map(TeacherApplication::getUserId).toList())
+                .forEach(user -> names.put(user.getId(), user.getName() == null || user.getName().isBlank() ? "Apelido indisponível" : user.getName()));
+        return names;
+    }
+    private ApplicationView view(TeacherApplication a) { return view(a, applicantNames(List.of(a))); }
+    private ApplicationView view(TeacherApplication a, Map<UUID, String> names) {
+        return new ApplicationView(a.getId(),a.getUserId(),names.getOrDefault(a.getUserId(), "Usuário excluído"),a.getStatus(),a.getSubmittedAt(),a.getReviewedAt(),a.getReviewReason(),
                 applications.documentMetadata(a.getId()).stream().map(d -> new DocumentView(d.getId(),d.getType(),d.getMediaType())).toList());
     }
     public ApplicationView mine(String email) { return applications.findByUserId(users.findByEmail(email).getId()).map(this::view).orElse(null); }
@@ -58,7 +66,11 @@ public class TeacherApplicationService {
         return view(applications.saveAndFlush(a));
     }
     @PreAuthorize("hasRole('ADMIN')")
-    public Page<ApplicationView> list(Pageable pageable) { return applications.findAll(PageRequest.of(pageable.getPageNumber(),pageable.getPageSize(),Sort.by("submittedAt").descending())).map(this::view); }
+    public Page<ApplicationView> list(Pageable pageable) {
+        var page = applications.findAll(PageRequest.of(pageable.getPageNumber(),pageable.getPageSize(),Sort.by("submittedAt").descending()));
+        var names = applicantNames(page.getContent());
+        return page.map(application -> view(application, names));
+    }
     @PreAuthorize("hasRole('ADMIN')")
     public ApplicationView review(UUID id, boolean approve, String reason, String email) {
         var a=applications.findForUpdateById(id).orElseThrow(() -> error(HttpStatus.NOT_FOUND,"Candidatura não encontrada."));

@@ -1371,6 +1371,9 @@
             "type": "string",
             "format": "uuid"
           },
+          "userName": {
+            "type": "string"
+          },
           "status": {
             "type": "string"
           },

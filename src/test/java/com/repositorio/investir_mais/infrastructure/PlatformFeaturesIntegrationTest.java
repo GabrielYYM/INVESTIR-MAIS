@@ -93,6 +93,9 @@ class PlatformFeaturesIntegrationTest extends PostgreSqlIntegrationTest {
     }
     @Test void applicationRequiresPrivateDocumentsAndApprovalWithoutMinimumAge() throws Exception {
         var application=apply();
+        assertEquals(student.getName(), application.userName());
+        mvc.perform(get("/api/teacher-applications").with(as(admin)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.content[?(@.id == '" + application.id() + "')].userName").value(org.hamcrest.Matchers.contains(student.getName())));
         mvc.perform(get("/api/teacher-applications").with(as(student))).andExpect(status().isForbidden());
         mvc.perform(get("/api/teacher-applications/{id}/documents/{doc}",application.id(),application.documents().getFirst().id()).with(as(teacher))).andExpect(status().isForbidden());
         mvc.perform(get("/api/teacher-applications/{id}/documents/{doc}",application.id(),application.documents().getFirst().id()).with(as(student)))

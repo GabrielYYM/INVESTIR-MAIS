@@ -28,12 +28,14 @@ describe("novos fluxos da plataforma", () => {
   });
 
   it("exige parecer para aprovar professor", async () => {
-    const application = { id: "candidate", userId: student.id, status: "PENDING", submittedAt: "2026-11-16T10:00:00Z", documents: [] };
+    const application = { id: "candidate", userId: student.id, userName: student.name, status: "PENDING", submittedAt: "2026-11-16T10:00:00Z", documents: [] };
     mockApi("get", "/api/teacher-applications", paged([application]));
     const review = mockApi("post", "/api/teacher-applications/candidate/review", async ({ request }) => {
       expect(await request.json()).toEqual({ approve: true, reason: "Qualificação conferida" }); return { ...application, status: "APPROVED" };
     });
     const { user } = renderApp("/admin/professores", { session: adminUser });
+    expect(await screen.findByRole("heading", { name: student.name, exact: true })).toBeInTheDocument();
+    expect(screen.queryByText(student.id, { exact: false })).not.toBeInTheDocument();
     expect(await screen.findByRole("button", { name: "Aprovar professor" })).toBeDisabled();
     await user.type(screen.getByLabelText("Parecer da análise"), "Qualificação conferida");
     await user.click(screen.getByRole("button", { name: "Aprovar professor" }));
