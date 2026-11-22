@@ -47,7 +47,7 @@ export function CourseLearningDashboard({ courseId }) {
   const students = stats.data?.students ?? [];
   const completed = students.filter(student => student.completed).length;
   const completionRate = students.length ? Math.round(1000 * completed / students.length) / 10 : 0;
-  return <section className="space-y-4" aria-label="Desempenho do curso">
+  return <section className="space-y-3" aria-label="Desempenho do curso">
     <Accordion defaultExpanded className="panel">
       <AccordionSummary expandIcon={<ChevronDown size={20} />}>
         <h2 className="text-xl font-bold">Desempenho do curso</h2>

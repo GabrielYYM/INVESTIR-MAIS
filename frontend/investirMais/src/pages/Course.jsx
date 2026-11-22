@@ -78,7 +78,7 @@ function CourseQuestions({
         {error ? <div className="space-y-3"><Notice error>{error}</Notice><button className="button-secondary" disabled={loading} onClick={onRetry}>Tentar novamente</button></div> : needsEnrollment ? <div className="space-y-3"><p className="text-sm leading-relaxed text-muted">Entre no curso para responder às perguntas e acompanhar seu progresso.</p><SubmitButton type="button" loading={loading} loadingText="Entrando…" onClick={onEnroll}>Começar curso</SubmitButton></div> : questions.length ? <div className="space-y-4">{questions.map((question, index) => <article key={question.id} className="min-w-0 space-y-4 rounded-xl border border-line bg-raised p-4" aria-labelledby={"question-" + question.id}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 space-y-2">
-                  <p className="flex flex-wrap items-center gap-2 text-xs text-muted"><CircleHelp size={15} className="text-brand" /> Pergunta {index + 1}<span aria-hidden="true">·</span>{question.afterLesson === 0 ? "Antes da primeira aula" : "Após a aula " + question.afterLesson}</p>
+                  <p className="flex flex-wrap items-center gap-2 text-xs text-muted"><CircleHelp size={15} className="text-brand" /> Pergunta {index + 1} — {question.afterLesson === 0 ? "Antes da primeira aula" : "Após a aula " + question.afterLesson}</p>
                   <h3 id={"question-" + question.id} className="font-semibold break-words whitespace-pre-wrap">{question.prompt}</h3>
                 </div>
                 {canManage && <ItemActionButtons
@@ -213,8 +213,8 @@ export default function Course() {
       <button className="button-secondary" onClick={() => setReporting({ targetType: "TEACHER", targetId: course.professorId, title: "Professor responsável por " + course.name })}>Denunciar professor</button>
       {lesson && <button className="button-secondary" onClick={() => setReporting({ targetType: "LESSON", targetId: lesson.id, title: lesson.title })}>Denunciar vídeo</button>}
     </div>
-    <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(18rem,0.62fr)]">
-      <div className="min-w-0 space-y-5">
+    <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(18rem,0.62fr)]">
+      <div className="min-w-0 space-y-3.5">
         {failure && <Notice error>{failure}</Notice>}
         {progressError && <button className="button-secondary" disabled={revalidator.state !== "idle"} onClick={() => revalidator.revalidate()}>Tentar novamente</button>}
         {lesson ? <LessonPlayer key={lesson.id} lesson={lesson} isCompleted={completedIds.has(lesson.id)} onToggleCompleted={canManage ? undefined : completed => updateProgress(completed)} busy={progressMutation.isPending} trackProgress={!canManage} /> : <p className="panel p-6 text-sm text-muted">

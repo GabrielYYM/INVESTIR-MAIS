@@ -102,7 +102,7 @@ export default function Admin() {
   const promotionBlock = "A promoção a professor ocorre pela aprovação dos documentos em Candidaturas de professores.";
 
   return (
-    <Box className="w-full space-y-8">
+    <Box className="w-full space-y-5">
       <PageHeader
         title="Administração"
         description="Gerencie pendências, auditoria, usuários e documentos da plataforma."
