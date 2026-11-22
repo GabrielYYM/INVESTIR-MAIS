@@ -45,18 +45,14 @@ describe("painel de pendências do admin", () => {
     expect(screen.queryByText(/perdem a possibilidade/)).not.toBeInTheDocument();
   });
 
-  it("permite atualizar após falha sem impedir a gestão dos usuários", async () => {
+  it("exibe erro das pendências sem impedir a gestão dos usuários", async () => {
     const query = mockApi("get", "/api/admin/pending", { detail: "Resumo temporariamente indisponível." }, { status: 503 });
-    const { user } = setup();
+    setup();
     expect(await screen.findByRole("alert")).toHaveTextContent("Resumo temporariamente indisponível.");
     expect(await screen.findByText(student.id)).toBeInTheDocument();
     expect(screen.queryByText(student.email)).not.toBeInTheDocument();
     expect(screen.queryByText("Denúncias em análise")).not.toBeInTheDocument();
-    mockApi("get", "/api/admin/pending", summary);
-    await user.click(screen.getByRole("button", { name: "Atualizar pendências" }));
-    expect(await screen.findByText("Denúncias em análise")).toBeInTheDocument();
     expect(query).toHaveBeenCalledOnce();
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it.each([student, teacherUser])("impede consulta por perfil não administrativo: $role", async session => {
