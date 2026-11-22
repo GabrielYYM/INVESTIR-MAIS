@@ -10,35 +10,39 @@ O cadastro inicial apresenta links para leitura dos documentos. Há um único ac
 
 ## Lixeira administrativa
 
-- `/admin/lixeira` lista conteúdo excluído e, em uma seleção separada, contas com solicitação recuperável.
-- Cursos, aulas e questões podem ser restaurados individualmente. Restaurar curso não republica automaticamente aulas e questões. O servidor exige conta responsável e dependências ativas e recusa conflitos de posição.
-- Contas desativadas mantêm dados por 30 dias a partir da solicitação. A recuperação exige registro do pedido verificado do titular. Também recupera o progresso e os itens de autoria ocultados pela mesma solicitação, preservando exclusões anteriores.
-- A opção de eliminação definitiva exige senha e não cria janela recuperável. A rotina horária processa solicitações vencidas. Veja os limites e a matriz legal em [retenção e eliminação](../.lgpd/retention.md).
+`/admin/lixeira` lista somente cursos, aulas e questões excluídos. A restauração exige conta responsável e dependências ativas e recusa conflitos de posição. Restaurar curso não republica automaticamente aulas e questões. Contas excluídas não são recuperáveis; atalhos antigos não oferecem restauração de conta.
+
+## Exclusão de conta e auditoria
+
+A exclusão é apenas lógica (soft delete): marca `deleted_at`, preservando a linha da conta e seus vínculos. Exige senha atual e suprime nome, e-mail, senha e verificação no cadastro imediatamente. O endereço é substituído por um valor aleatório em `deleted.invalid`, liberando o e-mail original sem quebrar o índice único. Um novo cadastro exige nova confirmação, recebe outro UUID e não herda progresso, papel ou histórico.
+
+As linhas de auditoria, revisões, datas, operações, vínculos, progresso, tentativas, denúncias e aceites permanecem. Nas revisões do perfil, nome e e-mail são substituídos; o autor identificado pelo e-mail atual passa a `deleted:<UUID>`. Documentos de candidatura e credenciais pendentes são eliminados. Textos livres históricos podem conter dados pessoais: isso é minimização dos identificadores diretos e **não comprova anonimização irreversível de todo o histórico**.
+
+Em **Administração → Ver log de visualizações**, o admin vê quem consultou, quando e quais registros foram retornados. O servidor registra listagens, detalhes, histórico individual e consultas ao próprio log. A identidade vem da autenticação; o cliente não fornece autor nem horário. Falha ao registrar impede a resposta com os dados. A tabela de visualizações bloqueia UPDATE, DELETE e TRUNCATE, inclusive após exclusão do visualizador. Nome/e-mail exibidos são obtidos do cadastro atual, sem duplicá-los no log.
 
 ## Painel de pendências
 
-A página `/admin` reúne denúncias abertas, candidaturas pendentes de usuários com conta ativa, contas ainda recuperáveis e contas cujo prazo já terminou e aguardam processamento da eliminação. Um alerta destaca os prazos de recuperação que vencem nos próximos sete dias e informa o próximo vencimento. Contas com prazo encerrado não entram no contador de recuperáveis.
-
-Os atalhos abrem as áreas de análise; a lixeira é aberta diretamente nas contas por `/admin/lixeira?tipo=contas`. O botão **Atualizar pendências** consulta novamente o resumo sem reiniciar a lista ou os filtros de usuários. A data exibida corresponde ao instante da consulta no servidor. O painel informa pendências; não executa restauração ou eliminação.
-
-O resumo é calculado em uma consulta ao banco, protegido por perfil ADMIN e enviado sem dados pessoais e sem cache HTTP. A falha de atualização do resumo não bloqueia a gestão de usuários.
+`/admin` reúne denúncias abertas e candidaturas pendentes de contas ativas. Os campos antigos de recuperação na resposta permanecem zerados para compatibilidade; não há prazos de recuperação nem job de expurgo de contas.
 
 ## APIs
 
 | Método | Rota | Acesso |
 |---|---|---|
-| GET | `/api/admin/pending` | Admin; resumo de pendências e prazos |
+| GET | `/api/admin/pending` | Admin; denúncias e candidaturas |
 | POST | `/api/reports` | Usuário autenticado |
 | GET | `/api/reports?status=OPEN&page=0&size=20` | Admin |
 | POST | `/api/reports/{id}/review` | Admin |
-| GET | `/api/trash`, `/api/trash/accounts` | Admin |
+| GET | `/api/trash` | Admin; somente conteúdo |
 | POST | `/api/trash/{entity}/{id}/restore` | Admin |
-| POST | `/api/trash/accounts/{id}/restore` | Admin; justificativa obrigatória |
-| DELETE | `/api/users/{id}` | Próprio titular com senha; desativa por 30 dias |
-| POST | `/api/users/{id}/erasure` | Próprio titular com senha; eliminação definitiva |
+| DELETE | `/api/users/{id}` | Próprio titular com senha; exclusão imediata |
+| GET | `/api/audit` | Admin; consulta registrada |
+| GET | `/api/audit/{entity}/{entityId}/{revision}` | Admin; detalhe registrado |
+| GET | `/api/audit/accesses?viewerId=...&from=...&to=...&page=0&size=20` | Admin; log paginado e consulta registrada |
+
+As rotas de recuperação foram removidas. Exclusões antigas que ainda reservem um e-mail são minimizadas transacionalmente ao tentar cadastrá-lo novamente; não há alteração em massa na inicialização.
 
 ## Verificação
 
 `ModerationAndRecoveryIntegrationTest` usa PostgreSQL isolado, com envio de e-mail simulado. Usa Testcontainers por padrão. Opcionalmente, `INVESTIR_TEST_DATABASE_URL` aceita somente PostgreSQL em `127.0.0.1`, com banco cujo nome começa por `investir_test_`, para execução automatizada em uma instância descartável com usuário `postgres` e autenticação local de teste. Nunca usar esse mecanismo para testes manuais nem apontar para `investir_mais`.
 
-Os testes de frontend cobrem denúncia de vídeo/professor, validação e erros, confirmação de moderação, recuperação administrativa, segregação de perfis, categorias selecionáveis e ausência de aceite duplicado.
+Os testes de frontend cobrem denúncia de vídeo/professor, validação e erros, confirmação de moderação, exclusão imediata e registro de visualizações, segregação de perfis, categorias selecionáveis e ausência de aceite duplicado.

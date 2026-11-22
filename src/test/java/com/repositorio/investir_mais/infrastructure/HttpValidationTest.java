@@ -46,6 +46,7 @@ class HttpValidationTest {
     @MockitoBean SecurityContextRepository securityContexts;
     @MockitoBean LegalDocumentsService legal;
     @MockitoBean org.springframework.jdbc.core.simple.JdbcClient jdbc;
+    @MockitoBean com.repositorio.investir_mais.domain.AuditAccessService auditAccess;
 
     @ParameterizedTest
     @ValueSource(strings = {"{}", "{\"version\":0,\"publishedOn\":\"2020-01-01\",\"documents\":[]}",

@@ -11,30 +11,18 @@ function setup() {
 const summary = { ...adminPending, openReports: 3, pendingTeacherApplications: 2, recoverableAccounts: 5, expiringAccounts: 1, expiredAccounts: 4, nextRecoveryDeadline: "2026-11-20T12:00:00Z" };
 
 describe("painel de pendências do admin", () => {
-  it("centraliza contadores, alerta de sete dias, próximo prazo e atalhos", async () => {
+  it("centraliza denúncias e candidaturas sem recuperação de contas", async () => {
     mockApi("get", "/api/admin/pending", summary);
     setup();
     const panel = within(await screen.findByRole("region", { name: "Pendências da administração" }));
     await panel.findByText("Denúncias em análise");
-    for (const [label, count] of [["Denúncias em análise", "3"], ["Candidaturas pendentes", "2"], ["Contas em recuperação", "5"], ["Prazos encerrados", "4"]]) {
+    for (const [label, count] of [["Denúncias em análise", "3"], ["Candidaturas pendentes", "2"]]) {
       expect(within(panel.getByText(label).closest(".panel")).getByText(count, { exact: true })).toBeInTheDocument();
     }
-    expect(panel.getByText(/Próximo fim de prazo/).querySelector("time")).toHaveAttribute("datetime", summary.nextRecoveryDeadline);
+    expect(panel.queryByText(/Próximo fim de prazo/)).not.toBeInTheDocument();
     expect(panel.getByRole("link", { name: "Analisar denúncias" })).toHaveAttribute("href", "/admin/denuncias");
     expect(panel.getByRole("link", { name: "Analisar candidaturas" })).toHaveAttribute("href", "/admin/professores");
-    expect(panel.getByRole("link", { name: "Ver contas em recuperação" })).toHaveAttribute("href", "/admin/lixeira?tipo=contas");
-  });
-
-  it("abre a lixeira diretamente nas contas pelo atalho", async () => {
-    mockApi("get", "/api/admin/pending", summary);
-    const content = mockApi("get", "/api/trash", { items: [], totalItems: 0 });
-    const accounts = mockApi("get", "/api/trash/accounts", { items: [], totalItems: 0 });
-    const { user, router } = setup();
-    await user.click(await screen.findByRole("link", { name: "Ver contas em recuperação" }));
-    expect(await screen.findByLabelText("Itens excluídos")).toHaveValue("accounts");
-    await waitFor(() => expect(accounts).toHaveBeenCalledOnce());
-    expect(content).not.toHaveBeenCalled();
-    expect(router.state.location.pathname + router.state.location.search).toBe("/admin/lixeira?tipo=contas");
+    expect(panel.queryByRole("link", { name: "Ver contas em recuperação" })).not.toBeInTheDocument();
   });
 
   it("mostra ausência de pendências sem alerta nem prazo fictício", async () => {

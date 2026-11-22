@@ -142,6 +142,20 @@ describe("gestão de usuários", () => {
 });
 
 describe("histórico de auditoria de ocorridos recentes", () => {
+  it("mostra quem visualizou, horário e registros, e envia filtros ao servidor", async () => {
+    const accesses = mockApi("get", "/api/audit/accesses", { items: [{ id: "access-1", viewer_id: adminUser.id, viewer_name: adminUser.name, viewer_email: adminUser.email, viewed_at: "2026-11-22T12:00:00Z", action: "DETAIL", record_references: "users:registro:7" }], totalItems: 1 });
+    const { user } = setup();
+    await user.click(await screen.findByRole("button", { name: "Ver log de visualizações" }));
+    const panel = within(await screen.findByRole("region", { name: "Log de visualizações" }));
+    expect(await panel.findByText(adminUser.email)).toBeInTheDocument();
+    expect(panel.getByText("users:registro:7")).toBeInTheDocument();
+    expect(panel.getByText("Detalhe")).toBeInTheDocument();
+    await user.type(panel.getByLabelText("UID de quem visualizou"), adminUser.id);
+    await user.click(panel.getByRole("button", { name: "Filtrar visualizações" }));
+    await waitFor(() => expect(accesses).toHaveBeenCalledTimes(2));
+    expect(new URL(accesses.mock.calls[1][0].request.url).searchParams.get("viewerId")).toBe(adminUser.id);
+  });
+
   it("pagina mais de cem ocorrências recentes na tabela principal sem misturar parâmetros da lista de usuários", async () => {
     mockApi("get", "/api/audit", {
       items: Array.from({ length: 103 }, (_, index) => ({
@@ -201,6 +215,8 @@ describe("histórico de auditoria de ocorridos recentes", () => {
       ],
       totalItems: 3,
     });
+    mockApi("get", `/api/audit/users/${student.id}/7`, { entity: "users", id: student.id, revision: 7, operation: 1, timestamp: "2026-11-13T12:00:00Z", actor: adminUser.email, role: "ADMIN", data: JSON.stringify({ ...student, name: "Ana Atualizada", role: "TEACHER" }) });
+    mockApi("get", `/api/audit/users/${student.id}/5`, { entity: "users", id: student.id, revision: 5, operation: 0, data: JSON.stringify({ ...student, name: "Ana Antes", role: "STUDENT" }) });
     const { user } = setup();
     const auditSection = within(await screen.findByRole("region", { name: "Auditoria de Ocorridos Recentes" }));
     expect(await auditSection.findByText("Ana Atualizada")).toBeInTheDocument();
