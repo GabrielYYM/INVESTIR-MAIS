@@ -59,11 +59,11 @@ function UserFilters() {
           label={false}
           fullWidth={false}
           className="admin-search"
-          placeholder="Buscar por apelido ou e-mail..."
+          placeholder="Buscar por apelido"
           resettable
           helperText={false}
           slotProps={{
-            htmlInput: { "aria-label": "Buscar por apelido ou e-mail" },
+            htmlInput: { "aria-label": "Buscar por apelido" },
             input: { startAdornment: <InputAdornment position="start"><Search size={16} /></InputAdornment> },
           }}
         />
