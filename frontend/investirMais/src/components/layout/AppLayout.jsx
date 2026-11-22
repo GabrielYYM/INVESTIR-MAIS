@@ -37,7 +37,7 @@ export default function AppLayout() {
       >
         Pular para o conteúdo
       </a>
-      <Topbar logout={signOutForm} user={user} onToggleDrawer={() => setDrawerOpen((prev) => !prev)} />
+      <Topbar user={user} onToggleDrawer={() => setDrawerOpen((prev) => !prev)} />
       <Sidebar
         logout={signOutForm}
         user={user}
@@ -61,7 +61,7 @@ export default function AppLayout() {
             className={navigation.state === "loading" ? "h-0.5 animate-pulse bg-brand" : "h-0.5"}
             aria-hidden="true"
           />
-          <main id="conteudo" className={`mx-auto w-full ${wideLayout ? "max-w-[1600px]" : "max-w-6xl"} space-y-5 px-4 py-6 sm:p-8`}>
+          <main id="conteudo" className={`mx-auto w-full ${wideLayout ? "max-w-[1600px]" : "max-w-6xl"} space-y-8 px-4 py-6 sm:p-8`}>
             {signOutForm.data?.error && <Notice error>{signOutForm.data.error}</Notice>}
             <Outlet />
           </main>

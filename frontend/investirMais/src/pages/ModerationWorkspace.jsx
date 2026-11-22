@@ -3,7 +3,6 @@ import { Link } from "react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient, apiError } from "../services/api.js";
 import { reportReasons, reportStatuses } from "../services/reportReasons.js";
-import { Field, SelectField } from "../components/ui/FormFields.jsx";
 import { Notice } from "../components/ui/PageState.jsx";
 import StatePagination from "../components/ui/StatePagination.jsx";
 
@@ -14,9 +13,7 @@ export default function ModerationWorkspace() {
   const result = useQuery({ queryKey: ["reports", status, page], queryFn: async () => (await apiClient.get("/api/reports", { params: { status, page, size: 20 } })).data });
   const review = useMutation({ mutationFn: ({ id, status, removeLesson = false }) => apiClient.post(`/api/reports/${id}/review`, { status, note: notes[id]?.trim(), removeLesson }), onSuccess: () => { setConfirming(null); return client.invalidateQueries(); } });
   return <>
-    <div className="max-w-xs">
-      <SelectField native label="Situação" value={status} options={Object.entries(reportStatuses)} onChange={event => { setStatus(event.target.value); setPage(0); setConfirming(null); }} />
-    </div>
+    <label>Situação<select className="ml-3 rounded border border-line bg-canvas p-2" value={status} onChange={event => { setStatus(event.target.value); setPage(0); setConfirming(null); }}>{Object.entries(reportStatuses).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
     {result.isPending && <p>Carregando denúncias…</p>}
     {(result.error || review.error) && <Notice error>{apiError(result.error || review.error, "Não foi possível consultar ou analisar a denúncia.")}</Notice>}
     {review.isSuccess && <Notice>Análise registrada.</Notice>}
@@ -28,7 +25,7 @@ export default function ModerationWorkspace() {
       <p className="whitespace-pre-wrap break-words">{report.description}</p>
       <Link className="text-brand underline" to={`/educacao/${report.courseId}${report.targetType === "LESSON" ? "/" + report.targetId : ""}`}>Ver conteúdo denunciado</Link>
       {report.status === "OPEN" ? <>
-        <Field label="Parecer da denúncia" multiline minRows={3} maxLength={2000} value={notes[report.id] || ""} onChange={event => setNotes(previous => ({ ...previous, [report.id]: event.target.value }))} />
+        <label className="block">Parecer da denúncia<textarea className="block w-full rounded border border-line bg-canvas p-2" maxLength={2000} rows={3} value={notes[report.id] || ""} onChange={event => setNotes(previous => ({ ...previous, [report.id]: event.target.value }))} /></label>
         <div className="flex flex-wrap gap-3">
           <button className="button-secondary" disabled={review.isPending || !notes[report.id]?.trim()} onClick={() => review.mutate({ id: report.id, status: "DISMISSED" })}>Arquivar denúncia</button>
           <button className="button-primary" disabled={review.isPending || !notes[report.id]?.trim()} onClick={() => review.mutate({ id: report.id, status: "RESOLVED" })}>Marcar como resolvida</button>
