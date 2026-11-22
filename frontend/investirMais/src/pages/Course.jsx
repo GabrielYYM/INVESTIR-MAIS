@@ -213,8 +213,8 @@ export default function Course() {
       <button className="button-secondary" onClick={() => setReporting({ targetType: "TEACHER", targetId: course.professorId, title: "Professor responsável por " + course.name })}>Denunciar professor</button>
       {lesson && <button className="button-secondary" onClick={() => setReporting({ targetType: "LESSON", targetId: lesson.id, title: lesson.title })}>Denunciar vídeo</button>}
     </div>
-    <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(18rem,0.62fr)]">
-      <div className="min-w-0 space-y-5">
+    <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(18rem,0.62fr)]">
+      <div className="min-w-0 space-y-3.5">
         {failure && <Notice error>{failure}</Notice>}
         {progressError && <button className="button-secondary" disabled={revalidator.state !== "idle"} onClick={() => revalidator.revalidate()}>Tentar novamente</button>}
         {lesson ? <LessonPlayer key={lesson.id} lesson={lesson} isCompleted={completedIds.has(lesson.id)} onToggleCompleted={canManage ? undefined : completed => updateProgress(completed)} busy={progressMutation.isPending} trackProgress={!canManage} /> : <p className="panel p-6 text-sm text-muted">

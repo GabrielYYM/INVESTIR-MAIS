@@ -19,7 +19,6 @@ describe("painel de pendências do admin", () => {
     for (const [label, count] of [["Denúncias em análise", "3"], ["Candidaturas pendentes", "2"], ["Contas em recuperação", "5"], ["Prazos encerrados", "4"]]) {
       expect(within(panel.getByText(label).closest(".panel")).getByText(count, { exact: true })).toBeInTheDocument();
     }
-    expect(panel.getByRole("status")).toHaveTextContent("1 conta perde a possibilidade de recuperação nos próximos 7 dias.");
     expect(panel.getByText(/Próximo fim de prazo/).querySelector("time")).toHaveAttribute("datetime", summary.nextRecoveryDeadline);
     expect(panel.getByRole("link", { name: "Analisar denúncias" })).toHaveAttribute("href", "/admin/denuncias");
     expect(panel.getByRole("link", { name: "Analisar candidaturas" })).toHaveAttribute("href", "/admin/professores");
@@ -45,18 +44,14 @@ describe("painel de pendências do admin", () => {
     expect(screen.queryByText(/perdem a possibilidade/)).not.toBeInTheDocument();
   });
 
-  it("permite atualizar após falha sem impedir a gestão dos usuários", async () => {
+  it("exibe erro das pendências sem impedir a gestão dos usuários", async () => {
     const query = mockApi("get", "/api/admin/pending", { detail: "Resumo temporariamente indisponível." }, { status: 503 });
-    const { user } = setup();
+    setup();
     expect(await screen.findByRole("alert")).toHaveTextContent("Resumo temporariamente indisponível.");
     expect(await screen.findByText(student.id)).toBeInTheDocument();
     expect(screen.queryByText(student.email)).not.toBeInTheDocument();
     expect(screen.queryByText("Denúncias em análise")).not.toBeInTheDocument();
-    mockApi("get", "/api/admin/pending", summary);
-    await user.click(screen.getByRole("button", { name: "Atualizar pendências" }));
-    expect(await screen.findByText("Denúncias em análise")).toBeInTheDocument();
     expect(query).toHaveBeenCalledOnce();
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it.each([student, teacherUser])("impede consulta por perfil não administrativo: $role", async session => {

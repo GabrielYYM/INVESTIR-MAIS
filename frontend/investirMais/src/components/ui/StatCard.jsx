@@ -1,4 +1,5 @@
 import { ProgressTrack } from "../education/CourseProgressBar.jsx";
+import IconBadge from "./IconBadge.jsx";
 
 export default function StatCard({
   label,

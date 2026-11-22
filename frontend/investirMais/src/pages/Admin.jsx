@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Box, Button, CircularProgress, InputAdornment, Paper, Stack, Typography } from "@mui/material";
-import { Search, ShieldCheck, UserCheck, Users } from "lucide-react";
+import { Box, Button, CircularProgress, Divider, InputAdornment, Paper, Stack, Typography } from "@mui/material";
+import { FileText, Flag, Search, ShieldCheck, Trash2, UserCheck, Users } from "lucide-react";
 import { DataTable, FilterLiveForm, ListBase, SelectInput, TextInput, useInput, useListContext, useRefresh } from "react-admin";
 import { Link, Navigate, redirect, useLoaderData } from "react-router";
 import { UpdateUserRoleBody } from "../generated/account.zod.ts";
@@ -39,12 +39,12 @@ function UserStats() {
   return (
     <Box component="section" className="grid grid-cols-2 gap-4 sm:grid-cols-4" aria-label="Estatísticas">
       {[
-        ["Total de Usuários", "total", Users, "text-ink", `${stats.STUDENT ?? 0} alunos`],
-        ["Administradores", "ADMIN", ShieldCheck, "text-amber-400", "Acesso total"],
-        ["Professores", "TEACHER", UserCheck, "text-purple-400", "Criadores de conteúdo"],
-        ["Alunos", "STUDENT", Users, "text-sky-400", "Estudantes"],
-      ].map(([label, key, Icon, color, caption]) => (
-        <StatCard key={key} label={label} value={stats[key] ?? 0} icon={Icon} color={color} caption={caption} />
+        ["Total de Usuários", "total", Users, "text-ink", "bg-white/10 text-zinc-200"],
+        ["Administradores", "ADMIN", ShieldCheck, "text-amber-400", "bg-amber-500/15 text-amber-400"],
+        ["Professores", "TEACHER", UserCheck, "text-purple-400", "bg-purple-500/15 text-purple-400"],
+        ["Alunos", "STUDENT", Users, "text-sky-400", "bg-sky-500/15 text-sky-400"],
+      ].map(([label, key, Icon, color, badgeClass]) => (
+        <StatCard key={key} label={label} value={stats[key] ?? 0} icon={Icon} color={color} badgeClass={badgeClass} />
       ))}
     </Box>
   );
@@ -102,8 +102,19 @@ export default function Admin() {
   const promotionBlock = "A promoção a professor ocorre pela aprovação dos documentos em Candidaturas de professores.";
 
   return (
-    <Box className="w-full space-y-8">
-      <Typography variant="h1" className="sr-only">Administração</Typography>
+    <Box className="w-full space-y-5">
+      <PageHeader
+        title="Administração"
+        description="Gerencie pendências, auditoria, usuários e documentos da plataforma."
+        actions={
+          <Box component="nav" className="flex flex-wrap gap-2.5" aria-label="Gestão da plataforma">
+            <Link className="button-secondary" to="/admin/denuncias"><Flag size={16} /> Denúncias</Link>
+            <Link className="button-secondary" to="/admin/professores"><UserCheck size={16} /> Candidaturas de professores</Link>
+            <Link className="button-secondary" to="/admin/documentos"><FileText size={16} /> Documentos legais</Link>
+            <Link className="button-secondary" to="/admin/lixeira"><Trash2 size={16} /> Lixeira</Link>
+          </Box>
+        }
+      />
       <AdminPendingPanel />
       <ListBase resource="users" perPage={10} sort={{ field: "name", order: "ASC" }} disableAuthentication>
         <UserListState>
@@ -177,13 +188,6 @@ export default function Admin() {
           <SelectInput source="role" label="Novo Papel" choices={[{ id: "STUDENT", name: "Aluno" }, { id: "TEACHER", name: "Professor", disabled: Boolean(promotionBlock) }]} />
         </CrudDialog>
       )}
-
-      <Box component="nav" className="flex flex-wrap gap-3" aria-label="Gestão da plataforma">
-        <Link className="button-secondary" to="/admin/denuncias">Denúncias</Link>
-        <Link className="button-secondary" to="/admin/lixeira">Lixeira</Link>
-        <Link className="button-secondary" to="/admin/documentos">Documentos legais</Link>
-        <Link className="button-secondary" to="/admin/professores">Candidaturas de professores</Link>
-      </Box>
 
       {audited && <AuditDialog audit={audited.row} users={audited.users} onClose={() => setAudited(null)} />}
     </Box>

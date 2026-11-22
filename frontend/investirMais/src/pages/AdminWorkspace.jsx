@@ -6,7 +6,6 @@ import { Field } from "../components/ui/FormFields.jsx";
 import { Notice } from "../components/ui/PageState.jsx";
 import StatePagination from "../components/ui/StatePagination.jsx";
 import PageHeader from "../components/layout/PageHeader.jsx";
-import { TextField } from "@mui/material";
 import ModerationWorkspace from "./ModerationWorkspace.jsx";
 import TrashWorkspace from "./TrashWorkspace.jsx";
 

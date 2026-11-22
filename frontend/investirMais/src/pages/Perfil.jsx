@@ -203,22 +203,26 @@ export default function Perfil() {
       </AccordionDetails>
     </Accordion>
 
-    <section className="panel border-red-500/20 bg-red-500/5 p-6 shadow-xl sm:p-8 space-y-4" aria-labelledby="zona-perigo-titulo">
-      <div className="flex items-center gap-2.5 border-b border-red-500/20 pb-4 text-rose-400">
-        <AlertTriangle className="size-5 shrink-0" />
-        <h2 id="zona-perigo-titulo" className="font-bold text-lg">Zona de Perigo — Exclusão de Conta</h2>
-      </div>
-      <p className="text-sm text-zinc-300 leading-relaxed">
-        Ao solicitar a exclusão, sua conta será desativada de forma lógica.
-        O seu acesso imediato à plataforma será revogado e todas as suas sessões ativas serão encerradas. Você pode escolher desativação com recuperação por 30 dias ou eliminação definitiva sem recuperação.
-        Por motivos de segurança e integridade, esta operação exige <strong>dupla confirmação</strong> e autenticação com sua senha atual.
-      </p>
-      <div>
-        <button type="button" onClick={() => setShowDeleteModal(true)} className="button-danger">
-          <Trash2 size={16} /> Excluir minha conta
-        </button>
-      </div>
-    </section>
+    <Accordion defaultExpanded component="section" className="panel border-red-500/20 bg-red-500/5 shadow-xl" aria-labelledby="zona-perigo-titulo">
+      <AccordionSummary expandIcon={<ChevronDown size={20} className="text-rose-400" />}>
+        <div className="flex items-center gap-2.5 text-rose-400">
+          <AlertTriangle className="size-5 shrink-0" />
+          <h2 id="zona-perigo-titulo" className="font-bold text-lg">Zona de Perigo — Exclusão de Conta</h2>
+        </div>
+      </AccordionSummary>
+      <AccordionDetails className="space-y-4 pt-2">
+        <p className="text-sm text-zinc-300 leading-relaxed">
+          Ao solicitar a exclusão, sua conta será desativada de forma lógica.
+          O seu acesso imediato à plataforma será revogado e todas as suas sessões ativas serão encerradas. Você pode escolher desativação com recuperação por 30 dias ou eliminação definitiva sem recuperação.
+          Por motivos de segurança e integridade, esta operação exige <strong>dupla confirmação</strong> e autenticação com sua senha atual.
+        </p>
+        <div>
+          <button type="button" onClick={() => setShowDeleteModal(true)} className="button-danger">
+            <Trash2 size={16} /> Excluir minha conta
+          </button>
+        </div>
+      </AccordionDetails>
+    </Accordion>
 
     {showDeleteModal && <Suspense fallback={null}><DeleteAccountDialog user={user} onClose={() => setShowDeleteModal(false)} /></Suspense>}
 
