@@ -11,6 +11,10 @@ import {
   Typography,
 } from "@mui/material";
 import { Eye } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { apiError } from "../../services/api.js";
+import { auditDetail, auditAccesses } from "../../generated/account.ts";
+import StatePagination from "../ui/StatePagination.jsx";
 import { DataTable, ListBase, useListContext } from "react-admin";
 import AppModal from "../ui/AppModal.jsx";
 import { Field, SelectField } from "../ui/FormFields.jsx";
@@ -47,7 +51,7 @@ export const entityOptions = [
   ["questions", "Questões"],
   ["reports", "Denúncias"],
   ["restorations", "Restaurações de conteúdo"],
-  ["accounts", "Desativações e recuperações de contas"],
+  ["accounts", "Exclusões de contas"],
 ];
 export const roleOptions = [
   ["ADMIN", "Administrador"],
@@ -229,11 +233,23 @@ export function AuditFilters({ onApply, onClear }) {
 }
 
 export function AuditTable({ users = [], onSelect }) {
+  const [detailError, setDetailError] = useState(null);
+  const [opening, setOpening] = useState(false);
+  async function openDetail(row) {
+    setDetailError(null); setOpening(true);
+    try {
+      const info = getAuditInfo(row, users);
+      const detail = await auditDetail(info.entityKey, info.uid, Number(info.revision));
+      onSelect({ ...row, ...detail, before: row.before });
+    } catch (error) { setDetailError(apiError(error, "Não foi possível registrar a visualização da auditoria.")); }
+    finally { setOpening(false); }
+  }
   const { error, isPending } = useListContext();
   if (error) return <Notice error>{error.message}</Notice>;
   if (isPending) return <CircularProgress aria-label="Carregando auditoria" />;
   return (
     <Box sx={{ overflowX: "auto" }}>
+      {detailError && <Notice error>{detailError}</Notice>}
       <DataTable
         resource="audit"
         bulkActionButtons={false}
@@ -255,7 +271,7 @@ export function AuditTable({ users = [], onSelect }) {
         }} />
         <DataTable.Col label="Ações" align="right" render={row => (
           <Tooltip title="Ver detalhes da auditoria">
-            <IconButton size="small" aria-label="Ver detalhes da auditoria" onClick={() => onSelect(row)}>
+            <IconButton size="small" aria-label="Ver detalhes da auditoria" disabled={opening} onClick={() => openDetail(row)}>
               <Eye size={16} />
             </IconButton>
           </Tooltip>
@@ -270,6 +286,7 @@ export default function AdminAuditPanel({ onSelect }) {
   const { data = [], meta } = useListContext();
   const users = meta?.users ?? data;
   const [filters, setFilters] = useState({});
+  const [showAccesses, setShowAccesses] = useState(false);
   return (
     <Paper component="section" variant="outlined" className="panel space-y-5 p-5 sm:p-6" aria-labelledby="auditoria-titulo">
       <Box>
@@ -278,10 +295,36 @@ export default function AdminAuditPanel({ onSelect }) {
           Acompanhe e filtre todos os eventos recentes registrados na plataforma sem expor dados sensíveis na tabela.
         </Typography>
       </Box>
+      <Button variant="outlined" onClick={() => setShowAccesses(value => !value)}>{showAccesses ? "Ocultar visualizações" : "Ver log de visualizações"}</Button>
+      {showAccesses && <AuditAccessPanel />}
       <AuditFilters onApply={setFilters} onClear={() => setFilters({})} />
       <ListBase key={JSON.stringify(filters)} resource="audit" filter={filters} perPage={20} sort={{ field: "revisionNumber", order: "DESC" }} disableSyncWithLocation storeKey={false} disableAuthentication>
         <AuditTable users={users} onSelect={row => onSelect({ row, users })} />
       </ListBase>
     </Paper>
   );
+}
+
+
+export function AuditAccessPanel() {
+  const [page, setPage] = useState(0), [filters, setFilters] = useState({});
+  const [draft, setDraft] = useState({ viewerId: "", from: "", to: "" });
+  const query = useQuery({ queryKey: ["audit-accesses", page, filters], queryFn: () => auditAccesses({ page, size: 20, ...filters }) });
+  return <section aria-label="Log de visualizações" className="space-y-3">
+    <Typography variant="h3" sx={{ fontSize: 18 }}>Quem visualizou a auditoria</Typography>
+    <Typography variant="body2" color="text.secondary">Consultas, detalhes e acessos a este log são registrados pelo servidor. Horários exibidos no fuso do seu navegador.</Typography>
+    <form className="grid gap-3 sm:grid-cols-4" onSubmit={event => { event.preventDefault(); setPage(0); setFilters(Object.fromEntries(Object.entries(draft).filter(([, value]) => value).map(([key, value]) => [key, key === "viewerId" ? value : new Date(value).toISOString()]))); }}>
+      <Field label="UID de quem visualizou" value={draft.viewerId} onChange={event => setDraft({ ...draft, viewerId: event.target.value })} />
+      <Field label="Visualizações desde" type="datetime-local" value={draft.from} onChange={event => setDraft({ ...draft, from: event.target.value })} />
+      <Field label="Visualizações até" type="datetime-local" value={draft.to} onChange={event => setDraft({ ...draft, to: event.target.value })} />
+      <Button type="submit" variant="outlined">Filtrar visualizações</Button>
+    </form>
+    {query.isPending && <CircularProgress aria-label="Carregando visualizações" />}
+    {query.error && <Notice error>{apiError(query.error, "Não foi possível carregar as visualizações.")}</Notice>}
+    {query.data?.items.length === 0 && <p>Nenhuma visualização encontrada.</p>}
+    <Box sx={{ overflowX: "auto" }}><table className="w-full text-left text-sm"><thead><tr>{["Quem", "UID", "Quando", "Acesso", "Registros consultados"].map(label => <th key={label} className="p-2">{label}</th>)}</tr></thead><tbody>
+      {query.data?.items.map(row => <tr key={row.id}><td className="p-2"><span className="block">{row.viewer_name || "Usuário excluído"}</span><span className="block text-muted">{row.viewer_email}</span></td><td className="p-2 font-mono">{row.viewer_id}</td><td className="p-2">{formatDate(row.viewed_at)}</td><td className="p-2">{({ SEARCH: "Consulta", DETAIL: "Detalhe", USER_HISTORY: "Histórico do usuário", ACCESS_LOG: "Log de visualizações" })[row.action] || row.action}</td><td className="p-2 break-all">{row.record_references || "Consulta sem resultados"}</td></tr>)}
+    </tbody></table></Box>
+    <StatePagination page={page} hasNext={Boolean(query.data && (page + 1) * 20 < query.data.totalItems)} onChange={setPage} />
+  </section>;
 }

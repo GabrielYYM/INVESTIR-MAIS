@@ -85,10 +85,10 @@ describe("login com senha e código", () => {
   it("substitui o aviso de conta excluída pela mensagem de erro ao tentar entrar", async () => {
     mockApi("post", "/auth/login", {}, { status: 401 });
     const { user } = renderApp("/entrar?contaExcluida=true");
-    expect(screen.getByRole("status")).toHaveTextContent("Sua conta foi desativada e excluída com sucesso.");
+    expect(screen.getByRole("status")).toHaveTextContent("Sua conta foi excluída com sucesso.");
     await fillCredentials(user);
     expect(await screen.findByRole("alert")).toHaveTextContent("Não foi possível entrar.");
-    expect(screen.queryByText("Sua conta foi desativada e excluída com sucesso.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Sua conta foi excluída com sucesso.")).not.toBeInTheDocument();
   });
 
   it("valida código obrigatório e permite corrigir código recusado", async () => {

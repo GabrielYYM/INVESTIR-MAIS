@@ -2,7 +2,6 @@ package com.repositorio.investir_mais.domain.education.service;
 
 import com.repositorio.investir_mais.domain.education.model.ContentRestoration;
 import com.repositorio.investir_mais.domain.user.service.UserService;
-import com.repositorio.investir_mais.domain.user.service.AccountDeletionService;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -20,7 +19,6 @@ public class ContentTrashService {
     private final JdbcClient jdbc;
     private final EntityManager entities;
     private final UserService users;
-    private final AccountDeletionService accounts;
 
     @Transactional(readOnly = true)
     public Map<String, Object> list(int page, int size) {
@@ -33,19 +31,6 @@ public class ContentTrashService {
         var rows = jdbc.sql("SELECT * " + union + " ORDER BY deleted_at DESC, entity, id LIMIT ? OFFSET ?")
             .params(size, (long) page * size).query().listOfRows();
         return Map.of("items", rows, "totalItems", total, "page", page, "size", size);
-    }
-
-    @Transactional(readOnly = true)
-    public Map<String, Object> accounts(int page, int size) {
-        String base = " FROM tb_user u JOIN account_deletion d ON d.user_id=u.id WHERE u.deleted_at IS NOT NULL AND d.status='PENDING'";
-        long total = jdbc.sql("SELECT count(*)" + base).query(Long.class).single();
-        var rows = jdbc.sql("SELECT u.id,u.name,u.email,u.role,u.deleted_at,d.purge_after" + base + " ORDER BY d.purge_after,u.id LIMIT ? OFFSET ?")
-            .params(size, (long) page * size).query().listOfRows();
-        return Map.of("items", rows, "totalItems", total, "page", page, "size", size);
-    }
-
-    public void restoreAccount(UUID id, String email, String reason) {
-        accounts.restore(id, users.findByEmail(email).getId(), reason);
     }
 
     @Transactional

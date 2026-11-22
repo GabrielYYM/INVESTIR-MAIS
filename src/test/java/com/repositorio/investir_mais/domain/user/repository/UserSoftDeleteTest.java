@@ -42,6 +42,7 @@ import org.springframework.web.server.ResponseStatusException;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+@org.springframework.test.context.jdbc.Sql(statements = "CREATE TABLE IF NOT EXISTS event_publication (event_type varchar(255), serialized_event varchar(10000))")
 @DataJpaTest
 @ActiveProfiles("test")
 @ContextConfiguration(classes = UserSoftDeleteTest.JpaConfig.class)
@@ -57,6 +58,7 @@ class UserSoftDeleteTest {
     @Autowired private EntityManager entityManager;
     @Autowired private JdbcTemplate jdbc;
     @MockitoBean private FindByIndexNameSessionRepository<MapSession> sessions;
+    @MockitoBean private com.repositorio.investir_mais.domain.AuditAccessService auditAccess;
 
     @Test
     void deletingAccountPreservesUserButBlocksLookupsLoginAndAccountTokens() {
@@ -79,8 +81,8 @@ class UserSoftDeleteTest {
         flushAndClear();
 
         assertNotNull(jdbc.queryForObject("SELECT deleted_at FROM tb_user WHERE id = ?", Timestamp.class, deleted.getId()));
-        assertEquals(deleted.getEmail(), jdbc.queryForObject("SELECT email FROM tb_user WHERE id = ?", String.class, deleted.getId()));
-        assertEquals(deleted.getName(), jdbc.queryForObject("SELECT name FROM tb_user WHERE id = ?", String.class, deleted.getId()));
+        assertNotEquals(deleted.getEmail(), jdbc.queryForObject("SELECT email FROM tb_user WHERE id = ?", String.class, deleted.getId()));
+        assertEquals("Usuário excluído", jdbc.queryForObject("SELECT name FROM tb_user WHERE id = ?", String.class, deleted.getId()));
         assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM tb_user", Integer.class));
         assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM tb_course_enrollment WHERE student_id = ?",
                 Integer.class, deleted.getId()));
@@ -95,8 +97,8 @@ class UserSoftDeleteTest {
         assertTrue(users.findById(active.getId()).isPresent());
         assertThrows(UsernameNotFoundException.class, () -> new SecurityConfig()
                 .userDetailsService(users).loadUserByUsername(deleted.getEmail()));
-        assertTrue(users.existsByEmailIncludingDeleted(deleted.getEmail()));
-        assertTrue(users.existsByEmailAndIdNot(deleted.getEmail(), active.getId()));
+        assertFalse(users.existsByEmailIncludingDeleted(deleted.getEmail()));
+        assertFalse(users.existsByEmailAndIdNot(deleted.getEmail(), active.getId()));
         assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM app_one_time_token", Integer.class));
         assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM one_time_tokens", Integer.class));
         assertTrue(security.consumePasswordResetToken(resetToken).isEmpty());
@@ -108,8 +110,8 @@ class UserSoftDeleteTest {
         service.forgotPassword(new AuthDTO.ForgotPasswordRequest(deleted.getEmail()));
         service.resendVerification(deleted.getEmail());
         assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM app_one_time_token", Integer.class));
-        assertThrows(ResponseStatusException.class, () -> service.registerUser(
-                new UserDTO.Request("Novo usuário", deleted.getEmail(), PASSWORD, UserRole.STUDENT)));
+        service.registerUser(new UserDTO.Request("Novo usuário", deleted.getEmail(), PASSWORD, UserRole.STUDENT));
+        assertNotEquals(deleted.getId(), users.findByEmail(deleted.getEmail()).orElseThrow().getId());
     }
 
     @Test
@@ -213,7 +215,7 @@ class UserSoftDeleteTest {
     @Configuration(proxyBeanMethods = false)
     @EnableJpaAuditing
     @org.springframework.boot.context.properties.EnableConfigurationProperties(com.repositorio.investir_mais.config.WebApplicationProperties.class)
-    @EntityScan(basePackageClasses = {Course.class, User.class, com.repositorio.investir_mais.domain.token.model.AccountToken.class})
+    @EntityScan(basePackageClasses = {Course.class, User.class, com.repositorio.investir_mais.domain.AuditRevision.class, com.repositorio.investir_mais.domain.token.model.AccountToken.class})
     @EnableEnversRepositories(basePackageClasses = {CourseRepository.class, UserRepository.class, com.repositorio.investir_mais.domain.token.repository.AccountTokenRepository.class})
     @Import({UserService.class, AccountSecurityService.class, com.repositorio.investir_mais.domain.user.service.AccountDeletionService.class})
     static class JpaConfig {

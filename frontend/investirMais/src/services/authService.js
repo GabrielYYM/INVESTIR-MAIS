@@ -10,7 +10,7 @@ export async function verify2FA(code) {
 export async function logout() { await apiClient.post("/auth/logout"); }
 
 export const getCurrentUser = (signal) => account.currentUser({ signal });
-export const deleteAccount = (id, currentPassword, immediately = false) => immediately ? apiClient.post(`/api/users/${id}/erasure`, { currentPassword }) : account.deleteAccount(id, { currentPassword });
+export const deleteAccount = (id, currentPassword) => account.deleteAccount(id, { currentPassword });
 
 export async function isSessionExpired(error) {
   if (error.response?.status !== 401) return false;

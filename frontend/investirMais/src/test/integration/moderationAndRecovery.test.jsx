@@ -57,20 +57,13 @@ describe("denúncias e recuperação", () => {
     expect(await screen.findByText("Nenhum item na lixeira.")).toBeInTheDocument();
   });
 
-  it("exige solicitação verificada antes de recuperar uma conta", async () => {
+  it("remove a recuperação de contas inclusive em atalhos antigos", async () => {
     mockApi("get", "/api/trash", { items: [], totalItems: 0 });
-    mockApi("get", "/api/trash/accounts", { items: [{ ...student, deleted_at: "2026-11-17T12:00:00Z", purge_after: "2099-12-17T12:00:00Z" }], totalItems: 1 });
-    const restore = mockApi("post", `/api/trash/accounts/${student.id}/restore`, async ({ request }) => {
-      expect(await request.json()).toEqual({ reason: "Solicitação #123 pelo titular" }); return null;
-    }, { status: 204 });
-    const { user } = renderApp("/admin/lixeira", { session: adminUser });
-    await user.selectOptions(await screen.findByLabelText("Itens excluídos"), "accounts");
-    await user.click(await screen.findByRole("button", { name: "Restaurar conta" }));
-    expect(screen.getByRole("button", { name: "Confirmar restauração" })).toBeDisabled();
-    await user.type(screen.getByLabelText("Referência da solicitação do titular"), "Solicitação #123 pelo titular");
-    await user.click(screen.getByRole("checkbox"));
-    await user.click(screen.getByRole("button", { name: "Confirmar restauração" }));
-    await waitFor(() => expect(restore).toHaveBeenCalledOnce());
+    const accounts = mockApi("get", "/api/trash/accounts", { items: [], totalItems: 0 });
+    renderApp("/admin/lixeira?tipo=contas", { session: adminUser });
+    expect(await screen.findByText(/Contas excluídas não podem ser recuperadas/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Restaurar conta" })).not.toBeInTheDocument();
+    expect(accounts).not.toHaveBeenCalled();
   });
 
   it.each(["denuncias", "lixeira"])("impede aluno de consultar administração de %s", async path => {
@@ -79,17 +72,19 @@ describe("denúncias e recuperação", () => {
     await waitFor(() => expect(router.state.location.pathname).toBe("/")); expect(query).not.toHaveBeenCalled();
   });
 
-  it("oferece eliminação imediata separada da desativação recuperável", async () => {
-    const remove = mockApi("post", `/api/users/${student.id}/erasure`, { detail: "Senha incorreta." }, { status: 401 });
+  it("explica a exclusão imediata, a liberação do e-mail e a preservação do histórico", async () => {
+    const remove = mockApi("delete", `/api/users/${student.id}`, { detail: "Senha incorreta." }, { status: 401 });
     const { user } = renderApp("/perfil");
+    await user.click(await screen.findByRole("button", { name: "Exclusão de Conta" }));
     await user.click(await screen.findByRole("button", { name: "Excluir minha conta" }));
     await screen.findByRole("dialog");
-    expect(screen.getByText(/política de recuperação, não um prazo obrigatório/)).toBeInTheDocument();
-    await user.click(screen.getByRole("radio", { name: "Solicitar eliminação definitiva agora" }));
+    expect(screen.getByText(/seu e-mail ficará disponível/)).toBeInTheDocument();
+    expect(screen.getByText(/histórico de ações, logs e auditoria será preservado/)).toBeInTheDocument();
+    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
     await user.click(screen.getByRole("checkbox"));
     await user.click(screen.getByRole("button", { name: /Prosseguir para confirmação/ }));
     await fillFields(user, { "Senha atual da conta": "incorrect" });
-    await user.click(screen.getByRole("button", { name: "Confirmar eliminação definitiva" }));
+    await user.click(screen.getByRole("button", { name: "Confirmar exclusão da conta" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Senha incorreta");
     expect(remove).toHaveBeenCalledOnce();
   });

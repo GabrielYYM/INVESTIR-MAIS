@@ -42,18 +42,11 @@ public class UserController {
         return userService.updateProfile(principal.getName(), id, dto);
     }
 
-    @Operation(summary = "Desativar a própria conta por 30 dias", description = "Bloqueia a conta, preserva dados para recuperação solicitada pelo titular e agenda eliminação definitiva após 30 dias. Exige senha atual e encerra sessões.")
+    @Operation(summary = "Excluir logicamente a própria conta", description = "Marca a conta como excluída (soft delete) e suprime os identificadores do perfil imediatamente, libera o e-mail, encerra sessões e preserva o histórico de ações com acesso restrito. Sem recuperação. Exige senha atual.")
     @DeleteMapping("/users/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteAccount(Principal principal, @PathVariable UUID id, @Valid @RequestBody UserDTO.DeleteAccountRequest dto, HttpServletRequest request) {
         userService.deleteAccount(principal.getName(), id, dto);
-        endCurrentSession(request);
-    }
-
-    @Operation(summary = "Eliminar definitivamente a própria conta", description = "Elimina os dados da conta no banco ativo sem janela de recuperação. Exige senha atual. Irreversível.")
-    @PostMapping("/users/{id}/erasure") @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void eraseAccount(Principal principal, @PathVariable UUID id, @Valid @RequestBody UserDTO.DeleteAccountRequest dto, HttpServletRequest request) {
-        userService.eraseAccount(principal.getName(), id, dto);
         endCurrentSession(request);
     }
 

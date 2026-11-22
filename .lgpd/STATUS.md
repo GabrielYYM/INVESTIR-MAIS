@@ -46,3 +46,8 @@
 - [ ] L2 e etapas posteriores — consolidação do inventário, implementação de correções e novos instrumentos de governança.
 
 O diagnóstico está disponível para revisão. Não avançar automaticamente desta avaliação para publicação de política, consolidação de ROPA/RIPD ou alterações no tratamento real dos usuários. A próxima etapa deve priorizar menores, transparência, retenção e atendimento aos titulares.
+
+
+## Atualização técnica — 22/11/2026
+
+A pedido do responsável, foi implementado o escopo de exclusão imediata com supressão de identificadores, preservação de histórico, liberação do e-mail e registro de visualizações. A recuperação de contas e o expurgo de 30 dias foram removidos. Ver [retenção atual](retention.md) e [guia técnico](../docs/moderacao-e-recuperacao.md). As constatações anteriores são históricas; esta atualização não consolida ROPA/RIPD nem publica política. Permanecem pendentes a aprovação de finalidades/bases/prazos por categoria, avaliação de reidentificação e controles externos de backups/operadores.

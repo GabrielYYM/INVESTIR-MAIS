@@ -212,8 +212,8 @@ export default function Perfil() {
       </AccordionSummary>
       <AccordionDetails className="space-y-4 pt-2">
         <p className="text-sm text-zinc-300 leading-relaxed">
-          Ao solicitar a exclusão, sua conta será desativada de forma lógica.
-          O seu acesso imediato à plataforma será revogado e todas as suas sessões ativas serão encerradas. Você pode escolher desativação com recuperação por 30 dias ou eliminação definitiva sem recuperação.
+          Ao confirmar a exclusão, seus dados de cadastro serão removidos imediatamente.
+          Seu acesso será revogado, as sessões serão encerradas e o e-mail ficará disponível para um novo cadastro. O histórico de ações será preservado com acesso restrito, sem recuperação da conta.
           Por motivos de segurança e integridade, esta operação exige <strong>dupla confirmação</strong> e autenticação com sua senha atual.
         </p>
         <div>
