@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { AlertTriangle, Clock, Flag, RotateCcw, UserCheck } from "lucide-react";
+import { Clock, Flag, RotateCcw, UserCheck } from "lucide-react";
 import { useGetAdminPendingSummary } from "../../generated/account.ts";
 import { apiError } from "../../services/api.js";
 import { Notice } from "../ui/PageState.jsx";
@@ -27,7 +27,6 @@ export default function AdminPendingPanel() {
           ["Prazos encerrados", summary.expiredAccounts, Clock, "text-sky-400", "Aguardam processamento da eliminação", "/admin/lixeira?tipo=contas", "Ver prazos encerrados"],
         ].map(([label, value, Icon, color, caption, to, action]) => <div key={label} className="space-y-2"><StatCard label={label} value={value} icon={Icon} color={color} caption={caption} /><Link className="inline-flex text-sm font-semibold text-brand underline" to={to}>{action}</Link></div>)}
       </div>
-      {summary.expiringAccounts > 0 && <div className="panel flex items-start gap-3 border-amber-500/30 p-4" role="status"><AlertTriangle className="shrink-0 text-amber-400" size={20} /><div><p>{summary.expiringAccounts} {summary.expiringAccounts === 1 ? "conta perde" : "contas perdem"} a possibilidade de recuperação nos próximos {summary.expiringWithinDays} dias.</p><p className="text-sm text-muted">Restaure somente mediante solicitação verificada do titular.</p></div></div>}
       {summary.nextRecoveryDeadline && <p className="text-sm text-muted">Próximo fim de prazo de recuperação: <time dateTime={summary.nextRecoveryDeadline}>{dateTime(summary.nextRecoveryDeadline)}</time>.</p>}
       {empty && <p className="text-sm text-muted">Nenhuma pendência no momento.</p>}
       <p className="text-xs text-muted">Contagem consultada em <time dateTime={summary.checkedAt}>{dateTime(summary.checkedAt)}</time>.</p>

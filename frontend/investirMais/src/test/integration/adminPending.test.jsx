@@ -19,7 +19,6 @@ describe("painel de pendências do admin", () => {
     for (const [label, count] of [["Denúncias em análise", "3"], ["Candidaturas pendentes", "2"], ["Contas em recuperação", "5"], ["Prazos encerrados", "4"]]) {
       expect(within(panel.getByText(label).closest(".panel")).getByText(count, { exact: true })).toBeInTheDocument();
     }
-    expect(panel.getByRole("status")).toHaveTextContent("1 conta perde a possibilidade de recuperação nos próximos 7 dias.");
     expect(panel.getByText(/Próximo fim de prazo/).querySelector("time")).toHaveAttribute("datetime", summary.nextRecoveryDeadline);
     expect(panel.getByRole("link", { name: "Analisar denúncias" })).toHaveAttribute("href", "/admin/denuncias");
     expect(panel.getByRole("link", { name: "Analisar candidaturas" })).toHaveAttribute("href", "/admin/professores");
