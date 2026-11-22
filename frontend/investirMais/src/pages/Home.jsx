@@ -135,14 +135,13 @@ function TeacherMetricsSection({ stats, period, setPeriod }) {
           value={stats.totalLessonsWatched}
           icon={PlayCircle}
           color="text-amber-400"
-          caption="No período selecionado"
         />
         <StatCard
           label="Alunos Matriculados"
           value={stats.totalStudents}
           icon={Users}
           color="text-sky-400"
-          caption="Alunos com matrículas"
+          caption=""
         />
         <StatCard
           label="Aulas concluídas (%)"

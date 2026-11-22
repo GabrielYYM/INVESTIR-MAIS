@@ -54,7 +54,7 @@ export const roleOptions = [
   ["TEACHER", "Professor"],
   ["STUDENT", "Aluno"],
 ];
-const initialAuditFilters = { entity: "", entityId: "", revision: "", actor: "", role: "", from: "", to: "" };
+const initialAuditFilters = { entity: "", entityId: "", actor: "", role: "", from: "", to: "" };
 
 function parseJson(value) {
   if (!value) return null;
@@ -197,12 +197,11 @@ export function AuditFilters({ onApply, onClear }) {
       variant="outlined"
       aria-label="Filtros da auditoria"
       sx={{ p: 2, bgcolor: "background.default" }}
-      className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"
+      className="space-y-3"
       onSubmit={event => {
         event.preventDefault();
         const next = { ...draft };
         for (const key of ["from", "to"]) if (next[key]) next[key] = new Date(next[key]).toISOString();
-        if (next.revision) next.revision = Number(next.revision);
         onApply(Object.fromEntries(Object.entries(next).filter(([, value]) => value !== "" && value != null)));
       }}
       onReset={event => {
@@ -211,17 +210,20 @@ export function AuditFilters({ onApply, onClear }) {
         onClear?.();
       }}
     >
-      <SelectField id="audit-entity" name="entity" label="Entidade" value={draft.entity} emptyOption="Todas" options={entityOptions} onChange={updateField("entity")} />
-      <Field name="entityId" label="ID do registro" placeholder="UUID do registro..." value={draft.entityId} onChange={updateField("entityId")} />
-      <Field name="revision" label="Revisão" type="number" value={draft.revision} onChange={updateField("revision")} min={1} />
-      <Field name="actor" label="Usuário autor (e-mail)" type="email" value={draft.actor} onChange={updateField("actor")} />
-      <SelectField id="audit-role" name="role" label="Papel do autor" value={draft.role} emptyOption="Todos" options={roleOptions} onChange={updateField("role")} />
-      <Field name="from" label="Desde" type="datetime-local" value={draft.from} onChange={updateField("from")} />
-      <Field name="to" label="Até" type="datetime-local" value={draft.to} onChange={updateField("to")} />
-      <Stack direction="row" spacing={1} sx={{ alignItems: "flex-end" }}>
-        <Button type="submit" variant="contained" color="primary" fullWidth>Filtrar</Button>
-        <Button type="reset" variant="outlined">Limpar</Button>
-      </Stack>
+      <Box className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <SelectField id="audit-entity" name="entity" label="Entidade" value={draft.entity} emptyOption="Todas" options={entityOptions} onChange={updateField("entity")} />
+        <Field name="entityId" label="ID do registro" placeholder="UUID do registro..." value={draft.entityId} onChange={updateField("entityId")} />
+        <Field name="actor" label="Usuário autor (e-mail)" type="email" placeholder="email@exemplo.com" value={draft.actor} onChange={updateField("actor")} />
+        <SelectField id="audit-role" name="role" label="Papel do autor" value={draft.role} emptyOption="Todos" options={roleOptions} onChange={updateField("role")} />
+      </Box>
+      <Box className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <Field name="from" label="Desde" type="datetime-local" value={draft.from} onChange={updateField("from")} />
+        <Field name="to" label="Até" type="datetime-local" value={draft.to} onChange={updateField("to")} />
+        <Stack direction="row" spacing={1.5} className="sm:col-span-2 lg:col-span-1">
+          <Button type="submit" variant="contained" color="primary" fullWidth sx={{ minHeight: 44 }}>Filtrar</Button>
+          <Button type="reset" variant="outlined" fullWidth sx={{ minHeight: 44 }}>Limpar</Button>
+        </Stack>
+      </Box>
     </Paper>
   );
 }

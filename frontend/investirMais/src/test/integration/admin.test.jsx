@@ -245,7 +245,6 @@ describe("histórico de auditoria de ocorridos recentes", () => {
       const params = new URL(request.url).searchParams;
       if (params.get("entity") === "courses") {
         expect(params.get("entityId")).toBe(course.id);
-        expect(params.get("revision")).toBe("15");
         expect(params.get("actor")).toBe(adminUser.email);
         expect(params.get("role")).toBe("ADMIN");
         return {
@@ -260,7 +259,6 @@ describe("histórico de auditoria de ocorridos recentes", () => {
     await user.click(auditSection.getByRole("combobox", { name: "Entidade" }));
     await user.click(await screen.findByRole("option", { name: "Cursos" }));
     await user.type(auditSection.getByLabelText("ID do registro"), course.id);
-    await user.type(auditSection.getByLabelText("Revisão"), "15");
     await user.type(auditSection.getByLabelText("Usuário autor (e-mail)"), adminUser.email);
     await user.click(auditSection.getByRole("combobox", { name: "Papel do autor" }));
     await user.click(await screen.findByRole("option", { name: "Administrador" }));
