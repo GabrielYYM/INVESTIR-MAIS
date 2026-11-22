@@ -54,10 +54,9 @@ export default function DeleteAccountDialog({
           </ul>
         </div>
         <fieldset className="space-y-2"><legend>Como deseja encerrar a conta?</legend><label className="flex gap-2"><input type="radio" name="deletion-mode" checked={!immediately} onChange={() => setImmediately(false)} />Desativar com recuperação por 30 dias</label><label className="flex gap-2"><input type="radio" name="deletion-mode" checked={immediately} onChange={() => setImmediately(true)} />Solicitar eliminação definitiva agora</label></fieldset>
-        <p className="text-xs text-muted">A janela de 30 dias é uma política de recuperação, não um prazo obrigatório da LGPD. Registros sujeitos a obrigação legal específica podem ter guarda separada. Backups e serviços externos têm procedimentos próprios de eliminação.</p>
         <label className="flex items-start gap-3 p-3 rounded-xl border border-line bg-canvas cursor-pointer">
           <input type="checkbox" className="mt-0.5 size-4 accent-amber-500" {...form.register("consent")} />
-          <span className="text-xs"><strong>1ª Confirmação:</strong> Li com atenção e tenho plena ciência de que minha conta será desativada e todo o meu acesso à plataforma será revogado.</span>
+          <span className="text-xs">Li com atenção e tenho plena ciência de que minha conta será desativada e todo o meu acesso à plataforma será revogado.</span>
         </label>
         <div className="flex flex-wrap justify-end gap-3 border-t border-line pt-4">
           <button type="button" onClick={onClose} className="button-secondary">Cancelar</button>
@@ -66,7 +65,7 @@ export default function DeleteAccountDialog({
           </button>
         </div>
       </> : <>
-        <p className="text-sm text-muted"><strong>2ª Confirmação:</strong> Para garantir que você é realmente o titular da conta e evitar exclusões acidentais ou não autorizadas, digite a sua <strong>senha atual</strong>:</p>
+        <p className="text-sm text-muted">Para garantir que você é realmente o titular da conta e evitar exclusões acidentais ou não autorizadas.</p>
         <Field label="Senha atual da conta" type="password" autoFocus autoComplete="current-password" disabled={busy} {...form.register("password", {
           validate: value => Boolean(value.trim()) || "Informe sua senha atual para autorizar a exclusão."
         })} />

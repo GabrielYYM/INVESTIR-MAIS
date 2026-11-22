@@ -75,6 +75,7 @@ export default function Login() {
       });
       return;
     }
+    credentials.clearErrors("root");
     resend.mutate({
       data: {
         email: enteredEmail
@@ -139,8 +140,8 @@ export default function Login() {
                 {isResending ? "Reenviando confirmação…" : "Não confirmou seu e-mail? Clique aqui para reenviar"}
               </button>
             </div>}
-          {search.get("contaExcluida") === "true" && <Notice>Sua conta foi desativada e excluída com sucesso.</Notice>}
-          {resendStatus && <Notice>{resendStatus}</Notice>}
+          {!errors.root && !resendStatus && search.get("contaExcluida") === "true" && <Notice>Sua conta foi desativada e excluída com sucesso.</Notice>}
+          {resendStatus && <Notice error={Boolean(resend.error)}>{resendStatus}</Notice>}
           <Field label="E-mail" icon={Mail} type="email" autoComplete="username" placeholder="seu.email@exemplo.com" error={errors.email?.message} {...credentials.register("email")} />
           <Field label="Senha" icon={Lock} type="password" autoComplete="current-password" placeholder="Digite sua senha de acesso" error={errors.password?.message} {...credentials.register("password")} />
           <div className="flex items-center justify-between text-xs">

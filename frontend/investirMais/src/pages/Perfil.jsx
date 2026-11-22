@@ -77,10 +77,10 @@ export default function Perfil() {
     }
   }));
   return <div className="mx-auto max-w-4xl space-y-3.5">
-      <PageHeader
-        title="Meu perfil"
-        description="Consulte seus dados, gerencie suas credenciais e configurações de segurança."
-      />
+    <PageHeader
+      title="Meu perfil"
+      description="Consulte seus dados, gerencie suas credenciais e configurações de segurança."
+    />
 
     {user.role === "STUDENT" && <Link className="button-secondary" to="/cadastro-professor">Quero ser professor</Link>}
     <section className="panel p-6 shadow-xl">
@@ -203,11 +203,11 @@ export default function Perfil() {
       </AccordionDetails>
     </Accordion>
 
-    <Accordion defaultExpanded component="section" className="panel border-red-500/20 bg-red-500/5 shadow-xl" aria-labelledby="zona-perigo-titulo">
+    <Accordion component="section" className="panel border-red-500/20 bg-red-500/5 shadow-xl" aria-labelledby="excluir-conta-titulo">
       <AccordionSummary expandIcon={<ChevronDown size={20} className="text-rose-400" />}>
         <div className="flex items-center gap-2.5 text-rose-400">
           <AlertTriangle className="size-5 shrink-0" />
-          <h2 id="zona-perigo-titulo" className="font-bold text-lg">Zona de Perigo — Exclusão de Conta</h2>
+          <h2 id="zona-perigo-titulo" className="font-bold text-lg">Exclusão de Conta</h2>
         </div>
       </AccordionSummary>
       <AccordionDetails className="space-y-4 pt-2">
