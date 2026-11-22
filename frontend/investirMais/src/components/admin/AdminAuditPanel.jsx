@@ -286,7 +286,6 @@ export default function AdminAuditPanel({ onSelect }) {
   const { data = [], meta } = useListContext();
   const users = meta?.users ?? data;
   const [filters, setFilters] = useState({});
-  const [showAccesses, setShowAccesses] = useState(false);
   return (
     <Paper component="section" variant="outlined" className="panel space-y-5 p-5 sm:p-6" aria-labelledby="auditoria-titulo">
       <Box>
@@ -295,8 +294,6 @@ export default function AdminAuditPanel({ onSelect }) {
           Acompanhe e filtre todos os eventos recentes registrados na plataforma sem expor dados sensíveis na tabela.
         </Typography>
       </Box>
-      <Button variant="outlined" onClick={() => setShowAccesses(value => !value)}>{showAccesses ? "Ocultar visualizações" : "Ver log de visualizações"}</Button>
-      {showAccesses && <AuditAccessPanel />}
       <AuditFilters onApply={setFilters} onClear={() => setFilters({})} />
       <ListBase key={JSON.stringify(filters)} resource="audit" filter={filters} perPage={20} sort={{ field: "revisionNumber", order: "DESC" }} disableSyncWithLocation storeKey={false} disableAuthentication>
         <AuditTable users={users} onSelect={row => onSelect({ row, users })} />

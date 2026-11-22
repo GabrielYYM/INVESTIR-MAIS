@@ -88,7 +88,7 @@ de auditoria anteriores preservam linhas, operações e datas, com supressão do
 Sessões e tokens são revogados. O endereço de e-mail original pode ser reutilizado
 em outro cadastro. Essa regra técnica não estabelece prazo de retenção do histórico.
 
-A conta usa somente soft delete: não existe eliminação física após 30 dias nem uma opção separada de expurgo. O log de visualizações registra listagens, detalhes e histórico individual, com quem acessou, horário do servidor e referências consultadas. O botão **Ver log de visualizações** está no painel de auditoria. A conservação e o risco residual de identificação estão descritos na [matriz de retenção](../.lgpd/retention.md).
+A conta usa somente soft delete: não existe eliminação física após 30 dias nem uma opção separada de expurgo. O log de visualizações registra listagens, detalhes e histórico individual, com quem acessou, horário do servidor e referências consultadas. O botão **Ver logs de auditoria** fica no topo da administração e abre uma janela com quem consultou a auditoria, quando e quais registros recebeu. A conservação e o risco residual de identificação estão descritos na [matriz de retenção](../.lgpd/retention.md).
 
 ## Vídeos
 

@@ -145,7 +145,10 @@ describe("histórico de auditoria de ocorridos recentes", () => {
   it("mostra quem visualizou, horário e registros, e envia filtros ao servidor", async () => {
     const accesses = mockApi("get", "/api/audit/accesses", { items: [{ id: "access-1", viewer_id: adminUser.id, viewer_name: adminUser.name, viewer_email: adminUser.email, viewed_at: "2026-11-22T12:00:00Z", action: "DETAIL", record_references: "users:registro:7" }], totalItems: 1 });
     const { user } = setup();
-    await user.click(await screen.findByRole("button", { name: "Ver log de visualizações" }));
+    const button = await screen.findByRole("button", { name: "Ver logs de auditoria" });
+    expect(accesses).not.toHaveBeenCalled();
+    await user.click(button);
+    expect(await screen.findByRole("dialog", { name: "Logs de auditoria" })).toBeInTheDocument();
     const panel = within(await screen.findByRole("region", { name: "Log de visualizações" }));
     expect(await panel.findByText(adminUser.email)).toBeInTheDocument();
     expect(panel.getByText("users:registro:7")).toBeInTheDocument();
@@ -154,6 +157,8 @@ describe("histórico de auditoria de ocorridos recentes", () => {
     await user.click(panel.getByRole("button", { name: "Filtrar visualizações" }));
     await waitFor(() => expect(accesses).toHaveBeenCalledTimes(2));
     expect(new URL(accesses.mock.calls[1][0].request.url).searchParams.get("viewerId")).toBe(adminUser.id);
+    await user.click(within(screen.getByRole("dialog", { name: "Logs de auditoria" })).getByRole("button", { name: "Fechar" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Logs de auditoria" })).not.toBeInTheDocument());
   });
 
   it("pagina mais de cem ocorrências recentes na tabela principal sem misturar parâmetros da lista de usuários", async () => {

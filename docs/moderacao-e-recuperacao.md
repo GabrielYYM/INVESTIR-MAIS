@@ -18,7 +18,7 @@ A exclusão é apenas lógica (soft delete): marca `deleted_at`, preservando a l
 
 As linhas de auditoria, revisões, datas, operações, vínculos, progresso, tentativas, denúncias e aceites permanecem. Nas revisões do perfil, nome e e-mail são substituídos; o autor identificado pelo e-mail atual passa a `deleted:<UUID>`. Documentos de candidatura e credenciais pendentes são eliminados. Textos livres históricos podem conter dados pessoais: isso é minimização dos identificadores diretos e **não comprova anonimização irreversível de todo o histórico**.
 
-Em **Administração → Ver log de visualizações**, o admin vê quem consultou, quando e quais registros foram retornados. O servidor registra listagens, detalhes, histórico individual e consultas ao próprio log. A identidade vem da autenticação; o cliente não fornece autor nem horário. Falha ao registrar impede a resposta com os dados. A tabela de visualizações bloqueia UPDATE, DELETE e TRUNCATE, inclusive após exclusão do visualizador. Nome/e-mail exibidos são obtidos do cadastro atual, sem duplicá-los no log.
+Em **Administração → Ver logs de auditoria**, o admin vê quem consultou, quando e quais registros foram retornados. O servidor registra listagens, detalhes, histórico individual e consultas ao próprio log. A identidade vem da autenticação; o cliente não fornece autor nem horário. Falha ao registrar impede a resposta com os dados. A tabela de visualizações bloqueia UPDATE, DELETE e TRUNCATE, inclusive após exclusão do visualizador. Nome/e-mail exibidos são obtidos do cadastro atual, sem duplicá-los no log.
 
 ## Painel de pendências
 
