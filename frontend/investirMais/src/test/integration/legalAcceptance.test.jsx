@@ -33,6 +33,7 @@ describe("versões dos documentos e confirmação", () => {
     await user.click(await screen.findByRole("link", { name: "Gerenciar ou excluir minha conta" }));
     await screen.findByRole("heading", { name: "Meu perfil" });
     expect(await screen.findByText("Nenhuma confirmação registrada.")).toBeInTheDocument();
+    await user.click(await screen.findByRole("button", { name: "Exclusão de Conta" }));
     expect(screen.getByRole("button", { name: "Excluir minha conta" })).toBeInTheDocument();
   });
 

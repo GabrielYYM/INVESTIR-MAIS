@@ -1,4 +1,4 @@
-import { StudentLearningDashboard, TeacherCourses } from "../components/education/LearningDashboard.jsx";
+import { StudentLearningDashboard } from "../components/education/LearningDashboard.jsx";
 import { useMemo } from "react";
 import { AlertCircle, ArrowRight, BookOpen, Calendar, ChevronRight, Filter, PlayCircle, Plus, RotateCcw, TrendingUp, Users } from "lucide-react";
 import { Button, LinearProgress, Stack, TextField, Typography } from "@mui/material";
@@ -135,14 +135,13 @@ function TeacherMetricsSection({ stats, period, setPeriod }) {
           value={stats.totalLessonsWatched}
           icon={PlayCircle}
           color="text-amber-400"
-          caption="No período selecionado"
         />
         <StatCard
           label="Alunos Matriculados"
           value={stats.totalStudents}
           icon={Users}
           color="text-sky-400"
-          caption="Alunos com matrículas"
+          caption=""
         />
         <StatCard
           label="Aulas concluídas (%)"
@@ -247,9 +246,9 @@ export default function Home() {
         description={
           showTeacherDashboard
             ? user.role === "ADMIN"
-              ? "Visão global de métricas educacionais da plataforma. Acompanhe visualizações, matrículas e conclusão de aulas."
+              ? "Acompanhe METRICAS."
               : "Acompanhe em tempo real o engajamento dos seus alunos, aulas assistidas e o desempenho dos seus cursos."
-            : <>Bem-vindo ao <span className="font-semibold text-amber-400">Investir+</span>. Explore o catálogo de cursos sobre finanças.</>
+            : <>Bem-vindo ao InvestirMais. Explore o catálogo de cursos sobre finanças.</>
         }
       />
 
@@ -257,8 +256,7 @@ export default function Home() {
         <TeacherMetricsSection stats={teacherStats} period={period} setPeriod={setPeriod} />
       )}
 
-      {user.role === "TEACHER" && <TeacherCourses userId={user.id} />}
-      {["STUDENT", "TEACHER"].includes(user.role) && <StudentLearningDashboard />}
+      {user.role === "STUDENT" && <StudentLearningDashboard />}
       <section className="space-y-4" aria-labelledby="educacao-titulo">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>

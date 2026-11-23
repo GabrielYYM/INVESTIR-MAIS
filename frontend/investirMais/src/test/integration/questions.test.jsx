@@ -220,4 +220,40 @@ describe("perguntas para alunos", () => {
     await screen.findByRole("heading", { name: "Bem-vindo de volta" });
     expect(new URLSearchParams(router.state.location.search).get("retorno")).toBe(destination);
   });
+
+  it("mostra pergunta concluída sem botão de corrigir para acertos", async () => {
+    studentFlow({ enrolled: true });
+    server.use(http.get(base, () => HttpResponse.json([{ ...question, correctOptionIndex: undefined, locked: false, passed: true, incorrect: false }])));
+    renderApp(coursePath);
+    expect(await screen.findByText("Pergunta concluída")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Corrigir resposta" })).not.toBeInTheDocument();
+  });
+
+  it("permite ao aluno corrigir uma pergunta respondida incorretamente", async () => {
+    let passed = false;
+    server.use(
+      http.get(origin + "/auth/me", () => HttpResponse.json(student)),
+      http.get(origin + "/api/courses/:id/progress", () => HttpResponse.json({ enrolled: true, totalLessons: 2, completedLessons: 1, completedLessonIds: [lesson.id], totalQuestions: 1, passedQuestions: Number(passed), progressPercentage: passed ? 66.7 : 33.3 })),
+      http.post(origin + "/api/courses/:id/enroll", () => HttpResponse.json({ enrolled: true }, { status: 201 })),
+      http.get(base, () => HttpResponse.json([{ ...question, correctOptionIndex: undefined, locked: false, passed, incorrect: !passed }])),
+      http.get(origin + "/api/lessons/course/:id", () => HttpResponse.json(paged([
+        { ...lesson, position: 1 }, { ...otherLesson, position: 2, locked: false },
+      ], { size: 10 }))),
+      http.get(origin + "/api/lessons/:id", ({ params }) => HttpResponse.json({ ...(params.id === otherLesson.id ? otherLesson : lesson), position: params.id === otherLesson.id ? 2 : 1 })),
+      http.post(base + "/:id/answers", async ({ request }) => {
+        const body = await request.json(); passed = body.optionIndex === 0; return HttpResponse.json({ questionId: question.id, passed });
+      }),
+    );
+    const { user } = renderApp(coursePath);
+    expect(await screen.findByText("Resposta incorreta")).toBeInTheDocument();
+    const correctBtn = screen.getByRole("button", { name: "Corrigir resposta" });
+    expect(correctBtn).toBeInTheDocument();
+    await user.click(correctBtn);
+    expect(screen.getByRole("button", { name: "Responder pergunta" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cancelar" })).toBeInTheDocument();
+    await user.click(screen.getByRole("radio", { name: "Tesouro Selic" }));
+    await user.click(screen.getByRole("button", { name: "Responder pergunta" }));
+    expect(await screen.findByText("Pergunta concluída")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Corrigir resposta" })).not.toBeInTheDocument();
+  });
 });

@@ -14,7 +14,7 @@ export default function Footer({ className = "" }) {
               INVESTIR MAIS
             </Link>
           </div>
-          <div className="flex items-center justify-center gap-3 font-medium">
+          <div className="flex items-center justify-center gap-4 font-medium">
             <button
               type="button"
               onClick={() => setModalTab("termos")}
@@ -22,7 +22,6 @@ export default function Footer({ className = "" }) {
             >
               Termos de Uso
             </button>
-            <span className="text-zinc-600">•</span>
             <button
               type="button"
               onClick={() => setModalTab("privacidade")}

@@ -22,7 +22,7 @@ São aceitos PDF, PNG e JPEG, até 5 MB por arquivo. Os documentos são armazena
 no PostgreSQL e baixados como anexos, mediante sessão, pelo próprio candidato ou
 ADMIN. A listagem transmite apenas metadados, sem carregar os binários. Não há
 análise automática de autenticidade nem antivírus integrado. A exclusão da conta
-remove também a candidatura e seus arquivos.
+remove os arquivos privados e suprime o parecer livre, preservando os metadados da candidatura.
 
 | Rota | Operação |
 | --- | --- |
@@ -84,9 +84,11 @@ anteriores. O histórico antigo de usuários continua disponível.
 Excluir uma conta passa a limpar apelido, senha e confirmação de
 e-mail do registro principal e substitui seu e-mail por um identificador técnico
 único. A conta permanece excluída logicamente para preservar vínculos. Revisões
-de auditoria anteriores retêm os dados históricos e ficam restritas ao ADMIN.
+de auditoria anteriores preservam linhas, operações e datas, com supressão do nome/e-mail do perfil, e ficam restritas ao ADMIN.
 Sessões e tokens são revogados. O endereço de e-mail original pode ser reutilizado
 em outro cadastro. Essa regra técnica não estabelece prazo de retenção do histórico.
+
+A conta usa somente soft delete: não existe eliminação física após 30 dias nem uma opção separada de expurgo. O log de visualizações registra listagens, detalhes e histórico individual, com quem acessou, horário do servidor e referências consultadas. Os logs de visualização são exibidos de forma unificada no painel de auditoria de ocorridos recentes. A conservação e o risco residual de identificação estão descritos na [matriz de retenção](../.lgpd/retention.md).
 
 ## Vídeos
 

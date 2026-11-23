@@ -9,6 +9,10 @@ import jakarta.persistence.LockModeType;
 import java.util.*;
 
 public interface TeacherApplicationRepository extends JpaRepository<TeacherApplication, UUID> {
+    interface ApplicantName { UUID getId(); String getName(); }
+    @Query("select u.id as id, u.name as name from User u where u.id in :userIds")
+    List<ApplicantName> applicantNames(Collection<UUID> userIds);
+
     interface DocumentMetadata { UUID getId(); String getType(); String getMediaType(); }
     @Query("select d.id as id, d.type as type, d.mediaType as mediaType from TeacherApplication a join a.documents d where a.id=:applicationId")
     List<DocumentMetadata> documentMetadata(UUID applicationId);

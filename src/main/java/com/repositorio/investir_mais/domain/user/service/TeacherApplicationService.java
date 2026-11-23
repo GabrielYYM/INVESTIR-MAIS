@@ -4,6 +4,7 @@ import com.repositorio.investir_mais.domain.user.model.*;
 import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.repository.TeacherApplicationRepository;
 import com.repositorio.investir_mais.config.WebApplicationProperties;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.*;
 import org.springframework.http.*;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -15,6 +16,7 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.*;
 
+@Slf4j
 @Service @Transactional @PreAuthorize("isAuthenticated()")
 public class TeacherApplicationService {
     private final TeacherApplicationRepository applications;
@@ -27,16 +29,37 @@ public class TeacherApplicationService {
     }
     public List<String> types() { return requiredTypes; }
     public record DocumentView(UUID id, String type, String mediaType) {}
-    public record ApplicationView(UUID id, UUID userId, String status, Instant submittedAt, Instant reviewedAt, String reviewReason, List<DocumentView> documents) {}
-    private ApplicationView view(TeacherApplication a) {
-        return new ApplicationView(a.getId(),a.getUserId(),a.getStatus(),a.getSubmittedAt(),a.getReviewedAt(),a.getReviewReason(),
+    public record ApplicationView(UUID id, UUID userId, String userName, String status, Instant submittedAt, Instant reviewedAt, String reviewReason, List<DocumentView> documents) {}
+    private Map<UUID, String> applicantNames(List<TeacherApplication> values) {
+        if (values.isEmpty()) return Map.of();
+        var names = new HashMap<UUID, String>();
+        applications.applicantNames(values.stream().map(TeacherApplication::getUserId).toList())
+                .forEach(user -> names.put(user.getId(), user.getName() == null || user.getName().isBlank() ? "Apelido indisponível" : user.getName()));
+        return names;
+    }
+    private ApplicationView view(TeacherApplication a) { return view(a, applicantNames(List.of(a))); }
+    private ApplicationView view(TeacherApplication a, Map<UUID, String> names) {
+        return new ApplicationView(a.getId(),a.getUserId(),names.getOrDefault(a.getUserId(), "Usuário excluído"),a.getStatus(),a.getSubmittedAt(),a.getReviewedAt(),a.getReviewReason(),
                 applications.documentMetadata(a.getId()).stream().map(d -> new DocumentView(d.getId(),d.getType(),d.getMediaType())).toList());
     }
     public ApplicationView mine(String email) { return applications.findByUserId(users.findByEmail(email).getId()).map(this::view).orElse(null); }
     public ApplicationView submit(String email, List<String> types, List<MultipartFile> files) {
         User user=users.findByEmailForUpdate(email);
         if (user.getRole()!=UserRole.STUDENT || !user.isEmailVerified()) throw error(HttpStatus.FORBIDDEN,"Confirme seu e-mail e use uma conta de aluno para se candidatar.");
-        if (files.size()!=requiredTypes.size() || !new HashSet<>(types).equals(new HashSet<>(requiredTypes)) || types.size()!=files.size()) throw error(HttpStatus.BAD_REQUEST,"Envie um arquivo para cada documento exigido.");
+        if (files == null || files.isEmpty() || files.size() > 3 || types == null || types.size() != files.size()) {
+            throw error(HttpStatus.BAD_REQUEST, "Envie entre 1 e 3 documentos.");
+        }
+        if (!types.containsAll(requiredTypes)) {
+            throw error(HttpStatus.BAD_REQUEST, "Envie todos os documentos exigidos.");
+        }
+        if (new HashSet<>(types).size() != types.size()) {
+            throw error(HttpStatus.BAD_REQUEST, "Cada documento deve ter um tipo exclusivo.");
+        }
+        for (String type : types) {
+            if (type == null || type.isBlank() || !type.matches("[a-z0-9-]{1,100}")) {
+                throw error(HttpStatus.BAD_REQUEST, "Tipo de documento inválido: " + type);
+            }
+        }
         var a=applications.findByUserId(user.getId()).orElseGet(TeacherApplication::new);
         if (a.getStatus()!=null && !a.getStatus().equals("REJECTED")) throw error(HttpStatus.CONFLICT,"Sua candidatura já está em análise ou aprovada.");
         var documents=new ArrayList<TeacherDocument>();
@@ -58,15 +81,30 @@ public class TeacherApplicationService {
         return view(applications.saveAndFlush(a));
     }
     @PreAuthorize("hasRole('ADMIN')")
-    public Page<ApplicationView> list(Pageable pageable) { return applications.findAll(PageRequest.of(pageable.getPageNumber(),pageable.getPageSize(),Sort.by("submittedAt").descending())).map(this::view); }
+    public Page<ApplicationView> list(Pageable pageable) {
+        var page = applications.findAll(PageRequest.of(pageable.getPageNumber(),pageable.getPageSize(),Sort.by("submittedAt").descending()));
+        var names = applicantNames(page.getContent());
+        return page.map(application -> view(application, names));
+    }
     @PreAuthorize("hasRole('ADMIN')")
     public ApplicationView review(UUID id, boolean approve, String reason, String email) {
         var a=applications.findForUpdateById(id).orElseThrow(() -> error(HttpStatus.NOT_FOUND,"Candidatura não encontrada."));
         if (!"PENDING".equals(a.getStatus())) throw error(HttpStatus.CONFLICT,"Esta candidatura já foi analisada.");
         if (reason==null || reason.isBlank() || reason.length()>2000) throw error(HttpStatus.BAD_REQUEST,"Informe um parecer de até 2000 caracteres.");
-        a.setStatus(approve?"APPROVED":"REJECTED");a.setReviewedAt(Instant.now());a.setReviewedBy(users.findByEmail(email).getId());a.setReviewReason(reason);
+        a.setStatus(approve?"APPROVED":"REJECTED");
+        a.setReviewedAt(Instant.now());
+        a.setReviewedBy(users.findByEmail(email).getId());
+        a.setReviewReason(reason);
+        if (approve) {
+            a.getDocuments().clear();
+        }
         applications.flush();
-        if (approve) users.updateUserRole(email,a.getUserId(),UserRole.TEACHER);
+        if (approve) {
+            users.updateUserRole(email,a.getUserId(),UserRole.TEACHER);
+            log.info("Candidatura do professor aprovada para o usuário {}. Documentos apagados com sucesso.", a.getUserId());
+        } else {
+            log.info("Candidatura do professor reprovada para o usuário {}.", a.getUserId());
+        }
         return view(a);
     }
     public ResponseEntity<byte[]> document(UUID applicationId, UUID documentId, String email) {

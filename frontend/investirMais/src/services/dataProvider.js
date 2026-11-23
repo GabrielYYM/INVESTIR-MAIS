@@ -18,7 +18,109 @@ const resources = {
     update: (id, data, params) => education.update(courseId(params), id, data),
     delete: (id, params) => education._delete(courseId(params), id) },
   users: { list: (_, options) => account.listAllUsers(options), one: account.getProfile, update: account.updateUserRole },
-  audit: { list: (query, options, params) => params?.meta?.userId ? account.getUserAuditHistory(params.meta.userId, options) : account.searchAudit({ page: query.page, size: query.size, ...params?.filter }, options) },
+  audit: {
+    list: async (query, options, params) => {
+      if (params?.meta?.userId) {
+        return account.getUserAuditHistory(params.meta.userId, options);
+      }
+      const filter = params?.filter ?? {};
+      const entity = filter.entity;
+      if (entity && entity !== "accesses") {
+        return account.searchAudit({ page: query.page, size: query.size, ...filter }, options);
+      }
+      const isRecordAccess = access =>
+        access.action === "DETAIL" ||
+        access.action === "USER_HISTORY" ||
+        access.action === "VIEW" ||
+        Boolean(access.entity && access.entity_id);
+
+      if (entity === "accesses") {
+        const accessParams = {
+          page: query.page,
+          size: query.size,
+          viewerId: filter.entityId || undefined,
+          from: filter.from || undefined,
+          to: filter.to || undefined,
+        };
+        const accessRes = await account.auditAccesses(accessParams, options);
+        const items = (accessRes?.items ?? [])
+          .filter(isRecordAccess)
+          .map(access => ({
+            id: access.id,
+            entity: "accesses",
+            operation: access.action || "DETAIL",
+            timestamp: access.viewed_at ? new Date(access.viewed_at).getTime() : Date.now(),
+            revision: "—",
+            isAccess: true,
+            viewer_id: access.viewer_id,
+            viewer_name: access.viewer_name,
+            viewer_email: access.viewer_email,
+            viewer_role: access.viewer_role,
+            record_references: access.record_references,
+            data: JSON.stringify({
+              acao: access.action,
+              registrosConsultados: access.record_references || "Consulta sem resultados",
+              quemVisualizou: access.viewer_name,
+              uidVisualizador: access.viewer_id,
+              emailVisualizador: access.viewer_email,
+              papelVisualizador: access.viewer_role,
+            }),
+          }));
+        return {
+          items,
+          totalItems: accessRes?.totalItems ?? items.length,
+          page: query.page,
+          size: query.size,
+        };
+      }
+      const [auditRes, accessRes] = await Promise.all([
+        account.searchAudit({ page: query.page, size: query.size, ...filter }, options),
+        Promise.resolve().then(() => account.auditAccesses?.({
+          page: query.page,
+          size: query.size,
+          from: filter.from || undefined,
+          to: filter.to || undefined,
+        }, options)).catch(() => ({ items: [], totalItems: 0 })),
+      ]);
+      const auditItems = auditRes?.items ?? [];
+      const accessItems = (accessRes?.items ?? [])
+        .filter(isRecordAccess)
+        .map(access => ({
+          id: access.id,
+          entity: "accesses",
+          operation: access.action || "DETAIL",
+          timestamp: access.viewed_at ? new Date(access.viewed_at).getTime() : Date.now(),
+          revision: "—",
+          isAccess: true,
+          viewer_id: access.viewer_id,
+          viewer_name: access.viewer_name,
+          viewer_email: access.viewer_email,
+          viewer_role: access.viewer_role,
+          record_references: access.record_references,
+          data: JSON.stringify({
+            acao: access.action,
+            registrosConsultados: access.record_references || "Consulta sem resultados",
+            quemVisualizou: access.viewer_name,
+            uidVisualizador: access.viewer_id,
+            emailVisualizador: access.viewer_email,
+            papelVisualizador: access.viewer_role,
+          }),
+        }));
+      const merged = [...auditItems, ...accessItems].sort((a, b) => {
+        const timeA = typeof a.timestamp === "number" ? a.timestamp : new Date(a.timestamp || 0).getTime();
+        const timeB = typeof b.timestamp === "number" ? b.timestamp : new Date(b.timestamp || 0).getTime();
+        return timeB - timeA;
+      });
+      const auditTotal = auditRes?.totalItems ?? auditItems.length;
+      const accessTotal = accessRes?.totalItems ?? accessItems.length;
+      return {
+        items: merged,
+        totalItems: Math.max(auditTotal, accessTotal),
+        page: query.page,
+        size: query.size,
+      };
+    },
+  },
 };
 
 async function call(resource, operation, ...args) {
@@ -52,7 +154,10 @@ export const dataProvider = {
           id: row.entity && row.revision != null ? `${row.entity}-${row.id}-${row.revision}` : (row.revisionNumber ?? row.revision ?? row.id ?? index),
         };
       });
-      const data = items.length > perPage ? items.slice((page - 1) * perPage, page * perPage) : items;
+      const isClientPaged = items.length > perPage && items.length >= (result.totalItems ?? items.length);
+      const data = isClientPaged
+        ? items.slice((page - 1) * perPage, page * perPage)
+        : (items.length > perPage ? items.slice(0, perPage) : items);
       return { data, total: result.totalItems ?? items.length };
     }
     if (!Array.isArray(result)) return { data: result.content, total: result.page.totalElements };

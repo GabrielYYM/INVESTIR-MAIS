@@ -34,7 +34,7 @@ public class LegalAcceptanceConfiguration implements WebMvcConfigurer {
                         || request.getUserPrincipal() == null) return true;
 
                 if (("/api/users/{id}".equals(pattern) && Set.of("GET", "PUT", "DELETE").contains(request.getMethod()))
-                        || "/api/users/{id}/erasure".equals(pattern) || "/api/users/update-password".equals(pattern)) return true;
+                        || "/api/users/update-password".equals(pattern)) return true;
                 if (legal.status(request.getUserPrincipal().getName()).acceptanceRequired()) {
                     var problem = ProblemDetail.forStatusAndDetail(HttpStatus.PRECONDITION_REQUIRED,
                             "Leia e confirme a versão atual dos Termos de Uso e da Política de Privacidade para continuar.");

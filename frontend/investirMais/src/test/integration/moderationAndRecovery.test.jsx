@@ -2,7 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { mockApi, fillFields } from "../helpers.js";
 import { renderApp } from "../renderApp.jsx";
-import { adminUser, course, lesson, paged, student } from "../fixtures.js";
+import { adminUser, course, lesson, paged, student, teacher } from "../fixtures.js";
 
 describe("denúncias e recuperação", () => {
   it.each([["vídeo", "LESSON", lesson.id], ["professor", "TEACHER", course.professorId]])("envia denúncia de %s com motivo e detalhes", async (label, targetType, targetId) => {
@@ -19,6 +19,13 @@ describe("denúncias e recuperação", () => {
     await user.click(dialog.getByRole("button", { name: "Enviar denúncia" }));
     expect(await dialog.findByRole("status")).toHaveTextContent("Denúncia enviada");
     expect(send).toHaveBeenCalledOnce();
+  });
+
+  it("não exibe botões de denúncia para o professor dono do curso", async () => {
+    renderApp("/educacao/" + course.id, { session: teacher });
+    expect(await screen.findByRole("heading", { name: course.name })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Denunciar professor" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Denunciar vídeo" })).not.toBeInTheDocument();
   });
 
   it("exibe erro de denúncia duplicada sem perder a descrição", async () => {
@@ -38,58 +45,38 @@ describe("denúncias e recuperação", () => {
       expect(await request.json()).toEqual({ status: "RESOLVED", note: "Vídeo conferido e removido", removeLesson: true }); return { ...report, status: "RESOLVED" };
     });
     const { user } = renderApp("/admin/denuncias", { session: adminUser });
-    expect(await screen.findByRole("button", { name: "Remover vídeo e resolver" })).toBeDisabled();
-    await user.type(screen.getByLabelText("Parecer da denúncia"), "Vídeo conferido e removido");
-    await user.click(screen.getByRole("button", { name: "Remover vídeo e resolver" }));
+
+    // Clica no botão "Analisar" da tabela para abrir o modal de detalhes
+    await user.click(await screen.findByRole("button", { name: "Analisar" }));
+    const modal = within(await screen.findByRole("dialog"));
+
+    expect(await modal.findByRole("button", { name: "Remover vídeo e resolver" })).toBeDisabled();
+    await user.type(modal.getByLabelText("Parecer da denúncia"), "Vídeo conferido e removido");
+    await user.click(modal.getByRole("button", { name: "Remover vídeo e resolver" }));
     expect(review).not.toHaveBeenCalled();
-    await user.click(screen.getByRole("button", { name: "Confirmar remoção da aula" }));
+    await user.click(modal.getByRole("button", { name: "Confirmar remoção da aula" }));
     await waitFor(() => expect(review).toHaveBeenCalledOnce());
   });
 
-  it("restaura conteúdo somente após confirmar", async () => {
-    let items = [{ entity: "lessons", id: lesson.id, title: lesson.title, deleted_at: "2026-11-17T12:00:00Z" }];
-    mockApi("get", "/api/trash", () => ({ items, totalItems: items.length }));
-    const restore = mockApi("post", `/api/trash/lessons/${lesson.id}/restore`, () => { items = []; return null; }, { status: 204 });
-    const { user } = renderApp("/admin/lixeira", { session: adminUser });
-    await user.click(await screen.findByRole("button", { name: "Restaurar conteúdo" }));
-    expect(restore).not.toHaveBeenCalled();
-    await user.click(screen.getByRole("button", { name: "Confirmar restauração" }));
-    expect(await screen.findByText("Nenhum item na lixeira.")).toBeInTheDocument();
-  });
-
-  it("exige solicitação verificada antes de recuperar uma conta", async () => {
-    mockApi("get", "/api/trash", { items: [], totalItems: 0 });
-    mockApi("get", "/api/trash/accounts", { items: [{ ...student, deleted_at: "2026-11-17T12:00:00Z", purge_after: "2099-12-17T12:00:00Z" }], totalItems: 1 });
-    const restore = mockApi("post", `/api/trash/accounts/${student.id}/restore`, async ({ request }) => {
-      expect(await request.json()).toEqual({ reason: "Solicitação #123 pelo titular" }); return null;
-    }, { status: 204 });
-    const { user } = renderApp("/admin/lixeira", { session: adminUser });
-    await user.selectOptions(await screen.findByLabelText("Itens excluídos"), "accounts");
-    await user.click(await screen.findByRole("button", { name: "Restaurar conta" }));
-    expect(screen.getByRole("button", { name: "Confirmar restauração" })).toBeDisabled();
-    await user.type(screen.getByLabelText("Referência da solicitação do titular"), "Solicitação #123 pelo titular");
-    await user.click(screen.getByRole("checkbox"));
-    await user.click(screen.getByRole("button", { name: "Confirmar restauração" }));
-    await waitFor(() => expect(restore).toHaveBeenCalledOnce());
-  });
-
-  it.each(["denuncias", "lixeira"])("impede aluno de consultar administração de %s", async path => {
-    const query = mockApi("get", path === "denuncias" ? "/api/reports" : "/api/trash", {});
-    const { router } = renderApp("/admin/" + path);
+  it("impede aluno de consultar administração de denuncias", async () => {
+    const query = mockApi("get", "/api/reports", {});
+    const { router } = renderApp("/admin/denuncias");
     await waitFor(() => expect(router.state.location.pathname).toBe("/")); expect(query).not.toHaveBeenCalled();
   });
 
-  it("oferece eliminação imediata separada da desativação recuperável", async () => {
-    const remove = mockApi("post", `/api/users/${student.id}/erasure`, { detail: "Senha incorreta." }, { status: 401 });
+  it("explica a exclusão imediata, a liberação do e-mail e a preservação do histórico", async () => {
+    const remove = mockApi("delete", `/api/users/${student.id}`, { detail: "Senha incorreta." }, { status: 401 });
     const { user } = renderApp("/perfil");
+    await user.click(await screen.findByRole("button", { name: "Exclusão de Conta" }));
     await user.click(await screen.findByRole("button", { name: "Excluir minha conta" }));
     await screen.findByRole("dialog");
-    expect(screen.getByText(/política de recuperação, não um prazo obrigatório/)).toBeInTheDocument();
-    await user.click(screen.getByRole("radio", { name: "Solicitar eliminação definitiva agora" }));
+    expect(screen.getByText(/seu e-mail ficará disponível/)).toBeInTheDocument();
+    expect(screen.getByText(/histórico de ações, logs e auditoria será preservado/)).toBeInTheDocument();
+    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
     await user.click(screen.getByRole("checkbox"));
     await user.click(screen.getByRole("button", { name: /Prosseguir para confirmação/ }));
     await fillFields(user, { "Senha atual da conta": "incorrect" });
-    await user.click(screen.getByRole("button", { name: "Confirmar eliminação definitiva" }));
+    await user.click(screen.getByRole("button", { name: "Confirmar exclusão da conta" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Senha incorreta");
     expect(remove).toHaveBeenCalledOnce();
   });

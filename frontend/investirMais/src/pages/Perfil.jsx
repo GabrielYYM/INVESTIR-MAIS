@@ -1,5 +1,6 @@
 import { lazy, Suspense, useState } from "react";
-import { AlertTriangle, ArrowRight, KeyRound, Mail, Save, ShieldCheck, Trash2, User } from "lucide-react";
+import { Accordion, AccordionDetails, AccordionSummary } from "@mui/material";
+import { AlertTriangle, ArrowRight, ChevronDown, KeyRound, Mail, Save, ShieldCheck, Trash2, User } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate, useRevalidator, useRouteLoaderData } from "react-router";
 import { useForgotPassword, useUpdatePassword, useUpdateProfile } from "../generated/account.ts";
@@ -75,11 +76,11 @@ export default function Perfil() {
       newPassword
     }
   }));
-  return <div className="mx-auto max-w-4xl space-y-6">
-      <PageHeader
-        title="Meu perfil"
-        description="Consulte seus dados, gerencie suas credenciais e configurações de segurança."
-      />
+  return <div className="mx-auto max-w-4xl space-y-3.5">
+    <PageHeader
+      title="Meu perfil"
+      description="Consulte seus dados, gerencie suas credenciais e configurações de segurança."
+    />
 
     {user.role === "STUDENT" && <Link className="button-secondary" to="/cadastro-professor">Quero ser professor</Link>}
     <section className="panel p-6 shadow-xl">
@@ -92,117 +93,136 @@ export default function Perfil() {
 
     {profile.isSuccess && !savingProfile && <Notice>Perfil atualizado.</Notice>}
     {!savingProfile && profile.error && <Notice error>{apiError(profile.error, "Não foi possível salvar. Confira a senha atual e tente novamente.")}</Notice>}
-    <form onSubmit={submit} className="panel space-y-6 p-6 shadow-xl sm:p-8" noValidate>
-      <h2 className="border-b border-line pb-4 font-semibold text-lg">Alterar informações</h2>
-      <Field label="Apelido" icon={User} autoComplete="nickname" maxLength={100} error={form.formState.errors.name?.message} {...form.register("name")} />
-      <Field label="E-mail" icon={Mail} type="email" value={user.email} disabled readOnly hint="Somente leitura. O e-mail não pode ser alterado diretamente." />
-      <PasswordFields form={form} onlyCurrent hint="Necessária para confirmar a atualização dos seus dados." />
-      <SubmitButton loading={savingProfile} loadingText="Salvando…" icon={Save}>
-        Salvar perfil
-      </SubmitButton>
-    </form>
-
-    <section className="panel space-y-6 p-6 shadow-xl sm:p-8">
-      <div className="flex items-center gap-2.5 border-b border-line pb-4">
-        <KeyRound className="text-brand size-5" />
-        <h2 className="font-semibold text-lg">Segurança e Senha</h2>
-      </div>
-
-      {password.isSuccess && <Notice>Senha atualizada com sucesso!</Notice>}
-      {passwordError && <Notice error>{passwordError}</Notice>}
-
-      <form onSubmit={updatePassword} className="space-y-4" noValidate>
-        <PasswordFields form={passwordForm} name="newPassword" />
-
-        <SubmitButton loading={password.isPending} loadingText="Atualizando senha…" icon={Save}>
-          Atualizar senha
-        </SubmitButton>
-      </form>
-
-      <div className="rounded-xl border border-line bg-canvas p-4 space-y-3">
-        <div className="flex items-start justify-between gap-3 flex-wrap">
-          <div>
-            <p className="text-sm font-semibold text-zinc-200">Esqueceu sua senha atual?</p>
-            <p className="text-xs text-muted mt-0.5">
-              Você pode solicitar um link seguro com código de recuperação para o seu e-mail cadastrado ({user.email}).
-            </p>
-          </div>
-          <SubmitButton
-            type="button"
-            variant="secondary"
-            className="text-xs !min-h-8 !px-3"
-            loading={recovery.isPending}
-            loadingText="Enviando…"
-            icon={Mail}
-            iconSize={14}
-            onClick={() => recovery.mutate({
-              data: {
-                email: user.email
-              }
-            })}
-          >
-            Enviar link de recuperação
-          </SubmitButton>
+    <Accordion defaultExpanded component="section" className="panel shadow-xl">
+      <AccordionSummary expandIcon={<ChevronDown size={20} />}>
+        <div className="flex items-center gap-2.5">
+          <User className="text-brand size-5" />
+          <h2 className="font-semibold text-lg">Alterar informações</h2>
         </div>
-        {recoveryStatus && <div className="pt-2">
-          <Notice>{recoveryStatus}</Notice>
-          <div className="mt-2">
-            <Link to="/recuperar-senha" className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand hover:underline">
-              Já recebeu o código? Ir para redefinição de senha <ArrowRight size={13} />
-            </Link>
+      </AccordionSummary>
+      <AccordionDetails>
+        <form onSubmit={submit} className="space-y-6 pt-2" noValidate>
+          <Field label="Apelido" icon={User} autoComplete="nickname" maxLength={100} error={form.formState.errors.name?.message} {...form.register("name")} />
+          <Field label="E-mail" icon={Mail} type="email" value={user.email} disabled readOnly hint="Somente leitura. O e-mail não pode ser alterado diretamente." />
+          <PasswordFields form={form} onlyCurrent hint="Necessária para confirmar a atualização dos seus dados." />
+          <SubmitButton loading={savingProfile} loadingText="Salvando…" icon={Save}>
+            Salvar perfil
+          </SubmitButton>
+        </form>
+      </AccordionDetails>
+    </Accordion>
+
+    <Accordion defaultExpanded component="section" className="panel shadow-xl">
+      <AccordionSummary expandIcon={<ChevronDown size={20} />}>
+        <div className="flex items-center gap-2.5">
+          <KeyRound className="text-brand size-5" />
+          <h2 className="font-semibold text-lg">Segurança e Senha</h2>
+        </div>
+      </AccordionSummary>
+      <AccordionDetails className="space-y-6 pt-2">
+        {password.isSuccess && <Notice>Senha atualizada com sucesso!</Notice>}
+        {passwordError && <Notice error>{passwordError}</Notice>}
+
+        <form onSubmit={updatePassword} className="space-y-4" noValidate>
+          <PasswordFields form={passwordForm} name="newPassword" />
+
+          <SubmitButton loading={password.isPending} loadingText="Atualizando senha…" icon={Save}>
+            Atualizar senha
+          </SubmitButton>
+        </form>
+
+        <div className="rounded-xl border border-line bg-canvas p-4 space-y-3">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div>
+              <p className="text-sm font-semibold text-zinc-200">Esqueceu sua senha atual?</p>
+              <p className="text-xs text-muted mt-0.5">
+                Você pode solicitar um link seguro com código de recuperação para o seu e-mail cadastrado ({user.email}).
+              </p>
+            </div>
+            <SubmitButton
+              type="button"
+              variant="secondary"
+              className="text-xs !min-h-8 !px-3"
+              loading={recovery.isPending}
+              loadingText="Enviando…"
+              icon={Mail}
+              iconSize={14}
+              onClick={() => recovery.mutate({
+                data: {
+                  email: user.email
+                }
+              })}
+            >
+              Enviar link de recuperação
+            </SubmitButton>
           </div>
-        </div>}
-      </div>
-    </section>
+          {recoveryStatus && <div className="pt-2">
+            <Notice>{recoveryStatus}</Notice>
+            <div className="mt-2">
+              <Link to="/recuperar-senha" className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand hover:underline">
+                Já recebeu o código? Ir para redefinição de senha <ArrowRight size={13} />
+              </Link>
+            </div>
+          </div>}
+        </div>
+      </AccordionDetails>
+    </Accordion>
 
-    <section className="panel space-y-4 p-6 shadow-xl sm:p-8">
-      <div className="flex items-center gap-2.5 border-b border-line pb-4">
-        <ShieldCheck className="text-brand size-5" />
-        <h2 className="font-semibold text-lg">Privacidade e Seus Dados (LGPD)</h2>
-      </div>
-      <p className="text-sm text-muted leading-relaxed">
-        O Investir Mais trata seus dados em conformidade com a Lei Geral de Proteção de Dados (Lei nº 13.709/2018).
-        Você tem direito a solicitar confirmação de tratamento, acesso, retificação, portabilidade ou eliminação de seus dados pessoais.
-      </p>
-      <div className="rounded-xl border border-line bg-raised/30 p-4 text-xs text-muted space-y-2">
-        <p>
-          <strong className="text-zinc-200">Encarregado pelo Tratamento de Dados Pessoais (DPO):</strong>{" "}
-          <a href="mailto:gabrielyyminato@gmail.com" className="text-brand hover:underline font-medium">
-            gabrielyyminato@gmail.com
-          </a>
+    <Accordion defaultExpanded component="section" className="panel shadow-xl">
+      <AccordionSummary expandIcon={<ChevronDown size={20} />}>
+        <div className="flex items-center gap-2.5">
+          <ShieldCheck className="text-brand size-5" />
+          <h2 className="font-semibold text-lg">Privacidade e Seus Dados (LGPD)</h2>
+        </div>
+      </AccordionSummary>
+      <AccordionDetails className="space-y-4 pt-2">
+        <p className="text-sm text-muted leading-relaxed">
+          O Investir Mais trata seus dados em conformidade com a Lei Geral de Proteção de Dados (Lei nº 13.709/2018).
+          Você tem direito a solicitar confirmação de tratamento, acesso, retificação, portabilidade ou eliminação de seus dados pessoais.
         </p>
-        <p>
-          Para exercer seus direitos de titular ou tirar dúvidas sobre o tratamento de seus dados, contate o Encarregado pelo e-mail acima.
-        </p>
-      </div>
-      <div className="flex flex-wrap items-center gap-3 pt-1 text-xs">
-        <Link to="/termos-de-uso" className="font-semibold text-brand hover:underline">
-          Termos de Uso
-        </Link>
-        <span className="text-zinc-600">•</span>
-        <Link to="/politica-de-privacidade" className="font-semibold text-brand hover:underline">
-          Política de Privacidade
-        </Link>
-      </div>
-      <LegalHistory />
-    </section>
+        <div className="rounded-xl border border-line bg-raised/30 p-4 text-xs text-muted space-y-2">
+          <p>
+            <strong className="text-zinc-200">Encarregado pelo Tratamento de Dados Pessoais (DPO):</strong>{" "}
+            <a href="mailto:gabrielyyminato@gmail.com" className="text-brand hover:underline font-medium">
+              gabrielyyminato@gmail.com
+            </a>
+          </p>
+          <p>
+            Para exercer seus direitos de titular ou tirar dúvidas sobre o tratamento de seus dados, contate o Encarregado pelo e-mail acima.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-4 pt-1 text-xs">
+          <Link to="/termos-de-uso" className="font-semibold text-brand hover:underline">
+            Termos de Uso
+          </Link>
+          <Link to="/politica-de-privacidade" className="font-semibold text-brand hover:underline">
+            Política de Privacidade
+          </Link>
+        </div>
+        <LegalHistory />
+      </AccordionDetails>
+    </Accordion>
 
-    <section className="panel border-red-500/20 bg-red-500/5 p-6 shadow-xl sm:p-8 space-y-4" aria-labelledby="zona-perigo-titulo">
-      <div className="flex items-center gap-2.5 border-b border-red-500/20 pb-4 text-rose-400">
-        <AlertTriangle className="size-5 shrink-0" />
-        <h2 id="zona-perigo-titulo" className="font-bold text-lg">Zona de Perigo — Exclusão de Conta</h2>
-      </div>
-      <p className="text-sm text-zinc-300 leading-relaxed">
-        Ao solicitar a exclusão, sua conta será desativada de forma lógica.
-        O seu acesso imediato à plataforma será revogado e todas as suas sessões ativas serão encerradas. Você pode escolher desativação com recuperação por 30 dias ou eliminação definitiva sem recuperação.
-        Por motivos de segurança e integridade, esta operação exige <strong>dupla confirmação</strong> e autenticação com sua senha atual.
-      </p>
-      <div>
-        <button type="button" onClick={() => setShowDeleteModal(true)} className="button-danger">
-          <Trash2 size={16} /> Excluir minha conta
-        </button>
-      </div>
-    </section>
+    <Accordion component="section" className="panel border-red-500/20 bg-red-500/5 shadow-xl" aria-labelledby="excluir-conta-titulo">
+      <AccordionSummary expandIcon={<ChevronDown size={20} className="text-rose-400" />}>
+        <div className="flex items-center gap-2.5 text-rose-400">
+          <AlertTriangle className="size-5 shrink-0" />
+          <h2 id="zona-perigo-titulo" className="font-bold text-lg">Exclusão de Conta</h2>
+        </div>
+      </AccordionSummary>
+      <AccordionDetails className="space-y-4 pt-2">
+        <p className="text-sm text-zinc-300 leading-relaxed">
+          Ao confirmar a exclusão, seus dados de cadastro serão removidos imediatamente.
+          Seu acesso será revogado, as sessões serão encerradas e o e-mail ficará disponível para um novo cadastro. O histórico de ações será preservado com acesso restrito, sem recuperação da conta.
+          Por motivos de segurança e integridade, esta operação exige <strong>dupla confirmação</strong> e autenticação com sua senha atual.
+        </p>
+        <div>
+          <button type="button" onClick={() => setShowDeleteModal(true)} className="button-danger">
+            <Trash2 size={16} /> Excluir minha conta
+          </button>
+        </div>
+      </AccordionDetails>
+    </Accordion>
 
     {showDeleteModal && <Suspense fallback={null}><DeleteAccountDialog user={user} onClose={() => setShowDeleteModal(false)} /></Suspense>}
 
