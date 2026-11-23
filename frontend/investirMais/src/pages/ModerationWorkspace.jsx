@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Archive, Calendar, CheckCircle2, Clock, ExternalLink, Eye, Flag, GraduationCap, Trash2, Video, XCircle } from "lucide-react";
+import { AlertTriangle, Archive, Calendar, CheckCircle2, Clock, ExternalLink, Eye, FileText, Flag, GraduationCap, Trash2, Video, XCircle } from "lucide-react";
 import { Box, Button, IconButton, Paper, Tooltip, Typography } from "@mui/material";
 import { DataTable, ListContextProvider, useList } from "react-admin";
 import { apiClient, apiError } from "../services/api.js";
@@ -85,17 +85,20 @@ function ModerationReportsTable({ list, statusBadges, onSelect }) {
               )}
             />
             <DataTable.Col
-              label="Ações"
+              label="Moderação"
               align="right"
-              render={(report) => (
-                <Button
-                  size="small"
-                  startIcon={<Eye size={15} />}
-                  onClick={() => onSelect(report)}
-                >
-                  Visualizar
-                </Button>
-              )}
+              render={(report) => {
+                const isOpen = report.status === "OPEN";
+                return (
+                  <Button
+                    size="small"
+                    startIcon={isOpen ? <Flag size={15} /> : <FileText size={15} />}
+                    onClick={() => onSelect(report)}
+                  >
+                    {isOpen ? "Analisar" : "Ver parecer"}
+                  </Button>
+                );
+              }}
             />
           </DataTable>
         </Box>
@@ -192,7 +195,11 @@ export default function ModerationWorkspace() {
       {/* Modal de Detalhes e Ação da Denúncia */}
       {activeReport && (
         <AppModal
-          title={`Denúncia: ${activeReport.targetType === "LESSON" ? "Vídeo" : "Professor"}`}
+          title={
+            activeReport.status === "OPEN"
+              ? `Análise de Denúncia — ${activeReport.targetType === "LESSON" ? "Vídeo" : "Professor"}`
+              : `Parecer da Denúncia — ${activeReport.targetType === "LESSON" ? "Vídeo" : "Professor"}`
+          }
           width={640}
           onClose={() => {
             setSelectedReport(null);
@@ -240,9 +247,9 @@ export default function ModerationWorkspace() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-line bg-canvas px-3.5 py-2 text-xs text-muted">
-                  <span>Protocolo: <strong className="font-mono text-ink">{activeReport.id}</strong></span>
+                  <span>Protocolo: <strong className="font-mono text-ink">{activeReport.id.slice(0, 8).toUpperCase()}</strong></span>
                   <span>·</span>
-                  <span>Autor da denúncia: <strong className="font-mono text-ink">{activeReport.reporterId}</strong></span>
+                  <span>Origem: <strong className="text-ink">Denúncia de Aluno</strong></span>
                 </div>
 
                 <div className="rounded-xl border border-line bg-canvas/70 p-4 space-y-1.5">
@@ -255,7 +262,7 @@ export default function ModerationWorkspace() {
                     className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand underline hover:text-amber-300"
                     to={`/educacao/${activeReport.courseId}${isLesson ? "/" + activeReport.targetId : ""}`}
                   >
-                    <ExternalLink size={15} /> Ver conteúdo denunciado
+                    <ExternalLink size={15} /> {isLesson ? "Acessar aula denunciada" : "Acessar curso do professor"}
                   </Link>
                 </div>
 
@@ -331,7 +338,7 @@ export default function ModerationWorkspace() {
                 ) : (
                   <div className="rounded-xl border border-line bg-canvas p-4 space-y-1 text-sm border-l-4 border-l-brand">
                     <span className="text-xs font-semibold uppercase tracking-wider text-muted">Parecer do moderador:</span>
-                    <p className="whitespace-pre-wrap break-words text-ink leading-relaxed font-medium">Parecer: {activeReport.reviewNote}</p>
+                    <p className="whitespace-pre-wrap break-words text-ink leading-relaxed font-medium">{activeReport.reviewNote}</p>
                     <p className="text-xs text-muted flex items-center gap-1 pt-1">
                       <Clock size={12} /> Analisado em {new Date(activeReport.reviewedAt).toLocaleString("pt-BR")}
                     </p>

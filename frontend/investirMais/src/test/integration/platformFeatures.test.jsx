@@ -27,6 +27,39 @@ describe("novos fluxos da plataforma", () => {
     } finally { vi.unstubAllGlobals(); }
   });
 
+  it("permite enviar até 3 documentos na candidatura com documento de identificação e comprovante adicional", async () => {
+    let application = null;
+    mockApi("get", "/api/teacher-applications/requirements", ["qualificacao"]);
+    mockApi("get", "/api/teacher-applications/mine", () => application);
+    const send = mockApi("post", "/api/teacher-applications", async ({ request }) => {
+      const body = await request.formData();
+      const allTypes = body.getAll("types");
+      const allFiles = body.getAll("files");
+      expect(allTypes).toEqual(["qualificacao", "documento-de-identificacao", "comprovante-adicional"]);
+      expect(allFiles).toHaveLength(3);
+      application = {
+        id: "candidate-3",
+        status: "PENDING",
+        documents: allTypes.map((type, i) => ({ id: `doc-${i}`, type })),
+      };
+      return application;
+    });
+
+    const { user } = renderApp("/cadastro-professor");
+    await user.upload(await screen.findByLabelText("qualificacao"), new File(["%PDF-1.7"], "qualificacao.pdf", { type: "application/pdf" }));
+    await user.upload(screen.getByLabelText("Documento oficial de identificação"), new File(["%PDF-1.7"], "identidade.pdf", { type: "application/pdf" }));
+    await user.upload(screen.getByLabelText("Comprovante adicional"), new File(["%PDF-1.7"], "diploma.pdf", { type: "application/pdf" }));
+
+    vi.stubGlobal("File", NodeFile);
+    try {
+      await user.click(screen.getByRole("button", { name: "Enviar candidatura" }));
+      expect(await screen.findByRole("heading", { name: "Situação: Em análise" })).toBeInTheDocument();
+      expect(send).toHaveBeenCalledOnce();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("exige parecer para aprovar professor", async () => {
     const application = { id: "candidate", userId: student.id, userName: student.name, status: "PENDING", submittedAt: "2026-11-16T10:00:00Z", documents: [] };
     mockApi("get", "/api/teacher-applications", paged([application]));
@@ -37,8 +70,8 @@ describe("novos fluxos da plataforma", () => {
     expect(await screen.findByText(student.name)).toBeInTheDocument();
     expect(screen.queryByText(student.id, { exact: false })).not.toBeInTheDocument();
 
-    // Clica no botão "Visualizar" da tabela para abrir o modal de detalhes
-    await user.click(screen.getByRole("button", { name: "Visualizar" }));
+    // Clica no botão "Avaliar" da tabela para abrir o modal de detalhes
+    await user.click(screen.getByRole("button", { name: "Avaliar" }));
     const modal = within(await screen.findByRole("dialog"));
     expect(await modal.findByRole("heading", { name: student.name, exact: true })).toBeInTheDocument();
     expect(modal.getByRole("button", { name: "Aprovar professor" })).toBeDisabled();

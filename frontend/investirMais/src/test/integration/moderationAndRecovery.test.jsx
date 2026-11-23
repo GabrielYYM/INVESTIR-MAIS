@@ -46,8 +46,8 @@ describe("denúncias e recuperação", () => {
     });
     const { user } = renderApp("/admin/denuncias", { session: adminUser });
 
-    // Clica no botão "Visualizar" da tabela para abrir o modal de detalhes
-    await user.click(await screen.findByRole("button", { name: "Visualizar" }));
+    // Clica no botão "Analisar" da tabela para abrir o modal de detalhes
+    await user.click(await screen.findByRole("button", { name: "Analisar" }));
     const modal = within(await screen.findByRole("dialog"));
 
     expect(await modal.findByRole("button", { name: "Remover vídeo e resolver" })).toBeDisabled();

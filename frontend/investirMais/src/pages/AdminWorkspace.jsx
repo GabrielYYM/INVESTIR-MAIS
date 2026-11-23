@@ -122,17 +122,20 @@ function TeacherApplicationsTable({ list, statusBadges, onSelect }) {
               )}
             />
             <DataTable.Col
-              label="Ações"
+              label="Avaliação"
               align="right"
-              render={(application) => (
-                <Button
-                  size="small"
-                  startIcon={<Eye size={15} />}
-                  onClick={() => onSelect(application)}
-                >
-                  Visualizar
-                </Button>
-              )}
+              render={(application) => {
+                const isPending = application.status === "PENDING";
+                return (
+                  <Button
+                    size="small"
+                    startIcon={isPending ? <UserCheck size={15} /> : <FileText size={15} />}
+                    onClick={() => onSelect(application)}
+                  >
+                    {isPending ? "Avaliar" : "Ver parecer"}
+                  </Button>
+                );
+              }}
             />
           </DataTable>
         </Box>
@@ -238,7 +241,11 @@ function TeacherWorkspace() {
       {/* Modal de Detalhes e Ação da Candidatura */}
       {activeItem && (
         <AppModal
-          title={`Candidatura de ${activeItem.userName || "Professor"}`}
+          title={
+            activeItem.status === "PENDING"
+              ? `Avaliação de Candidatura — ${activeItem.userName || "Professor"}`
+              : `Parecer da Candidatura — ${activeItem.userName || "Professor"}`
+          }
           width={640}
           onClose={() => setSelectedApplication(null)}
           busy={review.isPending}
@@ -283,7 +290,11 @@ function TeacherWorkspace() {
                 Documentos comprobatórios ({activeItem.documents?.length || 0}):
               </span>
               {activeItem.documents?.length === 0 ? (
-                <p className="text-xs text-muted">Nenhum documento anexado.</p>
+                <p className="text-xs text-muted">
+                  {activeItem.status === "APPROVED"
+                    ? "Documentos eliminados com segurança após aprovação do professor (LGPD)."
+                    : "Nenhum documento anexado."}
+                </p>
               ) : (
                 <div className="grid gap-2.5 sm:grid-cols-2">
                   {activeItem.documents.map((document) => (

@@ -111,9 +111,11 @@ const resources = {
         const timeB = typeof b.timestamp === "number" ? b.timestamp : new Date(b.timestamp || 0).getTime();
         return timeB - timeA;
       });
+      const auditTotal = auditRes?.totalItems ?? auditItems.length;
+      const accessTotal = accessRes?.totalItems ?? accessItems.length;
       return {
         items: merged,
-        totalItems: (auditRes?.totalItems ?? auditItems.length) + (accessRes?.totalItems ?? accessItems.length),
+        totalItems: Math.max(auditTotal, accessTotal),
         page: query.page,
         size: query.size,
       };
@@ -152,7 +154,10 @@ export const dataProvider = {
           id: row.entity && row.revision != null ? `${row.entity}-${row.id}-${row.revision}` : (row.revisionNumber ?? row.revision ?? row.id ?? index),
         };
       });
-      const data = items.length > perPage ? items.slice((page - 1) * perPage, page * perPage) : items;
+      const isClientPaged = items.length > perPage && items.length >= (result.totalItems ?? items.length);
+      const data = isClientPaged
+        ? items.slice((page - 1) * perPage, page * perPage)
+        : (items.length > perPage ? items.slice(0, perPage) : items);
       return { data, total: result.totalItems ?? items.length };
     }
     if (!Array.isArray(result)) return { data: result.content, total: result.page.totalElements };

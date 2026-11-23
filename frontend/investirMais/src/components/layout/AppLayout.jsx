@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Outlet, redirect, ScrollRestoration, useFetcher, useLoaderData, useLocation, useNavigation } from "react-router";
-import { Box, Toolbar } from "@mui/material";
+import { Box, Toolbar, useMediaQuery, useTheme } from "@mui/material";
 import { logout } from "../../services/authService.js";
 import { apiError } from "../../services/api.js";
 import Sidebar from "./Sidebar.jsx";
@@ -26,8 +26,17 @@ export default function AppLayout() {
   const signOutForm = useFetcher();
   const navigation = useNavigation();
   const { pathname } = useLocation();
-  const [drawerOpen, setDrawerOpen] = useState(true);
+  const theme = useTheme();
+  const mqMatches = useMediaQuery(theme.breakpoints.up("lg"));
+  const isDesktop = mqMatches || (typeof window !== "undefined" && window.innerWidth >= 1024);
+  const [drawerOpen, setDrawerOpen] = useState(isDesktop);
   const wideLayout = pathname.startsWith("/admin");
+
+  useEffect(() => {
+    if (!isDesktop) {
+      setDrawerOpen(false);
+    }
+  }, [isDesktop]);
 
   return (
     <Box sx={{ display: "flex", minHeight: "100dvh" }}>

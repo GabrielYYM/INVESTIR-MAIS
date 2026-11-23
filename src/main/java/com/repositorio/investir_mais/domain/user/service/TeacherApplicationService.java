@@ -4,6 +4,7 @@ import com.repositorio.investir_mais.domain.user.model.*;
 import com.repositorio.investir_mais.domain.user.model.enums.UserRole;
 import com.repositorio.investir_mais.domain.user.repository.TeacherApplicationRepository;
 import com.repositorio.investir_mais.config.WebApplicationProperties;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.*;
 import org.springframework.http.*;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -15,6 +16,7 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.*;
 
+@Slf4j
 @Service @Transactional @PreAuthorize("isAuthenticated()")
 public class TeacherApplicationService {
     private final TeacherApplicationRepository applications;
@@ -44,7 +46,20 @@ public class TeacherApplicationService {
     public ApplicationView submit(String email, List<String> types, List<MultipartFile> files) {
         User user=users.findByEmailForUpdate(email);
         if (user.getRole()!=UserRole.STUDENT || !user.isEmailVerified()) throw error(HttpStatus.FORBIDDEN,"Confirme seu e-mail e use uma conta de aluno para se candidatar.");
-        if (files.size()!=requiredTypes.size() || !new HashSet<>(types).equals(new HashSet<>(requiredTypes)) || types.size()!=files.size()) throw error(HttpStatus.BAD_REQUEST,"Envie um arquivo para cada documento exigido.");
+        if (files == null || files.isEmpty() || files.size() > 3 || types == null || types.size() != files.size()) {
+            throw error(HttpStatus.BAD_REQUEST, "Envie entre 1 e 3 documentos.");
+        }
+        if (!types.containsAll(requiredTypes)) {
+            throw error(HttpStatus.BAD_REQUEST, "Envie todos os documentos exigidos.");
+        }
+        if (new HashSet<>(types).size() != types.size()) {
+            throw error(HttpStatus.BAD_REQUEST, "Cada documento deve ter um tipo exclusivo.");
+        }
+        for (String type : types) {
+            if (type == null || type.isBlank() || !type.matches("[a-z0-9-]{1,100}")) {
+                throw error(HttpStatus.BAD_REQUEST, "Tipo de documento inválido: " + type);
+            }
+        }
         var a=applications.findByUserId(user.getId()).orElseGet(TeacherApplication::new);
         if (a.getStatus()!=null && !a.getStatus().equals("REJECTED")) throw error(HttpStatus.CONFLICT,"Sua candidatura já está em análise ou aprovada.");
         var documents=new ArrayList<TeacherDocument>();
@@ -76,9 +91,20 @@ public class TeacherApplicationService {
         var a=applications.findForUpdateById(id).orElseThrow(() -> error(HttpStatus.NOT_FOUND,"Candidatura não encontrada."));
         if (!"PENDING".equals(a.getStatus())) throw error(HttpStatus.CONFLICT,"Esta candidatura já foi analisada.");
         if (reason==null || reason.isBlank() || reason.length()>2000) throw error(HttpStatus.BAD_REQUEST,"Informe um parecer de até 2000 caracteres.");
-        a.setStatus(approve?"APPROVED":"REJECTED");a.setReviewedAt(Instant.now());a.setReviewedBy(users.findByEmail(email).getId());a.setReviewReason(reason);
+        a.setStatus(approve?"APPROVED":"REJECTED");
+        a.setReviewedAt(Instant.now());
+        a.setReviewedBy(users.findByEmail(email).getId());
+        a.setReviewReason(reason);
+        if (approve) {
+            a.getDocuments().clear();
+        }
         applications.flush();
-        if (approve) users.updateUserRole(email,a.getUserId(),UserRole.TEACHER);
+        if (approve) {
+            users.updateUserRole(email,a.getUserId(),UserRole.TEACHER);
+            log.info("Candidatura do professor aprovada para o usuário {}. Documentos apagados com sucesso.", a.getUserId());
+        } else {
+            log.info("Candidatura do professor reprovada para o usuário {}.", a.getUserId());
+        }
         return view(a);
     }
     public ResponseEntity<byte[]> document(UUID applicationId, UUID documentId, String email) {

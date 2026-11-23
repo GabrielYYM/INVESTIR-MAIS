@@ -31,7 +31,19 @@ export default function Sidebar({ logout, user, open = true, onClose = () => {},
       onOpen={onOpen}
       disableBackdropTransition={!iOS}
       disableDiscovery={iOS}
-      ModalProps={{ keepMounted: true }}
+      ModalProps={{
+        keepMounted: true,
+        BackdropProps: {
+          invisible: true,
+          sx: { backgroundColor: "transparent" },
+        },
+      }}
+      slotProps={{
+        backdrop: {
+          invisible: true,
+          sx: { backgroundColor: "transparent" },
+        },
+      }}
       sx={{
         width: open ? drawerWidth : 0,
         flexShrink: 0,
