@@ -32,11 +32,11 @@ export function StudentLearningDashboard() {
 }
 
 export function CourseLearningDashboard({ courseId }) {
-  const stats = useQuery({ queryKey: ["course-students", courseId], queryFn: async () => {
-    const [students, questions] = await Promise.all([apiClient.get(`/api/learning/courses/${courseId}/students`), apiClient.get(`/api/learning/courses/${courseId}/questions`)]);
-    return { students: students.data, questions: questions.data };
-  } });
-  const students = stats.data?.students ?? [];
+  const stats = useQuery({
+    queryKey: ["course-students", courseId],
+    queryFn: async () => (await apiClient.get(`/api/learning/courses/${courseId}/students`)).data
+  });
+  const students = stats.data ?? [];
   const completed = students.filter(student => student.completed).length;
   const completionRate = students.length ? Math.round(1000 * completed / students.length) / 10 : 0;
   return <section className="space-y-3" aria-label="Desempenho do curso">
@@ -50,8 +50,6 @@ export function CourseLearningDashboard({ courseId }) {
         {stats.data && <>
           <div className="grid gap-3 sm:grid-cols-3">{[["Alunos inscritos", students.length], ["Alunos que concluíram", completed], ["Taxa de conclusão", completionRate.toLocaleString("pt-BR") + "%"]].map(([label, value]) => <div key={label} className="rounded-xl border border-line bg-canvas p-4"><p className="text-sm text-muted">{label}</p><p className="mt-1 text-2xl font-bold">{value}</p></div>)}</div>
           <p className="text-xs text-muted">Conclusão considera todas as aulas assistidas e questões aprovadas. A taxa compara os alunos que concluíram com os inscritos ativos.</p>
-          <h3 className="font-semibold">Taxa de acerto por questão</h3>
-          {stats.data.questions.map(question => <p key={question.id}>{question.prompt}: {question.accuracy}% · {question.attempts} respostas</p>)}
         </>}
       </AccordionDetails>
     </Accordion>
