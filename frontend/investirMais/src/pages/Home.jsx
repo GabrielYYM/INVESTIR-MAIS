@@ -246,9 +246,9 @@ export default function Home() {
         description={
           showTeacherDashboard
             ? user.role === "ADMIN"
-              ? "Visão global de métricas educacionais da plataforma. Acompanhe visualizações, matrículas e conclusão de aulas."
+              ? "Acompanhe METRICAS."
               : "Acompanhe em tempo real o engajamento dos seus alunos, aulas assistidas e o desempenho dos seus cursos."
-            : <>Bem-vindo ao <span className="font-semibold text-amber-400">Investir+</span>. Explore o catálogo de cursos sobre finanças.</>
+            : <>Bem-vindo ao InvestirMais. Explore o catálogo de cursos sobre finanças.</>
         }
       />
 

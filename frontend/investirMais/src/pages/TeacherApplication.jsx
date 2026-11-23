@@ -18,7 +18,7 @@ export default function TeacherApplication() {
   }, onSuccess: () => { setFiles({}); return client.invalidateQueries({ queryKey: ["teacher-application"] }); } });
   const current = application.data;
   return <>
-    <PageHeader title="Cadastro de professor" description="Envie os documentos exigidos para que a administração analise sua candidatura. Não há exigência de idade mínima." />
+    <PageHeader title="Cadastro de professor" description="Envie os documentos exigidos para que a administração analise sua candidatura." />
     {(requirements.error || application.error || submit.error) && <Notice error>{apiError(requirements.error || application.error || submit.error, "Não foi possível carregar ou enviar a candidatura.")}</Notice>}
     {current && <section className="panel space-y-3 p-5"><h2 className="font-bold">Situação: {({ PENDING: "Em análise", APPROVED: "Aprovada", REJECTED: "Reprovada" })[current.status]}</h2>
       {current.reviewReason && <p>{current.reviewReason}</p>}

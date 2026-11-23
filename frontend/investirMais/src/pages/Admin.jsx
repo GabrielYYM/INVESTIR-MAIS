@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Box, Button, CircularProgress, Divider, InputAdornment, Paper, Stack, Typography } from "@mui/material";
-import { FileText, Flag, Search, ShieldCheck, UserCheck, Users } from "lucide-react";
+import { Search, ShieldCheck, UserCheck, Users } from "lucide-react";
 import { DataTable, FilterLiveForm, ListBase, SelectInput, TextInput, useInput, useListContext, useRefresh } from "react-admin";
-import { Link, Navigate, redirect, useLoaderData } from "react-router";
+import { Navigate, redirect, useLoaderData } from "react-router";
 import { UpdateUserRoleBody } from "../generated/account.zod.ts";
 import { getCurrentUser } from "../services/authService.js";
 import { roleNames } from "../services/dataProvider.js";
@@ -13,6 +13,7 @@ import { Notice } from "../components/ui/PageState.jsx";
 import StatCard from "../components/ui/StatCard.jsx";
 import RoleBadge from "../components/account/RoleBadge.jsx";
 import AdminPendingPanel from "../components/admin/AdminPendingPanel.jsx";
+import AdminNav from "../components/admin/AdminNav.jsx";
 import AdminAuditPanel, { AuditDialog, formatDate, getAuditInfo, operationBadges, operations } from "../components/admin/AdminAuditPanel.jsx";
 
 export { AuditDialog, formatDate, getAuditInfo, operationBadges, operations };
@@ -84,7 +85,7 @@ function UserRoleFilter() {
           type="button"
           aria-pressed={selectedRole === role}
           onClick={() => field.onChange(role === "ALL" ? "" : role)}
-          className={`rounded-lg px-2.5 py-1.5 transition-colors ${selectedRole === role ? "bg-brand font-semibold text-zinc-900" : "text-muted hover:text-zinc-200"}`}
+          className={`rounded-lg px-2.5 py-1.5 transition-colors ${selectedRole === role ? "bg-brand font-semibold text-zinc-900" : "text-ink hover:bg-raised"}`}
         >
           {label}
         </button>
@@ -103,16 +104,10 @@ export default function Admin() {
 
   return (
     <Box className="w-full space-y-5">
+      <AdminNav />
       <PageHeader
         title="Administração"
-        description="Gerencie pendências, auditoria, usuários e documentos da plataforma."
-        actions={
-          <Box component="nav" className="flex flex-wrap gap-2.5" aria-label="Gestão da plataforma">
-            <Link className="button-secondary" to="/admin/denuncias"><Flag size={16} /> Denúncias</Link>
-            <Link className="button-secondary" to="/admin/professores"><UserCheck size={16} /> Candidaturas de professores</Link>
-            <Link className="button-secondary" to="/admin/documentos"><FileText size={16} /> Documentos legais</Link>
-          </Box>
-        }
+        description="Gerencie usuários, pendências, auditoria e documentos da plataforma."
       />
       <AdminPendingPanel />
       <ListBase resource="users" perPage={10} sort={{ field: "name", order: "ASC" }} disableAuthentication>
