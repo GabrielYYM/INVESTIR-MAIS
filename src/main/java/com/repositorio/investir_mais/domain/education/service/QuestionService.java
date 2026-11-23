@@ -66,10 +66,12 @@ public class QuestionService {
         if (!student.isEnrolledIn(course)) throw error(HttpStatus.FORBIDDEN, "Matricule-se no curso para responder.");
         List<Question> all = ordered(courseId);
         Set<UUID> passed = student.getPassedQuestionIds();
+        Set<UUID> answered = new HashSet<>(passed);
+        answered.addAll(attempts.findAttemptedQuestionIds(student.getId(), courseId));
         Set<UUID> completed = new HashSet<>(lessons.findCompletedLessonIds(student.getId(), courseId));
         List<Lesson> courseLessons = lessons.findAllByCourseIdOrderByPositionAscIdAsc(courseId);
         return all.stream().map(q -> new QuestionDTO.StudentQuestion(q.getId(), q.getPrompt(), q.getAfterLesson(), q.getPosition(),
-                locked(q, all, passed, completed, courseLessons), passed.contains(q.getId()), List.copyOf(q.getOptions()))).toList();
+                locked(q, all, answered, completed, courseLessons), passed.contains(q.getId()), List.copyOf(q.getOptions()))).toList();
     }
 
     public QuestionDTO.AnswerResponse answer(UUID courseId, UUID questionId, QuestionDTO.AnswerRequest request, String email) {
@@ -82,11 +84,12 @@ public class QuestionService {
             throw error(HttpStatus.BAD_REQUEST, "Alternativa inválida para esta pergunta.");
         }
         Set<UUID> passed = student.getPassedQuestionIds();
-        if (passed.contains(questionId)) return new QuestionDTO.AnswerResponse(questionId, true);
-        if (locked(question, ordered(courseId), passed,
+        Set<UUID> answered = new HashSet<>(passed);
+        answered.addAll(attempts.findAttemptedQuestionIds(student.getId(), courseId));
+        if (locked(question, ordered(courseId), answered,
                 new HashSet<>(lessons.findCompletedLessonIds(student.getId(), courseId)),
                 lessons.findAllByCourseIdOrderByPositionAscIdAsc(courseId))) {
-            throw error(HttpStatus.CONFLICT, "Conclua o conteúdo anterior e acerte as perguntas anteriores para avançar.");
+            throw error(HttpStatus.CONFLICT, "Conclua o conteúdo anterior e responda às perguntas anteriores para avançar.");
         }
         boolean correct = request.optionIndex() == question.getCorrectOptionIndex();
         var attempt = new QuestionAttempt();
@@ -107,12 +110,12 @@ public class QuestionService {
         }
     }
 
-    private boolean locked(Question q, List<Question> all, Set<UUID> passed, Set<UUID> completed, List<Lesson> courseLessons) {
+    private boolean locked(Question q, List<Question> all, Set<UUID> answered, Set<UUID> completed, List<Lesson> courseLessons) {
         if (q.getAfterLesson() > 0 && courseLessons.stream().noneMatch(l -> l.getPosition() == q.getAfterLesson())) return true;
         if (courseLessons.stream().filter(l -> l.getPosition() <= q.getAfterLesson()).anyMatch(l -> !completed.contains(l.getId()))) return true;
         for (Question previous : all) {
             if (previous.getId().equals(q.getId())) return false;
-            if (!passed.contains(previous.getId())) return true;
+            if (!answered.contains(previous.getId())) return true;
         }
         return false;
     }

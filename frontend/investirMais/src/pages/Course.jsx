@@ -25,6 +25,7 @@ function StudentQuestion({
   question
 }) {
   const [selected, setSelected] = useState(null);
+  const [isCorrecting, setIsCorrecting] = useState(false);
   const fetcher = useFetcher();
   const location = useLocation();
   const busy = fetcher.state !== "idle";
@@ -42,17 +43,25 @@ function StudentQuestion({
       encType: "application/json",
       action: location.pathname + location.search
     });
+    setIsCorrecting(false);
   };
   return <form onSubmit={submit} className="space-y-3">
-    <fieldset disabled={busy || question.locked || question.passed} className="min-w-0">
+    <fieldset disabled={busy || question.locked || (question.passed && !isCorrecting)} className="min-w-0">
       <legend className="sr-only">{question.prompt}</legend>
       <RadioGroup className="space-y-2" value={selected ?? ""} onChange={(_, value) => setSelected(Number(value))}>{question.options.map((text, index) => <label key={index} className={"flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-2.5 text-sm " + (selected === index ? "border-brand/50 bg-brand/5 text-ink" : "border-line text-muted")}>
-        <Radio value={index} disabled={busy || question.locked || question.passed} sx={{ p: 0, mt: .25, "& svg": { fontSize: 16 } }} /><span className="min-w-0 break-words">{text}</span>
+        <Radio value={index} disabled={busy || question.locked || (question.passed && !isCorrecting)} sx={{ p: 0, mt: .25, "& svg": { fontSize: 16 } }} /><span className="min-w-0 break-words">{text}</span>
       </label>)}</RadioGroup>
     </fieldset>
-    {question.passed ? <p className="flex items-center gap-2 text-sm font-semibold text-positive"><CheckCircle2 size={16} />Pergunta concluída</p> : question.locked ? <p className="text-sm text-muted">Conclua as aulas e acerte as perguntas anteriores para responder.</p> : <>
-      {fetcher.data?.error && <Notice error>{fetcher.data.error}</Notice>}{fetcher.data?.passed === false && <Notice error>Ainda não é a alternativa correta. Escolha outra opção e tente novamente.</Notice>}
-      <SubmitButton loading={busy} disabled={selected === null} loadingText="Verificando…">Responder pergunta</SubmitButton>
+    {question.passed && !isCorrecting ? <div className="flex flex-wrap items-center justify-between gap-2">
+      <p className="flex items-center gap-2 text-sm font-semibold text-positive"><CheckCircle2 size={16} />Pergunta concluída</p>
+      <button type="button" className="button-secondary text-xs" onClick={() => setIsCorrecting(true)}>Corrigir resposta</button>
+    </div> : question.locked ? <p className="text-sm text-muted">Conclua as aulas e responda às perguntas anteriores para responder.</p> : <>
+      {fetcher.data?.error && <Notice error>{fetcher.data.error}</Notice>}
+      {fetcher.data?.passed === false && <Notice error>Ainda não é a alternativa correta. Escolha outra opção e tente novamente se desejar corrigir.</Notice>}
+      <div className="flex flex-wrap items-center gap-2">
+        <SubmitButton loading={busy} disabled={selected === null} loadingText="Verificando…">Responder pergunta</SubmitButton>
+        {isCorrecting && <button type="button" className="button-secondary" disabled={busy} onClick={() => setIsCorrecting(false)}>Cancelar</button>}
+      </div>
     </>}
   </form>;
 }

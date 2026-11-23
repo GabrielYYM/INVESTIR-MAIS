@@ -220,4 +220,17 @@ describe("perguntas para alunos", () => {
     await screen.findByRole("heading", { name: "Bem-vindo de volta" });
     expect(new URLSearchParams(router.state.location.search).get("retorno")).toBe(destination);
   });
+
+  it("permite ao aluno corrigir uma pergunta já concluída", async () => {
+    studentFlow({ enrolled: true });
+    server.use(http.get(base, () => HttpResponse.json([{ ...question, correctOptionIndex: undefined, locked: false, passed: true }])));
+    const { user } = renderApp(coursePath);
+    expect(await screen.findByText("Pergunta concluída")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Corrigir resposta" }));
+    expect(screen.getByRole("button", { name: "Responder pergunta" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cancelar" })).toBeInTheDocument();
+    await user.click(screen.getByRole("radio", { name: "Tesouro Selic" }));
+    await user.click(screen.getByRole("button", { name: "Responder pergunta" }));
+    expect(await screen.findByText("Pergunta concluída")).toBeInTheDocument();
+  });
 });
