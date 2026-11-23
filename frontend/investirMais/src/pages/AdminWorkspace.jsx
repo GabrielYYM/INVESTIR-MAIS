@@ -7,7 +7,6 @@ import { Notice } from "../components/ui/PageState.jsx";
 import StatePagination from "../components/ui/StatePagination.jsx";
 import PageHeader from "../components/layout/PageHeader.jsx";
 import ModerationWorkspace from "./ModerationWorkspace.jsx";
-import TrashWorkspace from "./TrashWorkspace.jsx";
 
 function LegalWorkspace() {
   const client = useQueryClient();
@@ -15,7 +14,7 @@ function LegalWorkspace() {
   const [draft, setDraft] = useState(null), [preview, setPreview] = useState(null);
   const publish = useMutation({ mutationFn: value => apiClient.post("/api/legal/versions", value), onSuccess: () => { setDraft(null); setPreview(null); return client.invalidateQueries(); } });
   const now = new Date();
-  const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const value = draft ?? (current.data && { ...current.data, version: current.data.version + 1, publishedOn: today });
   function edit(change) { const next = structuredClone(value); change(next); setDraft(next); setPreview(null); }
   return <>
@@ -34,7 +33,7 @@ function LegalWorkspace() {
           {document.sections.length > 1 && <button type="button" className="button-secondary" onClick={() => edit(next => { next.documents[index].sections.splice(sectionIndex, 1); })}>Remover seção</button>}
         </div>)}
         <div className="flex gap-3"><button type="button" className="button-secondary" onClick={() => edit(next => { next.documents[index].sections.push({ heading: "", content: "" }); })}>Adicionar seção</button>
-        {!["termos", "privacidade"].includes(document.id) && <button type="button" className="button-danger" onClick={() => edit(next => { next.documents.splice(index, 1); })}>Remover documento</button>}</div>
+          {!["termos", "privacidade"].includes(document.id) && <button type="button" className="button-danger" onClick={() => edit(next => { next.documents.splice(index, 1); })}>Remover documento</button>}</div>
       </fieldset>)}
       <div className="flex flex-wrap gap-3"><button type="button" className="button-secondary" disabled={value.documents.length >= 20} onClick={() => edit(next => { next.documents.push({ id: "", label: "", title: "", sections: [{ heading: "", content: "" }] }); })}>Adicionar documento</button><button className="button-primary">Revisar publicação</button></div>
     </form>}
@@ -68,5 +67,5 @@ function TeacherWorkspace() {
 export default function AdminWorkspace({ kind }) {
   const user = useRouteLoaderData("app");
   if (user.role !== "ADMIN") return <Navigate to="/" replace />;
-  return <><PageHeader title={({ legal: "Documentos legais", teachers: "Candidaturas de professores", reports: "Denúncias", trash: "Lixeira" })[kind]} /><Link className="button-secondary" to="/admin">Voltar à administração</Link>{kind === "legal" ? <LegalWorkspace /> : kind === "reports" ? <ModerationWorkspace /> : kind === "trash" ? <TrashWorkspace /> : <TeacherWorkspace />}</>;
+  return <><PageHeader title={({ legal: "Documentos legais", teachers: "Candidaturas de professores", reports: "Denúncias" })[kind]} /><Link className="button-secondary" to="/admin">Voltar à administração</Link>{kind === "legal" ? <LegalWorkspace /> : kind === "reports" ? <ModerationWorkspace /> : <TeacherWorkspace />}</>;
 }

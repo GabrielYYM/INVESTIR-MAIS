@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Box, Button, CircularProgress, Divider, InputAdornment, Paper, Stack, Typography } from "@mui/material";
-import { FileText, Flag, Search, ShieldCheck, Trash2, UserCheck, Users } from "lucide-react";
+import { FileText, Flag, Search, ShieldCheck, UserCheck, Users } from "lucide-react";
 import { DataTable, FilterLiveForm, ListBase, SelectInput, TextInput, useInput, useListContext, useRefresh } from "react-admin";
 import { Link, Navigate, redirect, useLoaderData } from "react-router";
 import { UpdateUserRoleBody } from "../generated/account.zod.ts";
@@ -111,7 +111,6 @@ export default function Admin() {
             <Link className="button-secondary" to="/admin/denuncias"><Flag size={16} /> Denúncias</Link>
             <Link className="button-secondary" to="/admin/professores"><UserCheck size={16} /> Candidaturas de professores</Link>
             <Link className="button-secondary" to="/admin/documentos"><FileText size={16} /> Documentos legais</Link>
-            <Link className="button-secondary" to="/admin/lixeira"><Trash2 size={16} /> Lixeira</Link>
           </Box>
         }
       />

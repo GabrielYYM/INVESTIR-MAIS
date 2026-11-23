@@ -53,7 +53,6 @@ const entityNames = {
   lessons: "Aula",
   questions: "Questão",
   reports: "Denúncia",
-  restorations: "Restauração",
   accounts: "Conta",
   accesses: "Visualização",
 };
@@ -63,7 +62,6 @@ export const entityOptions = [
   ["lessons", "Aulas"],
   ["questions", "Questões"],
   ["reports", "Denúncias"],
-  ["restorations", "Restaurações de conteúdo"],
   ["accounts", "Exclusões de contas"],
   ["accesses", "Visualizações"],
 ];
@@ -356,7 +354,7 @@ export default function AdminAuditPanel({ onSelect }) {
   return (
     <Paper component="section" variant="outlined" className="panel space-y-5 p-5 sm:p-6" aria-labelledby="auditoria-titulo">
       <Box>
-        <Typography variant="h2" id="auditoria-titulo" sx={{ fontSize: 18, fontWeight: 700 }}>Auditoria</Typography>
+        <Typography variant="h2" id="auditoria-titulo" sx={{ fontSize: 18, fontWeight: 700 }}>Auditoria de Ocorridos Recentes</Typography>
         <Typography variant="caption" color="text.secondary">
           Acompanhe e filtre todos os eventos recentes registrados na plataforma sem expor dados sensíveis na tabela.
         </Typography>
