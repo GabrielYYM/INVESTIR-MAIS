@@ -1998,6 +1998,9 @@
           "passed": {
             "type": "boolean"
           },
+          "incorrect": {
+            "type": "boolean"
+          },
           "options": {
             "type": "array",
             "items": {

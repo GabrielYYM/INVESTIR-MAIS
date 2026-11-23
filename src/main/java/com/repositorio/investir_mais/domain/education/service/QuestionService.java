@@ -66,12 +66,15 @@ public class QuestionService {
         if (!student.isEnrolledIn(course)) throw error(HttpStatus.FORBIDDEN, "Matricule-se no curso para responder.");
         List<Question> all = ordered(courseId);
         Set<UUID> passed = student.getPassedQuestionIds();
+        Set<UUID> attempted = attempts.findAttemptedQuestionIds(student.getId(), courseId);
         Set<UUID> answered = new HashSet<>(passed);
-        answered.addAll(attempts.findAttemptedQuestionIds(student.getId(), courseId));
+        answered.addAll(attempted);
         Set<UUID> completed = new HashSet<>(lessons.findCompletedLessonIds(student.getId(), courseId));
         List<Lesson> courseLessons = lessons.findAllByCourseIdOrderByPositionAscIdAsc(courseId);
         return all.stream().map(q -> new QuestionDTO.StudentQuestion(q.getId(), q.getPrompt(), q.getAfterLesson(), q.getPosition(),
-                locked(q, all, answered, completed, courseLessons), passed.contains(q.getId()), List.copyOf(q.getOptions()))).toList();
+                locked(q, all, answered, completed, courseLessons), passed.contains(q.getId()),
+                attempted.contains(q.getId()) && !passed.contains(q.getId()),
+                List.copyOf(q.getOptions()))).toList();
     }
 
     public QuestionDTO.AnswerResponse answer(UUID courseId, UUID questionId, QuestionDTO.AnswerRequest request, String email) {

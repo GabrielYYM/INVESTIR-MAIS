@@ -1,6 +1,6 @@
 import { CourseLearningDashboard } from "../components/education/LearningDashboard.jsx";
 import { ProgressTrack } from "../components/education/CourseProgressBar.jsx";
-import { ArrowLeft, CheckCircle2, ChevronDown, CircleHelp, ExternalLink, Pencil, Play, Plus, Trash2, Video } from "lucide-react";
+import { ArrowLeft, CheckCircle2, ChevronDown, CircleHelp, ExternalLink, Pencil, Play, Plus, Trash2, Video, XCircle } from "lucide-react";
 import { lazy, Suspense, useMemo, useState } from "react";
 import { Accordion, AccordionDetails, AccordionSummary, Radio, RadioGroup } from "@mui/material";
 import { Link, useFetcher, useLoaderData, useLocation, useNavigate, useRevalidator, useRouteLoaderData, NavLink } from "react-router";
@@ -45,17 +45,28 @@ function StudentQuestion({
     });
     setIsCorrecting(false);
   };
+
+  const isPassed = Boolean(question.passed);
+  const isSavedIncorrect = Boolean(!isPassed && question.incorrect);
+  const isLocked = Boolean(question.locked);
+  const isOptionsDisabled = busy || isLocked || isPassed || (isSavedIncorrect && !isCorrecting);
+
   return <form onSubmit={submit} className="space-y-3">
-    <fieldset disabled={busy || question.locked || (question.passed && !isCorrecting)} className="min-w-0">
+    <fieldset disabled={isOptionsDisabled} className="min-w-0">
       <legend className="sr-only">{question.prompt}</legend>
-      <RadioGroup className="space-y-2" value={selected ?? ""} onChange={(_, value) => setSelected(Number(value))}>{question.options.map((text, index) => <label key={index} className={"flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-2.5 text-sm " + (selected === index ? "border-brand/50 bg-brand/5 text-ink" : "border-line text-muted")}>
-        <Radio value={index} disabled={busy || question.locked || (question.passed && !isCorrecting)} sx={{ p: 0, mt: .25, "& svg": { fontSize: 16 } }} /><span className="min-w-0 break-words">{text}</span>
-      </label>)}</RadioGroup>
+      <RadioGroup className="space-y-2" value={selected ?? ""} onChange={(_, value) => setSelected(Number(value))}>
+        {question.options.map((text, index) => <label key={index} className={"flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-2.5 text-sm " + (selected === index ? "border-brand/50 bg-brand/5 text-ink" : "border-line text-muted")}>
+          <Radio value={index} disabled={isOptionsDisabled} sx={{ p: 0, mt: .25, "& svg": { fontSize: 16 } }} />
+          <span className="min-w-0 break-words">{text}</span>
+        </label>)}
+      </RadioGroup>
     </fieldset>
-    {question.passed && !isCorrecting ? <div className="flex flex-wrap items-center justify-between gap-2">
+    {isPassed ? <div className="flex flex-wrap items-center justify-between gap-2">
       <p className="flex items-center gap-2 text-sm font-semibold text-positive"><CheckCircle2 size={16} />Pergunta concluída</p>
+    </div> : isSavedIncorrect && !isCorrecting ? <div className="flex flex-wrap items-center justify-between gap-2">
+      <p className="flex items-center gap-2 text-sm font-semibold text-rose-500"><XCircle size={16} />Resposta incorreta</p>
       <button type="button" className="button-secondary text-xs" onClick={() => setIsCorrecting(true)}>Corrigir resposta</button>
-    </div> : question.locked ? <p className="text-sm text-muted">Conclua as aulas e responda às perguntas anteriores para responder.</p> : <>
+    </div> : isLocked ? <p className="text-sm text-muted">Conclua as aulas e responda às perguntas anteriores para responder.</p> : <>
       {fetcher.data?.error && <Notice error>{fetcher.data.error}</Notice>}
       {fetcher.data?.passed === false && <Notice error>Ainda não é a alternativa correta. Escolha outra opção e tente novamente se desejar corrigir.</Notice>}
       <div className="flex flex-wrap items-center gap-2">
