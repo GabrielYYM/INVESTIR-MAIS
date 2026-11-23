@@ -57,17 +57,32 @@ function LegalWorkspace() {
       <p className="font-bold">Nova versão: {value.version}</p>
       <Field label="Data da publicação" type="date" value={value.publishedOn} onChange={event => edit(next => { next.publishedOn = event.target.value; })} required max={today} />
       {value.documents.map((document, index) => {
-        const isMarkdown = docModes[document.id || index] === "markdown";
+        const isMarkdown = docModes[document.id || index] !== "sections";
         const currentMd = markdownTexts[document.id || index] ?? sectionsToMarkdown(document.sections);
 
+        const docDisplayName = document.id === "termos" ? "Termos de Uso" : document.id === "privacidade" ? "Política de Privacidade" : (document.title || document.label);
+
         return (
-          <fieldset key={index} className="space-y-3 rounded-xl border border-line p-4"><legend>Documento {index + 1}</legend>
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-2">
-              <span className="text-xs text-muted font-medium">{document.label || document.title}</span>
+          <fieldset key={index} className="space-y-4 rounded-2xl border-2 border-line bg-canvas/60 p-5 shadow-sm">
+            <legend className="sr-only">Documento {index + 1}</legend>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand border border-brand/20">
+                  <FileText size={20} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-ink tracking-tight">
+                    {docDisplayName}
+                  </h3>
+                  <span className="text-xs text-muted font-mono uppercase tracking-wider">
+                    Identificador: <span className="font-semibold text-ink">{document.id}</span> · Aba: {document.label}
+                  </span>
+                </div>
+              </div>
               <div className="flex items-center gap-2">
-                <label className="button-secondary !py-1 !px-2.5 !text-xs cursor-pointer flex items-center gap-1.5" title="Importar arquivo .md para este documento">
-                  <Upload size={13} />
-                  <span>Importar .md</span>
+                <label className="button-secondary !py-1.5 !px-3 !text-xs cursor-pointer flex items-center gap-1.5 font-medium hover:border-brand/40" title="Importar arquivo .md para este documento">
+                  <Upload size={14} className="text-brand" />
+                  <span>Importar arquivo .md</span>
                   <input
                     type="file"
                     accept=".md,text/markdown"
@@ -80,7 +95,7 @@ function LegalWorkspace() {
                 </label>
                 <button
                   type="button"
-                  className={`button-secondary !py-1 !px-2.5 !text-xs flex items-center gap-1.5 ${isMarkdown ? "bg-brand/20 border-brand text-brand" : ""}`}
+                  className={`button-secondary !py-1.5 !px-3 !text-xs flex items-center gap-1.5 font-medium ${isMarkdown ? "bg-brand/20 border-brand text-brand" : "hover:border-brand/40"}`}
                   onClick={() => {
                     const nextMode = isMarkdown ? "sections" : "markdown";
                     setDocModes((prev) => ({ ...prev, [document.id || index]: nextMode }));
@@ -89,15 +104,16 @@ function LegalWorkspace() {
                     }
                   }}
                 >
-                  <FileCode size={13} />
-                  <span>{isMarkdown ? "Editar por Seções" : "Editar via Markdown (.md)"}</span>
+                  <FileCode size={14} />
+                  <span>{isMarkdown ? "Alternar para Seções" : "Editar via Markdown (.md)"}</span>
                 </button>
               </div>
             </div>
 
-            <Field label="Identificador" value={document.id} required disabled hint="Identificador padrão do sistema." />
-            <Field label="Nome da aba" value={document.label} required onChange={event => edit(next => { next.documents[index].label = event.target.value; })} />
-            <Field label="Título do documento" value={document.title} fullWidth required onChange={event => edit(next => { next.documents[index].title = event.target.value; })} />
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label="Nome da aba" value={document.label} required onChange={event => edit(next => { next.documents[index].label = event.target.value; })} />
+              <Field label="Título do documento" value={document.title} fullWidth required onChange={event => edit(next => { next.documents[index].title = event.target.value; })} />
+            </div>
 
             {isMarkdown ? (
               <div className="space-y-2 border-t border-line pt-3">
