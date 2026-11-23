@@ -1,24 +1,32 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Archive, Calendar, CheckCircle2, Clock, ExternalLink, Eye, FileText, Flag, GraduationCap, Trash2, Video, XCircle } from "lucide-react";
-import { Box, Button, IconButton, Paper, Tooltip, Typography } from "@mui/material";
+import { AlertTriangle, Archive, Calendar, CheckCircle2, Clock, ExternalLink, FileText, Flag, GraduationCap, Trash2, Video, XCircle } from "lucide-react";
+import { Box, Button, Paper, Typography } from "@mui/material";
 import { DataTable, ListContextProvider, useList } from "react-admin";
 import { apiClient, apiError } from "../services/api.js";
-import { reportReasons, reportStatuses } from "../services/reportReasons.js";
+import { reportReasons } from "../services/reportReasons.js";
 import { Field } from "../components/ui/FormFields.jsx";
 import { Notice } from "../components/ui/PageState.jsx";
 import StatePagination from "../components/ui/StatePagination.jsx";
 import AppModal from "../components/ui/AppModal.jsx";
 
 const statusBadges = {
-  OPEN: { label: "Em análise", className: "border-amber-500/30 bg-amber-500/10 text-amber-400", icon: Clock },
-  RESOLVED: { label: "Resolvida", className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400", icon: CheckCircle2 },
-  DISMISSED: { label: "Arquivada", className: "border-zinc-500/30 bg-zinc-500/10 text-zinc-400", icon: Archive },
+  OPEN: { label: "Pendente de análise", className: "border-amber-500/30 bg-amber-500/10 text-amber-400", icon: Clock },
+  RESOLVED: { label: "Denúncia resolvida", className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400", icon: CheckCircle2 },
+  DISMISSED: { label: "Denúncia arquivada", className: "border-zinc-500/30 bg-zinc-500/10 text-zinc-400", icon: Archive },
 };
 
-function ModerationReportsTable({ list, statusBadges, onSelect }) {
+const statusTabs = [
+  ["OPEN", "Pendentes", Clock],
+  ["RESOLVED", "Resolvidas", CheckCircle2],
+  ["DISMISSED", "Arquivadas", Archive],
+];
+
+function ModerationReportsTable({ list, currentStatus, onSelect }) {
   const listContext = useList({ data: list, perPage: 25 });
+  const isPendingView = currentStatus === "OPEN";
+
   return (
     <Paper variant="outlined" className="panel space-y-4 p-5 sm:p-6">
       <ListContextProvider value={listContext}>
@@ -37,16 +45,19 @@ function ModerationReportsTable({ list, statusBadges, onSelect }) {
                 const isLesson = report.targetType === "LESSON";
                 const TargetIcon = isLesson ? Video : GraduationCap;
                 return (
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-canvas border border-line text-brand">
+                  <div className="flex items-start gap-3 py-1">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-canvas border border-line text-brand mt-0.5">
                       <TargetIcon size={18} />
                     </div>
-                    <div className="min-w-0">
+                    <div className="min-w-0 space-y-0.5">
                       <span className="block font-semibold text-ink truncate">
                         {isLesson ? "Vídeo: " : "Professor: "}{report.targetLabel}
                       </span>
-                      <span className="block font-mono text-xs text-muted truncate">
-                        Protocolo: {report.id.slice(0, 8)}…
+                      <p className="line-clamp-2 text-xs text-muted max-w-sm">
+                        {report.description}
+                      </p>
+                      <span className="block font-mono text-[11px] text-muted">
+                        Protocolo: {report.id.slice(0, 8).toUpperCase()}…
                       </span>
                     </div>
                   </div>
@@ -66,22 +77,40 @@ function ModerationReportsTable({ list, statusBadges, onSelect }) {
               source="status"
               label="Situação"
               render={(report) => {
-                const currentBadge = statusBadges[report.status] || statusBadges.OPEN;
-                const StatusIcon = currentBadge.icon;
+                const badge = statusBadges[report.status] || statusBadges.OPEN;
+                const StatusIcon = badge.icon;
                 return (
-                  <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${currentBadge.className}`}>
-                    <StatusIcon size={12} /> {currentBadge.label}
+                  <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${badge.className}`}>
+                    <StatusIcon size={12} /> {badge.label}
                   </span>
                 );
               }}
             />
+            {!isPendingView && (
+              <DataTable.Col
+                source="reviewNote"
+                label="Parecer Registrado"
+                render={(report) => (
+                  <span className="block text-xs text-ink line-clamp-2 max-w-xs font-medium">
+                    {report.reviewNote || "—"}
+                  </span>
+                )}
+              />
+            )}
             <DataTable.Col
               source="createdAt"
-              label="Data"
+              label="Data de Envio"
               render={(report) => (
-                <span className="inline-flex items-center gap-1 text-xs text-muted">
-                  <Calendar size={13} /> {new Date(report.createdAt).toLocaleString("pt-BR")}
-                </span>
+                <div className="space-y-0.5 text-xs text-muted">
+                  <span className="flex items-center gap-1">
+                    <Calendar size={12} /> {new Date(report.createdAt).toLocaleDateString("pt-BR")}
+                  </span>
+                  {report.reviewedAt && (
+                    <span className="flex items-center gap-1 text-[11px] text-muted/80">
+                      <Clock size={11} /> {new Date(report.reviewedAt).toLocaleDateString("pt-BR")}
+                    </span>
+                  )}
+                </div>
               )}
             />
             <DataTable.Col
@@ -139,9 +168,8 @@ export default function ModerationWorkspace() {
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-line bg-canvas p-1">
-          {Object.entries(reportStatuses).map(([key, label]) => {
+          {statusTabs.map(([key, label, Icon]) => {
             const active = status === key;
-            const Icon = statusBadges[key]?.icon || Flag;
             return (
               <button
                 key={key}
@@ -152,9 +180,8 @@ export default function ModerationWorkspace() {
                   setConfirming(null);
                   setSelectedReport(null);
                 }}
-                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                  active ? "bg-brand font-semibold text-zinc-900 shadow-sm" : "text-ink hover:bg-raised"
-                }`}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${active ? "bg-brand font-semibold text-zinc-900 shadow-sm" : "text-ink hover:bg-raised"
+                  }`}
               >
                 <Icon size={14} />
                 <span>{label}</span>
@@ -179,15 +206,15 @@ export default function ModerationWorkspace() {
       {rawList.length === 0 && !result.isPending && (
         <div className="panel flex flex-col items-center justify-center space-y-2 p-12 text-center text-muted">
           <Flag size={32} className="text-muted/60" />
-          <p className="font-medium text-ink">Nenhuma denúncia nesta situação.</p>
-          <p className="text-xs">Não há itens classificados como "{reportStatuses[status]}".</p>
+          <p className="font-medium text-ink">Nenhuma denúncia nesta categoria.</p>
+          <p className="text-xs">Não há denúncias registradas com o filtro selecionado.</p>
         </div>
       )}
 
       {rawList.length > 0 && (
         <ModerationReportsTable
           list={rawList}
-          statusBadges={statusBadges}
+          currentStatus={status}
           onSelect={setSelectedReport}
         />
       )}
@@ -241,7 +268,7 @@ export default function ModerationWorkspace() {
 
                   <div className="text-xs text-muted sm:text-right shrink-0">
                     <p className="flex items-center gap-1 sm:justify-end">
-                      <Calendar size={13} /> {new Date(activeReport.createdAt).toLocaleString("pt-BR")}
+                      <Calendar size={13} /> Enviada em {new Date(activeReport.createdAt).toLocaleString("pt-BR")}
                     </p>
                   </div>
                 </div>
@@ -254,16 +281,18 @@ export default function ModerationWorkspace() {
 
                 <div className="rounded-xl border border-line bg-canvas/70 p-4 space-y-1.5">
                   <span className="text-xs font-semibold uppercase tracking-wider text-muted">Descrição informada pelo aluno:</span>
-                  <p className="whitespace-pre-wrap break-words text-sm text-ink leading-relaxed">{activeReport.description}</p>
+                  <p className="whitespace-pre-wrap break-words text-sm text-ink leading-relaxed font-normal">{activeReport.description}</p>
                 </div>
 
                 <div>
-                  <Link
+                  <a
                     className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand underline hover:text-amber-300"
-                    to={`/educacao/${activeReport.courseId}${isLesson ? "/" + activeReport.targetId : ""}`}
+                    href={`/educacao/${activeReport.courseId}${isLesson ? "/" + activeReport.targetId : ""}`}
+                    target="_blank"
+                    rel="noreferrer"
                   >
-                    <ExternalLink size={15} /> {isLesson ? "Acessar aula denunciada" : "Acessar curso do professor"}
-                  </Link>
+                    <ExternalLink size={15} /> {isLesson ? "Acessar aula denunciada (em nova aba)" : "Acessar curso do professor (em nova aba)"}
+                  </a>
                 </div>
 
                 {activeReport.status === "OPEN" ? (
@@ -312,7 +341,7 @@ export default function ModerationWorkspace() {
                         <div className="flex items-start gap-2.5 text-rose-300">
                           <AlertTriangle size={18} className="shrink-0 mt-0.5" />
                           <p className="leading-relaxed">
-                            A aula e suas questões vinculadas serão retiradas da plataforma. O arquivo no provedor de vídeo permanece disponível por seu endereço.
+                            A aula e suas questões vinculadas serão retiradas da plataforma. O arquivo no provedor de vídeo permanece disponível por seu endereço original.
                           </p>
                         </div>
                         <div className="flex flex-wrap gap-2.5 pt-1">
@@ -336,12 +365,26 @@ export default function ModerationWorkspace() {
                     )}
                   </div>
                 ) : (
-                  <div className="rounded-xl border border-line bg-canvas p-4 space-y-1 text-sm border-l-4 border-l-brand">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-muted">Parecer do moderador:</span>
-                    <p className="whitespace-pre-wrap break-words text-ink leading-relaxed font-medium">{activeReport.reviewNote}</p>
-                    <p className="text-xs text-muted flex items-center gap-1 pt-1">
-                      <Clock size={12} /> Analisado em {new Date(activeReport.reviewedAt).toLocaleString("pt-BR")}
+                  <div className={`rounded-xl border p-4 space-y-2 text-sm ${activeReport.status === "RESOLVED"
+                      ? "border-emerald-500/30 bg-emerald-500/5 border-l-4 border-l-emerald-500"
+                      : "border-zinc-500/30 bg-zinc-500/5 border-l-4 border-l-zinc-500"
+                    }`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-muted">
+                        Parecer técnico da moderação:
+                      </span>
+                      <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${currentBadge.className}`}>
+                        <StatusIcon size={11} /> {currentBadge.label}
+                      </span>
+                    </div>
+                    <p className="whitespace-pre-wrap break-words text-ink leading-relaxed font-medium">
+                      {activeReport.reviewNote || "Nenhum parecer textual foi anexado."}
                     </p>
+                    {activeReport.reviewedAt && (
+                      <p className="text-xs text-muted flex items-center gap-1 pt-1 border-t border-line/50">
+                        <Clock size={12} /> Decisão proferida em {new Date(activeReport.reviewedAt).toLocaleString("pt-BR")}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>

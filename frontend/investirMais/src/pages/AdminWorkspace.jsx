@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Navigate, useRouteLoaderData } from "react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Calendar, CheckCircle2, Clock, Download, Eye, FileText, UserCheck, Users, XCircle } from "lucide-react";
+import { Calendar, CheckCircle2, Clock, Download, Eye, FileCode, FileText, Upload, UserCheck, Users, XCircle } from "lucide-react";
 import { Box, Button, IconButton, Paper, Stack, Tooltip, Typography } from "@mui/material";
 import { DataTable, ListContextProvider, useList } from "react-admin";
 import { apiClient, apiError } from "../services/api.js";
@@ -12,35 +12,140 @@ import PageHeader from "../components/layout/PageHeader.jsx";
 import ModerationWorkspace from "./ModerationWorkspace.jsx";
 import AdminNav from "../components/admin/AdminNav.jsx";
 import AppModal from "../components/ui/AppModal.jsx";
+import { markdownToSections, sectionsToMarkdown } from "../services/legalMarkdown.js";
 
 function LegalWorkspace() {
   const client = useQueryClient();
   const current = useQuery({ queryKey: ["legal-editor"], queryFn: async () => (await apiClient.get("/api/legal/current")).data });
   const [draft, setDraft] = useState(null), [preview, setPreview] = useState(null);
+  const [docModes, setDocModes] = useState({}); // documentId or index -> "markdown" | "sections"
+  const [markdownTexts, setMarkdownTexts] = useState({}); // documentId or index -> string
   const publish = useMutation({ mutationFn: value => apiClient.post("/api/legal/versions", value), onSuccess: () => { setDraft(null); setPreview(null); return client.invalidateQueries(); } });
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  const value = draft ?? (current.data && { ...current.data, version: current.data.version + 1, publishedOn: today });
+  const value = draft ?? (current.data && {
+    ...current.data,
+    version: current.data.version + 1,
+    publishedOn: today,
+    documents: current.data.documents.filter(d => ["termos", "privacidade"].includes(d.id)),
+  });
   function edit(change) { const next = structuredClone(value); change(next); setDraft(next); setPreview(null); }
+
+  function handleImportMd(file, index) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target.result;
+      const targetDoc = value.documents[index];
+      const h1Match = content.match(/^#\s+(.+)$/m);
+      const parsedSections = markdownToSections(content);
+      edit((next) => {
+        if (h1Match && h1Match[1].trim()) {
+          next.documents[index].title = h1Match[1].trim();
+        }
+        next.documents[index].sections = parsedSections;
+      });
+      setMarkdownTexts((prev) => ({ ...prev, [targetDoc.id || index]: content }));
+    };
+    reader.readAsText(file);
+  }
+
   return <>
-    <p>A publicação preserva as versões anteriores e exige nova confirmação dos usuários. Mantenha os termos e a política de privacidade e acrescente os novos documentos.</p>
+    <p>A publicação preserva as versões anteriores e exige nova confirmação dos usuários. A plataforma mantém exclusivamente os Termos de Uso e a Política de Privacidade.</p>
     {current.error && <Notice error>{apiError(current.error, "Não foi possível carregar os documentos.")}</Notice>}
     {value && <form className="panel space-y-5 p-5" onSubmit={event => { event.preventDefault(); setPreview(structuredClone(value)); }}>
       <p className="font-bold">Nova versão: {value.version}</p>
       <Field label="Data da publicação" type="date" value={value.publishedOn} onChange={event => edit(next => { next.publishedOn = event.target.value; })} required max={today} />
-      {value.documents.map((document, index) => <fieldset key={index} className="space-y-3 rounded-xl border border-line p-4"><legend>Documento {index + 1}</legend>
-        <Field label="Identificador" value={document.id} required onChange={event => edit(next => { next.documents[index].id = event.target.value; })} hint="Use letras minúsculas, números e hífens." maxLength={64} slotProps={{ htmlInput: { pattern: "[a-z][a-z0-9-]{0,63}", maxLength: 64 } }} />
-        <Field label="Nome da aba" value={document.label} required onChange={event => edit(next => { next.documents[index].label = event.target.value; })} />
-        <Field label="Título do documento" value={document.title} fullWidth required onChange={event => edit(next => { next.documents[index].title = event.target.value; })} />
-        {document.sections.map((section, sectionIndex) => <div key={sectionIndex} className="space-y-3 border-t border-line pt-3">
-          <Field label="Título da seção" value={section.heading} fullWidth required onChange={event => edit(next => { next.documents[index].sections[sectionIndex].heading = event.target.value; })} />
-          <Field label="Texto da seção" value={section.content} multiline minRows={4} fullWidth required onChange={event => edit(next => { next.documents[index].sections[sectionIndex].content = event.target.value; })} />
-          {document.sections.length > 1 && <button type="button" className="button-secondary" onClick={() => edit(next => { next.documents[index].sections.splice(sectionIndex, 1); })}>Remover seção</button>}
-        </div>)}
-        <div className="flex gap-3"><button type="button" className="button-secondary" onClick={() => edit(next => { next.documents[index].sections.push({ heading: "", content: "" }); })}>Adicionar seção</button>
-          {!["termos", "privacidade"].includes(document.id) && <button type="button" className="button-danger" onClick={() => edit(next => { next.documents.splice(index, 1); })}>Remover documento</button>}</div>
-      </fieldset>)}
-      <div className="flex flex-wrap gap-3"><button type="button" className="button-secondary" disabled={value.documents.length >= 20} onClick={() => edit(next => { next.documents.push({ id: "", label: "", title: "", sections: [{ heading: "", content: "" }] }); })}>Adicionar documento</button><button className="button-primary">Revisar publicação</button></div>
+      {value.documents.map((document, index) => {
+        const isMarkdown = docModes[document.id || index] === "markdown";
+        const currentMd = markdownTexts[document.id || index] ?? sectionsToMarkdown(document.sections);
+
+        return (
+          <fieldset key={index} className="space-y-3 rounded-xl border border-line p-4"><legend>Documento {index + 1}</legend>
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-2">
+              <span className="text-xs text-muted font-medium">{document.label || document.title}</span>
+              <div className="flex items-center gap-2">
+                <label className="button-secondary !py-1 !px-2.5 !text-xs cursor-pointer flex items-center gap-1.5" title="Importar arquivo .md para este documento">
+                  <Upload size={13} />
+                  <span>Importar .md</span>
+                  <input
+                    type="file"
+                    accept=".md,text/markdown"
+                    className="hidden"
+                    onChange={(e) => {
+                      handleImportMd(e.target.files?.[0], index);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className={`button-secondary !py-1 !px-2.5 !text-xs flex items-center gap-1.5 ${isMarkdown ? "bg-brand/20 border-brand text-brand" : ""}`}
+                  onClick={() => {
+                    const nextMode = isMarkdown ? "sections" : "markdown";
+                    setDocModes((prev) => ({ ...prev, [document.id || index]: nextMode }));
+                    if (!isMarkdown) {
+                      setMarkdownTexts((prev) => ({ ...prev, [document.id || index]: sectionsToMarkdown(document.sections) }));
+                    }
+                  }}
+                >
+                  <FileCode size={13} />
+                  <span>{isMarkdown ? "Editar por Seções" : "Editar via Markdown (.md)"}</span>
+                </button>
+              </div>
+            </div>
+
+            <Field label="Identificador" value={document.id} required disabled hint="Identificador padrão do sistema." />
+            <Field label="Nome da aba" value={document.label} required onChange={event => edit(next => { next.documents[index].label = event.target.value; })} />
+            <Field label="Título do documento" value={document.title} fullWidth required onChange={event => edit(next => { next.documents[index].title = event.target.value; })} />
+
+            {isMarkdown ? (
+              <div className="space-y-2 border-t border-line pt-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted">Conteúdo do Documento (Markdown .md)</span>
+                  <span className="text-xs text-muted">Use ## para títulos de seção</span>
+                </div>
+                <Field
+                  label="Texto em Markdown"
+                  value={currentMd}
+                  multiline
+                  minRows={10}
+                  fullWidth
+                  required
+                  placeholder="## Título da Seção&#10;&#10;Texto descritivo da seção em markdown..."
+                  onChange={(event) => {
+                    const text = event.target.value;
+                    setMarkdownTexts((prev) => ({ ...prev, [document.id || index]: text }));
+                    const parsed = markdownToSections(text);
+                    edit((next) => {
+                      next.documents[index].sections = parsed;
+                    });
+                  }}
+                />
+              </div>
+            ) : (
+              document.sections.map((section, sectionIndex) => (
+                <div key={sectionIndex} className="space-y-3 border-t border-line pt-3">
+                  <Field label="Título da seção" value={section.heading} fullWidth required onChange={event => edit(next => { next.documents[index].sections[sectionIndex].heading = event.target.value; })} />
+                  <Field label="Texto da seção" value={section.content} multiline minRows={4} fullWidth required onChange={event => edit(next => { next.documents[index].sections[sectionIndex].content = event.target.value; })} />
+                  {document.sections.length > 1 && <button type="button" className="button-secondary !py-1 !text-xs" onClick={() => edit(next => { next.documents[index].sections.splice(sectionIndex, 1); })}>Remover seção</button>}
+                </div>
+              ))
+            )}
+
+            <div className="flex flex-wrap items-center gap-3 pt-2">
+              {!isMarkdown && (
+                <button type="button" className="button-secondary" onClick={() => edit(next => { next.documents[index].sections.push({ heading: "", content: "" }); })}>
+                  Adicionar seção
+                </button>
+              )}
+            </div>
+          </fieldset>
+        );
+      })}
+      <div className="flex flex-wrap items-center gap-3">
+        <button className="button-primary">Revisar publicação</button>
+      </div>
     </form>}
     {publish.error && <Notice error>{apiError(publish.error, "Não foi possível publicar.")}</Notice>}
     {publish.isSuccess && <Notice>Nova versão publicada. Confirme os documentos atualizados para continuar.</Notice>}

@@ -94,15 +94,19 @@ describe("novos fluxos da plataforma", () => {
     await waitFor(() => expect(audit).toHaveBeenCalledTimes(2));
   });
 
-  it("revisa um novo documento antes de publicar a próxima versão", async () => {
+  it("revisa e publica a próxima versão dos documentos legais", async () => {
     const publish = mockApi("post", "/api/legal/versions", async ({ request }) => {
       const body = await request.json(); expect(body.version).toBe(legalRelease.version + 1);
-      expect(body.documents.at(-1)).toMatchObject({ id: "regulamento", title: "Regulamento" }); return body;
+      expect(body.documents).toHaveLength(2);
+      expect(body.documents.map(d => d.id)).toEqual(["termos", "privacidade"]);
+      expect(body.documents[0].title).toBe("Termos e Condições Atualizados");
+      return body;
     });
     const { user } = renderApp("/admin/documentos", { session: adminUser });
-    await user.click(await screen.findByRole("button", { name: "Adicionar documento" }));
-    const document = within(screen.getByRole("group", { name: "Documento 3" }));
-    for (const [name, text] of [[/^Identificador/, "regulamento"], [/^Nome da aba/, "Regras"], [/^Título do documento/, "Regulamento"], [/^Título da seção/, "Acesso"], [/^Texto da seção/, "Regras de acesso ao curso."]]) { await user.click(document.getByRole("textbox", { name })); await user.paste(text); }
+    const document1 = within(await screen.findByRole("group", { name: "Documento 1" }));
+    const titleInput = document1.getByRole("textbox", { name: /^Título do documento/ });
+    await user.clear(titleInput);
+    await user.type(titleInput, "Termos e Condições Atualizados");
     await user.click(screen.getByRole("button", { name: "Revisar publicação" }));
     expect(publish).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "Publicar versão e solicitar nova confirmação" }));
