@@ -12,7 +12,6 @@ import ResourcePagination from "../components/ui/ResourcePagination.jsx";
 import { Notice } from "../components/ui/PageState.jsx";
 import StatCard from "../components/ui/StatCard.jsx";
 import RoleBadge from "../components/account/RoleBadge.jsx";
-import AdminPendingPanel from "../components/admin/AdminPendingPanel.jsx";
 import AdminNav from "../components/admin/AdminNav.jsx";
 import AdminAuditPanel, { AuditDialog, formatDate, getAuditInfo, operationBadges, operations } from "../components/admin/AdminAuditPanel.jsx";
 
@@ -107,9 +106,8 @@ export default function Admin() {
       <AdminNav />
       <PageHeader
         title="Administração"
-        description="Gerencie usuários, pendências, auditoria e documentos da plataforma."
+        description="Gerencie usuários, auditoria e documentos da plataforma."
       />
-      <AdminPendingPanel />
       <ListBase resource="users" perPage={10} sort={{ field: "name", order: "ASC" }} disableAuthentication>
         <UserListState>
           <UserStats />

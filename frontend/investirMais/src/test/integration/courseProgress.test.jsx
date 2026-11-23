@@ -34,13 +34,28 @@ describe("progresso dos cursos", () => {
       { id: "ana", name: "Ana", progress_percentage: 100, completed: true, total_lessons: 1, completed_lessons: 1, total_questions: 1, passed_questions: 1, attempts: 2, accuracy: 50 },
       { id: "bia", name: "Bia", progress_percentage: 50, completed: false, total_lessons: 1, completed_lessons: 1, total_questions: 1, passed_questions: 0, attempts: 1, accuracy: 0 },
     ]);
-    renderApp("/educacao/" + course.id, { session: teacher });
+    const { user } = renderApp("/educacao/" + course.id, { session: teacher });
     const section = within(await screen.findByRole("region", { name: "Desempenho do curso" }));
-    expect(await section.findByRole("progressbar", { name: "Progresso de Ana" })).toHaveAttribute("aria-valuenow", "100");
-    expect(section.getByRole("progressbar", { name: "Progresso de Bia" })).toHaveAttribute("aria-valuenow", "50");
-    expect(section.getByText("Taxa de conclusão").parentElement).toHaveTextContent("50%");
+    expect((await section.findByText("Taxa de conclusão")).parentElement).toHaveTextContent("50%");
     expect(section.getByText("Alunos inscritos").parentElement).toHaveTextContent("2");
     expect(section.getByText("Alunos que concluíram").parentElement).toHaveTextContent("1");
+
+    // Abre o modal de progresso individual
+    await user.click(section.getByRole("button", { name: /ver progresso individual dos alunos/i }));
+    const dialog = within(await screen.findByRole("dialog", { name: "Progresso individual dos alunos" }));
+    expect(await dialog.findByRole("progressbar", { name: "Progresso de Ana" })).toHaveAttribute("aria-valuenow", "100");
+    expect(dialog.getByRole("progressbar", { name: "Progresso de Bia" })).toHaveAttribute("aria-valuenow", "50");
+
+    // Testa busca
+    await user.type(dialog.getByPlaceholderText(/buscar/i), "Ana");
+    expect(dialog.getByRole("progressbar", { name: "Progresso de Ana" })).toBeInTheDocument();
+    expect(dialog.queryByRole("progressbar", { name: "Progresso de Bia" })).not.toBeInTheDocument();
+
+    // Testa filtro por status (Em andamento)
+    await user.clear(dialog.getByPlaceholderText(/buscar/i));
+    await user.click(dialog.getByRole("button", { name: /em andamento/i }));
+    expect(dialog.queryByRole("progressbar", { name: "Progresso de Ana" })).not.toBeInTheDocument();
+    expect(dialog.getByRole("progressbar", { name: "Progresso de Bia" })).toBeInTheDocument();
   });
 
   it("mostra a taxa de acerto dentro de cada questão e mantém os dados de alunos no desempenho", async () => {

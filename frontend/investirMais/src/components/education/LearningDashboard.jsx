@@ -1,7 +1,8 @@
 import CourseProgressBar from "./CourseProgressBar.jsx";
+import StudentsProgressDialog from "./StudentsProgressDialog.jsx";
 import { useLearningCourses } from "../../services/learningQueries.js";
 import { Accordion, AccordionDetails, AccordionSummary } from "@mui/material";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Users } from "lucide-react";
 import { Link } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient, apiError } from "../../services/api.js";
@@ -32,6 +33,7 @@ export function StudentLearningDashboard() {
 }
 
 export function CourseLearningDashboard({ courseId }) {
+  const [showStudentsModal, setShowStudentsModal] = useState(false);
   const stats = useQuery({
     queryKey: ["course-students", courseId],
     queryFn: async () => (await apiClient.get(`/api/learning/courses/${courseId}/students`)).data
@@ -50,23 +52,25 @@ export function CourseLearningDashboard({ courseId }) {
         {stats.data && <>
           <div className="grid gap-3 sm:grid-cols-3">{[["Alunos inscritos", students.length], ["Alunos que concluíram", completed], ["Taxa de conclusão", completionRate.toLocaleString("pt-BR") + "%"]].map(([label, value]) => <div key={label} className="rounded-xl border border-line bg-canvas p-4"><p className="text-sm text-muted">{label}</p><p className="mt-1 text-2xl font-bold">{value}</p></div>)}</div>
           <p className="text-xs text-muted">Conclusão considera todas as aulas assistidas e questões aprovadas. A taxa compara os alunos que concluíram com os inscritos ativos.</p>
+          <div className="pt-2">
+            <button
+              type="button"
+              className="button-secondary flex items-center gap-2"
+              disabled={students.length === 0}
+              onClick={() => setShowStudentsModal(true)}
+            >
+              <Users size={16} /> Ver progresso individual dos alunos ({students.length})
+            </button>
+          </div>
         </>}
       </AccordionDetails>
     </Accordion>
 
-    <Accordion defaultExpanded className="panel">
-      <AccordionSummary expandIcon={<ChevronDown size={20} />}>
-        <h2 className="text-xl font-bold">Progresso individual dos alunos</h2>
-      </AccordionSummary>
-      <AccordionDetails className="space-y-3">
-        {stats.isPending && <p>Carregando progresso dos alunos…</p>}
-        {stats.error && <Notice error>{apiError(stats.error, "Não foi possível carregar o progresso dos alunos.")}</Notice>}
-        {stats.data && (!students.length ? <p>Nenhum aluno matriculado.</p> : <div className="space-y-3">{students.map(student => <article key={student.id} className="space-y-3 rounded-xl border border-line p-4"><h3 className="font-semibold">{student.name || "Aluno " + student.id.slice(0, 8)}</h3>
-          <CourseProgressBar value={student.progress_percentage} label={"Progresso de " + (student.name || student.id.slice(0, 8))} completed={student.completed} />
-          <p className="text-sm text-muted">{student.completed_lessons} de {student.total_lessons} aulas · {student.passed_questions} de {student.total_questions} questões aprovadas</p>
-          <p className="text-sm text-muted">{student.attempts} respostas · {student.accuracy ?? 0}% de acerto</p>
-        </article>)}</div>)}
-      </AccordionDetails>
-    </Accordion>
+    {showStudentsModal && (
+      <StudentsProgressDialog
+        students={students}
+        onClose={() => setShowStudentsModal(false)}
+      />
+    )}
   </section>;
 }
