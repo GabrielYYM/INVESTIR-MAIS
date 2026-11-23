@@ -34,11 +34,17 @@ describe("novos fluxos da plataforma", () => {
       expect(await request.json()).toEqual({ approve: true, reason: "Qualificação conferida" }); return { ...application, status: "APPROVED" };
     });
     const { user } = renderApp("/admin/professores", { session: adminUser });
-    expect(await screen.findByRole("heading", { name: student.name, exact: true })).toBeInTheDocument();
+    expect(await screen.findByText(student.name)).toBeInTheDocument();
     expect(screen.queryByText(student.id, { exact: false })).not.toBeInTheDocument();
-    expect(await screen.findByRole("button", { name: "Aprovar professor" })).toBeDisabled();
-    await user.type(screen.getByLabelText("Parecer da análise"), "Qualificação conferida");
-    await user.click(screen.getByRole("button", { name: "Aprovar professor" }));
+
+    // Clica no botão "Visualizar" da tabela para abrir o modal de detalhes
+    await user.click(screen.getByRole("button", { name: "Visualizar" }));
+    const modal = within(await screen.findByRole("dialog"));
+    expect(await modal.findByRole("heading", { name: student.name, exact: true })).toBeInTheDocument();
+    expect(modal.getByRole("button", { name: "Aprovar professor" })).toBeDisabled();
+
+    await user.type(modal.getByLabelText("Parecer da análise"), "Qualificação conferida");
+    await user.click(modal.getByRole("button", { name: "Aprovar professor" }));
     await waitFor(() => expect(review).toHaveBeenCalledOnce());
   });
 

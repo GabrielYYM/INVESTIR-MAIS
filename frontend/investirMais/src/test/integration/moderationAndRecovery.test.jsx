@@ -45,11 +45,16 @@ describe("denúncias e recuperação", () => {
       expect(await request.json()).toEqual({ status: "RESOLVED", note: "Vídeo conferido e removido", removeLesson: true }); return { ...report, status: "RESOLVED" };
     });
     const { user } = renderApp("/admin/denuncias", { session: adminUser });
-    expect(await screen.findByRole("button", { name: "Remover vídeo e resolver" })).toBeDisabled();
-    await user.type(screen.getByLabelText("Parecer da denúncia"), "Vídeo conferido e removido");
-    await user.click(screen.getByRole("button", { name: "Remover vídeo e resolver" }));
+
+    // Clica no botão "Visualizar" da tabela para abrir o modal de detalhes
+    await user.click(await screen.findByRole("button", { name: "Visualizar" }));
+    const modal = within(await screen.findByRole("dialog"));
+
+    expect(await modal.findByRole("button", { name: "Remover vídeo e resolver" })).toBeDisabled();
+    await user.type(modal.getByLabelText("Parecer da denúncia"), "Vídeo conferido e removido");
+    await user.click(modal.getByRole("button", { name: "Remover vídeo e resolver" }));
     expect(review).not.toHaveBeenCalled();
-    await user.click(screen.getByRole("button", { name: "Confirmar remoção da aula" }));
+    await user.click(modal.getByRole("button", { name: "Confirmar remoção da aula" }));
     await waitFor(() => expect(review).toHaveBeenCalledOnce());
   });
 

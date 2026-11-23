@@ -14,21 +14,36 @@ async function userRow(uid = student.id) {
 }
 
 describe("gestão de usuários", () => {
-  it("explica que a promoção depende da aprovação dos documentos", async () => {
-    const update = mockApi("patch", `/api/users/${student.id}/role`, {});
-    const { user } = setup([student]);
-    await user.click((await userRow()).getByRole("button", { name: "Alterar Papel" }));
-    expect(screen.getByText("A promoção a professor ocorre pela aprovação dos documentos em Candidaturas de professores.")).toBeInTheDocument();
-    await user.click(screen.getByRole("combobox", { name: "Novo Papel" }));
-    expect(await screen.findByRole("option", { name: "Professor" })).toHaveAttribute("aria-disabled", "true");
-    expect(screen.getByRole("option", { name: "Aluno" })).not.toHaveAttribute("aria-disabled", "true");
-    expect(update).not.toHaveBeenCalled();
+  it("não exibe botão de alteração de papel na listagem de usuários", async () => {
+    setup([adminUser, student, teacherUser]);
+    await screen.findByRole("heading", { name: "Usuários Cadastrados" });
+    expect(screen.queryByRole("button", { name: "Alterar Papel" })).not.toBeInTheDocument();
+  });
+
+  it("exibe botão de visualização na tabela de usuários e abre modal criando auditoria de visualização", async () => {
+    let auditCalled = false;
+    mockApi("get", `/api/audit/users/${student.id}`, () => {
+      auditCalled = true;
+      return { entity: "users", id: student.id, revision: 1, operation: 0, timestamp: "2026-11-20T10:00:00Z" };
+    });
+    const { user } = setup();
+    const row = await userRow(student.id);
+    const viewButton = row.getByRole("button", { name: "Ver detalhes do usuário" });
+    expect(viewButton).toBeInTheDocument();
+
+    await user.click(viewButton);
+    expect(auditCalled).toBe(true);
+
+    const dialog = within(await screen.findByRole("dialog"));
+    expect(dialog.getByText(student.name)).toBeInTheDocument();
+    expect(dialog.getByText(student.email)).toBeInTheDocument();
+    expect(screen.queryByText(/Histórico de Auditoria/i)).not.toBeInTheDocument();
   });
 
   it("filtra usuários por apelido, e-mail e perfil, oculta e-mail na tabela e protege administradores", async () => {
     const { user } = setup();
     const row = await userRow(adminUser.id);
-    expect(row.getByRole("button", { name: "Alterar Papel" })).toBeDisabled();
+    expect(row.queryByRole("button", { name: "Alterar Papel" })).not.toBeInTheDocument();
     expect(row.getByText("Você")).toBeInTheDocument();
     expect(screen.queryByText(adminUser.email)).not.toBeInTheDocument();
     expect(screen.queryByText(student.email)).not.toBeInTheDocument();
@@ -73,38 +88,6 @@ describe("gestão de usuários", () => {
     expect(await screen.findByText(teacherUser.id)).toBeInTheDocument();
     expect(screen.getByText(adminUser.id)).toBeInTheDocument();
     expect(search).toHaveValue("");
-  });
-
-  it("altera o professor para aluno e revalida a listagem", async () => {
-    let users = [adminUser, student, teacherUser];
-    mockApi("get", "/api/users", () => users);
-    const update = mockApi("patch", `/api/users/${teacherUser.id}/role`, async ({ request }) => {
-      const body = await request.json(); expect(body).toEqual({ role: "STUDENT" });
-      const updated = { ...teacherUser, role: body.role }; users = users.map(u => u.id === teacherUser.id ? updated : u); return updated;
-    });
-    const { user } = renderApp("/admin", { session: adminUser });
-    await user.click((await userRow(teacherUser.id)).getByRole("button", { name: "Alterar Papel" }));
-    await user.click(screen.getByRole("combobox", { name: "Novo Papel" }));
-    await user.click(await screen.findByRole("option", { name: "Aluno" }));
-    await user.click(screen.getByRole("button", { name: "Salvar Alteração" }));
-    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect((await userRow(teacherUser.id)).getByText("Aluno")).toBeInTheDocument(); expect(update).toHaveBeenCalledOnce();
-  });
-
-  it("preserva o diálogo e a escolha quando a atualização falha", async () => {
-    mockApi("patch", `/api/users/${teacherUser.id}/role`, { detail: "Perfil indisponível." }, { status: 409 });
-    const { user } = setup();
-    await user.click((await userRow(teacherUser.id)).getByRole("button", { name: "Alterar Papel" }));
-    await user.click(screen.getByRole("combobox", { name: "Novo Papel" }));
-    await user.click(await screen.findByRole("option", { name: "Aluno" }));
-    await user.click(screen.getByRole("button", { name: "Salvar Alteração" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Perfil indisponível");
-    expect(screen.getByRole("combobox", { name: "Novo Papel" })).toHaveTextContent("Aluno");
-    await user.click(screen.getByRole("button", { name: "Cancelar", exact: true }));
-    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    await user.click((await userRow()).getByRole("button", { name: "Alterar Papel" }));
-    await user.keyboard("{Escape}");
-    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
   it.each([{ users: [] }, { users: [student] }, { users: [{ ...student, role: "CUSTOM", createdAt: null }] }])("mostra bases vazias e dados incompletos %#", async ({ users }) => {

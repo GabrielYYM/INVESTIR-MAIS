@@ -50,15 +50,25 @@ public class AuditController {
         return Map.of("items", rows, "totalItems", total, "page", page, "size", size);
     }
 
-    @GetMapping("/{entity}/{entityId}/{revision}")
+    @GetMapping({"/{entity}/{entityId}", "/{entity}/{entityId}/{revision}"})
     @Transactional(readOnly = true)
-    public Map<String, Object> auditDetail(@PathVariable String entity, @PathVariable UUID entityId, @PathVariable int revision) {
+    public Map<String, Object> auditDetail(@PathVariable String entity, @PathVariable UUID entityId, @PathVariable(required = false) Integer revision) {
         String table = TABLES.get(entity);
         if (table == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Entidade inválida.");
-        var row = jdbc.sql("SELECT a.id, a.rev AS revision, a.revtype AS operation, r.revtstmp AS timestamp, r.actor, r.actor_role AS role, (to_jsonb(a)-'password')::text AS data FROM " + table + " a JOIN revinfo r ON r.rev=a.rev WHERE a.id=? AND a.rev=?")
-            .params(entityId, revision).query().listOfRows().stream().findFirst().orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Revisão não encontrada."));
+        String sql = "SELECT a.id, a.rev AS revision, a.revtype AS operation, r.revtstmp AS timestamp, r.actor, r.actor_role AS role, (to_jsonb(a)-'password')::text AS data FROM " + table + " a JOIN revinfo r ON r.rev=a.rev WHERE a.id=?";
+        var params = new ArrayList<Object>();
+        params.add(entityId);
+        if (revision != null) {
+            sql += " AND a.rev=?";
+            params.add(revision);
+        } else {
+            sql += " ORDER BY a.rev DESC LIMIT 1";
+        }
+        var row = jdbc.sql(sql)
+            .params(params).query().listOfRows().stream().findFirst().orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Revisão não encontrada."));
         row.put("entity", entity);
-        access.record("DETAIL", entity, entityId, revision, List.of(entity + ":" + entityId + ":" + revision));
+        int rev = ((Number) row.get("revision")).intValue();
+        access.record("DETAIL", entity, entityId, rev, List.of(entity + ":" + entityId + ":" + rev));
         return row;
     }
 

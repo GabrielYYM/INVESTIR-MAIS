@@ -1,18 +1,18 @@
 import { useState } from "react";
-import { Box, Button, CircularProgress, Divider, InputAdornment, Paper, Stack, Typography } from "@mui/material";
-import { Search, ShieldCheck, UserCheck, Users } from "lucide-react";
-import { DataTable, FilterLiveForm, ListBase, SelectInput, TextInput, useInput, useListContext, useRefresh } from "react-admin";
+import { Box, CircularProgress, Divider, IconButton, InputAdornment, Paper, Stack, Tooltip, Typography } from "@mui/material";
+import { Eye, Search, ShieldCheck, UserCheck, Users } from "lucide-react";
+import { DataTable, FilterLiveForm, ListBase, TextInput, useInput, useListContext } from "react-admin";
 import { Navigate, redirect, useLoaderData } from "react-router";
-import { UpdateUserRoleBody } from "../generated/account.zod.ts";
 import { getCurrentUser } from "../services/authService.js";
-import { roleNames } from "../services/dataProvider.js";
+import { auditDetail } from "../generated/account.ts";
+import { apiClient, apiError } from "../services/api.js";
 import PageHeader from "../components/layout/PageHeader.jsx";
-import CrudDialog from "../components/ui/CrudDialog.jsx";
 import ResourcePagination from "../components/ui/ResourcePagination.jsx";
 import { Notice } from "../components/ui/PageState.jsx";
 import StatCard from "../components/ui/StatCard.jsx";
 import RoleBadge from "../components/account/RoleBadge.jsx";
 import AdminNav from "../components/admin/AdminNav.jsx";
+import AppModal from "../components/ui/AppModal.jsx";
 import AdminAuditPanel, { AuditDialog, formatDate, getAuditInfo, operationBadges, operations } from "../components/admin/AdminAuditPanel.jsx";
 
 export { AuditDialog, formatDate, getAuditInfo, operationBadges, operations };
@@ -93,13 +93,64 @@ function UserRoleFilter() {
   );
 }
 
+export function UserDetailDialog({ user, onClose }) {
+  return (
+    <AppModal title="Detalhes do Usuário" width={640} onClose={onClose}>
+      <Stack spacing={2.5}>
+        <Box className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Box>
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>Nome</Typography>
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>{user.name}</Typography>
+          </Box>
+          <Box>
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>Papel</Typography>
+            <Box sx={{ mt: 0.5 }}>{user.role ? <RoleBadge role={user.role} /> : "—"}</Box>
+          </Box>
+          <Box>
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>UID</Typography>
+            <Typography variant="body2" sx={{ fontFamily: "monospace", wordBreak: "break-all" }}>{user.id}</Typography>
+          </Box>
+          <Box>
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>E-mail</Typography>
+            <Typography variant="body2">{user.email || "—"}</Typography>
+          </Box>
+          <Box className="sm:col-span-2">
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>Data de Cadastro</Typography>
+            <Typography variant="body2">{formatDate(user.createdAt)}</Typography>
+          </Box>
+        </Box>
+      </Stack>
+    </AppModal>
+  );
+}
+
 export default function Admin() {
   const { currentUser } = useLoaderData();
-  const [editor, setEditor] = useState(null);
   const [audited, setAudited] = useState(null);
-  const [feedback, setFeedback] = useState("");
-  const refresh = useRefresh();
-  const promotionBlock = "A promoção a professor ocorre pela aprovação dos documentos em Candidaturas de professores.";
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [openingUser, setOpeningUser] = useState(false);
+  const [userDetailError, setUserDetailError] = useState(null);
+
+  async function openUserDetail(user) {
+    setUserDetailError(null);
+    setOpeningUser(true);
+    try {
+      try {
+        await apiClient.get(`/api/audit/users/${user.id}`);
+      } catch {
+        try {
+          await auditDetail("users", user.id, 1);
+        } catch {
+          // Fallback silencioso se o serviço de auditoria falhar
+        }
+      }
+      setSelectedUser(user);
+    } catch (error) {
+      setUserDetailError(apiError(error, "Não foi possível registrar a visualização do usuário."));
+    } finally {
+      setOpeningUser(false);
+    }
+  }
 
   return (
     <Box className="w-full space-y-5">
@@ -111,16 +162,16 @@ export default function Admin() {
       <ListBase resource="users" perPage={10} sort={{ field: "name", order: "ASC" }} disableAuthentication>
         <UserListState>
           <UserStats />
-          {feedback && <Notice>{feedback}</Notice>}
           <AdminAuditPanel onSelect={setAudited} />
           <Paper component="section" variant="outlined" className="panel space-y-5 p-5 sm:p-6" aria-labelledby="usuarios-titulo">
             <Box className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <Box>
                 <Typography variant="h2" id="usuarios-titulo" sx={{ fontSize: 18, fontWeight: 700 }}>Usuários Cadastrados</Typography>
-                <Typography variant="caption" color="text.secondary">Visualize a base de dados e altere papéis de acesso.</Typography>
+                <Typography variant="caption" color="text.secondary">Visualize a base de dados de usuários cadastrados.</Typography>
               </Box>
               <UserFilters />
             </Box>
+            {userDetailError && <Notice error>{userDetailError}</Notice>}
             <Box sx={{ overflowX: "auto" }}>
               <DataTable
                 bulkActionButtons={false}
@@ -147,11 +198,16 @@ export default function Admin() {
                   label="Ações"
                   align="right"
                   render={user => (
-                    <Stack direction="row" spacing={1} sx={{ justifyContent: "flex-end" }}>
-                      <Button size="small" startIcon={<ShieldCheck size={14} />} disabled={user.role === "ADMIN"} onClick={() => setEditor(user)}>
-                        Alterar Papel
-                      </Button>
-                    </Stack>
+                    <Tooltip title="Ver detalhes do usuário">
+                      <IconButton
+                        size="small"
+                        aria-label="Ver detalhes do usuário"
+                        disabled={openingUser}
+                        onClick={() => openUserDetail(user)}
+                      >
+                        <Eye size={16} />
+                      </IconButton>
+                    </Tooltip>
                   )}
                 />
               </DataTable>
@@ -161,26 +217,7 @@ export default function Admin() {
         </UserListState>
       </ListBase>
 
-      {editor && (
-        <CrudDialog
-          resource="users"
-          item={editor}
-          title="Alterar Papel de Acesso"
-          label="Salvar Alteração"
-          schema={UpdateUserRoleBody}
-          defaults={{ role: editor.role }}
-          onClose={() => setEditor(null)}
-          onSuccess={updated => {
-            setFeedback(`Papel de ${updated.name} alterado com sucesso para ${roleNames[updated.role]}. As sessões ativas foram revogadas.`);
-            refresh();
-          }}
-        >
-          <Typography variant="body2" color="text.secondary">{editor.name} ({editor.email})</Typography>
-          {promotionBlock && <Notice>{promotionBlock}</Notice>}
-          <SelectInput source="role" label="Novo Papel" choices={[{ id: "STUDENT", name: "Aluno" }, { id: "TEACHER", name: "Professor", disabled: Boolean(promotionBlock) }]} />
-        </CrudDialog>
-      )}
-
+      {selectedUser && <UserDetailDialog user={selectedUser} onClose={() => setSelectedUser(null)} />}
       {audited && <AuditDialog audit={audited.row} users={audited.users} onClose={() => setAudited(null)} />}
     </Box>
   );
