@@ -1,4 +1,4 @@
-import { StudentLearningDashboard, TeacherCourses } from "../components/education/LearningDashboard.jsx";
+import { StudentLearningDashboard } from "../components/education/LearningDashboard.jsx";
 import { useMemo } from "react";
 import { AlertCircle, ArrowRight, BookOpen, Calendar, ChevronRight, Filter, PlayCircle, Plus, RotateCcw, TrendingUp, Users } from "lucide-react";
 import { Button, LinearProgress, Stack, TextField, Typography } from "@mui/material";
@@ -256,8 +256,7 @@ export default function Home() {
         <TeacherMetricsSection stats={teacherStats} period={period} setPeriod={setPeriod} />
       )}
 
-      {user.role === "TEACHER" && <TeacherCourses userId={user.id} />}
-      {["STUDENT", "TEACHER"].includes(user.role) && <StudentLearningDashboard />}
+      {user.role === "STUDENT" && <StudentLearningDashboard />}
       <section className="space-y-4" aria-labelledby="educacao-titulo">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>

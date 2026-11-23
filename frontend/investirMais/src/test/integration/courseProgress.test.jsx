@@ -1,8 +1,16 @@
-import { screen, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { mockApi } from "../helpers.js";
 import { renderApp } from "../renderApp.jsx";
 import { course, teacher } from "../fixtures.js";
+import { TeacherCourses } from "../../components/education/LearningDashboard.jsx";
+import { MemoryRouter } from "react-router";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+function renderTeacherCourses(userId) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(<QueryClientProvider client={queryClient}><MemoryRouter><TeacherCourses userId={userId} /></MemoryRouter></QueryClientProvider>);
+}
 
 describe("progresso dos cursos", () => {
   it("mostra o mesmo progresso pessoal no painel e no catálogo", async () => {
@@ -20,13 +28,26 @@ describe("progresso dos cursos", () => {
     expect(await screen.findByRole("progressbar", { name: "Seu progresso em " + course.name })).toHaveAttribute("aria-valuenow", "0");
   });
 
-  it("mostra inscritos, progresso médio e taxa de conclusão para o professor", async () => {
+  it("mostra inscritos, progresso médio e taxa de conclusão no componente de cursos do professor", async () => {
     mockApi("get", "/api/learning/teaching/courses", { items: [{ ...course, enrolled_students: 3, completed_students: 1, average_progress: 50, completion_rate: 33.3 }], totalPages: 1 });
-    renderApp("/", { session: teacher });
+    renderTeacherCourses(teacher.id);
     const section = within(await screen.findByRole("region", { name: "Cursos que criei" }));
     expect(await section.findByText("Inscritos: 3 · Concluíram: 1")).toBeInTheDocument();
     expect(section.getByRole("progressbar", { name: "Progresso médio em " + course.name })).toHaveAttribute("aria-valuenow", "50");
     expect(section.getByText("33,3%")).toBeInTheDocument();
+  });
+
+  it("não exibe 'Meus cursos' nem 'Cursos que criei' na dashboard principal do professor", async () => {
+    mockApi("get", "/api/teacher/dashboard", {
+      startDate: "2026-05-13", endDate: "2026-11-13", totalCourses: 1, totalLessons: 2,
+      totalStudents: 3, totalLessonsWatched: 4, averageCompletionRate: 66.7,
+      courses: [{ courseId: course.id, courseName: course.name, totalLessons: 2, enrolledStudents: 3, lessonsWatched: 4, completionRate: 66.7 }],
+    });
+    renderApp("/", { session: teacher });
+    expect(await screen.findByRole("heading", { name: /olá/i })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Cursos que criei" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Meu aprendizado" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Meus cursos")).not.toBeInTheDocument();
   });
 
   it("mostra progresso individual e a proporção de alunos que concluíram", async () => {
