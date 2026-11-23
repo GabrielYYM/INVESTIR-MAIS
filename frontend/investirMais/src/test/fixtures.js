@@ -5,7 +5,7 @@ export const student = {
   role: "STUDENT",
 };
 
-export const teacher = { ...student, role: "TEACHER" };
+export const teacher = { ...student, id: "22222222-1111-4111-8111-111111111111", name: "Professor Teste", email: "professor@example.test", role: "TEACHER" };
 export const admin = { ...student, role: "ADMIN" };
 
 export const course = {

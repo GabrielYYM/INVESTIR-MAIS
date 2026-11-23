@@ -2,7 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { mockApi, fillFields } from "../helpers.js";
 import { renderApp } from "../renderApp.jsx";
-import { adminUser, course, lesson, paged, student } from "../fixtures.js";
+import { adminUser, course, lesson, paged, student, teacher } from "../fixtures.js";
 
 describe("denúncias e recuperação", () => {
   it.each([["vídeo", "LESSON", lesson.id], ["professor", "TEACHER", course.professorId]])("envia denúncia de %s com motivo e detalhes", async (label, targetType, targetId) => {
@@ -19,6 +19,13 @@ describe("denúncias e recuperação", () => {
     await user.click(dialog.getByRole("button", { name: "Enviar denúncia" }));
     expect(await dialog.findByRole("status")).toHaveTextContent("Denúncia enviada");
     expect(send).toHaveBeenCalledOnce();
+  });
+
+  it("não exibe botões de denúncia para o professor dono do curso", async () => {
+    renderApp("/educacao/" + course.id, { session: teacher });
+    expect(await screen.findByRole("heading", { name: course.name })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Denunciar professor" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Denunciar vídeo" })).not.toBeInTheDocument();
   });
 
   it("exibe erro de denúncia duplicada sem perder a descrição", async () => {

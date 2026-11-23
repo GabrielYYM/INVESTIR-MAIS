@@ -1,6 +1,6 @@
 import { CourseLearningDashboard } from "../components/education/LearningDashboard.jsx";
 import { ProgressTrack } from "../components/education/CourseProgressBar.jsx";
-import { ArrowLeft, CheckCircle2, ChevronDown, CircleHelp, ExternalLink, Pencil, Play, Plus, Trash2, Video, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, ChevronDown, CircleHelp, ExternalLink, Flag, Pencil, Play, Plus, Trash2, UserX, Video, XCircle } from "lucide-react";
 import { lazy, Suspense, useMemo, useState } from "react";
 import { Accordion, AccordionDetails, AccordionSummary, Radio, RadioGroup } from "@mui/material";
 import { Link, useFetcher, useLoaderData, useLocation, useNavigate, useRevalidator, useRouteLoaderData, NavLink } from "react-router";
@@ -197,6 +197,7 @@ export default function Course() {
   } = useLoaderData();
   const user = useRouteLoaderData("app");
   const canManage = canManageEducation(user, course);
+  const isOwner = user?.id === course?.professorId;
   const [editor, setEditor] = useState(null);
   const [reporting, setReporting] = useState(null);
   const [questionEditor, setQuestionEditor] = useState(null);
@@ -236,23 +237,45 @@ export default function Course() {
       eyebrow="Curso"
       title={course.name}
       description={course.description}
-      actions={canManage && <div className="flex flex-wrap gap-2">
-        <button className="button-secondary" onClick={() => setEditor({
-          kind: "curso",
-          item: course
-        })}><Pencil size={15} /> Editar curso</button>
-        {canManage && <button className="button-secondary" onClick={() => setOrdering(true)}>Ordenar aulas</button>}
-        <button className="button-danger" onClick={() => setEditor({
-          kind: "curso",
-          item: course,
-          remove: true
-        })}><Trash2 size={15} /> Excluir curso</button>
-      </div>}
     />
 
-    <div className="flex flex-wrap gap-3">
-      <button className="button-secondary" onClick={() => setReporting({ targetType: "TEACHER", targetId: course.professorId, title: "Professor responsável por " + course.name })}>Denunciar professor</button>
-      {lesson && <button className="button-secondary" onClick={() => setReporting({ targetType: "LESSON", targetId: lesson.id, title: lesson.title })}>Denunciar vídeo</button>}
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center gap-2">
+        {canManage && <>
+          <button className="button-secondary" onClick={() => setEditor({
+            kind: "curso",
+            item: course
+          })}><Pencil size={15} /> Editar curso</button>
+          <button className="button-secondary" onClick={() => setOrdering(true)}>Ordenar aulas</button>
+          <button className="button-danger" onClick={() => setEditor({
+            kind: "curso",
+            item: course,
+            remove: true
+          })}><Trash2 size={15} /> Excluir curso</button>
+        </>}
+      </div>
+      <div className="flex flex-wrap items-center justify-end gap-2 ml-auto">
+        {!isOwner && (
+          <button
+            type="button"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-canvas px-3 py-1.5 text-xs sm:text-sm font-medium text-ink transition-colors hover:border-rose-500/40 hover:bg-rose-500/10 hover:text-rose-400"
+            onClick={() => setReporting({ targetType: "TEACHER", targetId: course.professorId, title: "Professor responsável por " + course.name })}
+          >
+            <UserX size={15} className="text-muted group-hover:text-rose-400" />
+            Denunciar professor
+          </button>
+        )}
+        {!isOwner && lesson && (
+          <button
+            type="button"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-canvas px-3 py-1.5 text-xs sm:text-sm font-medium text-ink transition-colors hover:border-rose-500/40 hover:bg-rose-500/10 hover:text-rose-400"
+            onClick={() => setReporting({ targetType: "LESSON", targetId: lesson.id, title: lesson.title })}
+          >
+            <Flag size={15} className="text-muted group-hover:text-rose-400" />
+            Denunciar vídeo
+          </button>
+        )}
+      </div>
     </div>
     <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(18rem,0.62fr)]">
       <div className="min-w-0 space-y-3.5">
