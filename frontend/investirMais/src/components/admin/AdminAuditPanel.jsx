@@ -11,10 +11,8 @@ import {
   Typography,
 } from "@mui/material";
 import { Eye } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
 import { apiError } from "../../services/api.js";
-import { auditDetail, auditAccesses } from "../../generated/account.ts";
-import StatePagination from "../ui/StatePagination.jsx";
+import { auditDetail } from "../../generated/account.ts";
 import { DataTable, ListBase, useListContext } from "react-admin";
 import AppModal from "../ui/AppModal.jsx";
 import { Field, SelectField } from "../ui/FormFields.jsx";
@@ -29,11 +27,25 @@ export const formatDate = value => {
 };
 
 const opMap = { 0: "INSERT", "0": "INSERT", INSERT: "INSERT", 1: "UPDATE", "1": "UPDATE", UPDATE: "UPDATE", 2: "DELETE", "2": "DELETE", DELETE: "DELETE" };
-export const operations = { INSERT: "Criação", UPDATE: "Modificação", DELETE: "Exclusão" };
+export const operations = {
+  INSERT: "Criação",
+  UPDATE: "Modificação",
+  DELETE: "Exclusão",
+  SEARCH: "Consulta",
+  DETAIL: "Visualização",
+  USER_HISTORY: "Histórico",
+  ACCESS_LOG: "Log de visualizações",
+  VIEW: "Visualização",
+};
 export const operationBadges = {
   INSERT: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
   UPDATE: "bg-sky-500/10 text-sky-400 border-sky-500/20",
   DELETE: "bg-rose-500/10 text-rose-400 border-rose-500/20",
+  SEARCH: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+  DETAIL: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+  USER_HISTORY: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
+  ACCESS_LOG: "bg-teal-500/10 text-teal-400 border-teal-500/20",
+  VIEW: "bg-amber-500/10 text-amber-400 border-amber-500/20",
 };
 const entityNames = {
   users: "Usuário",
@@ -43,6 +55,7 @@ const entityNames = {
   reports: "Denúncia",
   restorations: "Restauração",
   accounts: "Conta",
+  accesses: "Visualização",
 };
 export const entityOptions = [
   ["users", "Usuários"],
@@ -52,6 +65,7 @@ export const entityOptions = [
   ["reports", "Denúncias"],
   ["restorations", "Restaurações de conteúdo"],
   ["accounts", "Exclusões de contas"],
+  ["accesses", "Visualizações"],
 ];
 export const roleOptions = [
   ["ADMIN", "Administrador"],
@@ -67,6 +81,50 @@ function parseJson(value) {
 }
 
 export function getAuditInfo(row = {}, users = []) {
+  const isAccess = row.isAccess || row.entity === "accesses" || row.viewed_at != null;
+  if (isAccess) {
+    const operationKey = row.action ?? row.operation ?? "DETAIL";
+    const operationLabel = operations[operationKey] ?? ({ SEARCH: "Consulta", DETAIL: "Visualização", USER_HISTORY: "Histórico", ACCESS_LOG: "Log de visualizações" })[operationKey] ?? String(operationKey);
+    const entityKey = "accesses";
+    const entityLabel = entityNames[entityKey] ?? "Visualização";
+    const name = row.viewer_name ?? row.name ?? row.actor_name ?? "—";
+    const uid = row.viewer_id ?? row.uid ?? "—";
+    const email = row.viewer_email ?? row.email ?? row.actor ?? "—";
+    const role = row.viewer_role ?? row.role ?? null;
+    const revision = row.revision ?? "—";
+    const actorName = row.viewer_name ?? row.actor_name ?? "—";
+    const actorUid = row.viewer_id ?? row.actor_id ?? "—";
+    const actorEmail = row.viewer_email ?? row.actor ?? "—";
+    const actorRole = row.viewer_role ?? row.role ?? null;
+    const snapshot = parseJson(row.data) ?? {
+      acao: operationLabel,
+      registrosConsultados: row.record_references || "Consulta sem resultados",
+      quemVisualizou: name,
+      uidVisualizador: uid,
+      emailVisualizador: email,
+      papelVisualizador: role,
+    };
+    return {
+      revision,
+      operationKey,
+      operationLabel,
+      entityKey,
+      entityLabel,
+      name,
+      uid,
+      email,
+      role,
+      actorName,
+      actorUid,
+      actorEmail,
+      actorRole,
+      before: null,
+      snapshot,
+      isAccess: true,
+      recordReferences: row.record_references,
+    };
+  }
+
   const snapshot = parseJson(row.data) ?? row.user ?? null;
   const before = parseJson(row.before);
   const usersById = new Map(users.filter(u => u?.id).map(u => [String(u.id), u]));
@@ -88,7 +146,7 @@ export function getAuditInfo(row = {}, users = []) {
   const actorUid = row.actor_id ?? actorUser?.id ?? "—";
   const actorEmail = row.actor ?? actorUser?.email ?? "—";
   const actorRole = row.role ?? actorUser?.role ?? null;
-  return { revision, operationKey, operationLabel, entityKey, entityLabel, name, uid, email, role, actorName, actorUid, actorEmail, actorRole, before, snapshot };
+  return { revision, operationKey, operationLabel, entityKey, entityLabel, name, uid, email, role, actorName, actorUid, actorEmail, actorRole, before, snapshot, isAccess: false };
 }
 
 function AuditField({ label, children, mono = false }) {
@@ -104,26 +162,31 @@ function AuditField({ label, children, mono = false }) {
 
 export function AuditDialog({ audit, users = [], onClose }) {
   const info = getAuditInfo(audit, users);
-  const showBeforeAfter = info.operationKey !== "INSERT" && (info.operationKey === "UPDATE" || Boolean(info.before));
+  const showBeforeAfter = !info.isAccess && info.operationKey !== "INSERT" && (info.operationKey === "UPDATE" || Boolean(info.before));
   return (
-    <AppModal title="Detalhes da Auditoria" width={760} onClose={onClose}>
+    <AppModal title={info.isAccess ? "Detalhes da Visualização" : "Detalhes da Auditoria"} width={760} onClose={onClose}>
       <Stack spacing={2.5}>
         <Box className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <AuditField label="Revisão"><strong>{info.revision}</strong></AuditField>
-          <AuditField label="Data/Hora">{formatDate(audit.timestamp)}</AuditField>
+          <AuditField label="Data/Hora">{formatDate(audit.timestamp ?? audit.viewed_at)}</AuditField>
           <AuditField label="Operação">
             <span className={`inline-block rounded border px-2 py-0.5 text-xs ${operationBadges[info.operationKey] ?? "border-line text-muted"}`}>
               {info.operationLabel}
             </span>
           </AuditField>
           <AuditField label="Entidade">{info.entityLabel}</AuditField>
-          <AuditField label="Nome"><strong>{info.name}</strong></AuditField>
+          <AuditField label={info.isAccess ? "Quem visualizou" : "Nome"}><strong>{info.name}</strong></AuditField>
           <AuditField label="UID" mono>{info.uid}</AuditField>
           <AuditField label="E-mail">{info.email}</AuditField>
           <AuditField label="Papel">{info.role ? <RoleBadge role={info.role} /> : "—"}</AuditField>
+          {info.isAccess && (
+            <Box className="sm:col-span-2">
+              <AuditField label="Registros consultados">{info.recordReferences || "Consulta sem resultados"}</AuditField>
+            </Box>
+          )}
         </Box>
 
-        {(info.actorEmail !== "—" || info.actorName !== "—" || info.actorUid !== "—") && (
+        {!info.isAccess && (info.actorEmail !== "—" || info.actorName !== "—" || info.actorUid !== "—") && (
           <>
             <Divider />
             <Stack spacing={1.5}>
@@ -239,6 +302,10 @@ export function AuditTable({ users = [], onSelect }) {
     setDetailError(null); setOpening(true);
     try {
       const info = getAuditInfo(row, users);
+      if (info.isAccess) {
+        onSelect(row);
+        return;
+      }
       const detail = await auditDetail(info.entityKey, info.uid, Number(info.revision));
       onSelect({ ...row, ...detail, before: row.before });
     } catch (error) { setDetailError(apiError(error, "Não foi possível registrar a visualização da auditoria.")); }
@@ -289,7 +356,7 @@ export default function AdminAuditPanel({ onSelect }) {
   return (
     <Paper component="section" variant="outlined" className="panel space-y-5 p-5 sm:p-6" aria-labelledby="auditoria-titulo">
       <Box>
-        <Typography variant="h2" id="auditoria-titulo" sx={{ fontSize: 18, fontWeight: 700 }}>Auditoria de Ocorridos Recentes</Typography>
+        <Typography variant="h2" id="auditoria-titulo" sx={{ fontSize: 18, fontWeight: 700 }}>Auditoria</Typography>
         <Typography variant="caption" color="text.secondary">
           Acompanhe e filtre todos os eventos recentes registrados na plataforma sem expor dados sensíveis na tabela.
         </Typography>
@@ -300,28 +367,4 @@ export default function AdminAuditPanel({ onSelect }) {
       </ListBase>
     </Paper>
   );
-}
-
-
-export function AuditAccessPanel() {
-  const [page, setPage] = useState(0), [filters, setFilters] = useState({});
-  const [draft, setDraft] = useState({ viewerId: "", from: "", to: "" });
-  const query = useQuery({ queryKey: ["audit-accesses", page, filters], queryFn: () => auditAccesses({ page, size: 20, ...filters }) });
-  return <section aria-label="Log de visualizações" className="space-y-3">
-    <Typography variant="h3" sx={{ fontSize: 18 }}>Quem visualizou a auditoria</Typography>
-    <Typography variant="body2" color="text.secondary">Consultas, detalhes e acessos a este log são registrados pelo servidor. Horários exibidos no fuso do seu navegador.</Typography>
-    <form className="grid gap-3 sm:grid-cols-4" onSubmit={event => { event.preventDefault(); setPage(0); setFilters(Object.fromEntries(Object.entries(draft).filter(([, value]) => value).map(([key, value]) => [key, key === "viewerId" ? value : new Date(value).toISOString()]))); }}>
-      <Field label="UID de quem visualizou" value={draft.viewerId} onChange={event => setDraft({ ...draft, viewerId: event.target.value })} />
-      <Field label="Visualizações desde" type="datetime-local" value={draft.from} onChange={event => setDraft({ ...draft, from: event.target.value })} />
-      <Field label="Visualizações até" type="datetime-local" value={draft.to} onChange={event => setDraft({ ...draft, to: event.target.value })} />
-      <Button type="submit" variant="outlined">Filtrar visualizações</Button>
-    </form>
-    {query.isPending && <CircularProgress aria-label="Carregando visualizações" />}
-    {query.error && <Notice error>{apiError(query.error, "Não foi possível carregar as visualizações.")}</Notice>}
-    {query.data?.items.length === 0 && <p>Nenhuma visualização encontrada.</p>}
-    <Box sx={{ overflowX: "auto" }}><table className="w-full text-left text-sm"><thead><tr>{["Quem", "UID", "Quando", "Acesso", "Registros consultados"].map(label => <th key={label} className="p-2">{label}</th>)}</tr></thead><tbody>
-      {query.data?.items.map(row => <tr key={row.id}><td className="p-2"><span className="block">{row.viewer_name || "Usuário excluído"}</span><span className="block text-muted">{row.viewer_email}</span></td><td className="p-2 font-mono">{row.viewer_id}</td><td className="p-2">{formatDate(row.viewed_at)}</td><td className="p-2">{({ SEARCH: "Consulta", DETAIL: "Detalhe", USER_HISTORY: "Histórico do usuário", ACCESS_LOG: "Log de visualizações" })[row.action] || row.action}</td><td className="p-2 break-all">{row.record_references || "Consulta sem resultados"}</td></tr>)}
-    </tbody></table></Box>
-    <StatePagination page={page} hasNext={Boolean(query.data && (page + 1) * 20 < query.data.totalItems)} onChange={setPage} />
-  </section>;
 }

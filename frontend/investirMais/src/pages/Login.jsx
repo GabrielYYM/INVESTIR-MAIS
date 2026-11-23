@@ -114,7 +114,7 @@ export default function Login() {
       });
     }
   });
-  return <AuthCard icon={email ? KeyRound : ShieldCheck} title={email ? "Confira seu e-mail" : "Bem-vindo"} description={email ? `Enviamos um link para ${email}. Abra a mensagem e clique em “Concluir acesso” neste navegador. O link expira em cinco minutos.` : "Entre na sua conta para acessar o Investir+."}>
+  return <AuthCard icon={email ? KeyRound : ShieldCheck} title={email ? "Confira seu e-mail" : "Bem-vindo de volta"} description={email ? `Enviamos um link para ${email}. Abra a mensagem e clique em “Concluir acesso” neste navegador. O link expira em cinco minutos.` : "Entre na sua conta para acessar o Investir+."}>
       {email ? <div className="space-y-4">
           <details className="rounded-xl border border-white/10 p-3">
             <summary className="cursor-pointer text-sm font-medium text-muted hover:text-ink">Usar código manualmente</summary>

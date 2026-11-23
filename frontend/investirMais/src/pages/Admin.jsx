@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Box, Button, CircularProgress, Divider, InputAdornment, Paper, Stack, Typography } from "@mui/material";
-import { FileText, Flag, ScrollText, Search, ShieldCheck, Trash2, UserCheck, Users } from "lucide-react";
+import { FileText, Flag, Search, ShieldCheck, Trash2, UserCheck, Users } from "lucide-react";
 import { DataTable, FilterLiveForm, ListBase, SelectInput, TextInput, useInput, useListContext, useRefresh } from "react-admin";
 import { Link, Navigate, redirect, useLoaderData } from "react-router";
 import { UpdateUserRoleBody } from "../generated/account.zod.ts";
@@ -8,13 +8,12 @@ import { getCurrentUser } from "../services/authService.js";
 import { roleNames } from "../services/dataProvider.js";
 import PageHeader from "../components/layout/PageHeader.jsx";
 import CrudDialog from "../components/ui/CrudDialog.jsx";
-import AppModal from "../components/ui/AppModal.jsx";
 import ResourcePagination from "../components/ui/ResourcePagination.jsx";
 import { Notice } from "../components/ui/PageState.jsx";
 import StatCard from "../components/ui/StatCard.jsx";
 import RoleBadge from "../components/account/RoleBadge.jsx";
 import AdminPendingPanel from "../components/admin/AdminPendingPanel.jsx";
-import AdminAuditPanel, { AuditAccessPanel, AuditDialog, formatDate, getAuditInfo, operationBadges, operations } from "../components/admin/AdminAuditPanel.jsx";
+import AdminAuditPanel, { AuditDialog, formatDate, getAuditInfo, operationBadges, operations } from "../components/admin/AdminAuditPanel.jsx";
 
 export { AuditDialog, formatDate, getAuditInfo, operationBadges, operations };
 
@@ -98,7 +97,6 @@ export default function Admin() {
   const { currentUser } = useLoaderData();
   const [editor, setEditor] = useState(null);
   const [audited, setAudited] = useState(null);
-  const [showAuditLogs, setShowAuditLogs] = useState(false);
   const [feedback, setFeedback] = useState("");
   const refresh = useRefresh();
   const promotionBlock = "A promoção a professor ocorre pela aprovação dos documentos em Candidaturas de professores.";
@@ -110,7 +108,6 @@ export default function Admin() {
         description="Gerencie pendências, auditoria, usuários e documentos da plataforma."
         actions={
           <Box component="nav" className="flex flex-wrap gap-2.5" aria-label="Gestão da plataforma">
-            <button type="button" className="button-secondary" aria-haspopup="dialog" onClick={() => setShowAuditLogs(true)}><ScrollText size={16} /> Ver logs de auditoria</button>
             <Link className="button-secondary" to="/admin/denuncias"><Flag size={16} /> Denúncias</Link>
             <Link className="button-secondary" to="/admin/professores"><UserCheck size={16} /> Candidaturas de professores</Link>
             <Link className="button-secondary" to="/admin/documentos"><FileText size={16} /> Documentos legais</Link>
@@ -192,7 +189,6 @@ export default function Admin() {
         </CrudDialog>
       )}
 
-      {showAuditLogs && <AppModal title="Logs de auditoria" width={1100} onClose={() => setShowAuditLogs(false)}><AuditAccessPanel /></AppModal>}
       {audited && <AuditDialog audit={audited.row} users={audited.users} onClose={() => setAudited(null)} />}
     </Box>
   );

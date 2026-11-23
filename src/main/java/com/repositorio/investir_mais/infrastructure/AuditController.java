@@ -44,7 +44,9 @@ public class AuditController {
         var paged = new ArrayList<>(params); paged.add(size); paged.add((long) page * size);
         var rows = jdbc.sql("SELECT a.entity, a.id, a.rev AS revision, a.revtype AS operation, r.revtstmp AS timestamp, r.actor, r.actor_role AS role, a.data::text AS data" + base + " ORDER BY a.rev DESC,a.entity,a.id LIMIT ? OFFSET ?")
                 .params(paged).query().listOfRows();
-        access.record("SEARCH", entity, entityId, revision, rows.stream().map(row -> row.get("entity") + ":" + row.get("id") + ":" + row.get("revision")).toList());
+        if (entityId != null) {
+            access.record("SEARCH", entity, entityId, revision, rows.stream().map(row -> row.get("entity") + ":" + row.get("id") + ":" + row.get("revision")).toList());
+        }
         return Map.of("items", rows, "totalItems", total, "page", page, "size", size);
     }
 
@@ -67,7 +69,7 @@ public class AuditController {
             @RequestParam(defaultValue = "0") @Min(0) int page, @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
         if (page < 0 || size < 1 || size > 100 || (from != null && to != null && from.isAfter(to)))
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Página ou período inválido.");
-        String base = " FROM audit_access_log l LEFT JOIN tb_user u ON u.id=l.viewer_id WHERE 1=1";
+        String base = " FROM audit_access_log l LEFT JOIN tb_user u ON u.id=l.viewer_id WHERE (l.action IN ('DETAIL', 'USER_HISTORY') OR (l.entity IS NOT NULL AND l.entity_id IS NOT NULL))";
         var params = new ArrayList<Object>();
         if (viewerId != null) { base += " AND l.viewer_id=?"; params.add(viewerId); }
         if (from != null) { base += " AND l.viewed_at>=?"; params.add(java.sql.Timestamp.from(from)); }
@@ -76,7 +78,6 @@ public class AuditController {
         var paged = new ArrayList<>(params); paged.add(size); paged.add((long) page * size);
         var rows = jdbc.sql("SELECT l.*,u.name AS viewer_name,CASE WHEN u.deleted_at IS NULL THEN u.email END AS viewer_email" + base + " ORDER BY l.viewed_at DESC,l.id LIMIT ? OFFSET ?")
             .params(paged).query().listOfRows();
-        access.record("ACCESS_LOG", null, null, null, rows.stream().map(row -> row.get("id").toString()).toList());
         return Map.of("items", rows, "totalItems", total, "page", page, "size", size);
     }
 

@@ -248,7 +248,7 @@ class ModerationAndRecoveryIntegrationTest extends PostgreSqlIntegrationTest {
         mvc.perform(get("/api/audit/accesses").with(as(admin))).andExpect(status().isOk())
             .andExpect(jsonPath("$.items[0].viewer_id").value(admin.getId().toString()))
             .andExpect(jsonPath("$.items[0].viewed_at").exists());
-        assertEquals(before + 4, jdbc.queryForObject("SELECT count(*) FROM audit_access_log", Integer.class));
+        assertEquals(before + 3, jdbc.queryForObject("SELECT count(*) FROM audit_access_log", Integer.class));
         assertThrows(org.springframework.dao.DataAccessException.class, () -> jdbc.update("DELETE FROM audit_access_log"));
         assertThrows(org.springframework.dao.DataAccessException.class, () -> jdbc.update("UPDATE audit_access_log SET action='FORGED'"));
         assertThrows(org.springframework.dao.DataAccessException.class, () -> jdbc.execute("TRUNCATE audit_access_log"));
