@@ -44,7 +44,6 @@ class ModerationAndRecoveryIntegrationTest extends PostgreSqlIntegrationTest {
     @Autowired CourseService courses;
     @Autowired LessonService lessons;
     @Autowired QuestionService questions;
-    @Autowired ContentTrashService trash;
     @Autowired ContentReportRepository reports;
     @Autowired LegalDocumentsService legal;
     @Autowired PasswordEncoder encoder;
@@ -95,7 +94,6 @@ class ModerationAndRecoveryIntegrationTest extends PostgreSqlIntegrationTest {
         mvc.perform(get("/api/reports").with(as(student))).andExpect(status().isForbidden());
         mvc.perform(get("/api/reports").with(as(admin))).andExpect(status().isOk())
             .andExpect(jsonPath("$.content").isArray()).andExpect(jsonPath("$.page.totalElements").isNumber());
-        mvc.perform(get("/api/trash").with(as(teacher))).andExpect(status().isForbidden());
         var report = reports.findAll().stream().filter(value -> value.getTargetId().equals(lesson.id())).findFirst().orElseThrow();
         mvc.perform(post("/api/reports/{id}/review", report.getId()).with(as(admin)).with(csrf()).contentType("application/json")
             .content("{\"status\":\"RESOLVED\",\"note\":\"Conteúdo conferido\",\"removeLesson\":true}"))
@@ -116,18 +114,6 @@ class ModerationAndRecoveryIntegrationTest extends PostgreSqlIntegrationTest {
             .andExpect(status().isBadRequest());
     }
 
-    @Test void contentRestorationRespectsParentsAndDoesNotRestorePreviouslyDeletedChildren() {
-        var course = course(); var lesson = lesson(course.id()); var question = question(course.id(), lesson.position());
-        courses.deleteCourse(course.id(), teacher.getEmail());
-        assertThrows(ResponseStatusException.class, () -> trash.restore("lessons", lesson.id(), admin.getEmail()));
-        trash.restore("courses", course.id(), admin.getEmail());
-        assertNotNull(jdbc.queryForObject("SELECT deleted_at FROM tb_lesson WHERE id=?", Object.class, lesson.id()));
-        assertThrows(ResponseStatusException.class, () -> trash.restore("questions", question.id(), admin.getEmail()));
-        trash.restore("lessons", lesson.id(), admin.getEmail()); trash.restore("questions", question.id(), admin.getEmail());
-        assertNull(jdbc.queryForObject("SELECT deleted_at FROM tb_question WHERE id=?", Object.class, question.id()));
-        assertEquals(3, jdbc.queryForObject("SELECT count(*) FROM tb_content_restoration WHERE entity_id IN (?,?,?)", Integer.class, course.id(), lesson.id(), question.id()));
-    }
-
     @Test void deletionSuppressesIdentifiersPreservesHistoryAndAllowsTheSameEmailAgain() throws Exception {
         String oldEmail = teacher.getEmail();
         UUID oldId = teacher.getId();
@@ -143,9 +129,6 @@ class ModerationAndRecoveryIntegrationTest extends PostgreSqlIntegrationTest {
         assertTrue(jdbc.queryForObject("SELECT count(*) FROM tb_user_audit WHERE id=?", Integer.class, oldId) >= revisions);
         assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM tb_course WHERE id=?", Integer.class, course.id()));
         assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM tb_lesson_progress WHERE lesson_id=?", Integer.class, lesson.id()));
-        assertThrows(ResponseStatusException.class, () -> trash.restore("courses", course.id(), admin.getEmail()));
-        mvc.perform(post("/api/trash/accounts/{id}/restore", oldId).with(as(admin)).with(csrf()).contentType("application/json").content("{\"reason\":\"Pedido\"}"))
-            .andExpect(status().isBadRequest());
         accounts.registerUser(new UserDTO.Request("Novo cadastro", oldEmail, "Temporary123!", UserRole.STUDENT));
         User recreated = users.findByEmail(oldEmail).orElseThrow();
         assertNotEquals(oldId, recreated.getId());
@@ -248,7 +231,7 @@ class ModerationAndRecoveryIntegrationTest extends PostgreSqlIntegrationTest {
         mvc.perform(get("/api/audit/accesses").with(as(admin))).andExpect(status().isOk())
             .andExpect(jsonPath("$.items[0].viewer_id").value(admin.getId().toString()))
             .andExpect(jsonPath("$.items[0].viewed_at").exists());
-        assertEquals(before + 4, jdbc.queryForObject("SELECT count(*) FROM audit_access_log", Integer.class));
+        assertEquals(before + 3, jdbc.queryForObject("SELECT count(*) FROM audit_access_log", Integer.class));
         assertThrows(org.springframework.dao.DataAccessException.class, () -> jdbc.update("DELETE FROM audit_access_log"));
         assertThrows(org.springframework.dao.DataAccessException.class, () -> jdbc.update("UPDATE audit_access_log SET action='FORGED'"));
         assertThrows(org.springframework.dao.DataAccessException.class, () -> jdbc.execute("TRUNCATE audit_access_log"));

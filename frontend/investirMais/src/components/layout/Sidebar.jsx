@@ -62,7 +62,7 @@ export default function Sidebar({ logout, user, open = true, onClose = () => {},
               }}
               className={({ isActive }) =>
                 "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors " +
-                (isActive ? "bg-brand font-semibold text-zinc-900" : "text-muted hover:bg-raised hover:text-zinc-200")
+                (isActive ? "bg-brand font-semibold text-zinc-900" : "text-ink hover:bg-raised hover:text-white")
               }
             >
               <Icon size={17} className="shrink-0" /> {label}
@@ -72,7 +72,7 @@ export default function Sidebar({ logout, user, open = true, onClose = () => {},
 
         <logout.Form method="post" action="/sair" className="mt-auto pt-4">
           <button
-            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted hover:bg-raised hover:text-negative"
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-ink hover:bg-raised hover:text-negative"
             disabled={logout.state !== "idle"}
           >
             <LogOut size={17} /> {logout.state === "idle" ? "Sair da conta" : "Saindo…"}

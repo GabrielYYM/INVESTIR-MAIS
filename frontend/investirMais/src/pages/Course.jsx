@@ -1,11 +1,12 @@
 import { CourseLearningDashboard } from "../components/education/LearningDashboard.jsx";
 import { ProgressTrack } from "../components/education/CourseProgressBar.jsx";
-import { ArrowLeft, CheckCircle2, ChevronDown, CircleHelp, ExternalLink, Pencil, Play, Plus, Trash2, Video } from "lucide-react";
-import { lazy, Suspense, useState } from "react";
+import { ArrowLeft, CheckCircle2, ChevronDown, CircleHelp, ExternalLink, Pencil, Play, Plus, Trash2, Video, XCircle } from "lucide-react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { Accordion, AccordionDetails, AccordionSummary, Radio, RadioGroup } from "@mui/material";
 import { Link, useFetcher, useLoaderData, useLocation, useNavigate, useRevalidator, useRouteLoaderData, NavLink } from "react-router";
+import { useQuery } from "@tanstack/react-query";
 import { useUpdateLessonProgress } from "../generated/education.ts";
-import { apiError } from "../services/api.js";
+import { apiClient, apiError } from "../services/api.js";
 import { canManageEducation } from "../services/educationData.js";
 import { pageHref } from "../services/searchParams.js";
 import { externalMediaUrl, youtubeVideo, cloudinaryVideo } from "../services/youtube.js";
@@ -24,6 +25,7 @@ function StudentQuestion({
   question
 }) {
   const [selected, setSelected] = useState(null);
+  const [isCorrecting, setIsCorrecting] = useState(false);
   const fetcher = useFetcher();
   const location = useLocation();
   const busy = fetcher.state !== "idle";
@@ -41,21 +43,41 @@ function StudentQuestion({
       encType: "application/json",
       action: location.pathname + location.search
     });
+    setIsCorrecting(false);
   };
+
+  const isPassed = Boolean(question.passed);
+  const isSavedIncorrect = Boolean(!isPassed && question.incorrect);
+  const isLocked = Boolean(question.locked);
+  const isOptionsDisabled = busy || isLocked || isPassed || (isSavedIncorrect && !isCorrecting);
+
   return <form onSubmit={submit} className="space-y-3">
-    <fieldset disabled={busy || question.locked || question.passed} className="min-w-0">
+    <fieldset disabled={isOptionsDisabled} className="min-w-0">
       <legend className="sr-only">{question.prompt}</legend>
-      <RadioGroup className="space-y-2" value={selected ?? ""} onChange={(_, value) => setSelected(Number(value))}>{question.options.map((text, index) => <label key={index} className={"flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-2.5 text-sm " + (selected === index ? "border-brand/50 bg-brand/5 text-ink" : "border-line text-muted")}>
-        <Radio value={index} disabled={busy || question.locked || question.passed} sx={{ p: 0, mt: .25, "& svg": { fontSize: 16 } }} /><span className="min-w-0 break-words">{text}</span>
-      </label>)}</RadioGroup>
+      <RadioGroup className="space-y-2" value={selected ?? ""} onChange={(_, value) => setSelected(Number(value))}>
+        {question.options.map((text, index) => <label key={index} className={"flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-2.5 text-sm " + (selected === index ? "border-brand/50 bg-brand/5 text-ink" : "border-line text-muted")}>
+          <Radio value={index} disabled={isOptionsDisabled} sx={{ p: 0, mt: .25, "& svg": { fontSize: 16 } }} />
+          <span className="min-w-0 break-words">{text}</span>
+        </label>)}
+      </RadioGroup>
     </fieldset>
-    {question.passed ? <p className="flex items-center gap-2 text-sm font-semibold text-positive"><CheckCircle2 size={16} />Pergunta concluída</p> : question.locked ? <p className="text-sm text-muted">Conclua as aulas e acerte as perguntas anteriores para responder.</p> : <>
-      {fetcher.data?.error && <Notice error>{fetcher.data.error}</Notice>}{fetcher.data?.passed === false && <Notice error>Ainda não é a alternativa correta. Escolha outra opção e tente novamente.</Notice>}
-      <SubmitButton loading={busy} disabled={selected === null} loadingText="Verificando…">Responder pergunta</SubmitButton>
+    {isPassed ? <div className="flex flex-wrap items-center justify-between gap-2">
+      <p className="flex items-center gap-2 text-sm font-semibold text-positive"><CheckCircle2 size={16} />Pergunta concluída</p>
+    </div> : isSavedIncorrect && !isCorrecting ? <div className="flex flex-wrap items-center justify-between gap-2">
+      <p className="flex items-center gap-2 text-sm font-semibold text-rose-500"><XCircle size={16} />Resposta incorreta</p>
+      <button type="button" className="button-secondary text-xs" onClick={() => setIsCorrecting(true)}>Corrigir resposta</button>
+    </div> : isLocked ? <p className="text-sm text-muted">Conclua as aulas e responda às perguntas anteriores para responder.</p> : <>
+      {fetcher.data?.error && <Notice error>{fetcher.data.error}</Notice>}
+      {fetcher.data?.passed === false && <Notice error>Ainda não é a alternativa correta. Escolha outra opção e tente novamente se desejar corrigir.</Notice>}
+      <div className="flex flex-wrap items-center gap-2">
+        <SubmitButton loading={busy} disabled={selected === null} loadingText="Verificando…">Responder pergunta</SubmitButton>
+        {isCorrecting && <button type="button" className="button-secondary" disabled={busy} onClick={() => setIsCorrecting(false)}>Cancelar</button>}
+      </div>
     </>}
   </form>;
 }
 function CourseQuestions({
+  courseId,
   questions,
   canManage,
   onEdit,
@@ -65,17 +87,28 @@ function CourseQuestions({
   needsEnrollment,
   onEnroll
 }) {
+  const statsQuery = useQuery({
+    queryKey: ["course-question-stats", courseId],
+    enabled: Boolean(canManage && courseId),
+    queryFn: async () => (await apiClient.get(`/api/learning/courses/${courseId}/questions`)).data,
+  });
+  const statsMap = useMemo(() => new Map((statsQuery.data ?? []).map(q => [q.id, q])), [statsQuery.data]);
+
   if (!canManage && !questions.length && !error && !needsEnrollment) return null;
   return <Accordion defaultExpanded component="section" className="panel min-w-0" aria-labelledby="perguntas-titulo" id="perguntas">
-      <AccordionSummary expandIcon={<ChevronDown size={20} />}>
+      <AccordionSummary component="div" expandIcon={<ChevronDown size={20} />} sx={{ "& .MuiAccordionSummary-content": { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2, my: 1 } }}>
         <div>
           <p className="eyebrow">Pratique o que aprendeu</p>
           <h2 id="perguntas-titulo" className="mt-1 text-xl font-bold">Perguntas da aula</h2>
         </div>
+        {canManage && <button type="button" className="button-primary mr-2" onClick={event => { event.stopPropagation(); onEdit({}); }}><Plus size={16} /> Nova pergunta</button>}
       </AccordionSummary>
       <AccordionDetails className="space-y-4">
-        {canManage && <div className="flex justify-end"><button type="button" className="button-primary" onClick={() => onEdit({})}><Plus size={16} /> Nova pergunta</button></div>}
-        {error ? <div className="space-y-3"><Notice error>{error}</Notice><button className="button-secondary" disabled={loading} onClick={onRetry}>Tentar novamente</button></div> : needsEnrollment ? <div className="space-y-3"><p className="text-sm leading-relaxed text-muted">Entre no curso para responder às perguntas e acompanhar seu progresso.</p><SubmitButton type="button" loading={loading} loadingText="Entrando…" onClick={onEnroll}>Começar curso</SubmitButton></div> : questions.length ? <div className="space-y-4">{questions.map((question, index) => <article key={question.id} className="min-w-0 space-y-4 rounded-xl border border-line bg-raised p-4" aria-labelledby={"question-" + question.id}>
+        {error ? <div className="space-y-3"><Notice error>{error}</Notice><button className="button-secondary" disabled={loading} onClick={onRetry}>Tentar novamente</button></div> : needsEnrollment ? <div className="space-y-3"><p className="text-sm leading-relaxed text-muted">Entre no curso para responder às perguntas e acompanhar seu progresso.</p><SubmitButton type="button" loading={loading} loadingText="Entrando…" onClick={onEnroll}>Começar curso</SubmitButton></div> : questions.length ? <div className="space-y-4">{questions.map((question, index) => {
+          const stat = statsMap.get(question.id) || question;
+          const accuracy = stat.accuracy ?? question.accuracy ?? 0;
+          const attempts = stat.attempts ?? question.attempts ?? 0;
+          return <article key={question.id} className="min-w-0 space-y-4 rounded-xl border border-line bg-raised p-4" aria-labelledby={"question-" + question.id}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 space-y-2">
                   <p className="flex flex-wrap items-center gap-2 text-xs text-muted"><CircleHelp size={15} className="text-brand" /> Pergunta {index + 1} — {question.afterLesson === 0 ? "Antes da primeira aula" : "Após a aula " + question.afterLesson}</p>
@@ -88,10 +121,18 @@ function CourseQuestions({
                   onDelete={() => onEdit({ item: question, remove: true })}
                 />}
               </div>
-              {canManage ? <ul className="space-y-2">{question.options.map((text, option) => <li key={option} className={"flex items-start gap-2 rounded-lg border px-3 py-2 text-sm " + (option === question.correctOptionIndex ? "border-emerald-500/25 bg-emerald-500/5 text-positive" : "border-line text-muted")}>
-                  {option === question.correctOptionIndex && <CheckCircle2 size={16} className="mt-0.5 shrink-0" />}<span className="min-w-0 break-words">{text}</span>{option === question.correctOptionIndex && <span className="sr-only"> (Correta)</span>}
-                </li>)}</ul> : <StudentQuestion key={JSON.stringify([question.prompt, question.options])} question={question} />}
-            </article>)}</div> : <p className="text-sm text-muted">Adicione perguntas de múltipla escolha para os alunos praticarem durante o curso.</p>}
+              {canManage ? <div className="space-y-3">
+                <ul className="space-y-2">{question.options.map((text, option) => <li key={option} className={"flex items-start gap-2 rounded-lg border px-3 py-2 text-sm " + (option === question.correctOptionIndex ? "border-emerald-500/25 bg-emerald-500/5 text-positive" : "border-line text-muted")}>
+                    {option === question.correctOptionIndex && <CheckCircle2 size={16} className="mt-0.5 shrink-0" />}<span className="min-w-0 break-words">{text}</span>{option === question.correctOptionIndex && <span className="sr-only"> (Correta)</span>}
+                  </li>)}</ul>
+                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-line bg-canvas px-3 py-2 text-xs text-muted">
+                  <span>Taxa de acerto: <strong className="font-semibold text-ink">{Number(accuracy).toLocaleString("pt-BR")}%</strong></span>
+                  <span>·</span>
+                  <span>{attempts} {attempts === 1 ? "resposta" : "respostas"}</span>
+                </div>
+              </div> : <StudentQuestion key={JSON.stringify([question.prompt, question.options])} question={question} />}
+            </article>;
+        })}</div> : <p className="text-sm text-muted">Adicione perguntas de múltipla escolha para os alunos praticarem durante o curso.</p>}
       </AccordionDetails>
     </Accordion>;
 }
@@ -220,7 +261,7 @@ export default function Course() {
         {lesson ? <LessonPlayer key={lesson.id} lesson={lesson} isCompleted={completedIds.has(lesson.id)} onToggleCompleted={canManage ? undefined : completed => updateProgress(completed)} busy={progressMutation.isPending} trackProgress={!canManage} /> : <p className="panel p-6 text-sm text-muted">
           {canManage ? "Adicione uma videoaula para começar." : "Este curso ainda não tem aulas cadastradas."}
         </p>}
-        {lesson && <CourseQuestions questions={questions.filter(question => question.afterLesson === lesson?.position || (question.afterLesson === 0 && lesson?.position === 1))} canManage={canManage} error={questionsError} loading={revalidator.state !== "idle" || enroll.state !== "idle"} onRetry={() => revalidator.revalidate()} needsEnrollment={needsEnrollment} onEnroll={() => enroll.submit({
+        {lesson && <CourseQuestions courseId={course.id} questions={questions.filter(question => question.afterLesson === lesson?.position || (question.afterLesson === 0 && lesson?.position === 1))} canManage={canManage} error={questionsError} loading={revalidator.state !== "idle" || enroll.state !== "idle"} onRetry={() => revalidator.revalidate()} needsEnrollment={needsEnrollment} onEnroll={() => enroll.submit({
           intent: "enroll-course"
         }, {
           method: "post",

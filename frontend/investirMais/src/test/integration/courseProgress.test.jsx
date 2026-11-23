@@ -42,4 +42,26 @@ describe("progresso dos cursos", () => {
     expect(section.getByText("Alunos inscritos").parentElement).toHaveTextContent("2");
     expect(section.getByText("Alunos que concluíram").parentElement).toHaveTextContent("1");
   });
+
+  it("mostra a taxa de acerto dentro de cada questão e mantém os dados de alunos no desempenho", async () => {
+    mockApi("get", `/api/courses/${course.id}/questions/manage`, [
+      { id: "q1", prompt: "Qual é a taxa Selic?", afterLesson: 1, position: 0, options: ["A", "B"], correctOptionIndex: 0 },
+    ]);
+    mockApi("get", `/api/learning/courses/${course.id}/questions`, [
+      { id: "q1", prompt: "Qual é a taxa Selic?", attempts: 4, accuracy: 75 },
+    ]);
+    mockApi("get", `/api/learning/courses/${course.id}/students`, [
+      { id: "ana", name: "Ana", progress_percentage: 100, completed: true, total_lessons: 1, completed_lessons: 1, total_questions: 1, passed_questions: 1, attempts: 2, accuracy: 50 },
+    ]);
+    renderApp("/educacao/" + course.id, { session: teacher });
+
+    const questionsSection = within(await screen.findByRole("region", { name: "Perguntas da aula" }));
+    expect(await questionsSection.findByText("75%")).toBeInTheDocument();
+    expect(questionsSection.getByText("Taxa de acerto:")).toBeInTheDocument();
+    expect(questionsSection.getByText(/4 respostas/)).toBeInTheDocument();
+
+    const performanceSection = within(screen.getByRole("region", { name: "Desempenho do curso" }));
+    expect(performanceSection.getByText("Alunos inscritos").parentElement).toHaveTextContent("1");
+    expect(performanceSection.queryByText("Taxa de acerto por questão")).not.toBeInTheDocument();
+  });
 });

@@ -46,29 +46,9 @@ describe("denúncias e recuperação", () => {
     await waitFor(() => expect(review).toHaveBeenCalledOnce());
   });
 
-  it("restaura conteúdo somente após confirmar", async () => {
-    let items = [{ entity: "lessons", id: lesson.id, title: lesson.title, deleted_at: "2026-11-17T12:00:00Z" }];
-    mockApi("get", "/api/trash", () => ({ items, totalItems: items.length }));
-    const restore = mockApi("post", `/api/trash/lessons/${lesson.id}/restore`, () => { items = []; return null; }, { status: 204 });
-    const { user } = renderApp("/admin/lixeira", { session: adminUser });
-    await user.click(await screen.findByRole("button", { name: "Restaurar conteúdo" }));
-    expect(restore).not.toHaveBeenCalled();
-    await user.click(screen.getByRole("button", { name: "Confirmar restauração" }));
-    expect(await screen.findByText("Nenhum item na lixeira.")).toBeInTheDocument();
-  });
-
-  it("remove a recuperação de contas inclusive em atalhos antigos", async () => {
-    mockApi("get", "/api/trash", { items: [], totalItems: 0 });
-    const accounts = mockApi("get", "/api/trash/accounts", { items: [], totalItems: 0 });
-    renderApp("/admin/lixeira?tipo=contas", { session: adminUser });
-    expect(await screen.findByText(/Contas excluídas não podem ser recuperadas/)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Restaurar conta" })).not.toBeInTheDocument();
-    expect(accounts).not.toHaveBeenCalled();
-  });
-
-  it.each(["denuncias", "lixeira"])("impede aluno de consultar administração de %s", async path => {
-    const query = mockApi("get", path === "denuncias" ? "/api/reports" : "/api/trash", {});
-    const { router } = renderApp("/admin/" + path);
+  it("impede aluno de consultar administração de denuncias", async () => {
+    const query = mockApi("get", "/api/reports", {});
+    const { router } = renderApp("/admin/denuncias");
     await waitFor(() => expect(router.state.location.pathname).toBe("/")); expect(query).not.toHaveBeenCalled();
   });
 

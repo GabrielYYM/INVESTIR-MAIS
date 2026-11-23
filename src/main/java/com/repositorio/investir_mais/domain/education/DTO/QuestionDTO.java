@@ -14,7 +14,7 @@ public class QuestionDTO {
                           @NotNull @Min(0) @Max(5) Integer correctOptionIndex) {}
     public record AnswerRequest(@NotNull @Min(0) @Max(5) Integer optionIndex) {}
     public record StudentQuestion(UUID id, String prompt, int afterLesson, int position,
-                                  boolean locked, boolean passed, List<String> options) {}
+                                  boolean locked, boolean passed, boolean incorrect, List<String> options) {}
     public record TeacherQuestion(UUID id, String prompt, int afterLesson, int position,
                                   List<String> options, int correctOptionIndex) {}
     public record AnswerResponse(UUID questionId, boolean passed) {}

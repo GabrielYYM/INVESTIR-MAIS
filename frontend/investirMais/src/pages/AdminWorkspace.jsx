@@ -1,13 +1,14 @@
 import { useState } from "react";
-import { Link, Navigate, useRouteLoaderData } from "react-router";
+import { Navigate, useRouteLoaderData } from "react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Calendar, CheckCircle2, Clock, Download, FileText, UserCheck, Users, XCircle } from "lucide-react";
 import { apiClient, apiError } from "../services/api.js";
 import { Field } from "../components/ui/FormFields.jsx";
 import { Notice } from "../components/ui/PageState.jsx";
 import StatePagination from "../components/ui/StatePagination.jsx";
 import PageHeader from "../components/layout/PageHeader.jsx";
 import ModerationWorkspace from "./ModerationWorkspace.jsx";
-import TrashWorkspace from "./TrashWorkspace.jsx";
+import AdminNav from "../components/admin/AdminNav.jsx";
 
 function LegalWorkspace() {
   const client = useQueryClient();
@@ -15,7 +16,7 @@ function LegalWorkspace() {
   const [draft, setDraft] = useState(null), [preview, setPreview] = useState(null);
   const publish = useMutation({ mutationFn: value => apiClient.post("/api/legal/versions", value), onSuccess: () => { setDraft(null); setPreview(null); return client.invalidateQueries(); } });
   const now = new Date();
-  const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const value = draft ?? (current.data && { ...current.data, version: current.data.version + 1, publishedOn: today });
   function edit(change) { const next = structuredClone(value); change(next); setDraft(next); setPreview(null); }
   return <>
@@ -34,7 +35,7 @@ function LegalWorkspace() {
           {document.sections.length > 1 && <button type="button" className="button-secondary" onClick={() => edit(next => { next.documents[index].sections.splice(sectionIndex, 1); })}>Remover seção</button>}
         </div>)}
         <div className="flex gap-3"><button type="button" className="button-secondary" onClick={() => edit(next => { next.documents[index].sections.push({ heading: "", content: "" }); })}>Adicionar seção</button>
-        {!["termos", "privacidade"].includes(document.id) && <button type="button" className="button-danger" onClick={() => edit(next => { next.documents.splice(index, 1); })}>Remover documento</button>}</div>
+          {!["termos", "privacidade"].includes(document.id) && <button type="button" className="button-danger" onClick={() => edit(next => { next.documents.splice(index, 1); })}>Remover documento</button>}</div>
       </fieldset>)}
       <div className="flex flex-wrap gap-3"><button type="button" className="button-secondary" disabled={value.documents.length >= 20} onClick={() => edit(next => { next.documents.push({ id: "", label: "", title: "", sections: [{ heading: "", content: "" }] }); })}>Adicionar documento</button><button className="button-primary">Revisar publicação</button></div>
     </form>}
@@ -49,24 +50,219 @@ function LegalWorkspace() {
 
 function TeacherWorkspace() {
   const [page, setPage] = useState(0);
+  const [statusFilter, setStatusFilter] = useState("ALL");
   const [reasons, setReasons] = useState({});
   const client = useQueryClient();
-  const applications = useQuery({ queryKey: ["teacher-applications", page], queryFn: async () => (await apiClient.get("/api/teacher-applications", { params: { page, size: 10 } })).data });
-  const review = useMutation({ mutationFn: ({ id, approve }) => apiClient.post(`/api/teacher-applications/${id}/review`, { approve, reason: reasons[id] }), onSuccess: () => client.invalidateQueries({ queryKey: ["teacher-applications"] }) });
-  return <>
-    {applications.isPending && <p>Carregando candidaturas…</p>}
-    {(applications.error || review.error) && <Notice error>{apiError(applications.error || review.error, "Não foi possível analisar a candidatura.")}</Notice>}
-    {applications.data?.content.length === 0 && <p>Nenhuma candidatura recebida.</p>}
-    {applications.data?.content.map(application => <article key={application.id} className="panel space-y-3 p-5"><h2 className="font-bold">{application.userName || "Apelido indisponível"}</h2><p>{application.status} · {new Date(application.submittedAt).toLocaleString("pt-BR")}</p>
-      {application.documents.map(document => <a className="block text-brand underline" key={document.id} href={(apiClient.defaults.baseURL || "") + `/api/teacher-applications/${application.id}/documents/${document.id}`}>Baixar {document.type.replaceAll("-", " ")}</a>)}
-      {application.status === "PENDING" ? <><Field label="Parecer da análise" multiline fullWidth maxLength={2000} value={reasons[application.id] || ""} onChange={event => setReasons(previous => ({ ...previous, [application.id]: event.target.value }))} /><div className="flex gap-3">{[true, false].map(approve => <button key={String(approve)} className={approve ? "button-primary" : "button-danger"} disabled={review.isPending || !reasons[application.id]?.trim()} onClick={() => review.mutate({ id: application.id, approve })}>{approve ? "Aprovar professor" : "Reprovar"}</button>)}</div></> : <p>{application.reviewReason}</p>}
-    </article>)}
-    <StatePagination page={page} totalPages={applications.data?.page.totalPages} onChange={setPage} showPageNumber={false} />
-  </>;
+
+  const applications = useQuery({
+    queryKey: ["teacher-applications", page],
+    queryFn: async () => (await apiClient.get("/api/teacher-applications", { params: { page, size: 10 } })).data,
+  });
+
+  const review = useMutation({
+    mutationFn: ({ id, approve }) =>
+      apiClient.post(`/api/teacher-applications/${id}/review`, { approve, reason: reasons[id] }),
+    onSuccess: () => client.invalidateQueries({ queryKey: ["teacher-applications"] }),
+  });
+
+  const statusBadges = {
+    PENDING: { label: "Pendente de análise", className: "border-purple-500/30 bg-purple-500/10 text-purple-400", icon: Clock },
+    APPROVED: { label: "Professor aprovado", className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400", icon: CheckCircle2 },
+    REJECTED: { label: "Candidatura reprovada", className: "border-rose-500/30 bg-rose-500/10 text-rose-400", icon: XCircle },
+  };
+
+  const rawList = applications.data?.content || [];
+  const filteredList = statusFilter === "ALL" ? rawList : rawList.filter((a) => a.status === statusFilter);
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-line bg-canvas p-1">
+          {[
+            ["ALL", "Todas", Users],
+            ["PENDING", "Pendentes", Clock],
+            ["APPROVED", "Aprovadas", CheckCircle2],
+            ["REJECTED", "Reprovadas", XCircle],
+          ].map(([key, label, Icon]) => {
+            const active = statusFilter === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setStatusFilter(key)}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                  active ? "bg-brand font-semibold text-zinc-900 shadow-sm" : "text-ink hover:bg-raised"
+                }`}
+              >
+                <Icon size={14} />
+                <span>{label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {applications.isPending && (
+        <div className="panel flex items-center justify-center p-12 text-muted">
+          <p>Carregando candidaturas…</p>
+        </div>
+      )}
+
+      {(applications.error || review.error) && (
+        <Notice error>{apiError(applications.error || review.error, "Não foi possível analisar a candidatura.")}</Notice>
+      )}
+
+      {rawList.length === 0 && (
+        <div className="panel flex flex-col items-center justify-center space-y-2 p-12 text-center text-muted">
+          <UserCheck size={32} className="text-muted/60" />
+          <p className="font-medium text-ink">Nenhuma candidatura recebida.</p>
+          <p className="text-xs">Quando novos alunos solicitarem o papel de professor, os dados aparecerão aqui.</p>
+        </div>
+      )}
+
+      {rawList.length > 0 && filteredList.length === 0 && (
+        <div className="panel p-8 text-center text-muted">
+          <p>Nenhuma candidatura com a situação selecionada nesta página.</p>
+        </div>
+      )}
+
+      {filteredList.map((application) => {
+        const badge = statusBadges[application.status] || {
+          label: application.status,
+          className: "border-line bg-canvas text-muted",
+          icon: Clock,
+        };
+        const StatusIcon = badge.icon;
+        const initial = (application.userName || "U").charAt(0).toUpperCase();
+        const reasonText = reasons[application.id] || "";
+
+        return (
+          <article key={application.id} className="panel space-y-4 p-5 sm:p-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex items-start gap-3 min-w-0">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-purple-500/15 font-bold text-purple-400 border border-purple-500/30">
+                  {initial}
+                </div>
+                <div className="min-w-0 space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${badge.className}`}>
+                      <StatusIcon size={12} /> {badge.label}
+                    </span>
+                  </div>
+                  <h2 className="font-bold text-lg text-ink break-words">
+                    {application.userName || "Apelido indisponível"}
+                  </h2>
+                </div>
+              </div>
+
+              <div className="text-xs text-muted sm:text-right shrink-0">
+                <p className="flex items-center gap-1 sm:justify-end">
+                  <Calendar size={13} /> {new Date(application.submittedAt).toLocaleString("pt-BR")}
+                </p>
+                <p className="text-[11px] text-muted/70">
+                  {application.status} · {new Date(application.submittedAt).toLocaleString("pt-BR")}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2 rounded-xl border border-line bg-canvas p-4">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted">
+                Documentos comprobatórios ({application.documents?.length || 0}):
+              </span>
+              {application.documents?.length === 0 ? (
+                <p className="text-xs text-muted">Nenhum documento anexado.</p>
+              ) : (
+                <div className="grid gap-2.5 sm:grid-cols-2">
+                  {application.documents.map((document) => (
+                    <a
+                      key={document.id}
+                      className="flex items-center justify-between gap-3 rounded-xl border border-line bg-raised/50 p-3 transition-colors hover:border-brand/40 hover:bg-raised"
+                      href={(apiClient.defaults.baseURL || "") + `/api/teacher-applications/${application.id}/documents/${document.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <FileText size={18} className="shrink-0 text-brand" />
+                        <span className="truncate text-sm font-medium text-ink underline">
+                          Baixar {document.type.replaceAll("-", " ")}
+                        </span>
+                      </div>
+                      <Download size={15} className="shrink-0 text-muted" />
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {application.status === "PENDING" ? (
+              <div className="space-y-3 border-t border-line pt-4">
+                <Field
+                  label="Parecer da análise"
+                  multiline
+                  fullWidth
+                  minRows={3}
+                  maxLength={2000}
+                  placeholder="Informe a justificativa da decisão (obrigatório para aprovar ou reprovar)..."
+                  value={reasonText}
+                  onChange={(event) => setReasons((prev) => ({ ...prev, [application.id]: event.target.value }))}
+                  hint={`${reasonText.length}/2000 caracteres`}
+                />
+                <div className="flex flex-wrap gap-2.5 pt-1">
+                  <button
+                    type="button"
+                    className="button-primary"
+                    disabled={review.isPending || !reasonText.trim()}
+                    onClick={() => review.mutate({ id: application.id, approve: true })}
+                  >
+                    <UserCheck size={16} /> Aprovar professor
+                  </button>
+                  <button
+                    type="button"
+                    className="button-danger"
+                    disabled={review.isPending || !reasonText.trim()}
+                    onClick={() => review.mutate({ id: application.id, approve: false })}
+                  >
+                    <XCircle size={16} /> Reprovar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-line bg-canvas p-4 space-y-1 text-sm border-l-4 border-l-purple-500">
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted">Parecer registrado:</span>
+                <p className="whitespace-pre-wrap break-words text-ink leading-relaxed font-medium">{application.reviewReason}</p>
+                {application.reviewedAt && (
+                  <p className="text-xs text-muted flex items-center gap-1 pt-1">
+                    <Clock size={12} /> Analisado em {new Date(application.reviewedAt).toLocaleString("pt-BR")}
+                  </p>
+                )}
+              </div>
+            )}
+          </article>
+        );
+      })}
+
+      <StatePagination page={page} totalPages={applications.data?.page.totalPages} onChange={setPage} showPageNumber={false} />
+    </div>
+  );
 }
 
 export default function AdminWorkspace({ kind }) {
   const user = useRouteLoaderData("app");
   if (user.role !== "ADMIN") return <Navigate to="/" replace />;
-  return <><PageHeader title={({ legal: "Documentos legais", teachers: "Candidaturas de professores", reports: "Denúncias", trash: "Lixeira" })[kind]} /><Link className="button-secondary" to="/admin">Voltar à administração</Link>{kind === "legal" ? <LegalWorkspace /> : kind === "reports" ? <ModerationWorkspace /> : kind === "trash" ? <TrashWorkspace /> : <TeacherWorkspace />}</>;
+  return (
+    <div className="w-full space-y-5">
+      <AdminNav />
+      <PageHeader
+        title={({ legal: "Documentos legais", teachers: "Candidaturas de professores", reports: "Denúncias" })[kind]}
+        description={
+          kind === "reports"
+            ? "Analise denúncias de videoaulas e professores realizadas pelos alunos."
+            : kind === "teachers"
+            ? "Avalie os documentos e requisitos legais de candidatos ao papel de professor."
+            : "Gerencie as versões e publicação de termos de uso e políticas de privacidade."
+        }
+      />
+      {kind === "legal" ? <LegalWorkspace /> : kind === "reports" ? <ModerationWorkspace /> : <TeacherWorkspace />}
+    </div>
+  );
 }

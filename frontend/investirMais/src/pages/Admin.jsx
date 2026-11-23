@@ -1,20 +1,20 @@
 import { useState } from "react";
 import { Box, Button, CircularProgress, Divider, InputAdornment, Paper, Stack, Typography } from "@mui/material";
-import { FileText, Flag, ScrollText, Search, ShieldCheck, Trash2, UserCheck, Users } from "lucide-react";
+import { Search, ShieldCheck, UserCheck, Users } from "lucide-react";
 import { DataTable, FilterLiveForm, ListBase, SelectInput, TextInput, useInput, useListContext, useRefresh } from "react-admin";
-import { Link, Navigate, redirect, useLoaderData } from "react-router";
+import { Navigate, redirect, useLoaderData } from "react-router";
 import { UpdateUserRoleBody } from "../generated/account.zod.ts";
 import { getCurrentUser } from "../services/authService.js";
 import { roleNames } from "../services/dataProvider.js";
 import PageHeader from "../components/layout/PageHeader.jsx";
 import CrudDialog from "../components/ui/CrudDialog.jsx";
-import AppModal from "../components/ui/AppModal.jsx";
 import ResourcePagination from "../components/ui/ResourcePagination.jsx";
 import { Notice } from "../components/ui/PageState.jsx";
 import StatCard from "../components/ui/StatCard.jsx";
 import RoleBadge from "../components/account/RoleBadge.jsx";
 import AdminPendingPanel from "../components/admin/AdminPendingPanel.jsx";
-import AdminAuditPanel, { AuditAccessPanel, AuditDialog, formatDate, getAuditInfo, operationBadges, operations } from "../components/admin/AdminAuditPanel.jsx";
+import AdminNav from "../components/admin/AdminNav.jsx";
+import AdminAuditPanel, { AuditDialog, formatDate, getAuditInfo, operationBadges, operations } from "../components/admin/AdminAuditPanel.jsx";
 
 export { AuditDialog, formatDate, getAuditInfo, operationBadges, operations };
 
@@ -85,7 +85,7 @@ function UserRoleFilter() {
           type="button"
           aria-pressed={selectedRole === role}
           onClick={() => field.onChange(role === "ALL" ? "" : role)}
-          className={`rounded-lg px-2.5 py-1.5 transition-colors ${selectedRole === role ? "bg-brand font-semibold text-zinc-900" : "text-muted hover:text-zinc-200"}`}
+          className={`rounded-lg px-2.5 py-1.5 transition-colors ${selectedRole === role ? "bg-brand font-semibold text-zinc-900" : "text-ink hover:bg-raised"}`}
         >
           {label}
         </button>
@@ -98,25 +98,16 @@ export default function Admin() {
   const { currentUser } = useLoaderData();
   const [editor, setEditor] = useState(null);
   const [audited, setAudited] = useState(null);
-  const [showAuditLogs, setShowAuditLogs] = useState(false);
   const [feedback, setFeedback] = useState("");
   const refresh = useRefresh();
   const promotionBlock = "A promoção a professor ocorre pela aprovação dos documentos em Candidaturas de professores.";
 
   return (
     <Box className="w-full space-y-5">
+      <AdminNav />
       <PageHeader
         title="Administração"
-        description="Gerencie pendências, auditoria, usuários e documentos da plataforma."
-        actions={
-          <Box component="nav" className="flex flex-wrap gap-2.5" aria-label="Gestão da plataforma">
-            <button type="button" className="button-secondary" aria-haspopup="dialog" onClick={() => setShowAuditLogs(true)}><ScrollText size={16} /> Ver logs de auditoria</button>
-            <Link className="button-secondary" to="/admin/denuncias"><Flag size={16} /> Denúncias</Link>
-            <Link className="button-secondary" to="/admin/professores"><UserCheck size={16} /> Candidaturas de professores</Link>
-            <Link className="button-secondary" to="/admin/documentos"><FileText size={16} /> Documentos legais</Link>
-            <Link className="button-secondary" to="/admin/lixeira"><Trash2 size={16} /> Lixeira</Link>
-          </Box>
-        }
+        description="Gerencie usuários, pendências, auditoria e documentos da plataforma."
       />
       <AdminPendingPanel />
       <ListBase resource="users" perPage={10} sort={{ field: "name", order: "ASC" }} disableAuthentication>
@@ -192,7 +183,6 @@ export default function Admin() {
         </CrudDialog>
       )}
 
-      {showAuditLogs && <AppModal title="Logs de auditoria" width={1100} onClose={() => setShowAuditLogs(false)}><AuditAccessPanel /></AppModal>}
       {audited && <AuditDialog audit={audited.row} users={audited.users} onClose={() => setAudited(null)} />}
     </Box>
   );

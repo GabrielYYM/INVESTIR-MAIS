@@ -372,38 +372,6 @@
         }
       }
     },
-    "/api/trash/{entity}/{id}/restore": {
-      "post": {
-        "tags": [
-          "content-trash-controller"
-        ],
-        "operationId": "restoreTrashContent",
-        "parameters": [
-          {
-            "name": "entity",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
-          }
-        }
-      }
-    },
     "/api/reports": {
       "get": {
         "tags": [
@@ -1003,52 +971,6 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/CourseProgressResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/trash": {
-      "get": {
-        "tags": [
-          "content-trash-controller"
-        ],
-        "operationId": "listTrashContent",
-        "parameters": [
-          {
-            "name": "page",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 0,
-              "minimum": 0
-            }
-          },
-          {
-            "name": "size",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 20,
-              "maximum": 100,
-              "minimum": 1
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
                 }
               }
             }
@@ -2074,6 +1996,9 @@
             "type": "boolean"
           },
           "passed": {
+            "type": "boolean"
+          },
+          "incorrect": {
             "type": "boolean"
           },
           "options": {
