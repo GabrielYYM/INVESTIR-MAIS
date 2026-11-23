@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Outlet, redirect, useFetcher, useLoaderData, useLocation, useNavigation } from "react-router";
+import { Outlet, redirect, ScrollRestoration, useFetcher, useLoaderData, useLocation, useNavigation } from "react-router";
 import { Box, Toolbar } from "@mui/material";
 import { logout } from "../../services/authService.js";
 import { apiError } from "../../services/api.js";
@@ -66,6 +66,7 @@ export default function AppLayout() {
             <Outlet />
           </main>
         </Box>
+        <ScrollRestoration />
         <Footer />
       </Box>
     </Box>

@@ -1,7 +1,7 @@
 import { CourseLearningDashboard } from "../components/education/LearningDashboard.jsx";
 import { ProgressTrack } from "../components/education/CourseProgressBar.jsx";
 import { ArrowLeft, CheckCircle2, ChevronDown, CircleHelp, ExternalLink, Flag, Pencil, Play, Plus, Trash2, UserX, Video, XCircle } from "lucide-react";
-import { lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { Accordion, AccordionDetails, AccordionSummary, Radio, RadioGroup } from "@mui/material";
 import { Link, useFetcher, useLoaderData, useLocation, useNavigate, useRevalidator, useRouteLoaderData, NavLink } from "react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -207,6 +207,11 @@ export default function Course() {
   const location = useLocation();
   const navigate = useNavigate();
   const coursePath = "/educacao/" + course.id;
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, [course.id, lesson?.id]);
+
   const completedIds = new Set(progress?.completedLessonIds ?? []);
   const progressMutation = useUpdateLessonProgress({
     mutation: {

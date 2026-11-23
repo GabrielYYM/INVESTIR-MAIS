@@ -50,7 +50,7 @@ function LegalWorkspace() {
 
 function TeacherWorkspace() {
   const [page, setPage] = useState(0);
-  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState("PENDING");
   const [reasons, setReasons] = useState({});
   const client = useQueryClient();
 
@@ -66,20 +66,19 @@ function TeacherWorkspace() {
   });
 
   const statusBadges = {
-    PENDING: { label: "Pendente de análise", className: "border-purple-500/30 bg-purple-500/10 text-purple-400", icon: Clock },
+    PENDING: { label: "Pendente de análise", className: "border-amber-500/30 bg-amber-500/10 text-amber-400", icon: Clock },
     APPROVED: { label: "Professor aprovado", className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400", icon: CheckCircle2 },
     REJECTED: { label: "Candidatura reprovada", className: "border-rose-500/30 bg-rose-500/10 text-rose-400", icon: XCircle },
   };
 
   const rawList = applications.data?.content || [];
-  const filteredList = statusFilter === "ALL" ? rawList : rawList.filter((a) => a.status === statusFilter);
+  const filteredList = rawList.filter((a) => a.status === statusFilter);
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-line bg-canvas p-1">
           {[
-            ["ALL", "Todas", Users],
             ["PENDING", "Pendentes", Clock],
             ["APPROVED", "Aprovadas", CheckCircle2],
             ["REJECTED", "Reprovadas", XCircle],
@@ -140,7 +139,7 @@ function TeacherWorkspace() {
           <article key={application.id} className="panel space-y-4 p-5 sm:p-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex items-start gap-3 min-w-0">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-purple-500/15 font-bold text-purple-400 border border-purple-500/30">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 font-bold text-amber-400 border border-amber-500/30">
                   {initial}
                 </div>
                 <div className="min-w-0 space-y-1">
@@ -227,7 +226,7 @@ function TeacherWorkspace() {
                 </div>
               </div>
             ) : (
-              <div className="rounded-xl border border-line bg-canvas p-4 space-y-1 text-sm border-l-4 border-l-purple-500">
+              <div className="rounded-xl border border-line bg-canvas p-4 space-y-1 text-sm border-l-4 border-l-brand">
                 <span className="text-xs font-semibold uppercase tracking-wider text-muted">Parecer registrado:</span>
                 <p className="whitespace-pre-wrap break-words text-ink leading-relaxed font-medium">{application.reviewReason}</p>
                 {application.reviewedAt && (

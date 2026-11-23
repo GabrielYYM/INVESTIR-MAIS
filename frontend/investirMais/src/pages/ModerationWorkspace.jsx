@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Archive, Calendar, CheckCircle2, Clock, ExternalLink, Flag, GraduationCap, Trash2, Video, XCircle } from "lucide-react";
 import { apiClient, apiError } from "../services/api.js";
 import { reportReasons, reportStatuses } from "../services/reportReasons.js";
-import { Field, SelectField } from "../components/ui/FormFields.jsx";
+import { Field } from "../components/ui/FormFields.jsx";
 import { Notice } from "../components/ui/PageState.jsx";
 import StatePagination from "../components/ui/StatePagination.jsx";
 
@@ -60,20 +60,6 @@ export default function ModerationWorkspace() {
               </button>
             );
           })}
-        </div>
-
-        <div className="w-full sm:w-56">
-          <SelectField
-            native
-            label="Situação"
-            value={status}
-            options={Object.entries(reportStatuses)}
-            onChange={(event) => {
-              setStatus(event.target.value);
-              setPage(0);
-              setConfirming(null);
-            }}
-          />
         </div>
       </div>
 
@@ -241,7 +227,7 @@ export default function ModerationWorkspace() {
         );
       })}
 
-      <StatePagination page={page} totalPages={result.data?.page.totalPages} onChange={setPage} hideIfSinglePage={false} />
+      <StatePagination page={page} totalPages={result.data?.page.totalPages} onChange={setPage} showPageNumber={false} />
     </div>
   );
 }
