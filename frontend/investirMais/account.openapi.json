@@ -100,8 +100,8 @@
         "tags": [
           "Usuários"
         ],
-        "summary": "Desativar a própria conta por 30 dias",
-        "description": "Bloqueia a conta, preserva dados para recuperação solicitada pelo titular e agenda eliminação definitiva após 30 dias. Exige senha atual e encerra sessões.",
+        "summary": "Excluir logicamente a própria conta",
+        "description": "Marca a conta como excluída (soft delete) e suprime os identificadores do perfil imediatamente, libera o e-mail, encerra sessões e preserva o histórico de ações com acesso restrito. Sem recuperação. Exige senha atual.",
         "operationId": "deleteAccount",
         "parameters": [
           {
@@ -162,42 +162,6 @@
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "/api/users/{id}/erasure": {
-      "post": {
-        "tags": [
-          "Usuários"
-        ],
-        "summary": "Eliminar definitivamente a própria conta",
-        "description": "Elimina os dados da conta no banco ativo sem janela de recuperação. Exige senha atual. Irreversível.",
-        "operationId": "eraseAccount",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DeleteAccountRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "204": {
-            "description": "No Content"
           }
         }
       }
@@ -1045,6 +1009,128 @@
         }
       }
     },
+    "/api/audit/{entity}/{entityId}/{revision}": {
+      "get": {
+        "tags": [
+          "audit-controller"
+        ],
+        "operationId": "auditDetail",
+        "parameters": [
+          {
+            "name": "entity",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "entityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "revision",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/audit/accesses": {
+      "get": {
+        "tags": [
+          "audit-controller"
+        ],
+        "operationId": "auditAccesses",
+        "parameters": [
+          {
+            "name": "viewerId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/admin/pending": {
       "get": {
         "tags": [
@@ -1169,21 +1255,6 @@
           "newPassword"
         ]
       },
-      "DeleteAccountRequest": {
-        "type": "object",
-        "description": "Confirmação para exclusão da própria conta",
-        "properties": {
-          "currentPassword": {
-            "type": "string",
-            "description": "Senha atual do usuário",
-            "maxLength": 4096,
-            "minLength": 0
-          }
-        },
-        "required": [
-          "currentPassword"
-        ]
-      },
       "VerificationResponse": {
         "type": "object",
         "properties": {
@@ -1299,6 +1370,9 @@
           "userId": {
             "type": "string",
             "format": "uuid"
+          },
+          "userName": {
+            "type": "string"
           },
           "status": {
             "type": "string"
@@ -1693,6 +1767,21 @@
             "format": "date-time"
           }
         }
+      },
+      "DeleteAccountRequest": {
+        "type": "object",
+        "description": "Confirmação para exclusão da própria conta",
+        "properties": {
+          "currentPassword": {
+            "type": "string",
+            "description": "Senha atual do usuário",
+            "maxLength": 4096,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "currentPassword"
+        ]
       }
     }
   }

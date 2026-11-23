@@ -26,3 +26,18 @@ CREATE TABLE IF NOT EXISTS legal_document_acceptance (
     accepted_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (user_id, version)
 );
+
+
+CREATE TABLE IF NOT EXISTS audit_access_log (
+    id uuid PRIMARY KEY,
+    viewer_id uuid NOT NULL,
+    viewer_role varchar(32) NOT NULL,
+    viewed_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    action varchar(32) NOT NULL,
+    entity varchar(32),
+    entity_id uuid,
+    revision integer,
+    record_references text NOT NULL
+);
+CREATE INDEX IF NOT EXISTS audit_access_log_viewed_idx ON audit_access_log (viewed_at DESC, id);
+CREATE INDEX IF NOT EXISTS audit_access_log_viewer_idx ON audit_access_log (viewer_id, viewed_at DESC);

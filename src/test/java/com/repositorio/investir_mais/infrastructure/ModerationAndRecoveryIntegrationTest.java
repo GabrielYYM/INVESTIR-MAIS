@@ -44,7 +44,6 @@ class ModerationAndRecoveryIntegrationTest extends PostgreSqlIntegrationTest {
     @Autowired CourseService courses;
     @Autowired LessonService lessons;
     @Autowired QuestionService questions;
-    @Autowired ContentTrashService trash;
     @Autowired ContentReportRepository reports;
     @Autowired LegalDocumentsService legal;
     @Autowired PasswordEncoder encoder;
@@ -95,7 +94,6 @@ class ModerationAndRecoveryIntegrationTest extends PostgreSqlIntegrationTest {
         mvc.perform(get("/api/reports").with(as(student))).andExpect(status().isForbidden());
         mvc.perform(get("/api/reports").with(as(admin))).andExpect(status().isOk())
             .andExpect(jsonPath("$.content").isArray()).andExpect(jsonPath("$.page.totalElements").isNumber());
-        mvc.perform(get("/api/trash").with(as(teacher))).andExpect(status().isForbidden());
         var report = reports.findAll().stream().filter(value -> value.getTargetId().equals(lesson.id())).findFirst().orElseThrow();
         mvc.perform(post("/api/reports/{id}/review", report.getId()).with(as(admin)).with(csrf()).contentType("application/json")
             .content("{\"status\":\"RESOLVED\",\"note\":\"Conteúdo conferido\",\"removeLesson\":true}"))
@@ -116,70 +114,66 @@ class ModerationAndRecoveryIntegrationTest extends PostgreSqlIntegrationTest {
             .andExpect(status().isBadRequest());
     }
 
-    @Test void contentRestorationRespectsParentsAndDoesNotRestorePreviouslyDeletedChildren() {
-        var course = course(); var lesson = lesson(course.id()); var question = question(course.id(), lesson.position());
-        courses.deleteCourse(course.id(), teacher.getEmail());
-        assertThrows(ResponseStatusException.class, () -> trash.restore("lessons", lesson.id(), admin.getEmail()));
-        trash.restore("courses", course.id(), admin.getEmail());
-        assertNotNull(jdbc.queryForObject("SELECT deleted_at FROM tb_lesson WHERE id=?", Object.class, lesson.id()));
-        assertThrows(ResponseStatusException.class, () -> trash.restore("questions", question.id(), admin.getEmail()));
-        trash.restore("lessons", lesson.id(), admin.getEmail()); trash.restore("questions", question.id(), admin.getEmail());
-        assertNull(jdbc.queryForObject("SELECT deleted_at FROM tb_question WHERE id=?", Object.class, question.id()));
-        assertEquals(3, jdbc.queryForObject("SELECT count(*) FROM tb_content_restoration WHERE entity_id IN (?,?,?)", Integer.class, course.id(), lesson.id(), question.id()));
-    }
-
-    @Test void accountRecoveryPreservesDataProgressAndPreviouslyDeletedContent() {
-        var removed = course(); courses.deleteCourse(removed.id(), teacher.getEmail());
-        var active = course(); var lesson = lesson(active.id());
-        lessons.updateLessonProgress(active.id(), lesson.id(), true, student.getEmail());
-        accounts.deleteAccount(teacher.getEmail(), teacher.getId(), new UserDTO.DeleteAccountRequest("Temporary123!"));
-        assertEquals(teacher.getEmail(), jdbc.queryForObject("SELECT email FROM tb_user WHERE id=?", String.class, teacher.getId()));
-        assertFalse(users.existsById(teacher.getId()));
-        assertThrows(ResponseStatusException.class, () -> trash.restore("courses", active.id(), admin.getEmail()));
-        deletions.restore(teacher.getId(), admin.getId(), "Pedido do titular verificado #123");
-        assertTrue(users.existsById(teacher.getId()));
-        assertNull(jdbc.queryForObject("SELECT deleted_at FROM tb_course WHERE id=?", Object.class, active.id()));
-        assertNotNull(jdbc.queryForObject("SELECT deleted_at FROM tb_course WHERE id=?", Object.class, removed.id()));
-        assertEquals(100.0, courses.getCourseProgress(active.id(), student.getEmail()).progressPercentage());
-        accounts.deleteAccount(student.getEmail(), student.getId(), new UserDTO.DeleteAccountRequest("Temporary123!"));
-        deletions.restore(student.getId(), admin.getId(), "Pedido confirmado #456");
-        assertEquals(100.0, courses.getCourseProgress(active.id(), student.getEmail()).progressPercentage());
-    }
-
-    @Test void expiredAccountCannotBeRestoredAndIsPhysicallyErasedWithItsSnapshots() {
-        var course = course(); lesson(course.id());
-        accounts.deleteAccount(teacher.getEmail(), teacher.getId(), new UserDTO.DeleteAccountRequest("Temporary123!"));
-        assertFalse(deletions.erase(teacher.getId(), false));
-        jdbc.update("UPDATE account_deletion SET purge_after=? WHERE user_id=? AND status='PENDING'", java.sql.Timestamp.from(Instant.now().minusSeconds(1)), teacher.getId());
-        assertThrows(ResponseStatusException.class, () -> deletions.restore(teacher.getId(), admin.getId(), "Pedido atrasado"));
-        assertTrue(deletions.erase(teacher.getId(), false));
-        assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM tb_user WHERE id=?", Integer.class, teacher.getId()));
-        assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM tb_user_audit WHERE id=?", Integer.class, teacher.getId()));
-        assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM tb_course WHERE id=?", Integer.class, course.id()));
+    @Test void deletionSuppressesIdentifiersPreservesHistoryAndAllowsTheSameEmailAgain() throws Exception {
+        String oldEmail = teacher.getEmail();
+        UUID oldId = teacher.getId();
+        var course = course(); var lesson = lesson(course.id());
+        lessons.updateLessonProgress(course.id(), lesson.id(), true, student.getEmail());
+        int revisions = jdbc.queryForObject("SELECT count(*) FROM tb_user_audit WHERE id=?", Integer.class, oldId);
+        accounts.deleteAccount(oldEmail, oldId, new UserDTO.DeleteAccountRequest("Temporary123!"));
+        assertFalse(users.existsById(oldId));
+        assertFalse(users.existsByEmailIncludingDeleted(oldEmail));
+        assertEquals("Usuário excluído", jdbc.queryForObject("SELECT name FROM tb_user WHERE id=?", String.class, oldId));
+        assertNull(jdbc.queryForObject("SELECT password FROM tb_user WHERE id=?", String.class, oldId));
+        assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM tb_user_audit WHERE id=? AND email=?", Integer.class, oldId, oldEmail));
+        assertTrue(jdbc.queryForObject("SELECT count(*) FROM tb_user_audit WHERE id=?", Integer.class, oldId) >= revisions);
+        assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM tb_course WHERE id=?", Integer.class, course.id()));
+        assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM tb_lesson_progress WHERE lesson_id=?", Integer.class, lesson.id()));
+        accounts.registerUser(new UserDTO.Request("Novo cadastro", oldEmail, "Temporary123!", UserRole.STUDENT));
+        User recreated = users.findByEmail(oldEmail).orElseThrow();
+        assertNotEquals(oldId, recreated.getId());
+        assertFalse(recreated.isEmailVerified());
+        assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM tb_course_enrollment WHERE student_id=?", Integer.class, recreated.getId()));
+        accounts.deleteAccount(oldEmail, recreated.getId(), new UserDTO.DeleteAccountRequest("Temporary123!"));
         assertTrue(users.existsById(student.getId()));
     }
 
-    @Test void immediateErasureNeedsTheOwnersPasswordAndDoesNotCreateARecoveryWindow() throws Exception {
+    @Test void registrationReleasesTheEmailOfALegacySoftDeletionWithoutErasingEvidence() {
+        UUID oldId = student.getId();
+        String oldEmail = student.getEmail();
+        int revisions = jdbc.queryForObject("SELECT count(*) FROM tb_user_audit WHERE id=?", Integer.class, oldId);
+        jdbc.update("UPDATE tb_user SET deleted_at=CURRENT_TIMESTAMP WHERE id=?", oldId);
+        accounts.registerUser(new UserDTO.Request("Nova conta", oldEmail, "Temporary123!", UserRole.STUDENT));
+        assertNotEquals(oldId, users.findByEmail(oldEmail).orElseThrow().getId());
+        assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM tb_user WHERE id=? AND deleted_at IS NOT NULL AND password IS NULL", Integer.class, oldId));
+        assertEquals(revisions, jdbc.queryForObject("SELECT count(*) FROM tb_user_audit WHERE id=?", Integer.class, oldId));
+        assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM legal_document_acceptance WHERE user_id=?", Integer.class, oldId));
+        assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM tb_user_audit WHERE id=? AND email=?", Integer.class, oldId, oldEmail));
+    }
+
+    @Test void softDeleteNeedsTheOwnersPasswordAndPreservesTheAccountRowAndHistory() throws Exception {
         var publicationId = UUID.randomUUID();
         jdbc.update("INSERT INTO event_publication(id,publication_date,listener_id,serialized_event,event_type,completion_attempts,status) VALUES (?,CURRENT_TIMESTAMP,'test',?,? ,0,'FAILED')",
             publicationId, "{\"email\":\"" + student.getEmail() + "\",\"token\":\"expired\",\"purpose\":\"VERIFY_EMAIL\"}", "com.repositorio.investir_mais.domain.AccountEmailRequested");
-        mvc.perform(post("/api/users/{id}/erasure", student.getId()).with(as(student)).with(csrf()).contentType("application/json")
+        mvc.perform(delete("/api/users/{id}", student.getId()).with(as(student)).with(csrf()).contentType("application/json")
             .content("{\"currentPassword\":\"incorrect\"}")).andExpect(status().isUnauthorized());
         assertTrue(users.existsById(student.getId()));
         var currentSession = new org.springframework.mock.web.MockHttpSession();
-        mvc.perform(post("/api/users/{id}/erasure", student.getId()).session(currentSession).with(as(student)).with(csrf()).contentType("application/json")
+        mvc.perform(delete("/api/users/{id}", student.getId()).session(currentSession).with(as(student)).with(csrf()).contentType("application/json")
             .content("{\"currentPassword\":\"Temporary123!\"}")).andExpect(status().isNoContent());
         assertTrue(currentSession.isInvalid());
-        assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM tb_user WHERE id=?", Integer.class, student.getId()));
-        assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM account_deletion WHERE user_id=?", Integer.class, student.getId()));
-        assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM tb_user_audit WHERE id=?", Integer.class, student.getId()));
+        assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM tb_user WHERE id=? AND deleted_at IS NOT NULL AND password IS NULL", Integer.class, student.getId()));
+        assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM account_deletion WHERE user_id=? AND status='SOFT_DELETED'", Integer.class, student.getId()));
+        assertTrue(jdbc.queryForObject("SELECT count(*) FROM tb_user_audit WHERE id=?", Integer.class, student.getId()) > 0);
         assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM event_publication WHERE id=?", Integer.class, publicationId));
         assertEquals(1, legal.history(admin.getEmail()).size());
     }
 
     @Test void exposesTheNewEndpointsInTheApiContract() throws Exception {
         String contract = mvc.perform(get("/v3/api-docs").with(as(admin))).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        assertTrue(contract.contains("/api/reports")); assertTrue(contract.contains("/api/trash/accounts/{id}/restore"));
+        assertTrue(contract.contains("/api/reports")); assertFalse(contract.contains("/api/trash/accounts/{id}/restore"));
+        assertTrue(contract.contains("/api/audit/accesses"));
+        assertFalse(contract.contains("/api/users/{id}/erasure"));
         assertTrue(contract.contains("/api/admin/pending"));
         Files.createDirectories(Path.of("target")); Files.writeString(Path.of("target/moderation-openapi.json"), contract);
     }
@@ -201,22 +195,20 @@ class ModerationAndRecoveryIntegrationTest extends PostgreSqlIntegrationTest {
         for (var user : List.of(student, teacher, distant)) {
             accounts.deleteAccount(user.getEmail(), user.getId(), new UserDTO.DeleteAccountRequest("Temporary123!"));
         }
-        jdbc.update("UPDATE account_deletion SET purge_after=? WHERE user_id=? AND status='PENDING'", java.sql.Timestamp.from(now.plus(7, java.time.temporal.ChronoUnit.DAYS)), student.getId());
-        jdbc.update("UPDATE account_deletion SET purge_after=? WHERE user_id=? AND status='PENDING'", java.sql.Timestamp.from(now), teacher.getId());
 
         var summary = pending.summarize(now);
         assertEquals(before.openReports() + 1, summary.openReports());
         assertEquals(before.pendingTeacherApplications() + 1, summary.pendingTeacherApplications());
-        assertEquals(before.recoverableAccounts() + 2, summary.recoverableAccounts());
-        assertEquals(before.expiringAccounts() + 1, summary.expiringAccounts());
-        assertEquals(before.expiredAccounts() + 1, summary.expiredAccounts());
+        assertEquals(0, summary.recoverableAccounts());
+        assertEquals(0, summary.expiringAccounts());
+        assertEquals(0, summary.expiredAccounts());
         mvc.perform(get("/api/admin/pending").with(as(admin))).andExpect(status().isOk())
             .andExpect(header().string("Cache-Control", org.hamcrest.Matchers.containsString("no-store")))
             .andExpect(jsonPath("$.openReports").value((int) summary.openReports()))
             .andExpect(jsonPath("$.pendingTeacherApplications").value((int) summary.pendingTeacherApplications()))
             .andExpect(jsonPath("$.expiringAccounts").value((int) summary.expiringAccounts()))
             .andExpect(jsonPath("$.expiredAccounts").value((int) summary.expiredAccounts()))
-            .andExpect(jsonPath("$.nextRecoveryDeadline").isString()).andExpect(jsonPath("$.items").doesNotExist());
+            .andExpect(jsonPath("$.nextRecoveryDeadline").doesNotExist()).andExpect(jsonPath("$.items").doesNotExist());
         mvc.perform(get("/api/admin/pending").with(as(candidate))).andExpect(status().isForbidden());
         mvc.perform(get("/api/admin/pending").with(anonymous())).andExpect(status().isUnauthorized());
 
@@ -224,6 +216,27 @@ class ModerationAndRecoveryIntegrationTest extends PostgreSqlIntegrationTest {
         var approved = applications.findByUserId(candidate.getId()).orElseThrow(); approved.setStatus("APPROVED"); applications.saveAndFlush(approved);
         assertEquals(before.openReports(), pending.summarize(now).openReports());
         assertEquals(before.pendingTeacherApplications(), pending.summarize(now).pendingTeacherApplications());
+    }
+
+    @Test void auditReadsRecordTheServerIdentityAndExactReturnedReferences() throws Exception {
+        mvc.perform(get("/api/audit").with(as(student))).andExpect(status().isForbidden());
+        int before = jdbc.queryForObject("SELECT count(*) FROM audit_access_log", Integer.class);
+        mvc.perform(get("/api/audit").param("entity", "users").param("entityId", student.getId().toString()).with(as(admin)))
+            .andExpect(status().isOk());
+        assertEquals(before + 1, jdbc.queryForObject("SELECT count(*) FROM audit_access_log", Integer.class));
+        assertEquals(admin.getId(), jdbc.queryForObject("SELECT viewer_id FROM audit_access_log ORDER BY viewed_at DESC LIMIT 1", UUID.class));
+        int revision = jdbc.queryForObject("SELECT max(rev) FROM tb_user_audit WHERE id=?", Integer.class, student.getId());
+        mvc.perform(get("/api/audit/users/{id}/{revision}", student.getId(), revision).with(as(admin))).andExpect(status().isOk());
+        mvc.perform(get("/api/users/{id}/audit", student.getId()).with(as(admin))).andExpect(status().isOk());
+        mvc.perform(get("/api/audit/accesses").with(as(admin))).andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[0].viewer_id").value(admin.getId().toString()))
+            .andExpect(jsonPath("$.items[0].viewed_at").exists());
+        assertEquals(before + 3, jdbc.queryForObject("SELECT count(*) FROM audit_access_log", Integer.class));
+        assertThrows(org.springframework.dao.DataAccessException.class, () -> jdbc.update("DELETE FROM audit_access_log"));
+        assertThrows(org.springframework.dao.DataAccessException.class, () -> jdbc.update("UPDATE audit_access_log SET action='FORGED'"));
+        assertThrows(org.springframework.dao.DataAccessException.class, () -> jdbc.execute("TRUNCATE audit_access_log"));
+        mvc.perform(get("/api/audit/accesses").with(as(teacher))).andExpect(status().isForbidden());
+        mvc.perform(get("/api/audit/accesses").param("size", "101").with(as(admin))).andExpect(status().isBadRequest());
     }
 
     @Test void legalEvidenceCannotBeChangedOrErasedForAnotherSubject() {

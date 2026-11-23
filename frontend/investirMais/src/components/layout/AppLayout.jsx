@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { Outlet, redirect, useFetcher, useLoaderData, useLocation, useNavigation } from "react-router";
-import { Box, Toolbar } from "@mui/material";
+import { useEffect, useState } from "react";
+import { Outlet, redirect, ScrollRestoration, useFetcher, useLoaderData, useLocation, useNavigation } from "react-router";
+import { Box, Toolbar, useMediaQuery, useTheme } from "@mui/material";
 import { logout } from "../../services/authService.js";
 import { apiError } from "../../services/api.js";
 import Sidebar from "./Sidebar.jsx";
@@ -26,8 +26,17 @@ export default function AppLayout() {
   const signOutForm = useFetcher();
   const navigation = useNavigation();
   const { pathname } = useLocation();
-  const [drawerOpen, setDrawerOpen] = useState(true);
+  const theme = useTheme();
+  const mqMatches = useMediaQuery(theme.breakpoints.up("lg"));
+  const isDesktop = mqMatches || (typeof window !== "undefined" && window.innerWidth >= 1024);
+  const [drawerOpen, setDrawerOpen] = useState(isDesktop);
   const wideLayout = pathname.startsWith("/admin");
+
+  useEffect(() => {
+    if (!isDesktop) {
+      setDrawerOpen(false);
+    }
+  }, [isDesktop]);
 
   return (
     <Box sx={{ display: "flex", minHeight: "100dvh" }}>
@@ -37,7 +46,7 @@ export default function AppLayout() {
       >
         Pular para o conteúdo
       </a>
-      <Topbar user={user} onToggleDrawer={() => setDrawerOpen((prev) => !prev)} />
+      <Topbar logout={signOutForm} user={user} onToggleDrawer={() => setDrawerOpen((prev) => !prev)} />
       <Sidebar
         logout={signOutForm}
         user={user}
@@ -61,11 +70,12 @@ export default function AppLayout() {
             className={navigation.state === "loading" ? "h-0.5 animate-pulse bg-brand" : "h-0.5"}
             aria-hidden="true"
           />
-          <main id="conteudo" className={`mx-auto w-full ${wideLayout ? "max-w-[1600px]" : "max-w-6xl"} space-y-8 px-4 py-6 sm:p-8`}>
+          <main id="conteudo" className={`mx-auto w-full ${wideLayout ? "max-w-[1600px]" : "max-w-6xl"} space-y-5 px-4 py-6 sm:p-8`}>
             {signOutForm.data?.error && <Notice error>{signOutForm.data.error}</Notice>}
             <Outlet />
           </main>
         </Box>
+        <ScrollRestoration />
         <Footer />
       </Box>
     </Box>

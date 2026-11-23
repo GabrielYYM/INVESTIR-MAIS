@@ -39,6 +39,7 @@ public class UserService {
     private final AccountSecurityService accountSecurity;
     private final ApplicationEventPublisher events;
     private final AccountDeletionService accountDeletions;
+    private final com.repositorio.investir_mais.domain.AuditAccessService auditAccess;
 
     @Transactional(readOnly = true)
     public User findByEmail(String email) {
@@ -88,6 +89,7 @@ public class UserService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O cadastro público permite apenas o perfil STUDENT.");
         }
 
+        accountDeletions.anonymizeDeletedByEmail(dto.email());
         if (userRepository.existsByEmailIncludingDeleted(dto.email())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Não foi possível criar sua conta. Verifique os dados informados.");
         }
@@ -110,21 +112,11 @@ public class UserService {
         }
         verifyCurrentPassword(user, dto.currentPassword());
 
-        accountDeletions.deactivate(user);
-        accountSecurity.invalidateAll(user.getEmail());
-        accountSecurity.revokeAllSessions(user.getEmail());
+        String email = user.getEmail();
+        accountSecurity.invalidateAll(email);
+        accountSecurity.revokeAllSessions(email);
+        accountDeletions.anonymize(user);
         log.info("Conta excluída logicamente com sucesso. Usuário ID: {}", user.getId());
-    }
-
-    public void eraseAccount(String principalName, UUID requestedId, UserDTO.DeleteAccountRequest dto) {
-        User user = findByEmailForUpdate(principalName);
-        if (!user.getId().equals(requestedId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não pode excluir outra conta.");
-        }
-        verifyCurrentPassword(user, dto.currentPassword());
-        accountSecurity.invalidateAll(user.getEmail());
-        accountSecurity.revokeAllSessions(user.getEmail());
-        accountDeletions.erase(requestedId, true);
     }
 
     public void updatePassword(String email, AuthDTO.UpdatePasswordRequest dto) {
@@ -238,6 +230,7 @@ public class UserService {
             ));
             previous = current;
         }
+        auditAccess.record("USER_HISTORY", "users", userId, null, history.stream().map(row -> row.revisionNumber().toString()).toList());
         return history;
     }
 

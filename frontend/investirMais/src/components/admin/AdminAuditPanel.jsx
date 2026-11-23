@@ -4,20 +4,18 @@ import {
   Button,
   CircularProgress,
   Divider,
-  FormControl,
   IconButton,
-  InputLabel,
-  MenuItem,
   Paper,
-  Select,
   Stack,
-  TextField,
   Tooltip,
   Typography,
 } from "@mui/material";
 import { Eye } from "lucide-react";
+import { apiError } from "../../services/api.js";
+import { auditDetail } from "../../generated/account.ts";
 import { DataTable, ListBase, useListContext } from "react-admin";
 import AppModal from "../ui/AppModal.jsx";
+import { Field, SelectField } from "../ui/FormFields.jsx";
 import ResourcePagination from "../ui/ResourcePagination.jsx";
 import { Notice } from "../ui/PageState.jsx";
 import RoleBadge from "../account/RoleBadge.jsx";
@@ -29,11 +27,25 @@ export const formatDate = value => {
 };
 
 const opMap = { 0: "INSERT", "0": "INSERT", INSERT: "INSERT", 1: "UPDATE", "1": "UPDATE", UPDATE: "UPDATE", 2: "DELETE", "2": "DELETE", DELETE: "DELETE" };
-export const operations = { INSERT: "Criação", UPDATE: "Modificação", DELETE: "Exclusão" };
+export const operations = {
+  INSERT: "Criação",
+  UPDATE: "Modificação",
+  DELETE: "Exclusão",
+  SEARCH: "Consulta",
+  DETAIL: "Visualização",
+  USER_HISTORY: "Histórico",
+  ACCESS_LOG: "Log de visualizações",
+  VIEW: "Visualização",
+};
 export const operationBadges = {
   INSERT: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
   UPDATE: "bg-sky-500/10 text-sky-400 border-sky-500/20",
   DELETE: "bg-rose-500/10 text-rose-400 border-rose-500/20",
+  SEARCH: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+  DETAIL: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+  USER_HISTORY: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
+  ACCESS_LOG: "bg-teal-500/10 text-teal-400 border-teal-500/20",
+  VIEW: "bg-amber-500/10 text-amber-400 border-amber-500/20",
 };
 const entityNames = {
   users: "Usuário",
@@ -41,8 +53,8 @@ const entityNames = {
   lessons: "Aula",
   questions: "Questão",
   reports: "Denúncia",
-  restorations: "Restauração",
   accounts: "Conta",
+  accesses: "Visualização",
 };
 export const entityOptions = [
   ["users", "Usuários"],
@@ -50,15 +62,15 @@ export const entityOptions = [
   ["lessons", "Aulas"],
   ["questions", "Questões"],
   ["reports", "Denúncias"],
-  ["restorations", "Restaurações de conteúdo"],
-  ["accounts", "Desativações e recuperações de contas"],
+  ["accounts", "Exclusões de contas"],
+  ["accesses", "Visualizações"],
 ];
 export const roleOptions = [
   ["ADMIN", "Administrador"],
   ["TEACHER", "Professor"],
   ["STUDENT", "Aluno"],
 ];
-const initialAuditFilters = { entity: "", entityId: "", revision: "", actor: "", role: "", from: "", to: "" };
+const initialAuditFilters = { entity: "", entityId: "", actor: "", role: "", from: "", to: "" };
 
 function parseJson(value) {
   if (!value) return null;
@@ -67,6 +79,50 @@ function parseJson(value) {
 }
 
 export function getAuditInfo(row = {}, users = []) {
+  const isAccess = row.isAccess || row.entity === "accesses" || row.viewed_at != null;
+  if (isAccess) {
+    const operationKey = row.action ?? row.operation ?? "DETAIL";
+    const operationLabel = operations[operationKey] ?? ({ SEARCH: "Consulta", DETAIL: "Visualização", USER_HISTORY: "Histórico", ACCESS_LOG: "Log de visualizações" })[operationKey] ?? String(operationKey);
+    const entityKey = "accesses";
+    const entityLabel = entityNames[entityKey] ?? "Visualização";
+    const name = row.viewer_name ?? row.name ?? row.actor_name ?? "—";
+    const uid = row.viewer_id ?? row.uid ?? "—";
+    const email = row.viewer_email ?? row.email ?? row.actor ?? "—";
+    const role = row.viewer_role ?? row.role ?? null;
+    const revision = row.revision ?? "—";
+    const actorName = row.viewer_name ?? row.actor_name ?? "—";
+    const actorUid = row.viewer_id ?? row.actor_id ?? "—";
+    const actorEmail = row.viewer_email ?? row.actor ?? "—";
+    const actorRole = row.viewer_role ?? row.role ?? null;
+    const snapshot = parseJson(row.data) ?? {
+      acao: operationLabel,
+      registrosConsultados: row.record_references || "Consulta sem resultados",
+      quemVisualizou: name,
+      uidVisualizador: uid,
+      emailVisualizador: email,
+      papelVisualizador: role,
+    };
+    return {
+      revision,
+      operationKey,
+      operationLabel,
+      entityKey,
+      entityLabel,
+      name,
+      uid,
+      email,
+      role,
+      actorName,
+      actorUid,
+      actorEmail,
+      actorRole,
+      before: null,
+      snapshot,
+      isAccess: true,
+      recordReferences: row.record_references,
+    };
+  }
+
   const snapshot = parseJson(row.data) ?? row.user ?? null;
   const before = parseJson(row.before);
   const usersById = new Map(users.filter(u => u?.id).map(u => [String(u.id), u]));
@@ -88,7 +144,7 @@ export function getAuditInfo(row = {}, users = []) {
   const actorUid = row.actor_id ?? actorUser?.id ?? "—";
   const actorEmail = row.actor ?? actorUser?.email ?? "—";
   const actorRole = row.role ?? actorUser?.role ?? null;
-  return { revision, operationKey, operationLabel, entityKey, entityLabel, name, uid, email, role, actorName, actorUid, actorEmail, actorRole, before, snapshot };
+  return { revision, operationKey, operationLabel, entityKey, entityLabel, name, uid, email, role, actorName, actorUid, actorEmail, actorRole, before, snapshot, isAccess: false };
 }
 
 function AuditField({ label, children, mono = false }) {
@@ -104,26 +160,31 @@ function AuditField({ label, children, mono = false }) {
 
 export function AuditDialog({ audit, users = [], onClose }) {
   const info = getAuditInfo(audit, users);
-  const showBeforeAfter = info.operationKey !== "INSERT" && (info.operationKey === "UPDATE" || Boolean(info.before));
+  const showBeforeAfter = !info.isAccess && info.operationKey !== "INSERT" && (info.operationKey === "UPDATE" || Boolean(info.before));
   return (
-    <AppModal title="Detalhes da Auditoria" width={760} onClose={onClose}>
+    <AppModal title={info.isAccess ? "Detalhes da Visualização" : "Detalhes da Auditoria"} width={760} onClose={onClose}>
       <Stack spacing={2.5}>
         <Box className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <AuditField label="Revisão"><strong>{info.revision}</strong></AuditField>
-          <AuditField label="Data/Hora">{formatDate(audit.timestamp)}</AuditField>
+          <AuditField label="Data/Hora">{formatDate(audit.timestamp ?? audit.viewed_at)}</AuditField>
           <AuditField label="Operação">
             <span className={`inline-block rounded border px-2 py-0.5 text-xs ${operationBadges[info.operationKey] ?? "border-line text-muted"}`}>
               {info.operationLabel}
             </span>
           </AuditField>
           <AuditField label="Entidade">{info.entityLabel}</AuditField>
-          <AuditField label="Nome"><strong>{info.name}</strong></AuditField>
+          <AuditField label={info.isAccess ? "Quem visualizou" : "Nome"}><strong>{info.name}</strong></AuditField>
           <AuditField label="UID" mono>{info.uid}</AuditField>
           <AuditField label="E-mail">{info.email}</AuditField>
           <AuditField label="Papel">{info.role ? <RoleBadge role={info.role} /> : "—"}</AuditField>
+          {info.isAccess && (
+            <Box className="sm:col-span-2">
+              <AuditField label="Registros consultados">{info.recordReferences || "Consulta sem resultados"}</AuditField>
+            </Box>
+          )}
         </Box>
 
-        {(info.actorEmail !== "—" || info.actorName !== "—" || info.actorUid !== "—") && (
+        {!info.isAccess && (info.actorEmail !== "—" || info.actorName !== "—" || info.actorUid !== "—") && (
           <>
             <Divider />
             <Stack spacing={1.5}>
@@ -201,12 +262,11 @@ export function AuditFilters({ onApply, onClear }) {
       variant="outlined"
       aria-label="Filtros da auditoria"
       sx={{ p: 2, bgcolor: "background.default" }}
-      className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"
+      className="space-y-3"
       onSubmit={event => {
         event.preventDefault();
         const next = { ...draft };
         for (const key of ["from", "to"]) if (next[key]) next[key] = new Date(next[key]).toISOString();
-        if (next.revision) next.revision = Number(next.revision);
         onApply(Object.fromEntries(Object.entries(next).filter(([, value]) => value !== "" && value != null)));
       }}
       onReset={event => {
@@ -215,39 +275,46 @@ export function AuditFilters({ onApply, onClear }) {
         onClear?.();
       }}
     >
-      <FormControl size="small" fullWidth>
-        <InputLabel id="audit-entity-label">Entidade</InputLabel>
-        <Select labelId="audit-entity-label" id="audit-entity" name="entity" value={draft.entity} label="Entidade" displayEmpty onChange={updateField("entity")}>
-          <MenuItem value="">Todas</MenuItem>
-          {entityOptions.map(([value, label]) => <MenuItem key={value} value={value}>{label}</MenuItem>)}
-        </Select>
-      </FormControl>
-      <TextField name="entityId" label="ID do registro" placeholder="UUID do registro..." value={draft.entityId} onChange={updateField("entityId")} />
-      <TextField name="revision" label="Revisão" type="number" value={draft.revision} onChange={updateField("revision")} slotProps={{ htmlInput: { min: 1 } }} />
-      <TextField name="actor" label="Usuário autor (e-mail)" type="email" value={draft.actor} onChange={updateField("actor")} />
-      <FormControl size="small" fullWidth>
-        <InputLabel id="audit-role-label">Papel do autor</InputLabel>
-        <Select labelId="audit-role-label" id="audit-role" name="role" value={draft.role} label="Papel do autor" displayEmpty onChange={updateField("role")}>
-          <MenuItem value="">Todos</MenuItem>
-          {roleOptions.map(([value, label]) => <MenuItem key={value} value={value}>{label}</MenuItem>)}
-        </Select>
-      </FormControl>
-      <TextField name="from" label="Desde" type="datetime-local" value={draft.from} onChange={updateField("from")} slotProps={{ inputLabel: { shrink: true } }} />
-      <TextField name="to" label="Até" type="datetime-local" value={draft.to} onChange={updateField("to")} slotProps={{ inputLabel: { shrink: true } }} />
-      <Stack direction="row" spacing={1} sx={{ alignItems: "flex-end" }}>
-        <Button type="submit" variant="contained" color="primary" fullWidth>Filtrar</Button>
-        <Button type="reset" variant="outlined">Limpar</Button>
-      </Stack>
+      <Box className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <SelectField id="audit-entity" name="entity" label="Entidade" value={draft.entity} emptyOption="Todas" options={entityOptions} onChange={updateField("entity")} />
+        <Field name="entityId" label="ID do registro" placeholder="UUID do registro..." value={draft.entityId} onChange={updateField("entityId")} />
+        <Field name="actor" label="Usuário autor (e-mail)" type="email" placeholder="email@exemplo.com" value={draft.actor} onChange={updateField("actor")} />
+        <SelectField id="audit-role" name="role" label="Papel do autor" value={draft.role} emptyOption="Todos" options={roleOptions} onChange={updateField("role")} />
+      </Box>
+      <Box className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <Field name="from" label="Desde" type="datetime-local" value={draft.from} onChange={updateField("from")} />
+        <Field name="to" label="Até" type="datetime-local" value={draft.to} onChange={updateField("to")} />
+        <Stack direction="row" spacing={1.5} className="sm:col-span-2 lg:col-span-1">
+          <Button type="submit" variant="contained" color="primary" fullWidth sx={{ minHeight: 44 }}>Filtrar</Button>
+          <Button type="reset" variant="outlined" fullWidth sx={{ minHeight: 44 }}>Limpar</Button>
+        </Stack>
+      </Box>
     </Paper>
   );
 }
 
 export function AuditTable({ users = [], onSelect }) {
+  const [detailError, setDetailError] = useState(null);
+  const [opening, setOpening] = useState(false);
+  async function openDetail(row) {
+    setDetailError(null); setOpening(true);
+    try {
+      const info = getAuditInfo(row, users);
+      if (info.isAccess) {
+        onSelect(row);
+        return;
+      }
+      const detail = await auditDetail(info.entityKey, info.uid, Number(info.revision));
+      onSelect({ ...row, ...detail, before: row.before });
+    } catch (error) { setDetailError(apiError(error, "Não foi possível registrar a visualização da auditoria.")); }
+    finally { setOpening(false); }
+  }
   const { error, isPending } = useListContext();
   if (error) return <Notice error>{error.message}</Notice>;
   if (isPending) return <CircularProgress aria-label="Carregando auditoria" />;
   return (
     <Box sx={{ overflowX: "auto" }}>
+      {detailError && <Notice error>{detailError}</Notice>}
       <DataTable
         resource="audit"
         bulkActionButtons={false}
@@ -269,7 +336,7 @@ export function AuditTable({ users = [], onSelect }) {
         }} />
         <DataTable.Col label="Ações" align="right" render={row => (
           <Tooltip title="Ver detalhes da auditoria">
-            <IconButton size="small" aria-label="Ver detalhes da auditoria" onClick={() => onSelect(row)}>
+            <IconButton size="small" aria-label="Ver detalhes da auditoria" disabled={opening} onClick={() => openDetail(row)}>
               <Eye size={16} />
             </IconButton>
           </Tooltip>

@@ -8,6 +8,7 @@ async function passwordForm() {
   return within((await screen.findByRole("heading", { name: "Segurança e Senha" })).closest("section"));
 }
 async function openDeletion(user) {
+  await user.click(await screen.findByRole("button", { name: "Exclusão de Conta" }));
   await user.click(await screen.findByRole("button", { name: /Excluir minha conta/i }));
   const dialog = within(await screen.findByRole("dialog"));
   expect(dialog.getByRole("button", { name: /Prosseguir para confirmação/ })).toBeDisabled();
@@ -55,12 +56,12 @@ describe("segurança do perfil", () => {
   it("exige dupla confirmação e senha válida para excluir e permite voltar/cancelar", async () => {
     const remove = mockApi("delete", `/api/users/${student.id}`, { detail: "Senha incorreta." }, { status: 401 });
     const { user } = renderApp("/perfil"); const dialog = await openDeletion(user);
-    expect(dialog.getByRole("button", { name: "Confirmar e Desativar Conta" })).toBeDisabled();
+    expect(dialog.getByRole("button", { name: "Confirmar exclusão da conta" })).toBeDisabled();
     await fillFields(user, { "Senha atual da conta": "   " }, dialog);
-    await user.click(dialog.getByRole("button", { name: "Confirmar e Desativar Conta" }));
+    await user.click(dialog.getByRole("button", { name: "Confirmar exclusão da conta" }));
     expect(await dialog.findByRole("alert")).toHaveTextContent("Informe sua senha atual"); expect(remove).not.toHaveBeenCalled();
     await fillFields(user, { "Senha atual da conta": "incorreta" }, dialog);
-    await user.click(dialog.getByRole("button", { name: "Confirmar e Desativar Conta" }));
+    await user.click(dialog.getByRole("button", { name: "Confirmar exclusão da conta" }));
     expect(await dialog.findByRole("alert")).toHaveTextContent("Senha incorreta");
     expect(await remove.mock.calls[0][0].request.clone().json()).toEqual({ currentPassword: "incorreta" });
     await user.click(dialog.getByRole("button", { name: "Voltar", exact: true }));
@@ -76,7 +77,7 @@ describe("segurança do perfil", () => {
     const logout = mockApi("post", "/auth/logout", null, { status: 204 });
     const { user } = renderApp("/perfil"); const dialog = await openDeletion(user);
     await fillFields(user, { "Senha atual da conta": "senha-atual" }, dialog);
-    await user.click(dialog.getByRole("button", { name: "Confirmar e Desativar Conta" }));
+    await user.click(dialog.getByRole("button", { name: "Confirmar exclusão da conta" }));
 
     await screen.findByRole("button", { name: "Excluindo conta…" });
     await waitFor(() => expect(logout).toHaveBeenCalledOnce());
@@ -91,7 +92,7 @@ describe("segurança do perfil", () => {
     }, { status: 401 });
     const { user } = renderApp("/perfil"); const dialog = await openDeletion(user);
     await fillFields(user, { "Senha atual da conta": " senha com espaços " }, dialog);
-    await user.click(dialog.getByRole("button", { name: "Confirmar e Desativar Conta" }));
+    await user.click(dialog.getByRole("button", { name: "Confirmar exclusão da conta" }));
     expect(dialog.getByRole("button", { name: "Fechar modal" })).toBeDisabled();
     expect(dialog.getByRole("button", { name: "Cancelar" })).toBeDisabled();
     await user.keyboard("{Escape}"); expect(screen.getByRole("dialog")).toBeInTheDocument();

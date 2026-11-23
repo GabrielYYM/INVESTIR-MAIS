@@ -158,7 +158,7 @@ describe("edição do perfil", () => {
       return HttpResponse.json({ detail: "Senha atual incorreta." }, { status: 401 });
     });
     const { user, router } = renderApp("/perfil");
-    const form = within((await screen.findByRole("heading", { name: "Alterar informações" })).closest("form"));
+    const form = within((await screen.findByRole("heading", { name: "Alterar informações" })).closest("section"));
     await fillFields(user, { "Senha atual": "senha-incorreta" }, form);
     await user.click(form.getByRole("button", { name: "Salvar perfil" }));
     if ([401, 403].includes(status)) {
@@ -174,7 +174,7 @@ describe("edição do perfil", () => {
   it("preserva os dados e permite tentar novamente quando a atualização fica sem conexão", async () => {
     const update = mockApi("put", `/api/users/${student.id}`, HttpResponse.error());
     const { user, router } = renderApp("/perfil");
-    const form = within((await screen.findByRole("heading", { name: "Alterar informações" })).closest("form"));
+    const form = within((await screen.findByRole("heading", { name: "Alterar informações" })).closest("section"));
     await fillFields(user, { "Apelido": "Ana Offline", "Senha atual": "senha-atual" }, form);
     await user.click(form.getByRole("button", { name: "Salvar perfil" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Não foi possível salvar.");
@@ -195,7 +195,7 @@ describe("edição do perfil", () => {
       return currentUser;
     });
     const { user } = renderApp("/perfil");
-    const profileForm = within((await screen.findByRole("heading", { name: "Alterar informações" })).closest("form"));
+    const profileForm = within((await screen.findByRole("heading", { name: "Alterar informações" })).closest("section"));
     expect(profileForm.queryByLabelText("Nova senha", { exact: true })).not.toBeInTheDocument();
     expect(profileForm.queryByLabelText("Confirme a nova senha")).not.toBeInTheDocument();
     expect(profileForm.getByLabelText("Senha atual")).toHaveAccessibleDescription("Necessária para confirmar a atualização dos seus dados.");
@@ -214,7 +214,7 @@ describe("edição do perfil", () => {
   it("permanece no perfil se a senha atual for recusada com sessão válida", async () => {
     mockApi("put", "/api/users/:id", { detail: "Senha atual incorreta." }, { status: 401 });
     const { user, router } = renderApp("/perfil");
-    const profileForm = within((await screen.findByRole("heading", { name: "Alterar informações" })).closest("form"));
+    const profileForm = within((await screen.findByRole("heading", { name: "Alterar informações" })).closest("section"));
     await user.type(profileForm.getByLabelText("Senha atual"), "errada");
     await user.click(screen.getByRole("button", { name: "Salvar perfil" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Senha atual incorreta.");
